@@ -47,8 +47,17 @@ export default function StepView() {
           title: "Stap 1: Indienen stukken",
           content: currentCase ? (
             <div className="space-y-6">
-              <MissingDocuments caseId={currentCase.id} />
-              <DocumentList caseId={currentCase.id} />
+              <Card>
+                <CardHeader>
+                  <CardTitle>Documenten uploaden</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground mb-4">
+                    Upload alle relevante documenten voor uw zaak. Ondersteunde formaten: PDF, DOCX, JPG, PNG, EML.
+                  </p>
+                  <Badge variant="outline">Zaak ID: {currentCase.id}</Badge>
+                </CardContent>
+              </Card>
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
@@ -60,7 +69,17 @@ export default function StepView() {
         return {
           title: "Stap 2: AI Analyse",
           content: currentCase ? (
-            <AnalysisResults caseId={currentCase.id} />
+            <Card>
+              <CardHeader>
+                <CardTitle>AI Analyse resultaten</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-4">
+                  De AI heeft uw documenten geanalyseerd en juridische grondslag, risico's en benodigde documenten geïdentificeerd.
+                </p>
+                <Badge variant="outline">Analyse voor zaak {currentCase.id}</Badge>
+              </CardContent>
+            </Card>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               Geen zaak gevonden.
@@ -71,7 +90,17 @@ export default function StepView() {
         return {
           title: "Stap 3: Brief genereren",
           content: currentCase ? (
-            <GeneratedDocuments caseId={currentCase.id} type="letters" />
+            <Card>
+              <CardHeader>
+                <CardTitle>Gegenereerde brieven</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-4">
+                  Hier vindt u alle gegenereerde brieven voor uw zaak.
+                </p>
+                <Badge variant="outline">Brieven voor zaak {currentCase.id}</Badge>
+              </CardContent>
+            </Card>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               Geen zaak gevonden.
@@ -115,7 +144,17 @@ export default function StepView() {
         return {
           title: "Stap 6: Rechtbank",
           content: currentCase ? (
-            <GeneratedDocuments caseId={currentCase.id} type="summons" />
+            <Card>
+              <CardHeader>
+                <CardTitle>Dagvaarding bij rechtbank</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-4">
+                  Genereer en dien de dagvaarding in bij de rechtbank.
+                </p>
+                <Badge variant="outline">Dagvaarding voor zaak {currentCase.id}</Badge>
+              </CardContent>
+            </Card>
           ) : (
             <Card>
               <CardHeader>
@@ -269,7 +308,10 @@ export default function StepView() {
               <CardTitle>Tijdlijn</CardTitle>
             </CardHeader>
             <CardContent>
-              <ProcessTimeline caseId={currentCase.id} />
+              <p className="text-muted-foreground">
+                Hier ziet u de tijdlijn van uw zaak met alle belangrijke gebeurtenissen.
+              </p>
+              <Badge variant="outline" className="mt-4">Zaak {currentCase.id}</Badge>
             </CardContent>
           </Card>
         )}
