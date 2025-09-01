@@ -28,7 +28,7 @@ export class AIService {
   constructor() {
     this.apiKey = process.env.OPENAI_API_KEY || "";
     this.provider = process.env.LLM_PROVIDER || "openai";
-    this.model = process.env.LLM_MODEL || "gpt-4";
+    this.model = process.env.LLM_MODEL || "gpt-3.5-turbo";
   }
 
   async analyzeLegalCase(caseData: Case, documents: CaseDocument[]): Promise<{
