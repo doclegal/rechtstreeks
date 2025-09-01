@@ -11,6 +11,7 @@ import MyCase from "@/pages/MyCase";
 import Help from "@/pages/Help";
 import NewCase from "@/pages/NewCase";
 import AllCases from "@/pages/AllCases";
+import StepView from "@/pages/StepView";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -34,6 +35,7 @@ function Router() {
         <Layout>
           <Route path="/" component={MyCase} />
           <Route path="/my-case" component={MyCase} />
+          <Route path="/step/:stepId" component={StepView} />
           <Route path="/help" component={Help} />
           <Route path="/new-case" component={NewCase} />
           <Route path="/all-cases" component={AllCases} />

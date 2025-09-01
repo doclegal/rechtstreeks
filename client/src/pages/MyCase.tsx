@@ -15,13 +15,14 @@ import GeneratedDocuments from "@/components/GeneratedDocuments";
 import ProcessTimeline from "@/components/ProcessTimeline";
 import CaseInfo from "@/components/CaseInfo";
 import DeadlineWarning from "@/components/DeadlineWarning";
-import { Link } from "wouter";
-import { PlusCircle, Headset, MessageSquare } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { PlusCircle, Headset, MessageSquare, ArrowLeft } from "lucide-react";
 
 export default function MyCase() {
   const { user, isLoading: authLoading } = useAuth();
   const { data: cases, isLoading: casesLoading, refetch } = useCases();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   
   // For MVP, we'll use the first case as the main case
   const currentCase = cases?.[0];
@@ -196,10 +197,7 @@ export default function MyCase() {
           <StepChips 
             currentStep={currentStepNumber} 
             onStepClick={(step) => {
-              toast({
-                title: "Stap navigatie",
-                description: `Navigatie naar stap ${step} wordt binnenkort toegevoegd`,
-              });
+              setLocation(`/step/${step}`);
             }}
           />
         </CardContent>

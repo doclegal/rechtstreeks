@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
-import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle } from "lucide-react";
+import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle, ArrowLeft } from "lucide-react";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -43,7 +43,7 @@ export default function Layout({ children }: LayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-8">
-              <Link href="/" className="flex items-center space-x-3" data-testid="link-home">
+              <Link href="/my-case" className="flex items-center space-x-3" data-testid="link-home">
                 <Scale className="text-primary text-2xl" />
                 <span className="text-xl font-bold text-foreground">Rechtstreeks.ai</span>
               </Link>
