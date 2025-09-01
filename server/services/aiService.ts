@@ -271,6 +271,15 @@ Geef JSON response:
   }
 
   private async callLLMWithJSONResponse(systemPrompt: string, userContent: string): Promise<string> {
+    // First try Mindstudio Agent if configured
+    if (process.env.MINDSTUDIO_API_KEY && process.env.MINDSTUDIO_WORKER_ID) {
+      try {
+        return await this.callMindstudioAgent(systemPrompt, userContent, true);
+      } catch (error) {
+        console.error("Mindstudio call failed, falling back to OpenAI:", error);
+      }
+    }
+
     if (this.provider === "openai") {
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -304,7 +313,58 @@ Geef JSON response:
     throw new Error(`Unsupported LLM provider: ${this.provider}`);
   }
 
+  private async callMindstudioAgent(systemPrompt: string, userContent: string, requireJson: boolean = false): Promise<string> {
+    const variables = {
+      systemPrompt,
+      userPrompt: userContent,
+      requireJsonOutput: requireJson
+    };
+
+    const response = await fetch("https://api.mindstudio.ai/developer/v2/apps/run", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        workerId: process.env.MINDSTUDIO_WORKER_ID,
+        variables,
+        workflow: process.env.MINDSTUDIO_WORKFLOW || "Main.flow",
+        version: process.env.MINDSTUDIO_VERSION || "published"
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`Mindstudio API error: ${response.status} ${response.statusText} - ${errorData}`);
+    }
+
+    const data = await response.json();
+    
+    // Extract the response from Mindstudio's response format
+    // Adjust this based on your Agent's actual output structure
+    if (data.output && typeof data.output === 'string') {
+      return data.output;
+    } else if (data.result && typeof data.result === 'string') {
+      return data.result;
+    } else if (typeof data === 'string') {
+      return data;
+    } else {
+      throw new Error("Unexpected Mindstudio response format");
+    }
+  }
+
   private async callLLM(prompt: string): Promise<string> {
+    // First try Mindstudio Agent if configured
+    if (process.env.MINDSTUDIO_API_KEY && process.env.MINDSTUDIO_WORKER_ID) {
+      try {
+        const systemPrompt = "Je bent een Nederlandse juridische expert. Geef altijd nauwkeurige, professionele adviezen in het Nederlands.";
+        return await this.callMindstudioAgent(systemPrompt, prompt, false);
+      } catch (error) {
+        console.error("Mindstudio call failed, falling back to OpenAI:", error);
+      }
+    }
+
     if (this.provider === "openai") {
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",

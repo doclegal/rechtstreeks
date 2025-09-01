@@ -1,0 +1,82 @@
+2) Minimale Replit-setup (Node + Express)
+
+Replit is prima om snel een Node-server te draaien en te deployen. 
+LogRocket Blog
+Replit
+
+Stap A — package.json
+Zorg dat je Node 18+ hebt (heeft fetch ingebouwd). Geen extra fetch-pkg nodig.
+
+Stap B — .env in Replit
+
+MINDSTUDIO_API_KEY=sk-...
+MINDSTUDIO_WORKER_ID=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+MINDSTUDIO_WORKFLOW=Main.flow
+MINDSTUDIO_VERSION=published   # of 'draft'
+
+
+Stap C — index.js
+
+import express from "express";
+
+const app = express();
+app.use(express.json());
+
+app.post("/api/mindstudio/run", async (req, res) => {
+  try {
+    // Client stuurt { variables: {...} } mee
+    const variables = req.body?.variables ?? {};
+
+    const resp = await fetch("https://api.mindstudio.ai/developer/v2/apps/run", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        workerId: process.env.MINDSTUDIO_WORKER_ID,
+        variables,
+        workflow: process.env.MINDSTUDIO_WORKFLOW || "Main.flow",
+        version: process.env.MINDSTUDIO_VERSION || "published"
+      })
+    });
+
+    const data = await resp.json();
+    res.status(resp.ok ? 200 : resp.status).json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Mindstudio call failed" });
+  }
+});
+
+app.get("/", (_, res) => res.send("Replit x Mindstudio OK"));
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log(`Server on :${port}`));
+
+
+Waarom via je eigen endpoint?
+Je leakt dan je Mindstudio API key niet naar de browser; server-to-server is de juiste manier. (Algemene best practice.) 
+Reddit
+
+3) Frontend call (in Replit of elders)
+// voorbeeld: variabelen die je Agent nodig heeft
+const variables = { userPrompt: "Analyseer deze casus...", url: "" };
+
+const r = await fetch("/api/mindstudio/run", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ variables })
+});
+const data = await r.json();
+console.log(data);
+
+4) Veelgemaakte fouten (en fixes)
+
+Verkeerde domein/endpoint → gebruik api.mindstudio.ai/developer/v2/apps/run (niet de oude v1 of api.youai.ai). 
+YouTube
+
+Ontbrekende workerId/variables → payload zoals in Debugger-voorbeeld. 
+university.mindstudio.ai
+
+Key in de client → niet doen; proxy via je Replit-server. 
+Reddit
