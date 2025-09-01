@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRoute, Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useCases } from "@/hooks/useCase";
@@ -12,16 +12,44 @@ import DocumentList from "@/components/DocumentList";
 import AnalysisResults from "@/components/AnalysisResults";
 import GeneratedDocuments from "@/components/GeneratedDocuments";
 import ProcessTimeline from "@/components/ProcessTimeline";
-import { ArrowLeft, ArrowRight, Home } from "lucide-react";
+import { ArrowLeft, ArrowRight, Home, Brain, CheckCircle, AlertCircle, FileText } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function StepView() {
   const [match, params] = useRoute("/step/:stepId");
   const { user, isLoading: authLoading } = useAuth();
   const { data: cases, isLoading: casesLoading } = useCases();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const stepId = parseInt(params?.stepId || "1");
-  const currentCase = cases?.[0];
+  const currentCase = Array.isArray(cases) && cases.length > 0 ? cases[0] : undefined;
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+
+  // Analysis mutation
+  const analysisMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentCase) throw new Error("Geen zaak gevonden");
+      return await apiRequest(`/api/cases/${currentCase.id}/analyze`, "POST");
+    },
+    onSuccess: (data) => {
+      setAnalysisResult(data);
+      toast({
+        title: "Analyse voltooid",
+        description: "Uw zaak is succesvol geanalyseerd door AI.",
+      });
+      // Refresh cases to get updated status
+      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Analyse mislukt",
+        description: error.message || "Er is een fout opgetreden bij de analyse.",
+        variant: "destructive",
+      });
+    },
+  });
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -69,17 +97,126 @@ export default function StepView() {
         return {
           title: "Stap 2: AI Analyse",
           content: currentCase ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>AI Analyse resultaten</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">
-                  De AI heeft uw documenten geanalyseerd en juridische grondslag, risico's en benodigde documenten geïdentificeerd.
-                </p>
-                <Badge variant="outline">Analyse voor zaak {currentCase.id}</Badge>
-              </CardContent>
-            </Card>
+            <div className="space-y-6">
+              {/* Start Analysis Button */}
+              {!analysisResult && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Brain className="w-5 h-5" />
+                      Start AI Analyse
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground mb-4">
+                      Laat AI uw intake en documenten analyseren om feiten, juridische grondslagen en risico's te identificeren.
+                    </p>
+                    <Button 
+                      onClick={() => analysisMutation.mutate()}
+                      disabled={analysisMutation.isPending}
+                      className="w-full sm:w-auto"
+                      data-testid="button-start-analysis"
+                    >
+                      {analysisMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Analyseren...
+                        </>
+                      ) : (
+                        <>
+                          <Brain className="w-4 h-4 mr-2" />
+                          Start analyse
+                        </>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Analysis Results */}
+              {analysisResult && (
+                <div className="space-y-4">
+                  {/* Facts Section */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        Feiten
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {analysisResult.facts?.map((fact: string, index: number) => (
+                          <li key={index} className="flex items-start gap-2">
+                            <Badge variant="outline" className="mt-0.5">{index + 1}</Badge>
+                            <span className="text-sm">{fact}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+
+                  {/* Issues Section */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5 text-orange-600" />
+                        Juridische Kwesties
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {analysisResult.issues?.map((issue: string, index: number) => (
+                          <li key={index} className="flex items-start gap-2">
+                            <Badge variant="secondary" className="mt-0.5">{index + 1}</Badge>
+                            <span className="text-sm">{issue}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+
+                  {/* Missing Documents Section */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-blue-600" />
+                        Ontbrekende Documenten
+                        <Button variant="outline" size="sm" className="ml-auto">
+                          Upload ontbrekende stukken
+                        </Button>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {analysisResult.missing_documents?.map((doc: string, index: number) => (
+                          <li key={index} className="flex items-start gap-2">
+                            <Badge variant="destructive" className="mt-0.5">{index + 1}</Badge>
+                            <span className="text-sm">{doc}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+
+                  {/* Next Step */}
+                  <Card className="border-green-200 bg-green-50">
+                    <CardHeader>
+                      <CardTitle className="text-green-800">Volgende stap</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-green-700 mb-3">Analyse voltooid! U kunt nu een brief genereren.</p>
+                      <Link href="/step/3">
+                        <Button variant="default" data-testid="button-next-step-generate-letter">
+                          Genereer brief
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               Geen zaak gevonden.

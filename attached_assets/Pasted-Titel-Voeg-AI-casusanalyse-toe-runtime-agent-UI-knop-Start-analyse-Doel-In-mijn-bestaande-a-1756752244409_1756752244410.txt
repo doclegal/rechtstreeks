@@ -1,0 +1,89 @@
+Titel: Voeg AI-casusanalyse toe (runtime agent) + UI-knop “Start analyse”
+
+Doel: In mijn bestaande app wil ik een runtime Analyse-agent die een casus (intake + geparste documenten) analyseert en een gestructureerd JSON-resultaat opslaat, waarna de zaakstatus naar ANALYZED gaat. UI: één primaire knop “Start analyse” bij stap Analyse.
+
+Backend (Express, Node):
+
+Maak endpoint: POST /cases/:id/analyze
+
+Haal intake en extracted_text van alle documenten op uit DB.
+
+Roep LLM aan met system prompt (NL) + user payload (zie hieronder).
+
+Forceer JSON-output (response_format JSON).
+
+Valideer tegen schema (AJV) en sla op in tabel analyses (facts_json, issues_json, missing_docs_json, legal_basis_json, risk_notes_json, model) en log in events.
+
+Update cases.status = 'ANALYZED' en zet cases.next_action_label = 'Genereer brief'.
+
+Lees API-sleutel uit env: process.env.LLM_API_KEY. Gebruik LLM_PROVIDER/LLM_MODEL uit env voor flexibiliteit.
+
+Voeg eenvoudige rate limit toe (bijv. 1 analyse per zaak per 2 min).
+
+LLM prompt (opnemen in code als strings):
+
+system (NL):
+“Je bent een juridische analyse-agent voor Nederlandse kantonzaken (consument/MKB). Wees feitelijk, conservatief en expliciet over onzekerheden. Geef uitsluitend geldig JSON volgens het schema. Gebruik géén vrije tekst.”
+
+user (JSON):
+
+{
+  "intake": { "summary": "<samenvatting uit intake>", "claim_amount": "<bedrag>", "counterparty_type": "<consument/bedrijf>" },
+  "documents": [{ "id": "...", "type": "<pdf|docx|eml|image>", "text": "<geëxtraheerde tekst (kort, max 15k chars)>" }],
+  "questions": [
+    "Vat de feiten en posities samen.",
+    "Welke stukken ontbreken (checklist, concreet en beknopt)?",
+    "Welke vorderingen en verweren zijn aannemelijk?",
+    "Welke juridische grondslagen (artikelen/regels) zijn waarschijnlijk relevant? (korte labels, geen citaten).",
+    "Risico's en onzekerheden (kort, 1-5 bullets)."
+  ]
+}
+
+
+vereist JSON-schema (valideren met AJV):
+
+{
+  "type": "object",
+  "required": ["facts","issues","missing_documents","claims","defenses","legal_basis","risk_notes"],
+  "properties": {
+    "facts": { "type": "array", "items": { "type": "string" } },
+    "issues": { "type": "array", "items": { "type": "string" } },
+    "missing_documents": { "type": "array", "items": { "type": "string" } },
+    "claims": { "type": "array", "items": { "type": "string" } },
+    "defenses": { "type": "array", "items": { "type": "string" } },
+    "legal_basis": { "type": "array", "items": { "type": "string" } },
+    "risk_notes": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}
+
+
+DB & events:
+
+Tabel analyses bestaat al; zo niet: maak/migreer met de kolommen hierboven.
+
+Voeg eventtype CASE_ANALYZED aan events.type toe.
+
+UI (React):
+
+Op /my-case bij stap Analyse:
+
+Grote knop “Start analyse” → call POST /cases/:id/analyze.
+
+Na succes: toon 3 secties met badges: Feiten, Issue-lijst, Ontbrekende stukken (+ “Upload ontbrekende stukken”).
+
+Toon kleine kaart “Volgende stap: Genereer brief”.
+
+Tests/acceptatie:
+
+Unit: schema-validatie, status-transitie naar ANALYZED.
+
+E2E: dummy intake + 1 doc → knop “Start analyse” → JSON verschijnt in UI → status bijgewerkt.
+
+Non-functional:
+
+Foutafhandeling: bij JSON-parse/validatie → status blijft ongewijzigd; UI toont nette foutmelding.
+
+Logging: schrijf LLM-latency en tokencount naar events.payload_json (geen PII).
+
+Respecteer App Storage en DB die al bestaan.

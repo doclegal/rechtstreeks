@@ -205,11 +205,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Rate limiting for analyses (simple in-memory tracking)
+  const analysisRateLimit = new Map<string, number>();
+
   // Analysis routes
   app.post('/api/cases/:id/analyze', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const caseId = req.params.id;
+      
+      // Rate limiting: 1 analysis per case per 2 minutes
+      const rateLimitKey = `${caseId}:analyze`;
+      const lastAnalysis = analysisRateLimit.get(rateLimitKey) || 0;
+      const now = Date.now();
+      const twoMinutes = 2 * 60 * 1000;
+      
+      if (now - lastAnalysis < twoMinutes) {
+        return res.status(429).json({ 
+          message: "Te snel opnieuw geanalyseerd. Wacht 2 minuten tussen analyses." 
+        });
+      }
       
       const caseData = await storage.getCase(caseId);
       if (!caseData || caseData.ownerUserId !== userId) {
@@ -218,15 +233,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get all documents for analysis
       const documents = await storage.getDocumentsByCase(caseId);
-      const extractedTexts = documents.map(doc => doc.extractedText).filter((text): text is string => Boolean(text));
       
-      // Perform AI analysis
-      const analysisResult = await aiService.analyzeCase(caseData, extractedTexts);
+      // Perform AI analysis with new method
+      const analysisResult = await aiService.analyzeLegalCase(caseData, documents);
       
-      // Save analysis
+      // Save analysis to database
       const analysis = await storage.createAnalysis({
         caseId,
-        model: "gpt-4",
+        model: aiService.getModel(), // Get model from service
         factsJson: analysisResult.facts,
         issuesJson: analysisResult.issues,
         missingDocsJson: analysisResult.missing_documents,
@@ -234,26 +248,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         riskNotesJson: analysisResult.risk_notes,
       });
       
-      // Update case status
-      await storage.updateCaseStatus(
-        caseId,
-        "ANALYZED",
-        "Brief",
-        "Genereer brief"
-      );
+      // Update case status to ANALYZED
+      await storage.updateCase(caseId, {
+        status: "ANALYZED",
+        nextActionLabel: "Genereer brief"
+      });
       
-      // Create event
+      // Create event with performance metrics (no PII)
       await storage.createEvent({
         caseId,
         actorUserId: userId,
-        type: "case_analyzed",
-        payloadJson: { analysisId: analysis.id },
+        type: "CASE_ANALYZED",
+        payloadJson: { 
+          analysisId: analysis.id,
+          latency: analysisResult.latency,
+          tokens: analysisResult.tokens,
+          model: aiService.getModel()
+        },
       });
       
-      res.json(analysis);
+      // Update rate limit
+      analysisRateLimit.set(rateLimitKey, now);
+      
+      res.json({
+        id: analysis.id,
+        facts: analysisResult.facts,
+        issues: analysisResult.issues,
+        missing_documents: analysisResult.missing_documents,
+        claims: analysisResult.claims,
+        defenses: analysisResult.defenses,
+        legal_basis: analysisResult.legal_basis,
+        risk_notes: analysisResult.risk_notes,
+        createdAt: analysis.createdAt
+      });
     } catch (error) {
       console.error("Error analyzing case:", error);
-      res.status(500).json({ message: "Failed to analyze case" });
+      res.status(500).json({ message: "Analyse mislukt. Probeer het opnieuw." });
     }
   });
 
