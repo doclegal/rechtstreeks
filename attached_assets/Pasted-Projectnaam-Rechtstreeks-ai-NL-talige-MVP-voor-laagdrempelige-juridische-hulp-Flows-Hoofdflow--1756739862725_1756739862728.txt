@@ -1,0 +1,140 @@
+Projectnaam: Rechtstreeks.ai – NL-talige MVP voor laagdrempelige juridische hulp
+Flows:
+
+Hoofdflow: casus intake → AI-analyse → Optie: brief → Optie: dagvaarding → (opt) betekening (mock) → (opt) aanbrengen op rol (mock).
+
+Hulpflow: procedure-uitleg met zichtbare tijdlijn (stappen: Upload → Analyse → Oplossen (brief/onderhandelen) → Procederen (na aanbrengen: zitting/verweer→vonnis)).
+
+Stack & infra:
+– Backend: Express (Node).
+– Frontend: React + Tailwind.
+– Database: Replit SQL Database (PostgreSQL).
+– Auth: Replit Auth.
+– Storage: App Storage bucket met paden /cases/{caseId}/uploads/.
+– Deploy: Autoscale (switch-able naar Reserved VM).
+– Jobs: Scheduled Deployments voor dagelijkse reminders/cleanup.
+
+Bestanden & parsing:
+– Toegestane uploads: pdf, docx, jpg, png, eml (max 100 MB per bestand).
+– Parsing: pdf-parse (PDF), mammoth (DOCX), mailparser (EML), geen OCR voor images in MVP.
+– Sla bestand + metadata (naam, key, mimetype, size) op; bewaar extractie-tekst in DB (tekstkolom) met max-lengte en “source_doc_id”.
+
+Datamodel (SQL / Postgres):
+
+users(id, email, name, role, created_at)
+
+cases(id, owner_user_id, title, category, description, claim_amount, counterparty_type, counterparty_name, counterparty_email, counterparty_phone, counterparty_address, status, created_at, updated_at)
+
+case_documents(id, case_id, filename, storage_key, mimetype, size_bytes, extracted_text, uploaded_by_user_id, created_at)
+
+analyses(id, case_id, model, facts_json, issues_json, missing_docs_json, legal_basis_json, risk_notes_json, created_at)
+
+letters(id, case_id, template_id, html, markdown, pdf_storage_key, status, created_at)
+
+summons(id, case_id, template_id, html, markdown, pdf_storage_key, status, created_at)
+
+templates(id, kind, name, version, body_markdown, fields_json, validations_json, is_active, created_at)
+
+events(id, case_id, actor_user_id, type, payload_json, created_at)
+
+webhooks(id, case_id, url, event_types_json, is_active, created_at)
+
+settings(id, key, value_json, created_at, updated_at)
+Indices op foreign keys en (case_id, created_at) waar relevant.
+
+Rollen & rechten:
+
+user: eigen zaken CRUD, uploaden, analyse starten, drafts genereren.
+
+reviewer: drafts reviewen/goedkeuren, status vooruit/terug binnen ANALYZED/LETTER_DRAFTED/SUMMONS_DRAFTED.
+
+admin: alles + templates/validaties beheren + force transitions.
+
+Workflow & status-transities:
+
+NEW_INTAKE (user maakt zaak)
+→ DOCS_UPLOADED (user uploadt)
+→ ANALYZED (AI-analyse afgerond)
+→ LETTER_DRAFTED (user/reviewer genereert brief)
+→ SUMMONS_DRAFTED (user/reviewer genereert dagvaarding)
+→ SERVED (mock-deurwaarder “betekend”)
+→ FILED (mock-rol aanbrengen).
+Validatie: vereiste velden + waarschuwingen volgens templates.validations_json.
+
+AI-functies (LLM via env LLM_PROVIDER, LLM_API_KEY):
+
+analyze_case(intakeText, extractedDocs[]) → JSON
+
+{ "facts": [], "issues": [], "missing_documents": [], "parties": [], "claims": [], "legal_basis": [], "risk_notes": [] }
+
+
+draft_letter(caseJson, template) → HTML + Markdown → render PDF met Puppeteer.
+
+draft_summons(caseJson, template) → HTML + Markdown volgens NL-kanton-structuur (partijen, feiten, eis, juridische grondslag, producties, aanzegging) → render PDF met Puppeteer.
+Zet basisprompts neer voor NL-taal, zakelijk-vriendelijke toon en correcte juridische opbouw.
+
+Templates & validaties (admin-beheer):
+
+CRUD-UI voor templates (brief/dagvaarding), versiebeheer, preview.
+
+validations_json: lijst van verplichte velden/waarschuwingen/disclaimers per template.
+
+API-skelet (REST):
+
+POST /auth/callback (Replit Auth hook)
+
+GET /me
+
+POST /cases | GET /cases | GET /cases/:id | PATCH /cases/:id
+
+POST /cases/:id/uploads (naar App Storage) | GET /cases/:id/uploads
+
+POST /cases/:id/analyze → AI analyse + persist analyses
+
+POST /cases/:id/letter → draft + PDF | GET /cases/:id/letter/:letterId
+
+POST /cases/:id/summons → draft + PDF | GET /cases/:id/summons/:summonsId
+
+POST /integrations/bailiff/serve (mock) → status→SERVED + events
+
+POST /integrations/court/file (mock) → upload bewijs + status→FILED + events
+
+POST /webhooks (register)
+
+GET /timeline/:caseId (aggregatie voor UI-tijdlijn)
+
+GET /templates?kind=letter|summons | POST /templates (admin)
+
+UI-flows (React):
+
+Dashboard (zakenlijst + statusbadges + voortgangsbalk).
+
+Intake wizard (velden + drag-and-drop uploads incl. progress).
+
+Analyse-view (feiten/ issues/ ontbrekende stukken).
+
+Brief-generator (preview MD/HTML, PDF-download).
+
+Dagvaarding-generator (zelfde).
+
+Mock-flows voor betekening/rol (met eventlog).
+
+Hulpflow: uitlegpagina met tijdlijn (Upload → Analyse → Oplossen → Procederen), dynamisch gevoed door /timeline/:caseId.
+
+Jobs (Scheduled Deployments):
+
+Dagelijks 09:00: “ontbrekende stukken” reminders (webhooks).
+
+Dagelijks 02:00: cleanup testdata > 90 dagen.
+
+Secrets (env): LLM_PROVIDER, LLM_API_KEY, APP_STORAGE_BUCKET, WEBHOOK_SIGNING_KEY.
+
+Quality gate:
+
+Unit-tests: status-transities, parsers (pdf/docx/eml), template-validatie.
+
+E2E: intake→brief-pdf→dagvaarding-pdf→mock betekening/rol.
+
+Deliverables:
+
+Werkende app + README (setup, env, deploy), SQL-migraties, seed-templates (voorbeeldbrief/dagvaarding), voorbeeldprompts en Postman-collectie.

@@ -1,0 +1,96 @@
+Switch naar single-case UX + duidelijke status en tijdlijn
+
+Opdracht (NL):
+
+Single-case first UI
+
+Vervang het Dashboard door /my-case. Toon één hero-card met Stap X/9, grote voortgangsbalk en klikbare step-chips:
+Indienen stukken → Analyse → Brief → Deurwaarder inschakelen → Betekening voltooid → Aangebracht bij rechtbank → Procedure gestart → Vervolg procedure → Vonnis.
+
+Verberg “Alle Zaken” uit de hoofdnavigatie. Voeg onderaan “Mijn Zaak” een tekstlink “Nieuwe zaak starten” (secundair) en plaats “Alle zaken” in een overflow-menu “Meer”.
+
+Statusheader & CTA
+
+Bovenaan Huidige stap (badge), rechts Volgende stap + Primary CTA (tekst afhankelijk van status).
+
+Onder de header: Wat we nog nodig hebben (checklist vanuit analyses.missing_docs_json) met upload-knop.
+
+Uitleg-paneel
+
+Voeg een aparte pagina /help en in /my-case een zijpaneel/second tab “Uitleg” met de vaste proces-tijdlijn:
+“Upload → Analyse → Oplossen (brief/onderhandelen) → Procederen (na aanbrengen: zitting/verweer → vonnis)”.
+
+Elke stap: 2–3 zinnen uitleg (NL), verwachte doorlooptijd, tip/disclaimer.
+
+Statusmodel & backend
+
+Voeg BAILIFF_ORDERED aan de enum toe.
+
+Backend-logica: automatische transities zoals hierboven beschreven.
+
+Breid /integrations/bailiff/serve (mock) uit: eerst BAILIFF_ORDERED, daarna via callback SERVED.
+
+Breid /integrations/court/file (mock) uit: zet naar FILED. Voeg endpoint POST /cases/:id/proceedings/start → PROCEEDINGS_ONGOING.
+
+Datamodel
+
+Migreer DB:
+
+cases: kolommen current_step (string), next_action_label (string, nullable).
+
+Materialized view of server-side functie compute_progress(case) die 0–100% geeft o.b.v. stepindex.
+
+Document preview & empty states
+
+Inline PDF-viewer op documentenpagina.
+
+Empty state NL-teksten (kort, helder).
+
+Badge “Ontbrekende stukken: N”.
+
+Tests & acceptatie
+
+Unit-tests status-transities incl. nieuwe BAILIFF_ORDERED.
+
+E2E: intake→upload→analyse→brief-PDF→bailiff mock→served→court mock→filed→start procedure→upload vonnis→JUDGMENT.
+
+Visueel: op /my-case moet je in 1 oogopslag huidige stap, voortgang en volgende actie zien.
+
+Copy (NL) die de Agent kan gebruiken:
+
+Huidige stap: “Je zit nu bij: {stapnaam}”
+
+Volgende actie: “Volgende stap: {actie}”
+
+Checklisttitel: “Wat we nog nodig hebben”
+
+CTA’s per stap:
+
+NEW_INTAKE → “Upload je documenten”
+
+DOCS_UPLOADED → “Start analyse”
+
+ANALYZED → “Genereer brief”
+
+LETTER_DRAFTED → “Inschakelen deurwaarder”
+
+BAILIFF_ORDERED → “Wacht op betekening” (disabled)
+
+SERVED → “Dossier aanbrengen bij rechtbank”
+
+FILED → “Start procedure”
+
+PROCEEDINGS_ONGOING → “Upload vonnis”
+
+JUDGMENT → “Nieuwe zaak starten”
+
+TOEVOEGEN
+“Wat als…?” mini-FAQ per stap (uitklapbaar) op de Uitleg-tab.
+
+Termijnbewaker (cron): toon waarschuwing “let op dagvaarding aanbrengen binnen 5 dagen” zodra je een datum toevoegt.
+
+Versiebeheer templates zichtbaar in admin (v1.1, v1.2).
+
+Export zaakmap (ZIP: alle uploads + brieven + dagvaarding + eventlog).
+
+Kleurcodering stappen: grijs (nog niet), blauw (actief), groen (voltooid), oranje (actie nodig).
