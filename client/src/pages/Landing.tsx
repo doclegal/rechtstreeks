@@ -28,8 +28,8 @@ export default function Landing() {
             <span className="text-primary block mt-2">met AI-ondersteuning</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Van intake tot vonnis: wij begeleiden u door het hele juridische proces 
-            met behulp van geavanceerde AI-technologie en duidelijke stappen.
+            Een DIY-platform voor juridische procedures: wij bieden u stap-voor-stap begeleiding 
+            en AI-ondersteuning, terwijl u zelf uw zaak behartigt.
           </p>
           <Button size="lg" asChild data-testid="button-get-started">
             <a href="/api/login" className="px-8 py-4 text-lg">
@@ -55,8 +55,8 @@ export default function Landing() {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  Upload uw contracten, correspondentie en andere relevante documenten. 
-                  Onze AI analyseert alles automatisch.
+                  U uploadt uw contracten, correspondentie en andere relevante documenten. 
+                  Onze AI helpt u met de analyse.
                 </p>
               </CardContent>
             </Card>
@@ -66,12 +66,12 @@ export default function Landing() {
                 <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
                   <Clock className="h-6 w-6 text-primary" />
                 </div>
-                <CardTitle>Automatische analyse</CardTitle>
+                <CardTitle>AI-ondersteunde analyse</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  Onze AI identificeert de juridische grondslag, risico's en benodigde documenten 
-                  voor uw zaak binnen enkele minuten.
+                  Onze AI helpt u de juridische grondslag, risico's en benodigde documenten 
+                  te identificeren terwijl u zelf de regie houdt.
                 </p>
               </CardContent>
             </Card>
@@ -81,12 +81,12 @@ export default function Landing() {
                 <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
                   <Users className="h-6 w-6 text-primary" />
                 </div>
-                <CardTitle>Professionele begeleiding</CardTitle>
+                <CardTitle>Stap-voor-stap begeleiding</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  Van ingebrekestelling tot dagvaarding: wij regelen de complete procedure 
-                  inclusief deurwaarder en rechtbankprocessen.
+                  Van ingebrekestelling tot dagvaarding: u voert zelf de procedure uit 
+                  met onze hulp en toegang tot deurwaarder en rechtbankprocessen.
                 </p>
               </CardContent>
             </Card>
@@ -102,12 +102,12 @@ export default function Landing() {
           </h2>
           <div className="grid sm:grid-cols-3 gap-6">
             {[
-              { icon: FileText, title: "Intake & Upload", desc: "Upload uw documenten en beschrijf uw zaak" },
-              { icon: CheckCircle, title: "AI Analyse", desc: "Automatische analyse van uw juridische positie" },
-              { icon: Scale, title: "Documenten genereren", desc: "Professionele brieven en dagvaardingen" },
-              { icon: Users, title: "Deurwaarder", desc: "Formele betekening door gecertificeerde deurwaarder" },
-              { icon: Clock, title: "Rechtbank", desc: "Indienen bij de juiste rechtbank" },
-              { icon: CheckCircle, title: "Procedure", desc: "Begeleiding tijdens het gehele proces" }
+              { icon: FileText, title: "Intake & Upload", desc: "U uploadt uw documenten en beschrijft uw zaak" },
+              { icon: CheckCircle, title: "AI Analyse", desc: "AI helpt u uw juridische positie te begrijpen" },
+              { icon: Scale, title: "Documenten genereren", desc: "U genereert brieven en dagvaardingen met onze hulp" },
+              { icon: Users, title: "Deurwaarder", desc: "U schakelt een deurwaarder in via ons platform" },
+              { icon: Clock, title: "Rechtbank", desc: "U dient in bij de rechtbank met onze ondersteuning" },
+              { icon: CheckCircle, title: "Procedure", desc: "U beheert uw zaak met onze stap-voor-stap gids" }
             ].map((step, index) => (
               <div key={index} className="text-center">
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
