@@ -31,7 +31,8 @@ export default function StepView() {
   const analysisMutation = useMutation({
     mutationFn: async () => {
       if (!currentCase) throw new Error("Geen zaak gevonden");
-      return await apiRequest(`/api/cases/${currentCase.id}/analyze`, "POST");
+      const response = await apiRequest("POST", `/api/cases/${currentCase.id}/analyze`, {});
+      return await response.json();
     },
     onSuccess: (data) => {
       setAnalysisResult(data);
