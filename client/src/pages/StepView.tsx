@@ -44,6 +44,7 @@ export default function StepView() {
       queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
     },
     onError: (error: any) => {
+      console.error("Analysis error:", error);
       toast({
         title: "Analyse mislukt",
         description: error.message || "Er is een fout opgetreden bij de analyse.",
