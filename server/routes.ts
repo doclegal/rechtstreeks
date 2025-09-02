@@ -261,55 +261,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Fallback: Get all documents for traditional analysis
-      const documents = await storage.getDocumentsByCase(caseId);
-      
-      // Perform AI analysis with new method
-      const analysisResult = await aiService.analyzeLegalCase(caseData, documents);
-      
-      // Save analysis to database
-      const analysis = await storage.createAnalysis({
-        caseId,
-        model: aiService.getModel(), // Get model from service
-        factsJson: analysisResult.facts,
-        issuesJson: analysisResult.issues,
-        missingDocsJson: analysisResult.missing_documents,
-        legalBasisJson: analysisResult.legal_basis,
-        riskNotesJson: analysisResult.risk_notes,
-      });
-      
-      // Update case status to ANALYZED
-      await storage.updateCase(caseId, {
-        status: "ANALYZED",
-        nextActionLabel: "Genereer brief"
-      });
-      
-      // Create event with performance metrics (no PII)
-      await storage.createEvent({
-        caseId,
-        actorUserId: userId,
-        type: "CASE_ANALYZED",
-        payloadJson: { 
-          analysisId: analysis.id,
-          latency: analysisResult.latency,
-          tokens: analysisResult.tokens,
-          model: aiService.getModel()
-        },
-      });
-      
-      // Update rate limit
-      analysisRateLimit.set(rateLimitKey, now);
-      
-      res.json({
-        id: analysis.id,
-        facts: analysisResult.facts,
-        issues: analysisResult.issues,
-        missing_documents: analysisResult.missing_documents,
-        claims: analysisResult.claims,
-        defenses: analysisResult.defenses,
-        legal_basis: analysisResult.legal_basis,
-        risk_notes: analysisResult.risk_notes,
-        createdAt: analysis.createdAt
+      // No Mindstudio available - return error
+      return res.status(503).json({ 
+        message: "Sorry, de analyse lukt niet. Mindstudio AI is niet beschikbaar." 
       });
     } catch (error) {
       console.error("Error analyzing case:", error);
