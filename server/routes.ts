@@ -729,13 +729,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         billingCost = payload.billingCost.toString();
       }
       
-      // Store result
+      // Store result in memory for polling
       AIService.storeThreadResult(threadId, {
         status: 'done',
         outputText,
         raw: payload,
         billingCost
       });
+      
+      // Also save to database if we can find the case
+      try {
+        // Find case by threadId (need to extend schema or use other method)
+        // For now, we'll process the Mindstudio output and save it
+        const processedResult = AIService.mindstudioToAppResult(outputText);
+        
+        // You might need to store threadId->caseId mapping to save this properly
+        console.log('Processed Mindstudio result:', JSON.stringify(processedResult, null, 2));
+        
+        // TODO: Save to database when we have caseId mapping
+      } catch (error) {
+        console.error('Error processing Mindstudio result:', error);
+      }
       
       res.json({ success: true });
     } catch (error) {
@@ -753,6 +767,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const result = AIService.getThreadResult(threadId);
+      
+      // If we have a completed result, also process it for the frontend
+      if (result.status === 'done' && result.outputText) {
+        const processedResult = AIService.mindstudioToAppResult(result.outputText);
+        return res.json({
+          ...result,
+          processedResult,
+          billingCost: result.billingCost
+        });
+      }
+      
       res.json(result);
     } catch (error) {
       console.error('Error getting thread result:', error);

@@ -78,11 +78,23 @@ export default function StepView() {
         
         if (result.status === 'done') {
           setIsPolling(false);
-          // Fetch the processed analysis
-          const analysisResponse = await apiRequest("GET", `/api/cases/${currentCase?.id}/analysis`, {});
-          const analysisData = await analysisResponse.json();
           
-          setAnalysisResult(analysisData);
+          // Use the processed result directly from Mindstudio
+          if (result.processedResult) {
+            setAnalysisResult({
+              id: threadId,
+              caseId: currentCase?.id || '',
+              model: 'mindstudio-agent',
+              factsJson: result.processedResult.factsJson,
+              issuesJson: result.processedResult.issuesJson,
+              legalBasisJson: result.processedResult.legalBasisJson,
+              missingDocsJson: result.processedResult.missingDocuments,
+              riskNotesJson: [],
+              createdAt: new Date().toISOString(),
+              rawText: result.outputText || '',
+              billingCost: result.billingCost || '$0'
+            });
+          }
           
           // Update case status
           await queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
