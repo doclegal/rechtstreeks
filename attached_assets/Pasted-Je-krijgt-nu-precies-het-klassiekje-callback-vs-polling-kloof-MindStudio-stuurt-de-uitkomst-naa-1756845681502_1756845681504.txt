@@ -1,0 +1,169 @@
+Je krijgt nu precies het klassiekje “callback vs. polling-kloof”:
+
+MindStudio stuurt de uitkomst naar jouw callbackUrl → die komt aan (zie server-logs).
+
+Jouw frontend pollt een eigen endpoint voor status/resultaat → maar die vindt niets (of kijkt naar een andere sleutel/omgeving).
+
+Dat gebeurt meestal door één van deze oorzaken:
+
+Het threadId dat je naar de client geeft is niet hetzelfde als wat je in de callback verwerkt.
+
+Je bewaart de job-status in memory (verdwijnt bij elke server-restart / andere dyno) i.p.v. in persistente storage. Replit killt/verwisselt processen; geheugen is niet betrouwbaar tussen requests. Gebruik een KV/DB. 
+docs.replit.com
++3
+docs.replit.com
++3
+docs.replit.com
++3
+
+Je start de run mét callbackUrl (asynchroon), maar je polling-endpoint verwacht een direct resultaat (synchroon). MindStudio kan beide, maar je moet één pad kiezen en consistent blijven. 
+university.mindstudio.ai
+
+Hier zijn twee solide patronen. Kies er één en het probleem is weg.
+
+Optie A — Simpel & robuust: géén callback, direct resultaat teruggeven
+
+Laat callbackUrl weg in POST /developer/v2/apps/run. Dan geeft MindStudio in dezelfde HTTP-response de result terug en kun je die direct naar de browser sturen. Je hebt geen polling meer nodig.
+
+Server (Express):
+
+app.post("/api/analyse", async (req, res) => {
+  const { casus } = req.body;
+
+  const ms = await fetch("https://api.mindstudio.ai/developer/v2/apps/run", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      appId: process.env.MINDSTUDIO_APP_ID,
+      workflow: "Main",
+      variables: { casus_beschrijving: casus } // ↔ Variable name in jouw User Input
+      // GEEN callbackUrl -> synchrone response met "result"
+    })
+  });
+
+  const data = await ms.json();
+  if (!ms.ok || !data.success) return res.status(500).json({ error: data });
+  res.json({ result: data.result, threadId: data.threadId, billingCost: data.billingCost });
+});
+
+
+Zorg dat je in je prompt/blocks de launch variable goed aanspreekt:
+
+In je Start/User-Input blok: casus_beschrijving
+
+In je prompt: {{$launchVariables->casus_beschrijving}} (let op de syntaxis). 
+university.mindstudio.ai
+Softr Community
+
+Voordeel: geen race-conditions, geen opslaglaag, superstabiel.
+Nadeel: je request blokkeert tot het resultaat er is (meestal prima).
+
+Optie B — Asynchroon met callback + polling (vereist gedeelde storage)
+
+Wil je per se met callbackUrl werken (bijv. voor langere runs), maak het dan zo:
+
+Start run
+
+Genereer server-side een jobId (uuid).
+
+Doe apps/run met callbackUrl.
+
+Koppel threadId → jobId in persistente storage (bv. @replit/database, Upstash Redis, Supabase). Niet in memory.
+
+Markeer jobId: "pending".
+
+Callback endpoint
+
+MindStudio POST naar jouw /api/ms-callback met threadId + result.
+
+Zoek jobId via threadId in dezelfde storage.
+
+Sla status: "done", result: {...} op bij jobId.
+
+Polling endpoint
+
+Frontend vraagt /api/status?jobId=....
+
+Server leest uit storage; geeft "pending" of de result terug.
+
+Storage — kies iets persistents op Replit (geen RAM):
+
+Replit Database / Key-Value of Object Storage, of extern (Upstash Redis, Supabase). 
+docs.replit.com
++1
+
+Skeletcode (Express + pseudo-KV):
+
+import { v4 as uuid } from "uuid";
+import { kv } from "./kv.js"; // abstractie: get(key), set(key, value)
+
+app.post("/api/analyse", async (req, res) => {
+  const { casus } = req.body;
+  const jobId = uuid();
+
+  // 1) markeer pending
+  await kv.set(`job:${jobId}`, { status: "pending" });
+
+  // 2) start MindStudio run
+  const r = await fetch("https://api.mindstudio.ai/developer/v2/apps/run", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      appId: process.env.MINDSTUDIO_APP_ID,
+      workflow: "Main",
+      variables: { casus_beschrijving: casus },
+      callbackUrl: process.env.CALLBACK_URL + "/api/ms-callback"
+    }),
+  });
+
+  const data = await r.json();
+  if (!r.ok || !data.success) return res.status(500).json({ error: data });
+
+  // 3) koppel threadId -> jobId in storage (voor de callback)
+  await kv.set(`thread:${data.threadId}`, { jobId });
+
+  res.json({ jobId }); // client gaat hiermee poll'en
+});
+
+app.post("/api/ms-callback", express.json({ limit: "2mb" }), async (req, res) => {
+  // payload-structuur: bevat iig threadId en result (volgens MindStudio API)
+  const { threadId, result, success } = req.body;
+  const map = await kv.get(`thread:${threadId}`);
+  if (!map?.jobId) return res.status(404).end();
+
+  const jobKey = `job:${map.jobId}`;
+  await kv.set(jobKey, { status: success ? "done" : "error", result });
+  res.status(200).end();
+});
+
+app.get("/api/status", async (req, res) => {
+  const job = await kv.get(`job:${req.query.jobId}`);
+  if (!job) return res.status(404).json({ error: "unknown jobId" });
+  res.json(job); // {status:"pending"} of {status:"done", result:{...}}
+});
+
+
+Waarom dit je probleem oplost
+
+De zelfde persistente store wordt gebruikt door zowel de callback-route als de polling-route; geen “disconnect” meer door process restarts of verschillend memory.
+
+Je correleert met threadId ↔ jobId één-op-één. Geen mismatch meer.
+
+Extra checks (veelgemaakte valkuilen)
+
+Zelfde omgeving? Poll je wel de deployment en niet je workspace-server? URL’s kunnen verschillen. Replit raadt persisterende opslag aan; reken niet op de filesystem/in-memory state van je deployment. 
+docs.replit.com
+
+Body-parser aan op de callback-route (JSON!) en CORS zo nodig toestaan.
+
+Variable name exact gelijk aan je User-Input/Launch variable, en in de prompt {{$launchVariables->...}}. 
+university.mindstudio.ai
+Softr Community
+
+Één pad kiezen: óf Optie A (sync, simpel), óf Optie B (async met storage). Half-half geeft precies jouw “disconnect”.

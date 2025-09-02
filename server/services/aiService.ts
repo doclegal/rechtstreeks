@@ -314,6 +314,53 @@ Geef JSON response:
     return { threadId: data.threadId };
   }
 
+  // NEW: Synchronous version - no callback, direct result
+  async runSynchronousMindstudioAnalysis(params: { input_name: string; input_case_details: string }): Promise<{ 
+    result: string; 
+    threadId: string; 
+    billingCost?: string; 
+  }> {
+    const variables = {
+      input_name: params.input_name,
+      input_case_details: params.input_case_details
+    };
+
+    console.log("Starting SYNCHRONOUS Mindstudio analysis:", variables);
+
+    const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        workerId: process.env.MINDSTUDIO_WORKER_ID,
+        variables,
+        workflow: process.env.MINDSTUDIO_WORKFLOW || "Main.flow",
+        // NO callbackUrl = synchronous response
+        includeBillingCost: true
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`Mindstudio API error: ${response.status} ${response.statusText} - ${errorData}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data.threadId) {
+      throw new Error("No threadId received from Mindstudio");
+    }
+
+    // In synchronous mode, result should be available immediately
+    return {
+      result: data.result || '',
+      threadId: data.threadId,
+      billingCost: data.billingCost
+    };
+  }
+
   static storeThreadResult(threadId: string, result: { status: 'running' | 'done' | 'error', outputText?: string, raw?: any, billingCost?: string }) {
     THREAD_RESULTS.set(threadId, result);
   }

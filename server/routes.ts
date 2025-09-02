@@ -238,24 +238,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const user = await storage.getUser(userId);
           const userName = user?.firstName || user?.email?.split('@')[0] || 'Gebruiker';
           
-          // Run Mindstudio analysis
-          const { threadId } = await aiService.runMindstudioAnalysis({
+          // Run SYNCHRONOUS Mindstudio analysis (no callback, direct result)
+          const result = await aiService.runSynchronousMindstudioAnalysis({
             input_name: userName,
             input_case_details: `Zaak: ${caseData.title}\n\nOmschrijving: ${caseData.description || 'Geen beschrijving'}\n\nTegenpartij: ${caseData.counterpartyName || 'Onbekend'}\n\nClaim bedrag: €${caseData.claimAmount || '0'}`
           });
           
-          // Store threadId on case for later retrieval
+          // Process the result immediately (no polling needed!)
+          const processedResult = AIService.mindstudioToAppResult(result.result);
+          
+          // Save analysis to database
+          const analysis = await storage.createAnalysis({
+            caseId,
+            model: 'mindstudio-agent',
+            factsJson: processedResult.factsJson,
+            issuesJson: processedResult.issuesJson,
+            legalBasisJson: processedResult.legalBasisJson,
+            missingDocsJson: processedResult.missingDocuments,
+            riskNotesJson: processedResult.riskNotesJson || [],
+            rawText: result.result,
+            billingCost: result.billingCost || '$0'
+          });
+          
+          // Update case status
           await storage.updateCase(caseId, { 
-            status: "ANALYZING" as CaseStatus,
-            nextActionLabel: "Analyse wordt uitgevoerd...",
-            // Store threadId in a custom field or extend schema
-            ...(threadId && { threadId })
-          } as any);
+            status: "ANALYZED" as CaseStatus,
+            nextActionLabel: "Opstellen aanmaning",
+          });
           
           // Update rate limit
           analysisRateLimit.set(rateLimitKey, now);
           
-          return res.json({ threadId, status: 'analyzing' });
+          return res.json({ 
+            analysis,
+            status: 'completed'
+          });
         } catch (error) {
           console.error("Mindstudio analysis failed:", error);
           return res.status(503).json({ 
