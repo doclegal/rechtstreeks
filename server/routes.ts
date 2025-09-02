@@ -257,7 +257,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           return res.json({ threadId, status: 'analyzing' });
         } catch (error) {
-          console.error("Mindstudio analysis failed, falling back:", error);
+          console.error("Mindstudio analysis failed:", error);
+          return res.status(503).json({ 
+            message: "Sorry, de analyse lukt niet. Mindstudio AI is niet beschikbaar." 
+          });
         }
       }
       

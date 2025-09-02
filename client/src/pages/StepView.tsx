@@ -107,7 +107,7 @@ export default function StepView() {
           setIsPolling(false);
           toast({
             title: "Analyse mislukt",
-            description: "Er is een fout opgetreden bij de AI analyse.",
+            description: "Sorry, de analyse lukt niet. Mindstudio AI is niet beschikbaar.",
             variant: "destructive",
           });
         }
