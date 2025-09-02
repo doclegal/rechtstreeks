@@ -1,0 +1,202 @@
+Goal
+Fix the analysis feature by integrating our Mindstudio Agent instead of OpenAI, keeping the existing UI and step flow intact. The app already renders analysis results (factsJson, issuesJson, legalBasisJson). We must call Mindstudio, receive the result asynchronously (thread/callback), and map it into the existing result shape so the UI just works.
+
+0) Environment & Secrets (server-side only)
+
+Create (or confirm) these secrets in Replit and never expose them to the client:
+
+MINDSTUDIO_API_KEY = our Mindstudio API key (server only)
+
+MINDSTUDIO_WORKER_ID = UUID of our Agent
+
+MINDSTUDIO_WORKFLOW = Main.flow
+
+MINDSTUDIO_VERSION = published (or draft if needed)
+
+PUBLIC_BASE_URL = the public URL of this app (for callbacks), e.g. https://<your-repl-url>
+
+1) Backend changes
+
+Files likely present (keep structure):
+server/services/aiService.ts (or similar),
+server/routes/cases.ts (or where /api/cases/:id/analyze is defined),
+server/index.ts or server/app.ts for Express app.
+
+1.1 Add Mindstudio client (no SDK needed; plain fetch)
+
+Implement a server-side function runMindstudioAnalysis(params) in server/services/aiService.ts:
+
+Endpoint: POST https://v1.mindstudio-api.com/developer/v2/agents/run
+
+Headers:
+
+Authorization: Bearer ${process.env.MINDSTUDIO_API_KEY}
+
+Content-Type: application/json
+
+Request body example:
+
+{
+  "workerId": "<MINDSTUDIO_WORKER_ID>",
+  "variables": {
+    "input_name": "string",
+    "input_case_details": "long text"
+  },
+  "workflow": "Main.flow",
+  "callbackUrl": "<PUBLIC_BASE_URL>/api/mindstudio/callback",
+  "includeBillingCost": true
+}
+
+
+Response handling: expect immediate 200 with { success: true, threadId, thread, billingCost } but no final result. Store and return the threadId.
+
+1.2 Add callback endpoint
+
+Create POST /api/mindstudio/callback to receive async results from Mindstudio.
+Behavior:
+
+Accept JSON payload from Mindstudio (may contain thread states and model output).
+
+Maintain an in-memory map THREAD_RESULTS = new Map<string, { status: 'running'|'done'|'error', outputText?: string, raw?: any, billingCost?: string }>().
+
+Extract the final text output from the payload. Save it under the threadId with { status: 'done', outputText, raw, billingCost }.
+
+If Mindstudio sends multiple messages, choose the latest assistant message as outputText (append if incremental).
+
+1.3 Add a result polling endpoint
+
+Create GET /api/mindstudio/result?threadId=...:
+
+Return { status: 'pending' } if not found yet.
+
+Otherwise return the stored result from THREAD_RESULTS.
+
+1.4 Wire the existing analyze route to Mindstudio
+
+In the route that currently handles Start analyse (e.g. POST /api/cases/:caseId/analyze):
+
+Extract user inputs from the case (“Step 2” page): we need:
+
+input_name (use user’s name if available, otherwise form field)
+
+input_case_details (the long free-text case description)
+
+Call runMindstudioAnalysis({ input_name, input_case_details }) to get a threadId.
+
+Return { threadId } to the client immediately.
+
+1.5 Map output to existing UI shape
+
+When the client later calls a route to fetch the finished analysis (you can reuse your current data-fetch pattern or add a small mapper), transform Mindstudio’s outputText into the shape your React expects:
+
+export interface AppAnalysisResult {
+  factsJson: Array<{ label: string; detail?: string }>;
+  issuesJson: Array<{ issue: string; risk?: string }>;
+  legalBasisJson: Array<{ law: string; article?: string; note?: string }>;
+  missingDocuments?: string[];
+  rawText?: string;        // keep for reference
+  billingCost?: string;    // optional
+}
+
+
+Implement a helper mindstudioToAppResult(outputText: string): AppAnalysisResult that:
+
+Parses headings/bullets if present (NL):
+
+“Samenvatting” / “Feiten” → factsJson
+
+“Juridische Kwesties” / “Geschilpunten” → issuesJson
+
+“Wetsartikelen” / “Rechtsgrond” → legalBasisJson
+
+“Ontbrekende documenten” → missingDocuments
+
+Is resilient: if parsing fails, set arrays to [] and put the full text in rawText.
+
+Always return arrays to avoid undefined runtime errors (fixes the earlier "Cannot read properties of undefined (reading 'factsJson')").
+
+Expose a new route GET /api/cases/:caseId/analysis that:
+
+If there is a finished THREAD_RESULTS for the case’s last threadId, returns mindstudioToAppResult(...).
+
+Otherwise returns { status: 'pending' }.
+
+Keep the fallback chain you already added:
+
+Mindstudio first
+
+(Optional) OpenAI as fallback
+
+Demo data as last resort
+
+2) Frontend changes
+
+Files likely present:
+client/src/pages/StepView.tsx, client/src/components/AnalysisResults.tsx, client/src/lib/queryClient.ts.
+
+2.1 Hook the “Start analyse” button
+
+On click:
+
+POST /api/cases/:caseId/analyze → receive { threadId } and store it client-side (case state).
+
+Start polling GET /api/mindstudio/result?threadId=... every 1.5s until { status: 'done' }.
+
+Once done, fetch normalized analysis via GET /api/cases/:caseId/analysis and pass that object to <AnalysisResults analysis={...} />.
+
+2.2 Defensive rendering
+
+Update AnalysisResults.tsx to always default to arrays:
+
+const facts = Array.isArray(analysis.factsJson) ? analysis.factsJson : [];
+const issues = Array.isArray(analysis.issuesJson) ? analysis.issuesJson : [];
+const legalBasis = Array.isArray(analysis.legalBasisJson) ? analysis.legalBasisJson : [];
+
+
+Show analysis.rawText (collapsed/expand) if structured sections are empty, so the user still sees useful output.
+
+3) Acceptance criteria
+
+“Start analyse” in Step 2 triggers a run and returns immediately (no UI freeze).
+
+Within ~1–15s (depending on model), the result appears in the existing Analysis view with:
+
+Feiten populated (or empty but no error),
+
+Juridische Kwesties populated (or empty but no error),
+
+Wetsartikelen/Rechtsgrond populated (or empty but no error),
+
+Optional: “Ontbrekende documenten”.
+
+No secrets are present in client bundles. All API calls to Mindstudio are server-side.
+
+If Mindstudio is unavailable, the pre-existing fallback logic (OpenAI → demo) still works.
+
+Help link remains fixed and landing page copy clearly states DIY nature (already done).
+
+4) Quick test plan
+
+Set secrets and restart server.
+
+Go to Step 2, enter:
+
+Name: pieter
+
+Case details: a realistic Dutch case description (long text).
+
+Click Start analyse.
+
+Confirm: POST /developer/v2/agents/run executed (see server logs).
+
+Confirm: POST /api/mindstudio/callback received and stored output.
+
+Confirm: UI shows structured results without runtime errors.
+
+Kill network (simulate failure): verify fallback path activates (no crash).
+
+Notes
+
+Do not expose real keys in source.
+
+If Mindstudio sends richer structured JSON later, extend mindstudioToAppResult(...) to map fields directly instead of parsing text.

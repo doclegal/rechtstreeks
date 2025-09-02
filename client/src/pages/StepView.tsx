@@ -26,8 +26,10 @@ export default function StepView() {
   const stepId = parseInt(params?.stepId || "1");
   const currentCase = Array.isArray(cases) && cases.length > 0 ? cases[0] : undefined;
   const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
 
-  // Analysis mutation
+  // Start analysis mutation - now returns threadId for async processing
   const analysisMutation = useMutation({
     mutationFn: async () => {
       if (!currentCase) throw new Error("Geen zaak gevonden");
@@ -35,16 +37,28 @@ export default function StepView() {
       return await response.json();
     },
     onSuccess: (data) => {
-      setAnalysisResult(data);
-      toast({
-        title: "Analyse voltooid",
-        description: "Uw zaak is succesvol geanalyseerd door AI.",
-      });
+      if (data.threadId) {
+        // Mindstudio async analysis started
+        setThreadId(data.threadId);
+        setIsPolling(true);
+        toast({
+          title: "Analyse gestart",
+          description: "AI analyse is gestart. Dit kan 1-15 seconden duren...",
+        });
+      } else {
+        // Fallback sync analysis completed
+        setAnalysisResult(data);
+        toast({
+          title: "Analyse voltooid",
+          description: "Uw zaak is succesvol geanalyseerd door AI.",
+        });
+      }
       // Refresh cases to get updated status
       queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
     },
     onError: (error: any) => {
       console.error("Analysis error:", error);
+      setIsPolling(false);
       toast({
         title: "Analyse mislukt",
         description: error.message || "Er is een fout opgetreden bij de analyse.",
@@ -52,6 +66,55 @@ export default function StepView() {
       });
     },
   });
+
+  // Polling for Mindstudio results
+  useEffect(() => {
+    if (!threadId || !isPolling) return;
+
+    const pollResult = async () => {
+      try {
+        const response = await apiRequest("GET", `/api/mindstudio/result?threadId=${threadId}`, {});
+        const result = await response.json();
+        
+        if (result.status === 'done') {
+          setIsPolling(false);
+          // Fetch the processed analysis
+          const analysisResponse = await apiRequest("GET", `/api/cases/${currentCase?.id}/analysis`, {});
+          const analysisData = await analysisResponse.json();
+          
+          setAnalysisResult(analysisData);
+          
+          // Update case status
+          await queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+          
+          toast({
+            title: "Analyse voltooid",
+            description: "Uw zaak is succesvol geanalyseerd door Mindstudio AI.",
+          });
+        } else if (result.status === 'error') {
+          setIsPolling(false);
+          toast({
+            title: "Analyse mislukt",
+            description: "Er is een fout opgetreden bij de AI analyse.",
+            variant: "destructive",
+          });
+        }
+        // Continue polling if status is still 'running' or 'pending'
+      } catch (error) {
+        console.error('Polling error:', error);
+        setIsPolling(false);
+        toast({
+          title: "Verbindingsfout",
+          description: "Kon analyseresultaat niet ophalen.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    const interval = setInterval(pollResult, 1500); // Poll every 1.5 seconds
+    
+    return () => clearInterval(interval);
+  }, [threadId, isPolling, currentCase, queryClient, toast]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -115,14 +178,14 @@ export default function StepView() {
                     </p>
                     <Button 
                       onClick={() => analysisMutation.mutate()}
-                      disabled={analysisMutation.isPending}
+                      disabled={analysisMutation.isPending || isPolling}
                       className="w-full sm:w-auto"
                       data-testid="button-start-analysis"
                     >
-                      {analysisMutation.isPending ? (
+                      {analysisMutation.isPending || isPolling ? (
                         <>
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Analyseren...
+                          {isPolling ? 'AI analyse loopt...' : 'Analyseren...'}
                         </>
                       ) : (
                         <>

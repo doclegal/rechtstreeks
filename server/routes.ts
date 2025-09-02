@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertCaseSchema, insertDocumentSchema, type CaseStatus } from "@shared/schema";
-import { aiService } from "./services/aiService";
+import { aiService, AIService } from "./services/aiService";
 import { fileService } from "./services/fileService";
 import { pdfService } from "./services/pdfService";
 import { mockIntegrations } from "./services/mockIntegrations";
@@ -230,8 +230,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!caseData || caseData.ownerUserId !== userId) {
         return res.status(404).json({ message: "Case not found" });
       }
+
+      // First try Mindstudio async analysis
+      if (process.env.MINDSTUDIO_API_KEY && process.env.MINDSTUDIO_WORKER_ID) {
+        try {
+          // Get user info for analysis
+          const user = await storage.getUser(userId);
+          const userName = user?.firstName || user?.email?.split('@')[0] || 'Gebruiker';
+          
+          // Run Mindstudio analysis
+          const { threadId } = await aiService.runMindstudioAnalysis({
+            input_name: userName,
+            input_case_details: `Zaak: ${caseData.title}\n\nOmschrijving: ${caseData.description || 'Geen beschrijving'}\n\nTegenpartij: ${caseData.counterpartyName || 'Onbekend'}\n\nClaim bedrag: €${caseData.claimAmount || '0'}`
+          });
+          
+          // Store threadId on case for later retrieval
+          await storage.updateCase(caseId, { 
+            status: "ANALYZING" as CaseStatus,
+            nextActionLabel: "Analyse wordt uitgevoerd...",
+            // Store threadId in a custom field or extend schema
+            ...(threadId && { threadId })
+          } as any);
+          
+          // Update rate limit
+          analysisRateLimit.set(rateLimitKey, now);
+          
+          return res.json({ threadId, status: 'analyzing' });
+        } catch (error) {
+          console.error("Mindstudio analysis failed, falling back:", error);
+        }
+      }
       
-      // Get all documents for analysis
+      // Fallback: Get all documents for traditional analysis
       const documents = await storage.getDocumentsByCase(caseId);
       
       // Perform AI analysis with new method
@@ -655,6 +685,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error exporting case:", error);
       res.status(500).json({ message: "Failed to export case" });
+    }
+  });
+
+  // Mindstudio callback endpoint (no auth needed - external service)
+  app.post('/api/mindstudio/callback', async (req, res) => {
+    try {
+      const payload = req.body;
+      console.log('Mindstudio callback received:', JSON.stringify(payload, null, 2));
+      
+      // Extract threadId and final output
+      const threadId = payload.threadId || payload.thread?.id;
+      if (!threadId) {
+        console.error('No threadId in Mindstudio callback');
+        return res.status(400).json({ error: 'No threadId provided' });
+      }
+      
+      // Extract output text from various possible structures
+      let outputText = '';
+      let billingCost = '';
+      
+      if (payload.output) {
+        outputText = payload.output;
+      } else if (payload.messages) {
+        // Find latest assistant message
+        const messages = Array.isArray(payload.messages) ? payload.messages : [payload.messages];
+        const assistantMessage = messages.reverse().find((msg: any) => 
+          msg.role === 'assistant' || msg.type === 'assistant'
+        );
+        outputText = assistantMessage?.content || assistantMessage?.text || '';
+      } else if (payload.thread?.messages) {
+        const messages = payload.thread.messages;
+        const assistantMessage = messages.reverse().find((msg: any) => 
+          msg.role === 'assistant' || msg.type === 'assistant'
+        );
+        outputText = assistantMessage?.content || assistantMessage?.text || '';
+      }
+      
+      if (payload.billingCost) {
+        billingCost = payload.billingCost.toString();
+      }
+      
+      // Store result
+      AIService.storeThreadResult(threadId, {
+        status: 'done',
+        outputText,
+        raw: payload,
+        billingCost
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error in Mindstudio callback:', error);
+      res.status(500).json({ error: 'Callback processing failed' });
+    }
+  });
+
+  // Mindstudio polling endpoint
+  app.get('/api/mindstudio/result', isAuthenticated, async (req, res) => {
+    try {
+      const threadId = req.query.threadId as string;
+      if (!threadId) {
+        return res.status(400).json({ error: 'ThreadId required' });
+      }
+      
+      const result = AIService.getThreadResult(threadId);
+      res.json(result);
+    } catch (error) {
+      console.error('Error getting thread result:', error);
+      res.status(500).json({ error: 'Failed to get result' });
+    }
+  });
+
+  // Case analysis endpoint
+  app.get('/api/cases/:id/analysis', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      // Get the latest analysis
+      const analysis = await storage.getLatestAnalysis(caseId);
+      if (!analysis) {
+        return res.status(404).json({ message: "No analysis found" });
+      }
+      
+      // Check if we have a finished thread result
+      const threadId = (caseData as any).threadId; // Assume we store threadId on case
+      if (threadId) {
+        const threadResult = AIService.getThreadResult(threadId);
+        if (threadResult.status === 'done' && threadResult.outputText) {
+          const appResult = AIService.mindstudioToAppResult(threadResult.outputText);
+          appResult.billingCost = threadResult.billingCost;
+          return res.json(appResult);
+        } else if (threadResult.status === 'running') {
+          return res.json({ status: 'pending' });
+        }
+      }
+      
+      // Fallback to existing analysis structure
+      const result = {
+        factsJson: Array.isArray(analysis.factsJson) ? 
+          analysis.factsJson.map((fact: any, idx: number) => ({ 
+            label: `Feit ${idx + 1}`, 
+            detail: typeof fact === 'string' ? fact : fact.detail || fact.label || fact 
+          })) : [],
+        issuesJson: Array.isArray(analysis.issuesJson) ? 
+          analysis.issuesJson.map((issue: any) => ({ 
+            issue: typeof issue === 'string' ? issue : issue.issue || issue.label || issue,
+            risk: typeof issue === 'object' ? issue.risk : undefined
+          })) : [],
+        legalBasisJson: Array.isArray(analysis.legalBasisJson) ? 
+          analysis.legalBasisJson.map((basis: any) => ({ 
+            law: typeof basis === 'string' ? basis : basis.law || basis.label || basis,
+            article: typeof basis === 'object' ? basis.article : undefined,
+            note: typeof basis === 'object' ? basis.note : undefined
+          })) : [],
+        missingDocuments: Array.isArray(analysis.missingDocsJson) ? analysis.missingDocsJson : []
+      };
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error fetching case analysis:', error);
+      res.status(500).json({ message: 'Failed to fetch analysis' });
     }
   });
 

@@ -1,6 +1,23 @@
 import { type Case, type Analysis, type Template, type CaseDocument } from "@shared/schema";
 import Ajv from "ajv";
 
+// In-memory storage for thread results
+const THREAD_RESULTS = new Map<string, { 
+  status: 'running' | 'done' | 'error', 
+  outputText?: string, 
+  raw?: any, 
+  billingCost?: string 
+}>();
+
+export interface AppAnalysisResult {
+  factsJson: Array<{ label: string; detail?: string }>;
+  issuesJson: Array<{ issue: string; risk?: string }>;
+  legalBasisJson: Array<{ law: string; article?: string; note?: string }>;
+  missingDocuments?: string[];
+  rawText?: string;
+  billingCost?: string;
+}
+
 // JSON schema for legal analysis validation
 const analysisSchema = {
   type: "object",
@@ -311,6 +328,116 @@ Geef JSON response:
     }
     
     throw new Error(`Unsupported LLM provider: ${this.provider}`);
+  }
+
+  async runMindstudioAnalysis(params: { input_name: string; input_case_details: string }): Promise<{ threadId: string }> {
+    const variables = {
+      input_name: params.input_name,
+      input_case_details: params.input_case_details
+    };
+
+    const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        workerId: process.env.MINDSTUDIO_WORKER_ID,
+        variables,
+        workflow: process.env.MINDSTUDIO_WORKFLOW || "Main.flow",
+        callbackUrl: `${process.env.PUBLIC_BASE_URL}/api/mindstudio/callback`,
+        includeBillingCost: true
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`Mindstudio API error: ${response.status} ${response.statusText} - ${errorData}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data.threadId) {
+      throw new Error("No threadId received from Mindstudio");
+    }
+
+    // Store initial running state
+    THREAD_RESULTS.set(data.threadId, { status: 'running' });
+    
+    return { threadId: data.threadId };
+  }
+
+  static storeThreadResult(threadId: string, result: { status: 'running' | 'done' | 'error', outputText?: string, raw?: any, billingCost?: string }) {
+    THREAD_RESULTS.set(threadId, result);
+  }
+
+  static getThreadResult(threadId: string) {
+    return THREAD_RESULTS.get(threadId) || { status: 'pending' as const };
+  }
+
+  static mindstudioToAppResult(outputText: string): AppAnalysisResult {
+    // Default empty structure
+    const result: AppAnalysisResult = {
+      factsJson: [],
+      issuesJson: [],
+      legalBasisJson: [],
+      missingDocuments: [],
+      rawText: outputText
+    };
+
+    try {
+      // Parse Dutch headings and sections
+      const sections = outputText.split(/\n\s*\n/);
+      
+      for (const section of sections) {
+        const lines = section.split('\n').map(l => l.trim()).filter(l => l);
+        if (lines.length === 0) continue;
+        
+        const heading = lines[0].toLowerCase();
+        const content = lines.slice(1);
+        
+        if (heading.includes('feiten') || heading.includes('samenvatting')) {
+          result.factsJson = content.map((item, idx) => ({
+            label: `Feit ${idx + 1}`,
+            detail: item.replace(/^[•\-*]\s*/, '')
+          }));
+        } else if (heading.includes('juridische') || heading.includes('geschilpunt') || heading.includes('kwestie')) {
+          result.issuesJson = content.map(item => ({
+            issue: item.replace(/^[•\-*]\s*/, ''),
+            risk: undefined
+          }));
+        } else if (heading.includes('wetsartikelen') || heading.includes('rechtsgrond') || heading.includes('juridische grondslag')) {
+          result.legalBasisJson = content.map(item => ({
+            law: item.replace(/^[•\-*]\s*/, ''),
+            article: undefined,
+            note: undefined
+          }));
+        } else if (heading.includes('ontbrekende') && heading.includes('document')) {
+          result.missingDocuments = content.map(item => item.replace(/^[•\-*]\s*/, ''));
+        }
+      }
+      
+      // Ensure arrays are never empty - add fallback content
+      if (result.factsJson.length === 0) {
+        result.factsJson = [{ label: 'Analyse', detail: 'Zie volledige tekst hieronder' }];
+      }
+      if (result.issuesJson.length === 0) {
+        result.issuesJson = [{ issue: 'Zie volledige analyse voor details', risk: undefined }];
+      }
+      if (result.legalBasisJson.length === 0) {
+        result.legalBasisJson = [{ law: 'Zie volledige analyse voor juridische grondslag', article: undefined, note: undefined }];
+      }
+      
+    } catch (error) {
+      console.error('Error parsing Mindstudio output:', error);
+      // Fallback: put everything in facts
+      result.factsJson = [{ label: 'Analyse Resultaat', detail: 'Zie volledige tekst hieronder' }];
+      result.issuesJson = [{ issue: 'Parsing fout opgetreden', risk: 'Bekijk de volledige tekst' }];
+      result.legalBasisJson = [{ law: 'Zie volledige analyse', article: undefined, note: undefined }];
+    }
+    
+    return result;
   }
 
   private async callMindstudioAgent(systemPrompt: string, userContent: string, requireJson: boolean = false): Promise<string> {

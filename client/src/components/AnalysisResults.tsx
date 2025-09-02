@@ -16,14 +16,20 @@ interface AnalysisResultsProps {
     legalBasisJson?: any[];
     riskNotesJson?: any[];
     missingDocsJson?: any[];
+    missingDocuments?: string[];
+    rawText?: string;
+    billingCost?: string;
   };
 }
 
 export default function AnalysisResults({ analysis }: AnalysisResultsProps) {
-  const facts = analysis.factsJson || [];
-  const issues = analysis.issuesJson || [];
-  const legalBasis = analysis.legalBasisJson || [];
-  const riskNotes = analysis.riskNotesJson || [];
+  // Defensive rendering - always ensure arrays exist
+  const facts = Array.isArray(analysis.factsJson) ? analysis.factsJson : [];
+  const issues = Array.isArray(analysis.issuesJson) ? analysis.issuesJson : [];
+  const legalBasis = Array.isArray(analysis.legalBasisJson) ? analysis.legalBasisJson : [];
+  const riskNotes = Array.isArray(analysis.riskNotesJson) ? analysis.riskNotesJson : [];
+  const missingDocs = Array.isArray(analysis.missingDocuments) ? analysis.missingDocuments : 
+                      Array.isArray(analysis.missingDocsJson) ? analysis.missingDocsJson : [];
 
   return (
     <Card>
@@ -46,7 +52,7 @@ export default function AnalysisResults({ analysis }: AnalysisResultsProps) {
                 {facts.map((fact, index) => (
                   <li key={index} className="text-sm text-muted-foreground flex items-start space-x-2">
                     <span className="text-primary mt-1.5 text-xs">•</span>
-                    <span>{typeof fact === 'string' ? fact : fact.description || fact.text}</span>
+                    <span>{typeof fact === 'string' ? fact : fact.detail || fact.label || fact.description || fact.text || JSON.stringify(fact)}</span>
                   </li>
                 ))}
               </ul>
@@ -66,7 +72,7 @@ export default function AnalysisResults({ analysis }: AnalysisResultsProps) {
                 {legalBasis.map((basis, index) => (
                   <li key={index} className="text-sm text-muted-foreground flex items-start space-x-2">
                     <span className="text-primary mt-1.5 text-xs">•</span>
-                    <span>{typeof basis === 'string' ? basis : basis.article || basis.text}</span>
+                    <span>{typeof basis === 'string' ? basis : basis.law || basis.article || basis.label || basis.text || JSON.stringify(basis)}</span>
                   </li>
                 ))}
               </ul>
@@ -86,7 +92,7 @@ export default function AnalysisResults({ analysis }: AnalysisResultsProps) {
                 {issues.map((issue, index) => (
                   <li key={index} className="text-sm text-muted-foreground flex items-start space-x-2">
                     <span className="text-warning mt-1.5 text-xs">•</span>
-                    <span>{typeof issue === 'string' ? issue : issue.description || issue.text}</span>
+                    <span>{typeof issue === 'string' ? issue : issue.issue || issue.description || issue.label || issue.text || JSON.stringify(issue)}</span>
                   </li>
                 ))}
               </ul>
@@ -108,6 +114,44 @@ export default function AnalysisResults({ analysis }: AnalysisResultsProps) {
                 </p>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Missing Documents */}
+        {missingDocs.length > 0 && (
+          <div className="mt-6">
+            <h4 className="font-medium text-foreground mb-2 flex items-center">
+              <FileText className="h-4 w-4 mr-2" />
+              Ontbrekende documenten
+            </h4>
+            <ul className="space-y-1" data-testid="missing-documents">
+              {missingDocs.map((doc, index) => (
+                <li key={index} className="text-sm text-muted-foreground flex items-start space-x-2">
+                  <span className="text-primary mt-1.5 text-xs">•</span>
+                  <span>{typeof doc === 'string' ? doc : doc.name || doc.label || doc.text || JSON.stringify(doc)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Raw text fallback */}
+        {analysis.rawText && (facts.length === 0 || issues.length === 0 || legalBasis.length === 0) && (
+          <div className="mt-6 p-4 bg-muted rounded-lg">
+            <h4 className="font-medium text-foreground mb-2 flex items-center">
+              <FileText className="h-4 w-4 mr-2" />
+              Volledige analyse tekst
+            </h4>
+            <div className="text-sm text-muted-foreground whitespace-pre-wrap" data-testid="raw-analysis-text">
+              {analysis.rawText}
+            </div>
+          </div>
+        )}
+
+        {/* Billing cost if available */}
+        {analysis.billingCost && (
+          <div className="mt-4 text-xs text-muted-foreground">
+            Analyse kosten: {analysis.billingCost}
           </div>
         )}
       </CardContent>
