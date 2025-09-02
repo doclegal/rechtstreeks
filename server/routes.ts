@@ -741,6 +741,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test endpoint for Mindstudio connection
+  app.get('/api/mindstudio/test', isAuthenticated, async (req, res) => {
+    try {
+      console.log('Testing Mindstudio connection...');
+      console.log('MINDSTUDIO_API_KEY exists:', !!process.env.MINDSTUDIO_API_KEY);
+      console.log('MINDSTUDIO_WORKER_ID:', process.env.MINDSTUDIO_WORKER_ID);
+      console.log('MINDSTUDIO_WORKFLOW:', process.env.MINDSTUDIO_WORKFLOW);
+      console.log('MINDSTUDIO_VERSION:', process.env.MINDSTUDIO_VERSION);
+      console.log('PUBLIC_BASE_URL:', process.env.PUBLIC_BASE_URL);
+
+      // Test simple call to Mindstudio
+      const testResponse = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          workerId: process.env.MINDSTUDIO_WORKER_ID,
+          variables: {
+            input_name: "Test User",
+            input_case_details: "Dit is een test case om de verbinding te controleren"
+          },
+          workflow: process.env.MINDSTUDIO_WORKFLOW || "Main.flow"
+          // Removed callback for simple test
+        })
+      });
+
+      const responseText = await testResponse.text();
+      console.log('Mindstudio response status:', testResponse.status);
+      console.log('Mindstudio response:', responseText);
+
+      res.json({
+        status: testResponse.status,
+        ok: testResponse.ok,
+        response: responseText,
+        config: {
+          hasApiKey: !!process.env.MINDSTUDIO_API_KEY,
+          workerId: process.env.MINDSTUDIO_WORKER_ID,
+          workflow: process.env.MINDSTUDIO_WORKFLOW,
+          version: process.env.MINDSTUDIO_VERSION,
+          baseUrl: process.env.PUBLIC_BASE_URL
+        }
+      });
+    } catch (error) {
+      console.error('Mindstudio test error:', error);
+      res.status(500).json({ 
+        error: error.message,
+        config: {
+          hasApiKey: !!process.env.MINDSTUDIO_API_KEY,
+          workerId: process.env.MINDSTUDIO_WORKER_ID,
+          workflow: process.env.MINDSTUDIO_WORKFLOW,
+          version: process.env.MINDSTUDIO_VERSION,
+          baseUrl: process.env.PUBLIC_BASE_URL
+        }
+      });
+    }
+  });
+
   // Mindstudio polling endpoint
   app.get('/api/mindstudio/result', isAuthenticated, async (req, res) => {
     try {
