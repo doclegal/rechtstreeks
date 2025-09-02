@@ -74,23 +74,24 @@ export default function StepView() {
     const pollResult = async () => {
       try {
         const result = await apiRequest(`/api/mindstudio/result?threadId=${threadId}`);
+        console.log('Polling result:', result);
         
         if (result.status === 'done') {
           setIsPolling(false);
           
           // Use the processed result directly from Mindstudio
-          if (result.processedResult) {
+          if (result.processedResult || result.outputText) {
             setAnalysisResult({
               id: threadId,
               caseId: currentCase?.id || '',
               model: 'mindstudio-agent',
-              factsJson: result.processedResult.factsJson,
-              issuesJson: result.processedResult.issuesJson,
-              legalBasisJson: result.processedResult.legalBasisJson,
-              missingDocsJson: result.processedResult.missingDocuments,
-              riskNotesJson: [],
+              factsJson: result.processedResult?.factsJson || [],
+              issuesJson: result.processedResult?.issuesJson || [],
+              legalBasisJson: result.processedResult?.legalBasisJson || [],
+              missingDocsJson: result.processedResult?.missingDocuments || [],
+              riskNotesJson: result.processedResult?.riskNotesJson || [],
               createdAt: new Date().toISOString(),
-              rawText: result.outputText || '',
+              rawText: result.outputText || result.raw?.result || '',
               billingCost: result.billingCost || '$0'
             });
           }
