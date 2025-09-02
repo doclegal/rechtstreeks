@@ -288,14 +288,8 @@ Geef JSON response:
   }
 
   private async callLLMWithJSONResponse(systemPrompt: string, userContent: string): Promise<string> {
-    // First try Mindstudio Agent if configured
-    if (process.env.MINDSTUDIO_API_KEY && process.env.MINDSTUDIO_WORKER_ID) {
-      try {
-        return await this.callMindstudioAgent(systemPrompt, userContent, true);
-      } catch (error) {
-        console.error("Mindstudio call failed, falling back to OpenAI:", error);
-      }
-    }
+    // Skip Mindstudio here - use the async runMindstudioAnalysis method instead
+    // This prevents conflicts between sync and async Mindstudio calls
 
     if (this.provider === "openai") {
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
