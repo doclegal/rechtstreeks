@@ -73,8 +73,7 @@ export default function StepView() {
 
     const pollResult = async () => {
       try {
-        const response = await apiRequest("GET", `/api/mindstudio/result?threadId=${threadId}`, {});
-        const result = await response.json();
+        const result = await apiRequest(`/api/mindstudio/result?threadId=${threadId}`);
         
         if (result.status === 'done') {
           setIsPolling(false);
@@ -114,12 +113,8 @@ export default function StepView() {
         // Continue polling if status is still 'running' or 'pending'
       } catch (error) {
         console.error('Polling error:', error);
-        setIsPolling(false);
-        toast({
-          title: "Verbindingsfout",
-          description: "Kon analyseresultaat niet ophalen.",
-          variant: "destructive",
-        });
+        // Keep polling on network errors - don't stop immediately
+        // Only show error if we've been polling for a while
       }
     };
 

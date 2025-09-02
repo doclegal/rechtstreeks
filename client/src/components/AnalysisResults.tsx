@@ -23,6 +23,32 @@ interface AnalysisResultsProps {
 }
 
 export default function AnalysisResults({ analysis }: AnalysisResultsProps) {
+  // Show simple text output first for easier testing
+  if (analysis.rawText) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold flex items-center space-x-2">
+            <CheckCircle className="h-5 w-5 text-green-600" />
+            <span>Mindstudio Analyse Voltooid</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+            <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300 font-sans">
+              {analysis.rawText}
+            </pre>
+          </div>
+          {analysis.billingCost && (
+            <div className="mt-4 text-xs text-muted-foreground">
+              Analyse kosten: {analysis.billingCost}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
   // Defensive rendering - always ensure arrays exist
   const facts = Array.isArray(analysis.factsJson) ? analysis.factsJson : [];
   const issues = Array.isArray(analysis.issuesJson) ? analysis.issuesJson : [];
