@@ -705,7 +705,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let outputText = '';
       let billingCost = '';
       
-      if (payload.output) {
+      // Check for direct result field (your Mindstudio Agent uses this)
+      if (payload.result) {
+        outputText = payload.result;
+      } else if (payload.output) {
         outputText = payload.output;
       } else if (payload.messages) {
         // Find latest assistant message
