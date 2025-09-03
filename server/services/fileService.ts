@@ -127,6 +127,16 @@ export class FileService {
     }
   }
 
+  async deleteFile(storageKey: string): Promise<void> {
+    try {
+      const filePath = path.join(this.uploadDir, storageKey);
+      await fs.unlink(filePath);
+    } catch (error) {
+      console.warn(`Failed to delete file ${storageKey}:`, error);
+      // Don't throw - file might already be deleted or not exist
+    }
+  }
+
   async extractText(file: Express.Multer.File): Promise<string> {
     try {
       const mimetype = file.mimetype.toLowerCase();

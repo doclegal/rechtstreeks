@@ -237,6 +237,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Document delete endpoint
+  app.delete('/api/documents/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const documentId = req.params.id;
+      
+      // Get document to verify ownership
+      const document = await storage.getDocument(documentId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      // Verify user owns the case
+      const caseData = await storage.getCase(document.caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Delete physical file from storage
+      try {
+        await fileService.deleteFile(document.storageKey);
+      } catch (error) {
+        console.warn('Failed to delete physical file:', error);
+        // Continue with database deletion even if file deletion fails
+      }
+      
+      // Delete document record from database
+      await storage.deleteDocument(documentId);
+      
+      // Create event
+      await storage.createEvent({
+        caseId: document.caseId,
+        actorUserId: userId,
+        type: "document_deleted",
+        payloadJson: { filename: document.filename },
+      });
+      
+      res.status(204).send(); // No content
+    } catch (error) {
+      console.error("Error deleting document:", error);
+      res.status(500).json({ message: "Failed to delete document" });
+    }
+  });
+
   // Rate limiting for analyses (simple in-memory tracking)
   const analysisRateLimit = new Map<string, number>();
 

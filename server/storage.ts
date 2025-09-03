@@ -46,6 +46,7 @@ export interface IStorage {
   createDocument(docData: InsertCaseDocument): Promise<CaseDocument>;
   getDocumentsByCase(caseId: string): Promise<CaseDocument[]>;
   getDocument(id: string): Promise<CaseDocument | undefined>;
+  deleteDocument(id: string): Promise<void>;
   
   // Analysis operations
   createAnalysis(analysisData: InsertAnalysis): Promise<Analysis>;
@@ -175,6 +176,12 @@ export class DatabaseStorage implements IStorage {
       .from(caseDocuments)
       .where(eq(caseDocuments.id, id));
     return document;
+  }
+
+  async deleteDocument(id: string): Promise<void> {
+    await db
+      .delete(caseDocuments)
+      .where(eq(caseDocuments.id, id));
   }
 
   // Analysis operations

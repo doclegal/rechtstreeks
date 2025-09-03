@@ -2,6 +2,9 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { 
   FileText, 
   File, 
@@ -10,7 +13,8 @@ import {
   Eye, 
   Download, 
   Plus,
-  Calendar
+  Calendar,
+  Trash2
 } from "lucide-react";
 import DocumentViewer from "@/components/DocumentViewer";
 import DocumentUpload from "@/components/DocumentUpload";
@@ -39,6 +43,8 @@ export default function DocumentList({
 }: DocumentListProps) {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showUpload, setShowUpload] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const getFileIcon = (mimetype: string) => {
     if (mimetype === "application/pdf") {
@@ -63,6 +69,35 @@ export default function DocumentList({
 
   const handleDownload = (document: Document) => {
     window.open(`/api/files/${document.storageKey}`, '_blank');
+  };
+
+  const deleteDocumentMutation = useMutation({
+    mutationFn: async (documentId: string) => {
+      await apiRequest(`/api/documents/${documentId}`, {
+        method: 'DELETE'
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Document verwijderd",
+        description: "Het document is succesvol verwijderd.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'uploads'] });
+      onDocumentUploaded?.(); // Refresh the document list
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout bij verwijderen",
+        description: error.message || "Het document kon niet worden verwijderd.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleDeleteDocument = (document: Document) => {
+    if (confirm(`Weet je zeker dat je '${document.filename}' wilt verwijderen?`)) {
+      deleteDocumentMutation.mutate(document.id);
+    }
   };
 
   if (documents.length === 0) {
@@ -164,6 +199,16 @@ export default function DocumentList({
                     data-testid={`button-download-${document.id}`}
                   >
                     <Download className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteDocument(document)}
+                    disabled={deleteDocumentMutation.isPending}
+                    data-testid={`button-delete-${document.id}`}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
