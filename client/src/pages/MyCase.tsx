@@ -267,10 +267,7 @@ export default function MyCase() {
               window.open(`/api/cases/${currentCase.id}/export`, '_blank');
             }}
             onEdit={() => {
-              toast({
-                title: "Bewerken",
-                description: "Zaak bewerken functionaliteit wordt binnenkort toegevoegd",
-              });
+              setLocation(`/edit-case/${currentCase.id}`);
             }}
           />
         </div>
