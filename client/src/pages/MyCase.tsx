@@ -133,7 +133,7 @@ export default function MyCase() {
                 variant="outline"
                 className="px-3"
               >
-                {expandedSection === 'analyse' ? 'Sluit' : 'Open'}
+Open
               </Button>
             )}
           </div>
@@ -167,7 +167,7 @@ export default function MyCase() {
                 variant="outline"
                 className="px-3"
               >
-                {expandedSection === 'brief' ? 'Sluit' : 'Open'}
+                Open
               </Button>
             )}
           </div>
@@ -206,7 +206,7 @@ export default function MyCase() {
                 variant="outline"
                 className="px-3"
               >
-                {expandedSection === 'dagvaarding' ? 'Sluit' : 'Open'}
+                Open
               </Button>
             )}
           </div>
