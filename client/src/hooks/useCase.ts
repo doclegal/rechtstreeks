@@ -113,9 +113,30 @@ export function useAnalyzeCase(caseId: string) {
         }, 500);
         return;
       }
+      
+      // Handle rate limiting specifically
+      if (error.message.includes("429")) {
+        toast({
+          title: "Te snel geanalyseerd",
+          description: "Wacht 2 minuten tussen analyses om kosten te beheersen. Probeer straks opnieuw.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Handle service unavailable
+      if (error.message.includes("503")) {
+        toast({
+          title: "Service tijdelijk niet beschikbaar",
+          description: "De analyse service is momenteel niet beschikbaar. Probeer het later opnieuw.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       toast({
         title: "Analyse mislukt",
-        description: "Er is een fout opgetreden bij de analyse",
+        description: "Er is een fout opgetreden bij de analyse. Probeer het opnieuw.",
         variant: "destructive",
       });
     },
