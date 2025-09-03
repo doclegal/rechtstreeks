@@ -47,6 +47,7 @@ export interface IStorage {
   getDocumentsByCase(caseId: string): Promise<CaseDocument[]>;
   getDocument(id: string): Promise<CaseDocument | undefined>;
   deleteDocument(id: string): Promise<void>;
+  touchCase(id: string): Promise<void>; // Update only timestamp
   
   // Analysis operations
   createAnalysis(analysisData: InsertAnalysis): Promise<Analysis>;
@@ -182,6 +183,13 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(caseDocuments)
       .where(eq(caseDocuments.id, id));
+  }
+
+  async touchCase(id: string): Promise<void> {
+    await db
+      .update(cases)
+      .set({ updatedAt: new Date() })
+      .where(eq(cases.id, id));
   }
 
   // Analysis operations

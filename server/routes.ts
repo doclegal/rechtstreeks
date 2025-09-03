@@ -203,6 +203,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "Analyse",
           "Start analyse"
         );
+      } else {
+        // Always update case timestamp to trigger analysis button state change
+        await storage.touchCase(caseId);
       }
       
       // Create event
@@ -265,6 +268,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Delete document record from database
       await storage.deleteDocument(documentId);
+      
+      // Update case timestamp to trigger analysis button state change
+      await storage.touchCase(document.caseId);
       
       // Create event
       await storage.createEvent({
