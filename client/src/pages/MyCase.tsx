@@ -49,14 +49,14 @@ export default function MyCase() {
     const stepMap: Record<string, number> = {
       "NEW_INTAKE": 1,
       "DOCS_UPLOADED": 2,
-      "ANALYZED": 3,
-      "LETTER_DRAFTED": 4,
-      "BAILIFF_ORDERED": 5,
-      "SERVED": 6,
-      "SUMMONS_DRAFTED": 6,
-      "FILED": 7,
-      "PROCEEDINGS_ONGOING": 8,
-      "JUDGMENT": 9,
+      "ANALYZED": 2, // Keep same step - analysis happens on overview
+      "LETTER_DRAFTED": 3, // Move up from 4 to 3
+      "BAILIFF_ORDERED": 4, // Move up from 5 to 4
+      "SERVED": 5, // Move up from 6 to 5
+      "SUMMONS_DRAFTED": 5, // Keep same as SERVED
+      "FILED": 6, // Move up from 7 to 6
+      "PROCEEDINGS_ONGOING": 7, // Move up from 8 to 7
+      "JUDGMENT": 8, // Move up from 9 to 8
     };
     return stepMap[status] || 1;
   };
@@ -68,11 +68,12 @@ export default function MyCase() {
         action: () => {/* Document upload will be handled by MissingDocuments component */}
       },
       "DOCS_UPLOADED": {
-        label: "Start analyse",
-        action: () => analyzeMutation.mutate()
+        label: "Genereer ingebrekestelling",
+        action: () => letterMutation.mutate(),
+        disabled: !currentCase.analysis
       },
       "ANALYZED": {
-        label: "Genereer brief",
+        label: "Genereer ingebrekestelling", 
         action: () => letterMutation.mutate()
       },
       "LETTER_DRAFTED": {
@@ -161,7 +162,7 @@ export default function MyCase() {
             <div className="mb-4 lg:mb-0">
               <div className="flex items-center space-x-3 mb-2">
                 <Badge className="bg-primary text-primary-foreground" data-testid="badge-current-step">
-                  Stap {currentStepNumber} van 9
+                  Stap {currentStepNumber} van 8
                 </Badge>
                 <span className="text-sm text-muted-foreground">
                   Je zit nu bij: {currentCase.currentStep || "Indienen stukken"}
@@ -223,10 +224,13 @@ export default function MyCase() {
                 />
               )}
 
-              {/* Analysis Results */}
-              {currentCase.analysis && (
-                <AnalysisResults analysis={currentCase.analysis} />
-              )}
+              {/* Analysis Results - Always show with analyze button */}
+              <AnalysisResults 
+                analysis={currentCase.analysis}
+                onAnalyze={() => analyzeMutation.mutate()}
+                isAnalyzing={analyzeMutation.isPending}
+                hasNewInfo={false} // TODO: Implement logic to detect new info
+              />
 
               {/* Generated Documents */}
               <GeneratedDocuments 

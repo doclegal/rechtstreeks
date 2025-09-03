@@ -1,16 +1,19 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { 
   CheckCircle, 
   AlertTriangle, 
   Scale, 
   Users,
   TrendingUp,
-  FileText
+  FileText,
+  Play,
+  Clock
 } from "lucide-react";
 
 interface AnalysisResultsProps {
-  analysis: {
+  analysis?: {
     factsJson?: any[];
     issuesJson?: any[];
     legalBasisJson?: any[];
@@ -19,12 +22,15 @@ interface AnalysisResultsProps {
     missingDocuments?: string[];
     rawText?: string;
     billingCost?: string;
-  };
+  } | null;
+  onAnalyze?: () => void;
+  isAnalyzing?: boolean;
+  hasNewInfo?: boolean;
 }
 
-export default function AnalysisResults({ analysis }: AnalysisResultsProps) {
+export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = false, hasNewInfo = false }: AnalysisResultsProps) {
   // Show simple text output first for easier testing
-  if (analysis.rawText) {
+  if (analysis?.rawText) {
     return (
       <Card>
         <CardHeader>
@@ -49,6 +55,50 @@ export default function AnalysisResults({ analysis }: AnalysisResultsProps) {
     );
   }
 
+  // If no analysis yet, show empty state with analyze button
+  if (!analysis) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold flex items-center space-x-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              <span>AI Analyse resultaten</span>
+            </CardTitle>
+            {onAnalyze && (
+              <Button
+                onClick={onAnalyze}
+                disabled={isAnalyzing}
+                variant="default"
+                size="sm"
+                data-testid="button-start-analysis"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Clock className="mr-2 h-4 w-4 animate-spin" />
+                    Analyseren...
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-4 w-4" />
+                    Start analyse
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            <TrendingUp className="mx-auto h-12 w-12 mb-4 opacity-30" />
+            <p>Nog geen analyse uitgevoerd.</p>
+            <p className="text-sm">Start de analyse om juridische insights te krijgen.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   // Defensive rendering - always ensure arrays exist
   const facts = Array.isArray(analysis.factsJson) ? analysis.factsJson : [];
   const issues = Array.isArray(analysis.issuesJson) ? analysis.issuesJson : [];
@@ -57,13 +107,42 @@ export default function AnalysisResults({ analysis }: AnalysisResultsProps) {
   const missingDocs = Array.isArray(analysis.missingDocuments) ? analysis.missingDocuments : 
                       Array.isArray(analysis.missingDocsJson) ? analysis.missingDocsJson : [];
 
+  // Show the analysis section with "Start analyse" button
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg font-semibold flex items-center space-x-2">
-          <TrendingUp className="h-5 w-5 text-primary" />
-          <span>AI Analyse resultaten</span>
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg font-semibold flex items-center space-x-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            <span>AI Analyse resultaten</span>
+          </CardTitle>
+          {onAnalyze && (
+            <Button
+              onClick={onAnalyze}
+              disabled={isAnalyzing || (analysis && !hasNewInfo)}
+              variant={hasNewInfo ? "default" : analysis ? "secondary" : "default"}
+              size="sm"
+              data-testid="button-start-analysis"
+            >
+              {isAnalyzing ? (
+                <>
+                  <Clock className="mr-2 h-4 w-4 animate-spin" />
+                  Analyseren...
+                </>
+              ) : analysis && !hasNewInfo ? (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Analyse voltooid
+                </>
+              ) : (
+                <>
+                  <Play className="mr-2 h-4 w-4" />
+                  {hasNewInfo ? "Heranalyseren" : "Start analyse"}
+                </>
+              )}
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="grid md:grid-cols-2 gap-6">
