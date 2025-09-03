@@ -21,14 +21,19 @@ export default function MyCase() {
   const { data: cases, isLoading: casesLoading, refetch } = useCases();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
   
   // For MVP, we'll use the first case as the main case
-  const currentCase = cases && cases.length > 0 ? cases[0] : undefined;
+  const currentCase = Array.isArray(cases) && cases.length > 0 ? cases[0] : undefined;
   const caseId = currentCase?.id;
 
   const analyzeMutation = useAnalyzeCase(caseId || "");
   const letterMutation = useGenerateLetter(caseId || "");
   const bailiffMutation = useOrderBailiff(caseId || "");
+
+  const toggleSection = (section: string) => {
+    setExpandedSection(expandedSection === section ? null : section);
+  };
 
   // Refresh case data after successful analysis
   useEffect(() => {
@@ -104,15 +109,27 @@ export default function MyCase() {
               {currentCase.analysis ? "Voltooid" : "Beschikbaar"}
             </Badge>
           </div>
-          <Button 
-            onClick={() => analyzeMutation.mutate()}
-            disabled={analyzeMutation.isPending}
-            size="sm"
-            variant={currentCase.analysis ? "outline" : "default"}
-            className="w-full"
-          >
-            {analyzeMutation.isPending ? "Analyseren..." : currentCase.analysis ? "Heranalyseren" : "Start analyse"}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => analyzeMutation.mutate()}
+              disabled={analyzeMutation.isPending}
+              size="sm"
+              variant={currentCase.analysis ? "outline" : "default"}
+              className="flex-1"
+            >
+              {analyzeMutation.isPending ? "Analyseren..." : currentCase.analysis ? "Heranalyseren" : "Start analyse"}
+            </Button>
+            {currentCase.analysis && (
+              <Button 
+                onClick={() => toggleSection('analyse')}
+                size="sm"
+                variant="outline"
+                className="px-3"
+              >
+                {expandedSection === 'analyse' ? 'Sluit' : 'Open'}
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Service 2: Brief */}
@@ -126,15 +143,27 @@ export default function MyCase() {
               {(currentCase.letters?.length || 0) > 0 ? "Voltooid" : "Beschikbaar"}
             </Badge>
           </div>
-          <Button 
-            onClick={() => letterMutation.mutate()}
-            disabled={letterMutation.isPending || !currentCase.analysis}
-            size="sm"
-            variant={(currentCase.letters?.length || 0) > 0 ? "outline" : "default"}
-            className="w-full"
-          >
-            {letterMutation.isPending ? "Genereren..." : (currentCase.letters?.length || 0) > 0 ? "Nieuwe brief" : "Genereer brief"}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => letterMutation.mutate()}
+              disabled={letterMutation.isPending || !currentCase.analysis}
+              size="sm"
+              variant={(currentCase.letters?.length || 0) > 0 ? "outline" : "default"}
+              className="flex-1"
+            >
+              {letterMutation.isPending ? "Genereren..." : (currentCase.letters?.length || 0) > 0 ? "Nieuwe brief" : "Genereer brief"}
+            </Button>
+            {(currentCase.letters?.length || 0) > 0 && (
+              <Button 
+                onClick={() => toggleSection('brief')}
+                size="sm"
+                variant="outline"
+                className="px-3"
+              >
+                {expandedSection === 'brief' ? 'Sluit' : 'Open'}
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Service 3: Dagvaarding */}
@@ -148,103 +177,137 @@ export default function MyCase() {
               {(currentCase.summons?.length || 0) > 0 ? "Voltooid" : "Beschikbaar"}
             </Badge>
           </div>
-          <Button 
-            onClick={() => {
-              toast({
-                title: "Dagvaarding opstellen",
-                description: "Deze functie wordt binnenkort beschikbaar gesteld",
-              });
-            }}
-            disabled={!currentCase.analysis}
-            size="sm"
-            variant={(currentCase.summons?.length || 0) > 0 ? "outline" : "default"}
-            className="w-full"
-          >
-            {(currentCase.summons?.length || 0) > 0 ? "Nieuwe dagvaarding" : "Opstellen dagvaarding"}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => {
+                toast({
+                  title: "Dagvaarding opstellen",
+                  description: "Deze functie wordt binnenkort beschikbaar gesteld",
+                });
+              }}
+              disabled={!currentCase.analysis}
+              size="sm"
+              variant={(currentCase.summons?.length || 0) > 0 ? "outline" : "default"}
+              className="flex-1"
+            >
+              {(currentCase.summons?.length || 0) > 0 ? "Nieuwe dagvaarding" : "Opstellen dagvaarding"}
+            </Button>
+            {(currentCase.summons?.length || 0) > 0 && (
+              <Button 
+                onClick={() => toggleSection('dagvaarding')}
+                size="sm"
+                variant="outline"
+                className="px-3"
+              >
+                {expandedSection === 'dagvaarding' ? 'Sluit' : 'Open'}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Main Content - Full Width */}
+      {/* Main Content - Always Show Case Info */}
       <div className="space-y-6">
-        <Tabs defaultValue="mijn-zaak" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="mijn-zaak" data-testid="tab-case-details">Mijn zaak</TabsTrigger>
-            <TabsTrigger value="analysis" data-testid="tab-analysis">Juridische analyse</TabsTrigger>
-            <TabsTrigger value="documents" data-testid="tab-generated-documents">Gegenereerde documenten</TabsTrigger>
-            <TabsTrigger value="uitleg" data-testid="tab-explanation">Uitleg</TabsTrigger>
-          </TabsList>
-            
-            <TabsContent value="mijn-zaak" className="mt-6">
-              <div className="space-y-6">
-                <CaseInfo 
-                  caseData={currentCase}
-                  onExport={() => {
-                    window.open(`/api/cases/${currentCase.id}/export`, '_blank');
-                  }}
-                  onEdit={() => {
-                    setLocation(`/edit-case/${currentCase.id}`);
-                  }}
-                  isFullWidth={true}
-                />
-                
-                {/* Documents Section */}
-                <DocumentList 
-                  documents={currentCase.documents || []}
-                  caseId={currentCase.id}
-                  onDocumentUploaded={() => refetch()}
-                />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="analysis" className="space-y-6 mt-6">
-              {/* Missing Documents */}
-              {missingDocs.length > 0 && (
-                <MissingDocuments 
-                  missingDocs={missingDocs}
-                  caseId={currentCase.id}
-                  onDocumentUploaded={() => refetch()}
-                />
-              )}
+        <CaseInfo 
+          caseData={currentCase}
+          onExport={() => {
+            window.open(`/api/cases/${currentCase.id}/export`, '_blank');
+          }}
+          onEdit={() => {
+            setLocation(`/edit-case/${currentCase.id}`);
+          }}
+          isFullWidth={true}
+        />
+        
+        {/* Missing Documents Section */}
+        {missingDocs.length > 0 && (
+          <MissingDocuments 
+            missingDocs={missingDocs}
+            caseId={currentCase.id}
+            onDocumentUploaded={() => refetch()}
+          />
+        )}
 
-              {/* Analysis Results - Always show with analyze button */}
-              <AnalysisResults 
-                analysis={currentCase.analysis}
-                onAnalyze={() => analyzeMutation.mutate()}
-                isAnalyzing={analyzeMutation.isPending}
-                hasNewInfo={(() => {
-                  // Check if case was updated after the last analysis
-                  if (!currentCase.analysis || !currentCase.updatedAt) return false;
-                  
-                  // If analysis is currently running, don't show as having new info
-                  if (analyzeMutation.isPending) return false;
-                  
-                  // If we just successfully analyzed, don't show new info for a moment
-                  if (analyzeMutation.isSuccess) return false;
-                  
-                  const caseUpdated = new Date(currentCase.updatedAt);
-                  const analysisCreated = new Date(currentCase.analysis.createdAt);
-                  
-                  // Analysis is outdated if case was updated after analysis creation (with 1 second buffer)
-                  const timeDiff = caseUpdated.getTime() - analysisCreated.getTime();
-                  return timeDiff > 1000; // 1 second buffer to account for timing differences
-                })()}
-              />
-            </TabsContent>
-            
-            <TabsContent value="documents" className="space-y-6 mt-6">
-              {/* Generated Documents */}
-              <GeneratedDocuments 
-                letters={currentCase.letters || []}
-                summons={currentCase.summons || []}
-                caseId={currentCase.id}
-              />
-            </TabsContent>
-            
-            <TabsContent value="uitleg" className="mt-6">
-              <ProcessTimeline currentStep={1} />
-            </TabsContent>
-          </Tabs>
+        {/* Documents Section */}
+        <DocumentList 
+          documents={currentCase.documents || []}
+          caseId={currentCase.id}
+          onDocumentUploaded={() => refetch()}
+        />
+
+        {/* Expandable Section: Juridische Analyse */}
+        {expandedSection === 'analyse' && (
+          <div className="border rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Juridische Analyse Resultaten</h3>
+              <Button 
+                onClick={() => setExpandedSection(null)}
+                size="sm"
+                variant="ghost"
+              >
+                ✕
+              </Button>
+            </div>
+            <AnalysisResults 
+              analysis={currentCase.analysis}
+              onAnalyze={() => analyzeMutation.mutate()}
+              isAnalyzing={analyzeMutation.isPending}
+              hasNewInfo={(() => {
+                if (!currentCase.analysis || !currentCase.updatedAt) return false;
+                if (analyzeMutation.isPending) return false;
+                if (analyzeMutation.isSuccess) return false;
+                
+                const caseUpdated = new Date(currentCase.updatedAt);
+                const analysisCreated = new Date(currentCase.analysis.createdAt);
+                const timeDiff = caseUpdated.getTime() - analysisCreated.getTime();
+                return timeDiff > 1000;
+              })()}
+            />
+          </div>
+        )}
+
+        {/* Expandable Section: Gegenereerde Documenten */}
+        {expandedSection === 'brief' && (
+          <div className="border rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Gegenereerde Documenten</h3>
+              <Button 
+                onClick={() => setExpandedSection(null)}
+                size="sm"
+                variant="ghost"
+              >
+                ✕
+              </Button>
+            </div>
+            <GeneratedDocuments 
+              letters={currentCase.letters || []}
+              summons={currentCase.summons || []}
+              caseId={currentCase.id}
+            />
+          </div>
+        )}
+
+        {/* Expandable Section: Dagvaarding */}
+        {expandedSection === 'dagvaarding' && (
+          <div className="border rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Dagvaarding</h3>
+              <Button 
+                onClick={() => setExpandedSection(null)}
+                size="sm"
+                variant="ghost"
+              >
+                ✕
+              </Button>
+            </div>
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">
+                Dagvaarding functionaliteit komt binnenkort beschikbaar. 
+                Hier kun je straks je dagvaarding opstellen en indienen bij de rechtbank.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Secondary Actions */}
