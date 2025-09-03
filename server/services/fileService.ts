@@ -85,15 +85,18 @@ export class FileService {
       }
     });
     
-    // Make file publicly accessible
-    await fileObject.makePublic();
+    // Generate signed URL (valid for 24 hours) instead of making public
+    // This works even with public access prevention enabled
+    const [signedUrl] = await fileObject.getSignedUrl({
+      action: 'read',
+      expires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+    });
     
-    // Generate public URL
-    const publicUrl = `https://storage.googleapis.com/${bucketName}/${objectName}`;
+    console.log('✅ Generated signed URL for MindStudio access:', signedUrl);
     
     return {
       storageKey: objectPath,
-      publicUrl: publicUrl
+      publicUrl: signedUrl
     };
   }
 

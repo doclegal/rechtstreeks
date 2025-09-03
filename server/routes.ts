@@ -324,6 +324,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const documents = await storage.getDocumentsByCase(caseId);
           const fileWithUrl = documents.find(doc => doc.publicUrl);
           
+          console.log('📄 Found documents for analysis:');
+          documents.forEach(doc => {
+            console.log(`  - ${doc.filename} (publicUrl: ${doc.publicUrl ? '✅ Available' : '❌ None'})`);
+          });
+          
           // Run SYNCHRONOUS Mindstudio analysis (no callback, direct result)
           const analysisParams: any = {
             input_name: userName,
@@ -333,7 +338,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Add file URL if available
           if (fileWithUrl?.publicUrl) {
             analysisParams.file_url = fileWithUrl.publicUrl;
+            console.log('🔗 Adding file URL to MindStudio:', fileWithUrl.publicUrl);
+          } else {
+            console.log('⚠️  No public URL available - MindStudio will analyze case details only');
           }
+          
+          console.log('🚀 Starting SYNCHRONOUS Mindstudio analysis:', analysisParams);
           
           const result = await aiService.runSynchronousMindstudioAnalysis(analysisParams);
           
