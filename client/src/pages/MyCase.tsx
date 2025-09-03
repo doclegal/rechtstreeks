@@ -198,7 +198,12 @@ export default function MyCase() {
           <StepChips 
             currentStep={currentStepNumber} 
             onStepClick={(step) => {
-              setLocation(`/step/${step}`);
+              // Step 1: Go to edit case details 
+              if (step === 1) {
+                setLocation(`/edit-case/${currentCase.id}`);
+              } else {
+                setLocation(`/step/${step}`);
+              }
             }}
           />
         </CardContent>

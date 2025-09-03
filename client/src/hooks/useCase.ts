@@ -195,3 +195,37 @@ export function useOrderBailiff(caseId: string) {
     },
   });
 }
+
+export function useUpdateCase(caseId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (caseData: any) => {
+      const response = await apiRequest("PATCH", `/api/cases/${caseId}`, caseData);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId] });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Fout bij bijwerken zaak",
+        description: "Er is een fout opgetreden bij het bijwerken van de zaak",
+        variant: "destructive",
+      });
+    },
+  });
+}

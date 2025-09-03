@@ -25,7 +25,7 @@ interface StepChipsProps {
 
 export default function StepChips({ currentStep, onStepClick }: StepChipsProps) {
   const steps: Step[] = [
-    { id: 1, name: "Indienen stukken", icon: Upload, status: "completed" },
+    { id: 1, name: "Zaak opstellen", icon: Upload, status: "completed" },
     { id: 2, name: "Brief", icon: Mail, status: "completed" },
     { id: 3, name: "Deurwaarder", icon: Gavel, status: "active" },
     { id: 4, name: "Betekening", icon: CheckCircle, status: "pending" },
