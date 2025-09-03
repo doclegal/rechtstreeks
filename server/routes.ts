@@ -320,28 +320,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const user = await storage.getUser(userId);
           const userName = user?.firstName || user?.email?.split('@')[0] || 'Gebruiker';
           
-          // Get documents with public URLs for analysis
+          // Get documents for analysis
           const documents = await storage.getDocumentsByCase(caseId);
-          const fileWithUrl = documents.find(doc => doc.publicUrl);
           
           console.log('📄 Found documents for analysis:');
           documents.forEach(doc => {
-            console.log(`  - ${doc.filename} (publicUrl: ${doc.publicUrl ? '✅ Available' : '❌ None'})`);
+            console.log(`  - ${doc.filename} (extractedText: ${doc.extractedText ? '✅ Available' : '❌ None'})`);
           });
+          
+          // Build comprehensive case details including document content
+          let caseDetails = `Zaak: ${caseData.title}\n\nOmschrijving: ${caseData.description || 'Geen beschrijving'}\n\nTegenpartij: ${caseData.counterpartyName || 'Onbekend'}\n\nClaim bedrag: €${caseData.claimAmount || '0'}`;
+          
+          // Add document content directly to case details
+          if (documents.length > 0) {
+            caseDetails += '\n\n=== GEÜPLOADE DOCUMENTEN ===\n';
+            documents.forEach(doc => {
+              caseDetails += `\n📄 Document: ${doc.filename}\n`;
+              if (doc.extractedText && doc.extractedText.trim()) {
+                caseDetails += `Inhoud:\n${doc.extractedText}\n\n`;
+              } else {
+                caseDetails += `[Geen tekst geëxtraheerd uit dit document]\n\n`;
+              }
+            });
+            console.log('✅ Including document content directly in analysis');
+          }
           
           // Run SYNCHRONOUS Mindstudio analysis (no callback, direct result)
           const analysisParams: any = {
             input_name: userName,
-            input_case_details: `Zaak: ${caseData.title}\n\nOmschrijving: ${caseData.description || 'Geen beschrijving'}\n\nTegenpartij: ${caseData.counterpartyName || 'Onbekend'}\n\nClaim bedrag: €${caseData.claimAmount || '0'}`
+            input_case_details: caseDetails
           };
-          
-          // Add file URL if available
-          if (fileWithUrl?.publicUrl) {
-            analysisParams.file_url = fileWithUrl.publicUrl;
-            console.log('🔗 Adding file URL to MindStudio:', fileWithUrl.publicUrl);
-          } else {
-            console.log('⚠️  No public URL available - MindStudio will analyze case details only');
-          }
           
           console.log('🚀 Starting SYNCHRONOUS Mindstudio analysis:', analysisParams);
           
