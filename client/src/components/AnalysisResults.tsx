@@ -29,8 +29,8 @@ interface AnalysisResultsProps {
 }
 
 export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = false, hasNewInfo = false }: AnalysisResultsProps) {
-  // Show simple text output first for easier testing
-  if (analysis?.rawText && (!analysis?.factsJson || analysis.factsJson.length === 0)) {
+  // Show simple text output first for easier testing - ALWAYS show rawText if available
+  if (analysis?.rawText) {
     return (
       <Card>
         <CardHeader>
