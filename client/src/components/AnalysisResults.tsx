@@ -30,14 +30,42 @@ interface AnalysisResultsProps {
 
 export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = false, hasNewInfo = false }: AnalysisResultsProps) {
   // Show simple text output first for easier testing
-  if (analysis?.rawText) {
+  if (analysis?.rawText && (!analysis?.factsJson || analysis.factsJson.length === 0)) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-semibold flex items-center space-x-2">
-            <CheckCircle className="h-5 w-5 text-green-600" />
-            <span>Mindstudio Analyse Voltooid</span>
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold flex items-center space-x-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <span>Juridische Analyse Voltooid</span>
+            </CardTitle>
+            {onAnalyze && (
+              <Button
+                onClick={onAnalyze}
+                disabled={isAnalyzing || (analysis && !hasNewInfo)}
+                variant={hasNewInfo ? "destructive" : "secondary"}
+                size="sm"
+                data-testid="button-start-analysis"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Clock className="mr-2 h-4 w-4 animate-spin" />
+                    Analyseren...
+                  </>
+                ) : hasNewInfo ? (
+                  <>
+                    <Play className="mr-2 h-4 w-4" />
+                    Nieuwe analyse uitvoeren
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Analyse voltooid
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
