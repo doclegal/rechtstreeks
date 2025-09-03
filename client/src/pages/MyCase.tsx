@@ -222,9 +222,10 @@ export default function MyCase() {
       {/* Main Content - Full Width */}
       <div className="space-y-6">
         <Tabs defaultValue="mijn-zaak" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="mijn-zaak" data-testid="tab-case-details">Mijn zaak</TabsTrigger>
-            <TabsTrigger value="overview" data-testid="tab-overview">Overzicht</TabsTrigger>
+            <TabsTrigger value="analysis" data-testid="tab-analysis">Juridische analyse</TabsTrigger>
+            <TabsTrigger value="documents" data-testid="tab-generated-documents">Gegenereerde documenten</TabsTrigger>
             <TabsTrigger value="uitleg" data-testid="tab-explanation">Uitleg</TabsTrigger>
           </TabsList>
             
@@ -250,7 +251,7 @@ export default function MyCase() {
               </div>
             </TabsContent>
             
-            <TabsContent value="overview" className="space-y-6 mt-6">
+            <TabsContent value="analysis" className="space-y-6 mt-6">
               {/* Missing Documents */}
               {missingDocs.length > 0 && (
                 <MissingDocuments 
@@ -283,7 +284,9 @@ export default function MyCase() {
                   return timeDiff > 1000; // 1 second buffer to account for timing differences
                 })()}
               />
-
+            </TabsContent>
+            
+            <TabsContent value="documents" className="space-y-6 mt-6">
               {/* Generated Documents */}
               <GeneratedDocuments 
                 letters={currentCase.letters || []}
