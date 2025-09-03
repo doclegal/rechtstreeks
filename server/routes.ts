@@ -362,12 +362,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const analysis = await storage.createAnalysis({
             caseId,
             model: 'mindstudio-agent',
+            rawText: result.result, // Store the full MindStudio response
             factsJson: processedResult.factsJson,
             issuesJson: processedResult.issuesJson,
             legalBasisJson: processedResult.legalBasisJson,
             missingDocsJson: processedResult.missingDocuments,
-            riskNotesJson: processedResult.riskNotesJson || [],
-            billingCost: result.billingCost || '$0'
+            riskNotesJson: processedResult.riskNotesJson || []
           });
           
           // Update case status

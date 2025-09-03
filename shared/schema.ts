@@ -95,6 +95,7 @@ export const analyses = pgTable("analyses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   caseId: varchar("case_id").notNull().references(() => cases.id, { onDelete: "cascade" }),
   model: varchar("model").notNull(),
+  rawText: text("raw_text"), // Add raw analysis text
   factsJson: jsonb("facts_json"),
   issuesJson: jsonb("issues_json"),
   missingDocsJson: jsonb("missing_docs_json"),
