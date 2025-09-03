@@ -81,6 +81,8 @@ export default function DocumentList({
         description: "Het document is succesvol verwijderd.",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'uploads'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] }); // Refresh case for updatedAt
+      queryClient.invalidateQueries({ queryKey: ['/api/cases'] }); // Refresh cases list
       onDocumentUploaded?.(); // Refresh the document list
     },
     onError: (error: any) => {
@@ -121,6 +123,10 @@ export default function DocumentList({
           caseId={caseId}
           onSuccess={() => {
             setShowUpload(false);
+            // Invalidate queries to refresh case updatedAt timestamp  
+            queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'uploads'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] });
+            queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
             onDocumentUploaded?.();
           }}
         />
@@ -227,6 +233,10 @@ export default function DocumentList({
         caseId={caseId}
         onSuccess={() => {
           setShowUpload(false);
+          // Invalidate queries to refresh case updatedAt timestamp
+          queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'uploads'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] });
+          queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
           onDocumentUploaded?.();
         }}
       />
