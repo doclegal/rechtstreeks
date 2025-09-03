@@ -234,7 +234,13 @@ export default function MyCase() {
                 analysis={currentCase.analysis}
                 onAnalyze={() => analyzeMutation.mutate()}
                 isAnalyzing={analyzeMutation.isPending}
-                hasNewInfo={false} // TODO: Implement logic to detect new info
+                hasNewInfo={(() => {
+                  // Check if case was updated after the last analysis
+                  if (!currentCase.analysis || !currentCase.updatedAt) return false;
+                  const caseUpdated = new Date(currentCase.updatedAt);
+                  const analysisCreated = new Date(currentCase.analysis.createdAt);
+                  return caseUpdated > analysisCreated;
+                })()}
               />
 
               {/* Generated Documents */}

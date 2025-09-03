@@ -120,7 +120,7 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
             <Button
               onClick={onAnalyze}
               disabled={isAnalyzing || (analysis && !hasNewInfo)}
-              variant={hasNewInfo ? "default" : analysis ? "secondary" : "default"}
+              variant={hasNewInfo ? "destructive" : analysis ? "secondary" : "default"}
               size="sm"
               data-testid="button-start-analysis"
             >
@@ -137,7 +137,7 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
               ) : (
                 <>
                   <Play className="mr-2 h-4 w-4" />
-                  {hasNewInfo ? "Heranalyseren" : "Start analyse"}
+                  {hasNewInfo ? "Nieuwe analyse uitvoeren" : "Start analyse"}
                 </>
               )}
             </Button>
