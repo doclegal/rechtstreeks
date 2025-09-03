@@ -35,6 +35,13 @@ export default function MyCase() {
     setExpandedSection(expandedSection === section ? null : section);
   };
 
+  // Reset expanded section when navigating back to /my-case
+  useEffect(() => {
+    if (window.location.pathname === '/my-case' || window.location.pathname === '/') {
+      setExpandedSection(null);
+    }
+  }, [window.location.pathname]);
+
   // Refresh case data after successful analysis
   useEffect(() => {
     if (analyzeMutation.isSuccess) {
@@ -206,105 +213,116 @@ export default function MyCase() {
         </div>
       </div>
 
-      {/* Main Content - Always Show Case Info */}
+      {/* Main Content */}
       <div className="space-y-6">
-        <CaseInfo 
-          caseData={currentCase}
-          onExport={() => {
-            window.open(`/api/cases/${currentCase.id}/export`, '_blank');
-          }}
-          onEdit={() => {
-            setLocation(`/edit-case/${currentCase.id}`);
-          }}
-          isFullWidth={true}
-        />
-        
-        {/* Missing Documents Section */}
-        {missingDocs.length > 0 && (
-          <MissingDocuments 
-            missingDocs={missingDocs}
-            caseId={currentCase.id}
-            onDocumentUploaded={() => refetch()}
-          />
-        )}
+        {/* Show Mijn zaak content when no section is expanded */}
+        {!expandedSection && (
+          <>
+            <CaseInfo 
+              caseData={currentCase}
+              onExport={() => {
+                window.open(`/api/cases/${currentCase.id}/export`, '_blank');
+              }}
+              onEdit={() => {
+                setLocation(`/edit-case/${currentCase.id}`);
+              }}
+              isFullWidth={true}
+            />
+            
+            {/* Missing Documents Section */}
+            {missingDocs.length > 0 && (
+              <MissingDocuments 
+                missingDocs={missingDocs}
+                caseId={currentCase.id}
+                onDocumentUploaded={() => refetch()}
+              />
+            )}
 
-        {/* Documents Section */}
-        <DocumentList 
-          documents={currentCase.documents || []}
-          caseId={currentCase.id}
-          onDocumentUploaded={() => refetch()}
-        />
+            {/* Documents Section */}
+            <DocumentList 
+              documents={currentCase.documents || []}
+              caseId={currentCase.id}
+              onDocumentUploaded={() => refetch()}
+            />
+          </>
+        )}
 
         {/* Expandable Section: Juridische Analyse */}
         {expandedSection === 'analyse' && (
-          <div className="border rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Juridische Analyse Resultaten</h3>
-              <Button 
-                onClick={() => setExpandedSection(null)}
-                size="sm"
-                variant="ghost"
-              >
-                ✕
-              </Button>
+          <div className="space-y-6">
+            <div className="border rounded-lg p-6 bg-white dark:bg-gray-900">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">Juridische Analyse Resultaten</h2>
+                <Button 
+                  onClick={() => setExpandedSection(null)}
+                  size="sm"
+                  variant="outline"
+                >
+                  Terug naar Mijn zaak
+                </Button>
+              </div>
+              <AnalysisResults 
+                analysis={currentCase.analysis}
+                onAnalyze={() => analyzeMutation.mutate()}
+                isAnalyzing={analyzeMutation.isPending}
+                hasNewInfo={(() => {
+                  if (!currentCase.analysis || !currentCase.updatedAt) return false;
+                  if (analyzeMutation.isPending) return false;
+                  if (analyzeMutation.isSuccess) return false;
+                  
+                  const caseUpdated = new Date(currentCase.updatedAt);
+                  const analysisCreated = new Date(currentCase.analysis.createdAt);
+                  const timeDiff = caseUpdated.getTime() - analysisCreated.getTime();
+                  return timeDiff > 1000;
+                })()}
+              />
             </div>
-            <AnalysisResults 
-              analysis={currentCase.analysis}
-              onAnalyze={() => analyzeMutation.mutate()}
-              isAnalyzing={analyzeMutation.isPending}
-              hasNewInfo={(() => {
-                if (!currentCase.analysis || !currentCase.updatedAt) return false;
-                if (analyzeMutation.isPending) return false;
-                if (analyzeMutation.isSuccess) return false;
-                
-                const caseUpdated = new Date(currentCase.updatedAt);
-                const analysisCreated = new Date(currentCase.analysis.createdAt);
-                const timeDiff = caseUpdated.getTime() - analysisCreated.getTime();
-                return timeDiff > 1000;
-              })()}
-            />
           </div>
         )}
 
         {/* Expandable Section: Gegenereerde Documenten */}
         {expandedSection === 'brief' && (
-          <div className="border rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Gegenereerde Documenten</h3>
-              <Button 
-                onClick={() => setExpandedSection(null)}
-                size="sm"
-                variant="ghost"
-              >
-                ✕
-              </Button>
+          <div className="space-y-6">
+            <div className="border rounded-lg p-6 bg-white dark:bg-gray-900">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">Gegenereerde Documenten</h2>
+                <Button 
+                  onClick={() => setExpandedSection(null)}
+                  size="sm"
+                  variant="outline"
+                >
+                  Terug naar Mijn zaak
+                </Button>
+              </div>
+              <GeneratedDocuments 
+                letters={currentCase.letters || []}
+                summons={currentCase.summons || []}
+                caseId={currentCase.id}
+              />
             </div>
-            <GeneratedDocuments 
-              letters={currentCase.letters || []}
-              summons={currentCase.summons || []}
-              caseId={currentCase.id}
-            />
           </div>
         )}
 
         {/* Expandable Section: Dagvaarding */}
         {expandedSection === 'dagvaarding' && (
-          <div className="border rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Dagvaarding</h3>
-              <Button 
-                onClick={() => setExpandedSection(null)}
-                size="sm"
-                variant="ghost"
-              >
-                ✕
-              </Button>
-            </div>
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">
-                Dagvaarding functionaliteit komt binnenkort beschikbaar. 
-                Hier kun je straks je dagvaarding opstellen en indienen bij de rechtbank.
-              </p>
+          <div className="space-y-6">
+            <div className="border rounded-lg p-6 bg-white dark:bg-gray-900">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">Dagvaarding</h2>
+                <Button 
+                  onClick={() => setExpandedSection(null)}
+                  size="sm"
+                  variant="outline"
+                >
+                  Terug naar Mijn zaak
+                </Button>
+              </div>
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">
+                  Dagvaarding functionaliteit komt binnenkort beschikbaar. 
+                  Hier kun je straks je dagvaarding opstellen en indienen bij de rechtbank.
+                </p>
+              </div>
             </div>
           </div>
         )}
