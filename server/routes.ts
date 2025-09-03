@@ -61,7 +61,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const userCases = await storage.getCasesByUser(userId);
-      res.json(userCases);
+      
+      // For each case, include analysis and other related data
+      const casesWithDetails = await Promise.all(
+        userCases.map(async (caseData) => {
+          const documents = await storage.getDocumentsByCase(caseData.id);
+          const analysis = await storage.getLatestAnalysis(caseData.id);
+          const letters = await storage.getLettersByCase(caseData.id);
+          const summons = await storage.getSummonsByCase(caseData.id);
+          const progress = storage.computeProgress(caseData);
+          
+          return {
+            ...caseData,
+            documents,
+            analysis,
+            letters,
+            summons,
+            progress,
+          };
+        })
+      );
+      
+      res.json(casesWithDetails);
     } catch (error) {
       console.error("Error fetching cases:", error);
       res.status(500).json({ message: "Failed to fetch cases" });
