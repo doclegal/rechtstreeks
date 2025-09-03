@@ -25,7 +25,7 @@ export default function MyCase() {
   const [, setLocation] = useLocation();
   
   // For MVP, we'll use the first case as the main case
-  const currentCase = cases?.[0];
+  const currentCase = cases && cases.length > 0 ? cases[0] : undefined;
   const caseId = currentCase?.id;
 
   const analyzeMutation = useAnalyzeCase(caseId || "");
@@ -219,15 +219,28 @@ export default function MyCase() {
         </CardContent>
       </Card>
 
-      <div className="grid lg:grid-cols-3 gap-8">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="overview" data-testid="tab-overview">Overzicht</TabsTrigger>
-              <TabsTrigger value="documents" data-testid="tab-documents">Documenten</TabsTrigger>
-              <TabsTrigger value="uitleg" data-testid="tab-explanation">Uitleg</TabsTrigger>
-            </TabsList>
+      {/* Main Content - Full Width */}
+      <div className="space-y-6">
+        <Tabs defaultValue="mijn-zaak" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="mijn-zaak" data-testid="tab-case-details">Mijn zaak</TabsTrigger>
+            <TabsTrigger value="overview" data-testid="tab-overview">Overzicht</TabsTrigger>
+            <TabsTrigger value="documents" data-testid="tab-documents">Documenten</TabsTrigger>
+            <TabsTrigger value="uitleg" data-testid="tab-explanation">Uitleg</TabsTrigger>
+          </TabsList>
+            
+            <TabsContent value="mijn-zaak" className="mt-6">
+              <CaseInfo 
+                caseData={currentCase}
+                onExport={() => {
+                  window.open(`/api/cases/${currentCase.id}/export`, '_blank');
+                }}
+                onEdit={() => {
+                  setLocation(`/edit-case/${currentCase.id}`);
+                }}
+                isFullWidth={true}
+              />
+            </TabsContent>
             
             <TabsContent value="overview" className="space-y-6 mt-6">
               {/* Missing Documents */}
@@ -283,20 +296,6 @@ export default function MyCase() {
               <ProcessTimeline currentStep={currentStepNumber} />
             </TabsContent>
           </Tabs>
-        </div>
-
-        {/* Sidebar */}
-        <div className="lg:col-span-1">
-          <CaseInfo 
-            caseData={currentCase}
-            onExport={() => {
-              window.open(`/api/cases/${currentCase.id}/export`, '_blank');
-            }}
-            onEdit={() => {
-              setLocation(`/edit-case/${currentCase.id}`);
-            }}
-          />
-        </div>
       </div>
 
       {/* Secondary Actions */}
