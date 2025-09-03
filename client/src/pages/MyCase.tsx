@@ -35,7 +35,10 @@ export default function MyCase() {
   // Refresh case data after successful analysis
   useEffect(() => {
     if (analyzeMutation.isSuccess) {
-      refetch();
+      // Small delay to ensure DB is updated before refetch
+      setTimeout(() => {
+        refetch();
+      }, 500);
     }
   }, [analyzeMutation.isSuccess, refetch]);
 
@@ -248,11 +251,15 @@ export default function MyCase() {
                   // If analysis is currently running, don't show as having new info
                   if (analyzeMutation.isPending) return false;
                   
+                  // If we just successfully analyzed, don't show new info for a moment
+                  if (analyzeMutation.isSuccess) return false;
+                  
                   const caseUpdated = new Date(currentCase.updatedAt);
                   const analysisCreated = new Date(currentCase.analysis.createdAt);
                   
-                  // Analysis is outdated if case was updated after analysis creation
-                  return caseUpdated > analysisCreated;
+                  // Analysis is outdated if case was updated after analysis creation (with 1 second buffer)
+                  const timeDiff = caseUpdated.getTime() - analysisCreated.getTime();
+                  return timeDiff > 1000; // 1 second buffer to account for timing differences
                 })()}
               />
 
