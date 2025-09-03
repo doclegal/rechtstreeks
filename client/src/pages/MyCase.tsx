@@ -222,24 +222,32 @@ export default function MyCase() {
       {/* Main Content - Full Width */}
       <div className="space-y-6">
         <Tabs defaultValue="mijn-zaak" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="mijn-zaak" data-testid="tab-case-details">Mijn zaak</TabsTrigger>
             <TabsTrigger value="overview" data-testid="tab-overview">Overzicht</TabsTrigger>
-            <TabsTrigger value="documents" data-testid="tab-documents">Documenten</TabsTrigger>
             <TabsTrigger value="uitleg" data-testid="tab-explanation">Uitleg</TabsTrigger>
           </TabsList>
             
             <TabsContent value="mijn-zaak" className="mt-6">
-              <CaseInfo 
-                caseData={currentCase}
-                onExport={() => {
-                  window.open(`/api/cases/${currentCase.id}/export`, '_blank');
-                }}
-                onEdit={() => {
-                  setLocation(`/edit-case/${currentCase.id}`);
-                }}
-                isFullWidth={true}
-              />
+              <div className="space-y-6">
+                <CaseInfo 
+                  caseData={currentCase}
+                  onExport={() => {
+                    window.open(`/api/cases/${currentCase.id}/export`, '_blank');
+                  }}
+                  onEdit={() => {
+                    setLocation(`/edit-case/${currentCase.id}`);
+                  }}
+                  isFullWidth={true}
+                />
+                
+                {/* Documents Section */}
+                <DocumentList 
+                  documents={currentCase.documents || []}
+                  caseId={currentCase.id}
+                  onDocumentUploaded={() => refetch()}
+                />
+              </div>
             </TabsContent>
             
             <TabsContent value="overview" className="space-y-6 mt-6">
@@ -281,14 +289,6 @@ export default function MyCase() {
                 letters={currentCase.letters || []}
                 summons={currentCase.summons || []}
                 caseId={currentCase.id}
-              />
-            </TabsContent>
-            
-            <TabsContent value="documents" className="mt-6">
-              <DocumentList 
-                documents={currentCase.documents || []}
-                caseId={currentCase.id}
-                onDocumentUploaded={() => refetch()}
               />
             </TabsContent>
             
