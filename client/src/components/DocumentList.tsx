@@ -73,9 +73,7 @@ export default function DocumentList({
 
   const deleteDocumentMutation = useMutation({
     mutationFn: async (documentId: string) => {
-      await apiRequest(`/api/documents/${documentId}`, {
-        method: 'DELETE'
-      });
+      await apiRequest('DELETE', `/api/documents/${documentId}`);
     },
     onSuccess: () => {
       toast({
