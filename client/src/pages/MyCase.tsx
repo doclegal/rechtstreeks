@@ -116,25 +116,14 @@ export default function MyCase() {
               {currentCase.analysis ? "Voltooid" : "Beschikbaar"}
             </Badge>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => analyzeMutation.mutate()}
-              disabled={analyzeMutation.isPending}
-              size="sm"
-              variant={currentCase.analysis ? "outline" : "default"}
-              className="flex-1"
-            >
-              {analyzeMutation.isPending ? "Analyseren..." : currentCase.analysis ? "Heranalyseren" : "Start analyse"}
-            </Button>
-            <Button 
-              onClick={() => toggleSection('analyse')}
-              size="sm"
-              variant={expandedSection === 'analyse' ? "outline" : "default"}
-              className="px-3"
-            >
-              Open
-            </Button>
-          </div>
+          <Button 
+            onClick={() => toggleSection('analyse')}
+            size="sm"
+            variant={expandedSection === 'analyse' ? "outline" : "default"}
+            className="w-full"
+          >
+            Open
+          </Button>
         </div>
 
         {/* Service 2: Brief */}
@@ -148,25 +137,14 @@ export default function MyCase() {
               {(currentCase.letters?.length || 0) > 0 ? "Voltooid" : "Beschikbaar"}
             </Badge>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => letterMutation.mutate()}
-              disabled={letterMutation.isPending || !currentCase.analysis}
-              size="sm"
-              variant={(currentCase.letters?.length || 0) > 0 ? "outline" : "default"}
-              className="flex-1"
-            >
-              {letterMutation.isPending ? "Genereren..." : (currentCase.letters?.length || 0) > 0 ? "Nieuwe brief" : "Genereer brief"}
-            </Button>
-            <Button 
-              onClick={() => toggleSection('brief')}
-              size="sm"
-              variant={expandedSection === 'brief' ? "outline" : "default"}
-              className="px-3"
-            >
-              Open
-            </Button>
-          </div>
+          <Button 
+            onClick={() => toggleSection('brief')}
+            size="sm"
+            variant={expandedSection === 'brief' ? "outline" : "default"}
+            className="w-full"
+          >
+            Open
+          </Button>
         </div>
 
         {/* Service 3: Dagvaarding */}
@@ -180,30 +158,14 @@ export default function MyCase() {
               {(currentCase.summons?.length || 0) > 0 ? "Voltooid" : "Beschikbaar"}
             </Badge>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => {
-                toast({
-                  title: "Dagvaarding opstellen",
-                  description: "Deze functie wordt binnenkort beschikbaar gesteld",
-                });
-              }}
-              disabled={!currentCase.analysis}
-              size="sm"
-              variant={(currentCase.summons?.length || 0) > 0 ? "outline" : "default"}
-              className="flex-1"
-            >
-              {(currentCase.summons?.length || 0) > 0 ? "Nieuwe dagvaarding" : "Opstellen dagvaarding"}
-            </Button>
-            <Button 
-              onClick={() => toggleSection('dagvaarding')}
-              size="sm"
-              variant={expandedSection === 'dagvaarding' ? "outline" : "default"}
-              className="px-3"
-            >
-              Open
-            </Button>
-          </div>
+          <Button 
+            onClick={() => toggleSection('dagvaarding')}
+            size="sm"
+            variant={expandedSection === 'dagvaarding' ? "outline" : "default"}
+            className="w-full"
+          >
+            Open
+          </Button>
         </div>
       </div>
 
@@ -246,14 +208,24 @@ export default function MyCase() {
           <div className="space-y-6">
             <div className="border rounded-lg p-6 bg-white dark:bg-gray-900">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">Juridische Analyse Resultaten</h2>
-                <Button 
-                  onClick={() => setExpandedSection(null)}
-                  size="sm"
-                  variant="outline"
-                >
-                  Terug naar Mijn zaak
-                </Button>
+                <h2 className="text-xl font-semibold">Juridische Analyse</h2>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => analyzeMutation.mutate()}
+                    disabled={analyzeMutation.isPending}
+                    size="sm"
+                    variant={currentCase.analysis ? "outline" : "default"}
+                  >
+                    {analyzeMutation.isPending ? "Analyseren..." : currentCase.analysis ? "Heranalyseren" : "Start analyse"}
+                  </Button>
+                  <Button 
+                    onClick={() => setExpandedSection(null)}
+                    size="sm"
+                    variant="outline"
+                  >
+                    Terug naar Mijn zaak
+                  </Button>
+                </div>
               </div>
               <AnalysisResults 
                 analysis={currentCase.analysis}
@@ -279,14 +251,24 @@ export default function MyCase() {
           <div className="space-y-6">
             <div className="border rounded-lg p-6 bg-white dark:bg-gray-900">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">Gegenereerde Documenten</h2>
-                <Button 
-                  onClick={() => setExpandedSection(null)}
-                  size="sm"
-                  variant="outline"
-                >
-                  Terug naar Mijn zaak
-                </Button>
+                <h2 className="text-xl font-semibold">Ingebrekestelling</h2>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => letterMutation.mutate()}
+                    disabled={letterMutation.isPending || !currentCase.analysis}
+                    size="sm"
+                    variant={(currentCase.letters?.length || 0) > 0 ? "outline" : "default"}
+                  >
+                    {letterMutation.isPending ? "Genereren..." : (currentCase.letters?.length || 0) > 0 ? "Nieuwe brief" : "Genereer brief"}
+                  </Button>
+                  <Button 
+                    onClick={() => setExpandedSection(null)}
+                    size="sm"
+                    variant="outline"
+                  >
+                    Terug naar Mijn zaak
+                  </Button>
+                </div>
               </div>
               <GeneratedDocuments 
                 letters={currentCase.letters || []}
@@ -303,13 +285,28 @@ export default function MyCase() {
             <div className="border rounded-lg p-6 bg-white dark:bg-gray-900">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold">Dagvaarding</h2>
-                <Button 
-                  onClick={() => setExpandedSection(null)}
-                  size="sm"
-                  variant="outline"
-                >
-                  Terug naar Mijn zaak
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => {
+                      toast({
+                        title: "Dagvaarding opstellen",
+                        description: "Deze functie wordt binnenkort beschikbaar gesteld",
+                      });
+                    }}
+                    disabled={!currentCase.analysis}
+                    size="sm"
+                    variant={(currentCase.summons?.length || 0) > 0 ? "outline" : "default"}
+                  >
+                    {(currentCase.summons?.length || 0) > 0 ? "Nieuwe dagvaarding" : "Opstellen dagvaarding"}
+                  </Button>
+                  <Button 
+                    onClick={() => setExpandedSection(null)}
+                    size="sm"
+                    variant="outline"
+                  >
+                    Terug naar Mijn zaak
+                  </Button>
+                </div>
               </div>
               <div className="text-center py-8">
                 <p className="text-muted-foreground">
