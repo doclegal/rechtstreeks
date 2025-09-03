@@ -126,16 +126,14 @@ export default function MyCase() {
             >
               {analyzeMutation.isPending ? "Analyseren..." : currentCase.analysis ? "Heranalyseren" : "Start analyse"}
             </Button>
-            {currentCase.analysis && (
-              <Button 
-                onClick={() => toggleSection('analyse')}
-                size="sm"
-                variant="outline"
-                className="px-3"
-              >
-Open
-              </Button>
-            )}
+            <Button 
+              onClick={() => toggleSection('analyse')}
+              size="sm"
+              variant={expandedSection === 'analyse' ? "outline" : "default"}
+              className="px-3"
+            >
+              Open
+            </Button>
           </div>
         </div>
 
@@ -160,16 +158,14 @@ Open
             >
               {letterMutation.isPending ? "Genereren..." : (currentCase.letters?.length || 0) > 0 ? "Nieuwe brief" : "Genereer brief"}
             </Button>
-            {(currentCase.letters?.length || 0) > 0 && (
-              <Button 
-                onClick={() => toggleSection('brief')}
-                size="sm"
-                variant="outline"
-                className="px-3"
-              >
-                Open
-              </Button>
-            )}
+            <Button 
+              onClick={() => toggleSection('brief')}
+              size="sm"
+              variant={expandedSection === 'brief' ? "outline" : "default"}
+              className="px-3"
+            >
+              Open
+            </Button>
           </div>
         </div>
 
@@ -199,16 +195,14 @@ Open
             >
               {(currentCase.summons?.length || 0) > 0 ? "Nieuwe dagvaarding" : "Opstellen dagvaarding"}
             </Button>
-            {(currentCase.summons?.length || 0) > 0 && (
-              <Button 
-                onClick={() => toggleSection('dagvaarding')}
-                size="sm"
-                variant="outline"
-                className="px-3"
-              >
-                Open
-              </Button>
-            )}
+            <Button 
+              onClick={() => toggleSection('dagvaarding')}
+              size="sm"
+              variant={expandedSection === 'dagvaarding' ? "outline" : "default"}
+              className="px-3"
+            >
+              Open
+            </Button>
           </div>
         </div>
       </div>
