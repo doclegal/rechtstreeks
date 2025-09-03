@@ -32,6 +32,13 @@ export default function MyCase() {
   const letterMutation = useGenerateLetter(caseId || "");
   const bailiffMutation = useOrderBailiff(caseId || "");
 
+  // Refresh case data after successful analysis
+  useEffect(() => {
+    if (analyzeMutation.isSuccess) {
+      refetch();
+    }
+  }, [analyzeMutation.isSuccess, refetch]);
+
   useEffect(() => {
     if (!authLoading && !user) {
       toast({
@@ -237,8 +244,14 @@ export default function MyCase() {
                 hasNewInfo={(() => {
                   // Check if case was updated after the last analysis
                   if (!currentCase.analysis || !currentCase.updatedAt) return false;
+                  
+                  // If analysis is currently running, don't show as having new info
+                  if (analyzeMutation.isPending) return false;
+                  
                   const caseUpdated = new Date(currentCase.updatedAt);
                   const analysisCreated = new Date(currentCase.analysis.createdAt);
+                  
+                  // Analysis is outdated if case was updated after analysis creation
                   return caseUpdated > analysisCreated;
                 })()}
               />
