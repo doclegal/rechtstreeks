@@ -99,7 +99,6 @@ export default function CaseInfo({ caseData, onExport, onEdit }: CaseInfoProps) 
           </div>
           
           <Button 
-            variant="outline" 
             className="w-full mt-6"
             onClick={onEdit}
             data-testid="button-edit-case"
