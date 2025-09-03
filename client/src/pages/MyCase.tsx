@@ -223,18 +223,31 @@ export default function MyCase() {
                 />
               )}
 
+              {/* Analysis Results - Always show for debugging */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>🔍 Debug: Analysis Status</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <strong>Has analysis:</strong> {currentCase.analysis ? "✅ Yes" : "❌ No"}
+                    </div>
+                    {currentCase.analysis && (
+                      <div>
+                        <strong>Analysis data:</strong>
+                        <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto max-h-40">
+                          {JSON.stringify(currentCase.analysis, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+              
               {/* Analysis Results */}
-              {console.log('Analysis data debug:', currentCase.analysis)}
-              {currentCase.analysis ? (
+              {currentCase.analysis && (
                 <AnalysisResults analysis={currentCase.analysis} />
-              ) : (
-                <Card>
-                  <CardContent className="p-6 text-center">
-                    <p className="text-muted-foreground">
-                      Nog geen analyse beschikbaar. Start een analyse in Stap 2.
-                    </p>
-                  </CardContent>
-                </Card>
               )}
 
               {/* Generated Documents */}
