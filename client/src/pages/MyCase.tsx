@@ -161,63 +161,34 @@ export default function MyCase() {
   const missingDocs = currentCase.analysis?.missingDocsJson || [];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <DeadlineWarning caseId={currentCase.id} />
       
-      {/* Hero Card */}
-      <Card className="shadow-sm">
-        <CardContent className="p-6">
-          {/* Status Header */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
-            <div className="mb-4 lg:mb-0">
-              <div className="flex items-center space-x-3 mb-2">
-                <Badge className="bg-primary text-primary-foreground" data-testid="badge-current-step">
-                  Stap {currentStepNumber} van 8
-                </Badge>
-                <span className="text-sm text-muted-foreground">
-                  Je zit nu bij: {currentCase.currentStep || "Indienen stukken"}
-                </span>
-              </div>
-              <h1 className="text-2xl font-bold text-foreground" data-testid="text-case-title">
-                {currentCase.title}
-              </h1>
-              <p className="text-muted-foreground mt-1" data-testid="text-case-description">
-                {currentCase.description}
-              </p>
-            </div>
-            
-            <div className="flex flex-col items-start lg:items-end">
-              <span className="text-sm text-muted-foreground mb-2">Volgende stap:</span>
-              <Button 
-                onClick={nextAction.action}
-                disabled={nextAction.disabled || analyzeMutation.isPending || letterMutation.isPending || bailiffMutation.isPending}
-                data-testid="button-next-action"
-              >
-                {analyzeMutation.isPending ? "Analyseren..." :
-                 letterMutation.isPending ? "Brief genereren..." :
-                 bailiffMutation.isPending ? "Deurwaarder inschakelen..." :
-                 nextAction.label}
-              </Button>
+      {/* Compact Progress Header */}
+      <div className="bg-white dark:bg-gray-900 border rounded-lg p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Badge variant="default" className="text-xs" data-testid="badge-current-step">
+              Stap {currentStepNumber}/8
+            </Badge>
+            <div className="flex-1 min-w-48">
+              <ProgressBar progress={currentCase.progress || 0} className="h-2" />
             </div>
           </div>
           
-          {/* Progress Bar */}
-          <ProgressBar progress={currentCase.progress || 0} className="mb-6" />
-          
-          {/* Step Chips */}
-          <StepChips 
-            currentStep={currentStepNumber} 
-            onStepClick={(step) => {
-              // Step 1: Go to edit case details 
-              if (step === 1) {
-                setLocation(`/edit-case/${currentCase.id}`);
-              } else {
-                setLocation(`/step/${step}`);
-              }
-            }}
-          />
-        </CardContent>
-      </Card>
+          <Button 
+            onClick={nextAction.action}
+            disabled={nextAction.disabled || analyzeMutation.isPending || letterMutation.isPending || bailiffMutation.isPending}
+            size="sm"
+            data-testid="button-next-action"
+          >
+            {analyzeMutation.isPending ? "Analyseren..." :
+             letterMutation.isPending ? "Brief genereren..." :
+             bailiffMutation.isPending ? "Deurwaarder inschakelen..." :
+             nextAction.label}
+          </Button>
+        </div>
+      </div>
 
       {/* Main Content - Full Width */}
       <div className="space-y-6">
