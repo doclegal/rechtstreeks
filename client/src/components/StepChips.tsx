@@ -2,7 +2,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { 
   Upload, 
-  Search, 
   Mail, 
   Gavel, 
   CheckCircle, 
@@ -27,14 +26,13 @@ interface StepChipsProps {
 export default function StepChips({ currentStep, onStepClick }: StepChipsProps) {
   const steps: Step[] = [
     { id: 1, name: "Indienen stukken", icon: Upload, status: "completed" },
-    { id: 2, name: "Analyse", icon: Search, status: "completed" },
-    { id: 3, name: "Brief", icon: Mail, status: "completed" },
-    { id: 4, name: "Deurwaarder", icon: Gavel, status: "active" },
-    { id: 5, name: "Betekening", icon: CheckCircle, status: "pending" },
-    { id: 6, name: "Rechtbank", icon: Building, status: "pending" },
-    { id: 7, name: "Procedure", icon: Play, status: "pending" },
-    { id: 8, name: "Vervolg", icon: FastForward, status: "pending" },
-    { id: 9, name: "Vonnis", icon: Award, status: "pending" },
+    { id: 2, name: "Brief", icon: Mail, status: "completed" },
+    { id: 3, name: "Deurwaarder", icon: Gavel, status: "active" },
+    { id: 4, name: "Betekening", icon: CheckCircle, status: "pending" },
+    { id: 5, name: "Rechtbank", icon: Building, status: "pending" },
+    { id: 6, name: "Procedure", icon: Play, status: "pending" },
+    { id: 7, name: "Vervolg", icon: FastForward, status: "pending" },
+    { id: 8, name: "Vonnis", icon: Award, status: "pending" },
   ];
 
   // Update step statuses based on current step
@@ -60,7 +58,7 @@ export default function StepChips({ currentStep, onStepClick }: StepChipsProps) 
   };
 
   return (
-    <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2">
+    <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2">
       {updatedSteps.map((step) => {
         const Icon = step.icon;
         return (
