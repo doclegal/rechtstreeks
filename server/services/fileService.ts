@@ -3,6 +3,28 @@ import fs from "fs/promises";
 import path from "path";
 import archiver from "archiver";
 import { storage } from "../storage";
+import { Storage, File } from "@google-cloud/storage";
+
+const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
+
+// Object storage client
+const objectStorageClient = new Storage({
+  credentials: {
+    audience: "replit",
+    subject_token_type: "access_token",
+    token_url: `${REPLIT_SIDECAR_ENDPOINT}/token`,
+    type: "external_account",
+    credential_source: {
+      url: `${REPLIT_SIDECAR_ENDPOINT}/credential`,
+      format: {
+        type: "json",
+        subject_token_field_name: "access_token",
+      },
+    },
+    universe_domain: "googleapis.com",
+  },
+  projectId: "",
+});
 
 export class FileService {
   private uploadDir: string;
@@ -32,6 +54,65 @@ export class FileService {
     await fs.writeFile(filePath, file.buffer);
     
     return storageKey;
+  }
+
+  async storeFileToObjectStorage(caseId: string, file: Express.Multer.File): Promise<{ storageKey: string; publicUrl: string }> {
+    const fileExtension = path.extname(file.originalname);
+    const fileName = `${randomUUID()}${fileExtension}`;
+    const objectPath = `cases/${caseId}/uploads/${fileName}`;
+    
+    // Get private object directory from environment
+    const privateObjectDir = process.env.PRIVATE_OBJECT_DIR;
+    if (!privateObjectDir) {
+      throw new Error("PRIVATE_OBJECT_DIR not set. Object storage not configured.");
+    }
+    
+    // Parse bucket and path from private object directory
+    const { bucketName, objectName } = this.parseObjectPath(`${privateObjectDir}/${objectPath}`);
+    
+    // Upload file to object storage
+    const bucket = objectStorageClient.bucket(bucketName);
+    const fileObject = bucket.file(objectName);
+    
+    await fileObject.save(file.buffer, {
+      metadata: {
+        contentType: file.mimetype,
+        metadata: {
+          originalName: file.originalname,
+          caseId: caseId,
+          uploadedAt: new Date().toISOString()
+        }
+      }
+    });
+    
+    // Make file publicly accessible
+    await fileObject.makePublic();
+    
+    // Generate public URL
+    const publicUrl = `https://storage.googleapis.com/${bucketName}/${objectName}`;
+    
+    return {
+      storageKey: objectPath,
+      publicUrl: publicUrl
+    };
+  }
+
+  private parseObjectPath(path: string): { bucketName: string; objectName: string } {
+    if (!path.startsWith("/")) {
+      path = `/${path}`;
+    }
+    const pathParts = path.split("/");
+    if (pathParts.length < 3) {
+      throw new Error("Invalid path: must contain at least a bucket name");
+    }
+
+    const bucketName = pathParts[1];
+    const objectName = pathParts.slice(2).join("/");
+
+    return {
+      bucketName,
+      objectName,
+    };
   }
 
   async getFile(storageKey: string): Promise<NodeJS.ReadableStream | null> {

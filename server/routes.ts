@@ -164,8 +164,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const uploadedDocs = [];
       
       for (const file of files) {
-        // Store file
+        // Store file in both local storage and object storage
         const storageKey = await fileService.storeFile(caseId, file);
+        
+        let publicUrl = '';
+        try {
+          // Also store in object storage for public access
+          const objectStorage = await fileService.storeFileToObjectStorage(caseId, file);
+          publicUrl = objectStorage.publicUrl;
+        } catch (error) {
+          console.warn('Failed to store file in object storage:', error);
+          // Continue with local storage only
+        }
         
         // Extract text content
         const extractedText = await fileService.extractText(file);
@@ -179,6 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           sizeBytes: file.size,
           extractedText,
           uploadedByUserId: userId,
+          publicUrl: publicUrl || undefined, // Store public URL if available
         });
         
         uploadedDocs.push(document);
@@ -259,11 +270,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const user = await storage.getUser(userId);
           const userName = user?.firstName || user?.email?.split('@')[0] || 'Gebruiker';
           
+          // Get documents with public URLs for analysis
+          const documents = await storage.getDocumentsByCase(caseId);
+          const fileWithUrl = documents.find(doc => doc.publicUrl);
+          
           // Run SYNCHRONOUS Mindstudio analysis (no callback, direct result)
-          const result = await aiService.runSynchronousMindstudioAnalysis({
+          const analysisParams: any = {
             input_name: userName,
             input_case_details: `Zaak: ${caseData.title}\n\nOmschrijving: ${caseData.description || 'Geen beschrijving'}\n\nTegenpartij: ${caseData.counterpartyName || 'Onbekend'}\n\nClaim bedrag: €${caseData.claimAmount || '0'}`
-          });
+          };
+          
+          // Add file URL if available
+          if (fileWithUrl?.publicUrl) {
+            analysisParams.file_url = fileWithUrl.publicUrl;
+          }
+          
+          const result = await aiService.runSynchronousMindstudioAnalysis(analysisParams);
           
           // Process the result immediately (no polling needed!)
           const processedResult = AIService.mindstudioToAppResult(result.result);
@@ -277,7 +299,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             legalBasisJson: processedResult.legalBasisJson,
             missingDocsJson: processedResult.missingDocuments,
             riskNotesJson: processedResult.riskNotesJson || [],
-            rawText: result.result,
             billingCost: result.billingCost || '$0'
           });
           

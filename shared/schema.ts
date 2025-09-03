@@ -83,6 +83,7 @@ export const caseDocuments = pgTable("case_documents", {
   mimetype: varchar("mimetype").notNull(),
   sizeBytes: integer("size_bytes").notNull(),
   extractedText: text("extracted_text"),
+  publicUrl: text("public_url"), // Add public URL for object storage
   uploadedByUserId: varchar("uploaded_by_user_id").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [

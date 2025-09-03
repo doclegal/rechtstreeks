@@ -276,11 +276,16 @@ Geef JSON response:
     throw new Error(`Unsupported LLM provider: ${this.provider}`);
   }
 
-  async runMindstudioAnalysis(params: { input_name: string; input_case_details: string }): Promise<{ threadId: string }> {
-    const variables = {
+  async runMindstudioAnalysis(params: { input_name: string; input_case_details: string; file_url?: string }): Promise<{ threadId: string }> {
+    const variables: any = {
       input_name: params.input_name,
       input_case_details: params.input_case_details
     };
+    
+    // Add file_url if provided
+    if (params.file_url) {
+      variables.file_url = params.file_url;
+    }
 
     const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
       method: "POST",
@@ -315,15 +320,20 @@ Geef JSON response:
   }
 
   // NEW: Synchronous version - no callback, direct result
-  async runSynchronousMindstudioAnalysis(params: { input_name: string; input_case_details: string }): Promise<{ 
+  async runSynchronousMindstudioAnalysis(params: { input_name: string; input_case_details: string; file_url?: string }): Promise<{ 
     result: string; 
     threadId: string; 
     billingCost?: string; 
   }> {
-    const variables = {
+    const variables: any = {
       input_name: params.input_name,
       input_case_details: params.input_case_details
     };
+    
+    // Add file_url if provided
+    if (params.file_url) {
+      variables.file_url = params.file_url;
+    }
 
     console.log("Starting SYNCHRONOUS Mindstudio analysis:", variables);
 
