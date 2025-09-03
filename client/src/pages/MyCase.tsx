@@ -224,8 +224,17 @@ export default function MyCase() {
               )}
 
               {/* Analysis Results */}
-              {currentCase.analysis && (
+              {console.log('Analysis data debug:', currentCase.analysis)}
+              {currentCase.analysis ? (
                 <AnalysisResults analysis={currentCase.analysis} />
+              ) : (
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <p className="text-muted-foreground">
+                      Nog geen analyse beschikbaar. Start een analyse in Stap 2.
+                    </p>
+                  </CardContent>
+                </Card>
               )}
 
               {/* Generated Documents */}
