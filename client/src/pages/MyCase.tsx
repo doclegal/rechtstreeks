@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCases, useAnalyzeCase, useGenerateLetter, useOrderBailiff } from "@/hooks/useCase";
+import { useAnalysis } from "@/hooks/useAnalysis";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MissingDocuments from "@/components/MissingDocuments";
 import DocumentList from "@/components/DocumentList";
@@ -13,8 +15,24 @@ import GeneratedDocuments from "@/components/GeneratedDocuments";
 import ProcessTimeline from "@/components/ProcessTimeline";
 import CaseInfo from "@/components/CaseInfo";
 import DeadlineWarning from "@/components/DeadlineWarning";
+import { 
+  SummaryCard, 
+  AnalysisCard, 
+  Qualifiers, 
+  ClaimPanel, 
+  RiskPanel, 
+  Timeline, 
+  Deadlines, 
+  BurdenOfProof, 
+  Limitations, 
+  Conflicts, 
+  TodoCtas, 
+  OrderedList, 
+  Section,
+  AnalysisSkeleton
+} from "@/components/legal";
 import { Link, useLocation } from "wouter";
-import { PlusCircle, Headset, MessageSquare, ArrowLeft } from "lucide-react";
+import { PlusCircle, Headset, MessageSquare, ArrowLeft, RefreshCw } from "lucide-react";
 
 export default function MyCase() {
   const { user, isLoading: authLoading } = useAuth();
@@ -30,6 +48,17 @@ export default function MyCase() {
   const analyzeMutation = useAnalyzeCase(caseId || "");
   const letterMutation = useGenerateLetter(caseId || "");
   const bailiffMutation = useOrderBailiff(caseId || "");
+  
+  // New analysis hook for detailed MindStudio data
+  const { 
+    data: analysisData, 
+    isLoading: analysisLoading, 
+    error: analysisError, 
+    refetch: refetchAnalysis 
+  } = useAnalysis({ 
+    caseId: caseId || "", 
+    enabled: !!caseId && expandedSection === 'analyse' 
+  });
 
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
@@ -206,43 +235,153 @@ export default function MyCase() {
         {/* Expandable Section: Juridische Analyse */}
         {expandedSection === 'analyse' && (
           <div className="space-y-6">
-            <div className="border rounded-lg p-6 bg-white dark:bg-gray-900">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">Juridische Analyse</h2>
-                <div className="flex gap-2">
+            {/* Header with actions */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Juridische Analyse</h2>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => analyzeMutation.mutate()}
+                  disabled={analyzeMutation.isPending}
+                  size="sm"
+                  variant={currentCase.analysis ? "outline" : "default"}
+                >
+                  {analyzeMutation.isPending ? "Analyseren..." : currentCase.analysis ? "Heranalyseren" : "Start analyse"}
+                </Button>
+                {analysisError && (
                   <Button 
-                    onClick={() => analyzeMutation.mutate()}
-                    disabled={analyzeMutation.isPending}
-                    size="sm"
-                    variant={currentCase.analysis ? "outline" : "default"}
-                  >
-                    {analyzeMutation.isPending ? "Analyseren..." : currentCase.analysis ? "Heranalyseren" : "Start analyse"}
-                  </Button>
-                  <Button 
-                    onClick={() => setExpandedSection(null)}
+                    onClick={() => refetchAnalysis()}
+                    disabled={analysisLoading}
                     size="sm"
                     variant="outline"
                   >
-                    Terug naar Mijn zaak
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                    Opnieuw proberen
                   </Button>
-                </div>
+                )}
+                <Button 
+                  onClick={() => setExpandedSection(null)}
+                  size="sm"
+                  variant="outline"
+                >
+                  Terug naar Mijn zaak
+                </Button>
               </div>
-              <AnalysisResults 
-                analysis={currentCase.analysis}
-                onAnalyze={() => analyzeMutation.mutate()}
-                isAnalyzing={analyzeMutation.isPending}
-                hasNewInfo={(() => {
-                  if (!currentCase.analysis || !currentCase.updatedAt) return false;
-                  if (analyzeMutation.isPending) return false;
-                  if (analyzeMutation.isSuccess) return false;
-                  
-                  const caseUpdated = new Date(currentCase.updatedAt);
-                  const analysisCreated = new Date(currentCase.analysis.createdAt);
-                  const timeDiff = caseUpdated.getTime() - analysisCreated.getTime();
-                  return timeDiff > 1000;
-                })()}
-              />
             </div>
+
+            {/* Loading State */}
+            {analysisLoading && <AnalysisSkeleton />}
+            
+            {/* Error State */}
+            {analysisError && !analysisLoading && (
+              <Alert variant="destructive">
+                <AlertDescription className="flex items-center justify-between">
+                  <span>Fout bij ophalen analyse: {analysisError.message}</span>
+                  <Button 
+                    onClick={() => refetchAnalysis()}
+                    size="sm"
+                    variant="outline"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                    Opnieuw proberen
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Success State */}
+            {analysisData && !analysisLoading && (
+              <main className="container mx-auto space-y-6">
+                {/* Conflicts Warning */}
+                <Conflicts items={analysisData.conflicten_in_input} />
+
+                {/* Zaak Overzicht Section */}
+                <Section title="Zaak Overzicht">
+                  <SummaryCard text={analysisData.samenvatting_feiten} />
+                  <div className="grid md:grid-cols-2 gap-4 mt-4">
+                    <ClaimPanel 
+                      hoofdsom={analysisData.vordering.hoofdsom} 
+                      wettelijke_rente={analysisData.vordering.wettelijke_rente} 
+                    />
+                    <RiskPanel 
+                      inschatting={analysisData.kansinschatting.inschatting}
+                      redenen={analysisData.kansinschatting.redenen}
+                    />
+                  </div>
+                </Section>
+
+                {/* Juridische Duiding Section */}
+                <Section title="Juridische Duiding">
+                  <Qualifiers 
+                    is_kantonzaak={analysisData.kwalificaties.is_kantonzaak}
+                    relatieve_bevoegdheid={analysisData.kwalificaties.relatieve_bevoegdheid}
+                    toepasselijk_recht={analysisData.kwalificaties.toepasselijk_recht}
+                  />
+                </Section>
+
+                {/* Feiten & Bewijs Section */}
+                <Section title="Feiten & Bewijs">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <Timeline items={analysisData.belangrijke_data.timeline} />
+                    <Deadlines items={analysisData.belangrijke_data.deadlines_en_termijnen} />
+                  </div>
+                  <BurdenOfProof 
+                    wie_moet_wat_bewijzen={analysisData.bewijslast.wie_moet_wat_bewijzen}
+                    beschikbaar_bewijs={analysisData.bewijslast.beschikbaar_bewijs}
+                    ontbrekend_bewijs={analysisData.bewijslast.ontbrekend_bewijs}
+                  />
+                </Section>
+
+                {/* Verjaring & Klachttermijnen Section */}
+                <Section title="Verjaring & Klachttermijnen">
+                  <Limitations text={analysisData.verjaring_en_klachttermijnen} />
+                </Section>
+
+                {/* Juridische Analyse (Uitgebreid) Section */}
+                <Section title="Juridische Analyse (Uitgebreid)">
+                  <AnalysisCard text={analysisData.juridische_analyse} />
+                </Section>
+
+                {/* Acties Section */}
+                <Section title="Acties">
+                  <TodoCtas 
+                    todos={analysisData.to_do} 
+                    ctas={analysisData.cta}
+                    onAction={(label) => {
+                      toast({
+                        title: "Actie geselecteerd",
+                        description: `${label} - Deze functie komt binnenkort beschikbaar`,
+                      });
+                    }}
+                  />
+                </Section>
+
+                {/* Kernredenering Section */}
+                <Section title="Kernredenering">
+                  <OrderedList items={analysisData.kernredenering} />
+                </Section>
+              </main>
+            )}
+
+            {/* Fallback: Show old analysis if no new data */}
+            {!analysisData && !analysisLoading && !analysisError && (
+              <div className="border rounded-lg p-6 bg-white dark:bg-gray-900">
+                <AnalysisResults 
+                  analysis={currentCase.analysis}
+                  onAnalyze={() => analyzeMutation.mutate()}
+                  isAnalyzing={analyzeMutation.isPending}
+                  hasNewInfo={(() => {
+                    if (!currentCase.analysis || !currentCase.updatedAt) return false;
+                    if (analyzeMutation.isPending) return false;
+                    if (analyzeMutation.isSuccess) return false;
+                    
+                    const caseUpdated = new Date(currentCase.updatedAt);
+                    const analysisCreated = new Date(currentCase.analysis.createdAt);
+                    const timeDiff = caseUpdated.getTime() - analysisCreated.getTime();
+                    return timeDiff > 1000;
+                  })()}
+                />
+              </div>
+            )}
           </div>
         )}
 
