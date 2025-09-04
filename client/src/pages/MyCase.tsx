@@ -240,12 +240,12 @@ export default function MyCase() {
               <h2 className="text-xl font-semibold">Juridische Analyse</h2>
               <div className="flex gap-2">
                 <Button 
-                  onClick={() => analyzeMutation.mutate()}
-                  disabled={analyzeMutation.isPending}
+                  onClick={() => refetchAnalysis()}
+                  disabled={analysisLoading}
                   size="sm"
-                  variant={currentCase.analysis ? "outline" : "default"}
+                  variant={analysisData ? "outline" : "default"}
                 >
-                  {analyzeMutation.isPending ? "Analyseren..." : currentCase.analysis ? "Heranalyseren" : "Start analyse"}
+                  {analysisLoading ? "Analyseren..." : analysisData ? "Heranalyseren" : "Start analyse"}
                 </Button>
                 {analysisError && (
                   <Button 
