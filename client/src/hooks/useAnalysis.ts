@@ -53,12 +53,7 @@ export function useAnalysis({ caseId, enabled = true }: UseAnalysisProps) {
   // Create a mutation for refreshing analysis
   const refreshMutation = useMutation({
     mutationFn: async (): Promise<Analysis> => {
-      // Invalidate existing cache first
-      await queryClient.invalidateQueries({ 
-        queryKey: ["/api/analyse", caseId] 
-      });
-      
-      // Call the analysis endpoint
+      // Call the analysis endpoint directly
       const response = await apiRequest(
         "POST",
         "/api/analyse",
@@ -76,11 +71,13 @@ export function useAnalysis({ caseId, enabled = true }: UseAnalysisProps) {
       
       return validatedData;
     },
-    onSuccess: () => {
-      // Ensure the query is refetched
-      queryClient.invalidateQueries({ 
-        queryKey: ["/api/analyse", caseId] 
-      });
+    onSuccess: (data) => {
+      // Don't invalidate queries - just update the cache
+      // This prevents the infinite loop
+      console.log('Analysis refresh completed successfully', data);
+    },
+    onError: (error) => {
+      console.error('Analysis refresh failed:', error);
     }
   });
 

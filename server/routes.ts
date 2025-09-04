@@ -966,21 +966,36 @@ ${documentText || 'Geen documenten geüpload'}
         // If successful, return the structured analysis
         console.log('Full MindStudio result object:', result);
         
-        const outputText = result.result || result.outputText;
-        if (outputText) {
-          console.log('MindStudio raw response:', outputText);
-          try {
-            const parsedResponse = JSON.parse(outputText);
-            console.log('MindStudio parsed response:', parsedResponse);
-            return res.json(parsedResponse);
-          } catch (parseError) {
-            console.error('Failed to parse MindStudio JSON response:', parseError);
-            console.log('Raw response that failed to parse:', outputText);
+        const outputData = result.result || result.outputText;
+        if (outputData) {
+          console.log('MindStudio raw response:', outputData);
+          
+          // Check if outputData is already an object or needs parsing
+          let parsedResponse;
+          if (typeof outputData === 'string') {
+            try {
+              parsedResponse = JSON.parse(outputData);
+            } catch (parseError) {
+              console.error('Failed to parse MindStudio JSON string:', parseError);
+              console.log('Raw string that failed to parse:', outputData);
+              return res.status(500).json({ 
+                message: 'MindStudio returned invalid JSON string',
+                error: 'Geen data beschikbaar - ongeldige JSON string'
+              });
+            }
+          } else if (typeof outputData === 'object') {
+            // Already an object, use directly
+            parsedResponse = outputData;
+          } else {
+            console.error('MindStudio returned unexpected data type:', typeof outputData);
             return res.status(500).json({ 
-              message: 'MindStudio returned invalid JSON format',
-              error: 'Geen data beschikbaar - ongeldige response format'
+              message: 'MindStudio returned unexpected data type',
+              error: 'Geen data beschikbaar - onverwacht datatype'
             });
           }
+          
+          console.log('MindStudio parsed response:', parsedResponse);
+          return res.json(parsedResponse);
         } else {
           console.log('MindStudio returned empty result and outputText');
           console.log('Available fields in result:', Object.keys(result));
