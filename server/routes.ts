@@ -965,113 +965,45 @@ ${documentText || 'Geen documenten geüpload'}
         
         // If successful, return the structured analysis
         if (result.outputText) {
-          return res.json(JSON.parse(result.outputText));
+          console.log('MindStudio raw response:', result.outputText);
+          try {
+            const parsedResponse = JSON.parse(result.outputText);
+            console.log('MindStudio parsed response:', parsedResponse);
+            return res.json(parsedResponse);
+          } catch (parseError) {
+            console.error('Failed to parse MindStudio JSON response:', parseError);
+            console.log('Raw response that failed to parse:', result.outputText);
+            return res.status(500).json({ 
+              message: 'MindStudio returned invalid JSON format',
+              error: 'Geen data beschikbaar - ongeldige response format'
+            });
+          }
+        } else {
+          console.log('MindStudio returned empty outputText');
+          return res.status(500).json({ 
+            message: 'MindStudio returned empty response',
+            error: 'Geen data beschikbaar - lege response'
+          });
         }
       } catch (mindstudioError) {
         console.error('MindStudio analysis failed:', mindstudioError);
-        // Continue to fallback
+        return res.status(500).json({ 
+          message: 'MindStudio API call failed',
+          error: 'Geen data beschikbaar - API fout'
+        });
       }
       
-      // Fallback to mock response if MindStudio fails
-      const mockAnalysisResponse = {
-        samenvatting_feiten: `Gebaseerd op de verstrekte informatie: ${input_case_details}. Dit betreft een juridische geschil waarbij verschillende feiten van belang zijn. De zaak bevat verschillende aspecten die nader onderzocht moeten worden, inclusief de chronologie van gebeurtenissen en de juridische grondslag voor eventuele claims. Er zijn documenten en correspondentie die relevant zijn voor de beoordeling van de rechtspositie van partijen.`,
-        
-        juridische_analyse: `De juridische analyse toont aan dat er verschillende rechtsgebieden van toepassing kunnen zijn op deze zaak. Het is belangrijk om de toepasselijke wetgeving en jurisprudentie in ogenschouw te nemen. De rechtsbetrekking tussen partijen en de aard van de geschil bepalen welke procedures gevolgd moeten worden. Belangrijk is ook de vraag naar bevoegdheid van de rechter en de toepasselijke termijnen voor het instellen van rechtsvorderingen.`,
-        
-        kwalificaties: {
-          is_kantonzaak: "Ja, aangezien het geschil valt onder de competentie van de kantonrechter",
-          relatieve_bevoegdheid: "Rechtbank Amsterdam, gebaseerd op woonplaats verweerder", 
-          toepasselijk_recht: "Nederlands burgerlijk recht, specifiek Boek 6 BW"
-        },
-        
-        vordering: {
-          hoofdsom: "€ 5.000,- (te bepalen op basis van schade)",
-          wettelijke_rente: "2% per jaar vanaf datum opeisbaar"
-        },
-        
-        kansinschatting: {
-          inschatting: "twijfelachtig" as const,
-          redenen: [
-            "Bewijslast ligt deels bij eisende partij",
-            "Contra-argumenten van verweerder zijn niet uitgesloten", 
-            "Jurisprudentie op dit gebied is niet eenduidig",
-            "Ontbrekende documenten kunnen van belang zijn"
-          ]
-        },
-        
-        belangrijke_data: {
-          timeline: [
-            "01-01-2024: Eerste contact tussen partijen",
-            "15-02-2024: Schriftelijke overeenkomst gesloten", 
-            "01-06-2024: Problemen ontstaan met nakoming",
-            "15-09-2024: Laatste poging tot minnelijke schikking",
-            "Onbekend: Datum van daadwerkelijke schade"
-          ],
-          deadlines_en_termijnen: [
-            "Verjaring: 5 jaar na opeisbaar worden vordering",
-            "Dagvaarding: binnen 4 weken na ingebrekestelling", 
-            "Dupliek termijn: 4 weken na dupliek"
-          ]
-        },
-        
-        bewijslast: {
-          wie_moet_wat_bewijzen: [
-            "Eisende partij moet bestaan overeenkomst bewijzen",
-            "Eisende partij moet tekortkoming van verweerder aantonen",
-            "Verweerder kan bevrijdende omstandigheden inroepen"
-          ],
-          beschikbaar_bewijs: [
-            "Schriftelijke overeenkomst aanwezig",
-            "E-mailcorrespondentie beschikbaar", 
-            "Bankafschriften als bewijs van betalingen"
-          ],
-          ontbrekend_bewijs: [
-            "Getuigenverklaringen van derde partijen",
-            "Technische rapporten over geleverde prestaties",
-            "Bewijs van geleden schade en omvang daarvan"
-          ]
-        },
-        
-        verjaring_en_klachttermijnen: "De vorderingen verjaren op grond van artikel 3:310 BW binnen vijf jaar na het moment waarop de vordering opeisbaar is geworden. Voor verborgen gebreken geldt een korte verjaringstermijn van twee jaar na ontdekking. Let op mogelijke stuiting van verjaring door aanmaning of erkenning van schuld.",
-        
-        conflicten_in_input: [
-          "Datum van overeenkomst verschilt tussen verschillende documenten",
-          "Hoogte van overeengekomen bedrag is onduidelijk uit correspondentie"
-        ],
-        
-        to_do: [
-          "Verzamel aanvullende documenten over schadeomvang",
-          "Verkrijg getuigenverklaringen van betrokken partijen",
-          "Controleer exacte bewoordingen van contractuele bepalingen", 
-          "Onderzoek jurisprudentie over vergelijkbare gevallen",
-          "Bereken exacte vordering inclusief rente en kosten"
-        ],
-        
-        cta: [
-          "Stuur ingebrekestelling naar verweerder",
-          "Start dagvaardingsprocedure bij kantonrechter",
-          "Overweeg mediation als alternatief", 
-          "Vraag juridisch advies van specialist",
-          "Verzamel aanvullend bewijs"
-        ],
-        
-        kernredenering: [
-          "Er bestaat een contractuele relatie tussen partijen op basis van de schriftelijke overeenkomst",
-          "Verweerder is tekortgeschoten in de nakoming van zijn verplichtingen zoals overeengekomen",
-          "Deze tekortkoming heeft geleid tot schade aan de zijde van eisende partij", 
-          "Er is sprake van een causaal verband tussen tekortkoming en schade",
-          "Verweerder heeft geen bevrijdende omstandigheden aangevoerd die de tekortkoming rechtvaardigen",
-          "De vordering is tijdig ingesteld binnen de geldende verjaringstermijnen"
-        ]
-      };
-      
-      // Simulate some processing time
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      res.json(mockAnalysisResponse);
+      // Should never reach here, but just in case
+      return res.status(500).json({ 
+        message: 'Unexpected error in analysis',
+        error: 'Geen data beschikbaar - onverwachte fout'
+      });
     } catch (error) {
-      console.error('Error in MindStudio analysis:', error);
-      res.status(500).json({ message: 'Failed to analyze case with MindStudio' });
+      console.error('Error in MindStudio analysis endpoint:', error);
+      res.status(500).json({ 
+        message: 'Failed to process analysis request',
+        error: 'Geen data beschikbaar - algemene fout'
+      });
     }
   });
 
