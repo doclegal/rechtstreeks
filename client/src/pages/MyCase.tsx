@@ -54,7 +54,8 @@ export default function MyCase() {
     data: analysisData, 
     isLoading: analysisLoading, 
     error: analysisError, 
-    refetch: refetchAnalysis 
+    refresh: refreshAnalysis,
+    isRefreshing: isRefreshingAnalysis
   } = useAnalysis({ 
     caseId: caseId || "", 
     enabled: !!caseId && expandedSection === 'analyse' 
@@ -240,17 +241,17 @@ export default function MyCase() {
               <h2 className="text-xl font-semibold">Juridische Analyse</h2>
               <div className="flex gap-2">
                 <Button 
-                  onClick={() => refetchAnalysis()}
-                  disabled={analysisLoading}
+                  onClick={() => refreshAnalysis()}
+                  disabled={analysisLoading || isRefreshingAnalysis}
                   size="sm"
                   variant={analysisData ? "outline" : "default"}
                 >
-                  {analysisLoading ? "Analyseren..." : analysisData ? "Heranalyseren" : "Start analyse"}
+                  {(analysisLoading || isRefreshingAnalysis) ? "Analyseren..." : analysisData ? "Heranalyseren" : "Start analyse"}
                 </Button>
                 {analysisError && (
                   <Button 
-                    onClick={() => refetchAnalysis()}
-                    disabled={analysisLoading}
+                    onClick={() => refreshAnalysis()}
+                    disabled={analysisLoading || isRefreshingAnalysis}
                     size="sm"
                     variant="outline"
                   >
@@ -269,7 +270,7 @@ export default function MyCase() {
             </div>
 
             {/* Loading State */}
-            {analysisLoading && <AnalysisSkeleton />}
+            {(analysisLoading || isRefreshingAnalysis) && <AnalysisSkeleton />}
             
             {/* Error State */}
             {analysisError && !analysisLoading && (
