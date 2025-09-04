@@ -964,22 +964,26 @@ ${documentText || 'Geen documenten geüpload'}
         });
         
         // If successful, return the structured analysis
-        if (result.outputText) {
-          console.log('MindStudio raw response:', result.outputText);
+        console.log('Full MindStudio result object:', result);
+        
+        const outputText = result.result || result.outputText;
+        if (outputText) {
+          console.log('MindStudio raw response:', outputText);
           try {
-            const parsedResponse = JSON.parse(result.outputText);
+            const parsedResponse = JSON.parse(outputText);
             console.log('MindStudio parsed response:', parsedResponse);
             return res.json(parsedResponse);
           } catch (parseError) {
             console.error('Failed to parse MindStudio JSON response:', parseError);
-            console.log('Raw response that failed to parse:', result.outputText);
+            console.log('Raw response that failed to parse:', outputText);
             return res.status(500).json({ 
               message: 'MindStudio returned invalid JSON format',
               error: 'Geen data beschikbaar - ongeldige response format'
             });
           }
         } else {
-          console.log('MindStudio returned empty outputText');
+          console.log('MindStudio returned empty result and outputText');
+          console.log('Available fields in result:', Object.keys(result));
           return res.status(500).json({ 
             message: 'MindStudio returned empty response',
             error: 'Geen data beschikbaar - lege response'
