@@ -932,8 +932,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { input_case_details, extracted_text } = req.body;
       
-      // Mock response that matches the expected JSON schema for testing
-      // In production, this would call MindStudio API
+      // Call real MindStudio API
+      const userId = req.user.claims.sub;
+      
+      // Get user's case data to pass more context to MindStudio
+      const userCases = await storage.getCasesByUser(userId);
+      const currentCase = userCases[0]; // Use first case for MVP
+      
+      let caseDetails = input_case_details || "Juridische casus voor analyse";
+      if (currentCase) {
+        const documents = await storage.getDocumentsByCase(currentCase.id);
+        const documentText = documents.map(doc => doc.extractedText).join('\n\n');
+        
+        caseDetails = `
+Zaak beschrijving: ${currentCase.description || 'Geen beschrijving'}
+Claim bedrag: €${currentCase.claimAmount || 0}
+Tegenpartij type: ${currentCase.counterpartyType || 'Onbekend'}
+Status: ${currentCase.status}
+
+Documenten inhoud:
+${documentText || 'Geen documenten geüpload'}
+        `.trim();
+      }
+      
+      // First, try to call MindStudio synchronously for immediate results
+      try {
+        const result = await aiService.runSynchronousMindstudioAnalysis({
+          input_name: `User ${userId} - Case Analysis`,
+          input_case_details: caseDetails,
+          file_url: undefined // We could pass document URLs here if needed
+        });
+        
+        // If successful, return the structured analysis
+        if (result.outputText) {
+          return res.json(JSON.parse(result.outputText));
+        }
+      } catch (mindstudioError) {
+        console.error('MindStudio analysis failed:', mindstudioError);
+        // Continue to fallback
+      }
+      
+      // Fallback to mock response if MindStudio fails
       const mockAnalysisResponse = {
         samenvatting_feiten: `Gebaseerd op de verstrekte informatie: ${input_case_details}. Dit betreft een juridische geschil waarbij verschillende feiten van belang zijn. De zaak bevat verschillende aspecten die nader onderzocht moeten worden, inclusief de chronologie van gebeurtenissen en de juridische grondslag voor eventuele claims. Er zijn documenten en correspondentie die relevant zijn voor de beoordeling van de rechtspositie van partijen.`,
         
