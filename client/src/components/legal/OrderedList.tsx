@@ -1,11 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { List } from "lucide-react";
+import { ensureArray } from "@/lib/legalTypes";
 
 interface OrderedListProps {
-  items: string[];
+  items: string[] | string;
 }
 
 export function OrderedList({ items }: OrderedListProps) {
+  const arrayItems = ensureArray(items);
+  
   return (
     <Card>
       <CardHeader>
@@ -15,9 +18,9 @@ export function OrderedList({ items }: OrderedListProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {items && items.length > 0 ? (
+        {arrayItems.length > 0 ? (
           <ol className="space-y-2 list-decimal list-inside">
-            {items.map((item, index) => (
+            {arrayItems.map((item, index) => (
               <li key={index} className="text-sm leading-relaxed">
                 <span className="ml-2">{item}</span>
               </li>
@@ -25,7 +28,7 @@ export function OrderedList({ items }: OrderedListProps) {
           </ol>
         ) : (
           <p className="text-sm text-muted-foreground italic">
-            Geen kernredenering beschikbaar
+            Geen data beschikbaar
           </p>
         )}
       </CardContent>

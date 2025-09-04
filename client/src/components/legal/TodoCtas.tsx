@@ -1,14 +1,18 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckSquare, ArrowRight } from "lucide-react";
+import { ensureArray } from "@/lib/legalTypes";
 
 interface TodoCtasProps {
-  todos: string[];
-  ctas: string[];
+  todos: string[] | string;
+  ctas: string[] | string;
   onAction?: (label: string) => void;
 }
 
 export function TodoCtas({ todos, ctas, onAction }: TodoCtasProps) {
+  const todoArray = ensureArray(todos);
+  const ctaArray = ensureArray(ctas);
+  
   return (
     <div className="grid md:grid-cols-2 gap-4">
       {/* To-Do Section */}
@@ -20,9 +24,9 @@ export function TodoCtas({ todos, ctas, onAction }: TodoCtasProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {todos && todos.length > 0 ? (
+          {todoArray.length > 0 ? (
             <ul className="space-y-2">
-              {todos.map((todo, index) => (
+              {todoArray.map((todo, index) => (
                 <li key={index} className="flex items-start gap-2 text-sm">
                   <span className="text-muted-foreground mt-1">•</span>
                   <span>{todo}</span>
@@ -31,7 +35,7 @@ export function TodoCtas({ todos, ctas, onAction }: TodoCtasProps) {
             </ul>
           ) : (
             <p className="text-sm text-muted-foreground italic">
-              Geen acties vereist
+              Geen data beschikbaar
             </p>
           )}
         </CardContent>
@@ -46,9 +50,9 @@ export function TodoCtas({ todos, ctas, onAction }: TodoCtasProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {ctas && ctas.length > 0 ? (
+          {ctaArray.length > 0 ? (
             <div className="space-y-2">
-              {ctas.map((cta, index) => (
+              {ctaArray.map((cta, index) => (
                 <Button
                   key={index}
                   variant="outline"
@@ -63,7 +67,7 @@ export function TodoCtas({ todos, ctas, onAction }: TodoCtasProps) {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground italic">
-              Geen aanbevolen acties beschikbaar
+              Geen data beschikbaar
             </p>
           )}
         </CardContent>
