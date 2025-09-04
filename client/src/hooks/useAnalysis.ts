@@ -47,7 +47,7 @@ export function useAnalysis({ caseId, enabled = true }: UseAnalysisProps) {
     enabled,
     retry: 2,
     retryDelay: 1000,
-    staleTime: 0, // Always fetch fresh data
+    staleTime: 30000, // Cache for 30 seconds to prevent rapid refetches
   });
 
   // Create a mutation for refreshing analysis
