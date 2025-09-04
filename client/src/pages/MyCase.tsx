@@ -122,7 +122,7 @@ export default function MyCase() {
             variant={expandedSection === 'analyse' ? "outline" : "default"}
             className="w-full"
           >
-            Open
+            Start
           </Button>
         </div>
 
@@ -143,7 +143,7 @@ export default function MyCase() {
             variant={expandedSection === 'brief' ? "outline" : "default"}
             className="w-full"
           >
-            Open
+            Start
           </Button>
         </div>
 
@@ -164,7 +164,7 @@ export default function MyCase() {
             variant={expandedSection === 'dagvaarding' ? "outline" : "default"}
             className="w-full"
           >
-            Open
+            Start
           </Button>
         </div>
       </div>
