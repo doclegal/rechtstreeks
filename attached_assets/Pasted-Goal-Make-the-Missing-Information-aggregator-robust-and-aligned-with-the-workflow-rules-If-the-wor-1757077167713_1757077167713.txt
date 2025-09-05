@@ -1,0 +1,43 @@
+Goal
+Make the Missing Information aggregator robust and aligned with the workflow rules. If the workflow still returns "default_questions", treat it as an alias of "needed_questions". Show items as missing when values are null or equal to "onbekend".
+
+Do (no API/contract changes beyond reading keys)
+1) Aggregator:
+   - Build a single list from:
+     a) Top-level objects with .needed === true: parties, agreement, procedural
+     b) For each claim where claims[i].needed === true
+     c) needed_questions[]  (and if absent, use default_questions[] as a fallback)
+   - Fallback rule: even if .needed === false, surface a missing item when:
+       - agreement.exists is null/empty OR equals "onbekend";
+       - procedural.value.urgent is null/empty/"onbekend" OR procedural.value.forum_clause is null/empty;
+       - any claim’s principal_eur / what_to_perform / legal_basis is null/empty;
+       - any timeline entry has date === null → create a synthetic question id "facts.timeline.<i>.date".
+   - Render the “Nog ontbrekende informatie” section only if Y > 0.
+
+2) IDs & follow-up mapping:
+   - Stable ids: "parties", "agreement", "procedural", "claim-<index>", and the question's own id.
+   - Stage answers into followup_answers with keys:
+       parties.claimant_name / parties.defendant_name / parties.relationship
+       agreement.exists
+       claims.<index>.principal_eur / claims.<index>.what_to_perform / claims.<index>.legal_basis
+       For questions: <id> = <text>
+   - Do not send per-row; send only on the primary CTA.
+
+3) Primary CTA when Y > 0:
+   - Button: "Ontbrekende info indienen".
+   - Submit only:
+       input_case_details: <current text incl. any [Attachment] markers if applicable>
+       followup_answers: <staged map>
+   - Show blocking “Analyseren…” until response returns.
+
+4) Post-run:
+   - Recompute X/Y:
+       X = count of required subfields now non-empty:
+           parties (3), agreement.exists (1) + (if exists == "schriftelijk" then attachment marker/attachment present adds 1),
+           procedural (2), each claim (3)
+       Y = count of all missings (from aggregator + fallback).
+   - If Y === 0: show the green callout and the next-step CTA "Juridische beoordeling starten".
+
+5) Formatting & a11y:
+   - Treat literal "onbekend" as missing in badges and completeness.
+   - NL currency/labels, null-safe placeholders, keep Raw JSON collapsible.

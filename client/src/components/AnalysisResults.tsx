@@ -62,11 +62,11 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
     setFollowupAnswers(prev => ({ ...prev, [key]: value }));
   };
 
-  // Missing items aggregator
+  // Robust Missing Information aggregator
   const buildMissingList = (data: any) => {
     const missing: any[] = [];
 
-    // Top-level: parties, agreement, procedural
+    // 1a) Top-level objects with .needed === true: parties, agreement, procedural
     if (data.parties?.needed === true) {
       missing.push({ id: 'parties', type: 'parties', title: 'Partijen (namen/rol)', reason: 'Namen/rol nodig voor juridische check' });
     }
@@ -77,7 +77,7 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
       missing.push({ id: 'procedural', type: 'procedural', title: 'Procedueel (spoed/forumkeuze)', reason: 'Geef spoed en forumkeuze aan' });
     }
 
-    // Claims: iterate claims[] and include each where claim.needed === true
+    // 1b) For each claim where claims[i].needed === true
     if (data.claims && Array.isArray(data.claims)) {
       data.claims.forEach((claim: any, idx: number) => {
         if (claim.needed === true) {
@@ -89,8 +89,60 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
             claimIndex: idx
           });
         }
-        // Fallback: if claim.needed === false but required subfields are null/empty
-        else if (claim.needed === false || claim.needed === undefined) {
+      });
+    }
+
+    // 1c) needed_questions[] (with default_questions[] as fallback)
+    const questions = data.needed_questions || data.default_questions || [];
+    if (Array.isArray(questions)) {
+      questions.forEach((question: any) => {
+        missing.push({
+          id: question.id,
+          type: 'question',
+          title: question.label,
+          reason: question.reason,
+          question: question
+        });
+      });
+    }
+
+    // Fallback rules: surface missing items even if .needed === false
+    
+    // agreement.exists is null/empty OR equals "onbekend"
+    if (!missing.some(item => item.id === 'agreement')) {
+      const agreementExists = data.agreement?.exists;
+      if (!agreementExists || agreementExists === 'onbekend') {
+        missing.push({ 
+          id: 'agreement', 
+          type: 'agreement', 
+          title: 'Overeenkomst (type/contract)', 
+          reason: 'Type/contract of upload nodig',
+          isFallback: true
+        });
+      }
+    }
+
+    // procedural.value.urgent is null/empty/"onbekend" OR procedural.value.forum_clause is null/empty
+    if (!missing.some(item => item.id === 'procedural')) {
+      const proceduralValue = data.procedural?.value || {};
+      const urgentMissing = !proceduralValue.urgent || proceduralValue.urgent === 'onbekend';
+      const forumMissing = !proceduralValue.forum_clause;
+      
+      if (urgentMissing || forumMissing) {
+        missing.push({
+          id: 'procedural',
+          type: 'procedural', 
+          title: 'Procedueel (spoed/forumkeuze)',
+          reason: 'Geef spoed en forumkeuze aan',
+          isFallback: true
+        });
+      }
+    }
+
+    // any claim's principal_eur / what_to_perform / legal_basis is null/empty
+    if (data.claims && Array.isArray(data.claims)) {
+      data.claims.forEach((claim: any, idx: number) => {
+        if (!missing.some(item => item.id === `claim-${idx}`)) {
           const value = claim.value || {};
           const missingSubfields: string[] = [];
           if (!value.principal_eur) missingSubfields.push('bedrag');
@@ -111,30 +163,33 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
       });
     }
 
-    // needed_questions[]: include all entries
-    if (data.needed_questions && Array.isArray(data.needed_questions)) {
-      data.needed_questions.forEach((question: any) => {
-        missing.push({
-          id: question.id,
-          type: 'question',
-          title: question.label,
-          reason: question.reason,
-          question: question
-        });
+    // any timeline entry has date === null → create synthetic question id
+    if (data.facts?.timeline && Array.isArray(data.facts.timeline)) {
+      data.facts.timeline.forEach((entry: any, idx: number) => {
+        if (!entry.date) {
+          missing.push({
+            id: `facts.timeline.${idx}.date`,
+            type: 'timeline-date',
+            title: `Tijdlijn item ${idx + 1} - datum ontbreekt`,
+            reason: 'Datum nodig voor chronologische volgorde',
+            timelineIndex: idx,
+            isFallback: true
+          });
+        }
       });
     }
 
     return missing;
   };
 
-  // Deterministic "Ingevuld: X" calculation - count only required subfields as filled
+  // Deterministic "Ingevuld: X" calculation - treat "onbekend" as missing
   const computeFilledRequiredFields = (data: any, inputCaseDetails?: string) => {
     let count = 0;
     
     // parties: claimant_name, defendant_name, relationship (3)
-    if (data.parties?.value?.claimant_name) count++;
-    if (data.parties?.value?.defendant_name) count++;
-    if (data.parties?.value?.relationship) count++;
+    if (data.parties?.value?.claimant_name && data.parties.value.claimant_name !== 'onbekend') count++;
+    if (data.parties?.value?.defendant_name && data.parties.value.defendant_name !== 'onbekend') count++;
+    if (data.parties?.value?.relationship && data.parties.value.relationship !== 'onbekend') count++;
     
     // agreement: exists (1) and if schriftelijk, require attachment marker (adds 1)
     if (data.agreement?.exists && data.agreement.exists !== 'onbekend') {
@@ -148,15 +203,15 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
     }
     
     // procedural: urgent, forum_clause (2)
-    if (data.procedural?.value?.urgent !== null && data.procedural?.value?.urgent !== 'onbekend') count++;
-    if (data.procedural?.value?.forum_clause) count++;
+    if (data.procedural?.value?.urgent && data.procedural.value.urgent !== 'onbekend') count++;
+    if (data.procedural?.value?.forum_clause && data.procedural.value.forum_clause !== 'onbekend') count++;
     
     // Per claim: principal_eur, what_to_perform, legal_basis (3 per claim)
     if (data.claims && Array.isArray(data.claims)) {
       data.claims.forEach((claim: any) => {
-        if (claim.value?.principal_eur) count++;
-        if (claim.value?.what_to_perform) count++;
-        if (claim.value?.legal_basis) count++;
+        if (claim.value?.principal_eur && claim.value.principal_eur !== 'onbekend') count++;
+        if (claim.value?.what_to_perform && claim.value.what_to_perform !== 'onbekend') count++;
+        if (claim.value?.legal_basis && claim.value.legal_basis !== 'onbekend') count++;
       });
     }
     
@@ -432,6 +487,17 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
                       onChange={(e) => updateFollowupAnswer(item.id, e.target.value)}
                       data-testid={`textarea-question-${item.id}`}
                       className="min-h-20"
+                    />
+                  )}
+
+                  {/* Timeline date inputs */}
+                  {item.type === 'timeline-date' && (
+                    <Input
+                      type="date"
+                      placeholder="Datum (YYYY-MM-DD)"
+                      value={followupAnswers[item.id] || ""}
+                      onChange={(e) => updateFollowupAnswer(item.id, e.target.value)}
+                      data-testid={`input-timeline-date-${item.timelineIndex}`}
                     />
                   )}
                 </div>
