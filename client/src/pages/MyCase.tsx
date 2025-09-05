@@ -340,6 +340,22 @@ export default function MyCase() {
               </Alert>
             )}
 
+            {/* DEBUG: Show ALL analysis data */}
+            {analysisData && (
+              <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-6">
+                <h3 className="text-lg font-semibold text-green-800 mb-2">✅ RAW ANALYSE DATA:</h3>
+                <pre className="text-xs bg-white p-2 rounded border overflow-auto max-h-96">
+                  {JSON.stringify(analysisData, null, 2)}
+                </pre>
+              </div>
+            )}
+
+            {!analysisData && !analysisLoading && !isRefreshingAnalysis && (
+              <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
+                <p className="text-red-800">❌ GEEN ANALYSE DATA - analysisData is null/undefined</p>
+              </div>
+            )}
+
             {/* Success State */}
             {analysisData && !analysisLoading && (
               <main className="container mx-auto space-y-6">
