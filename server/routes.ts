@@ -351,37 +351,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             input_case_details: caseDetails
           };
           
-          console.log('🚀 Starting SYNCHRONOUS Mindstudio analysis:', analysisParams);
+          console.log('🚀 Starting ASYNCHRONOUS Mindstudio analysis:', analysisParams);
           
-          const result = await aiService.runSynchronousMindstudioAnalysis(analysisParams);
+          const result = await aiService.runMindstudioAnalysis(analysisParams);
           
-          // Process the result immediately (no polling needed!)
-          const processedResult = AIService.mindstudioToAppResult(result.result);
-          
-          // Save analysis to database
-          const analysis = await storage.createAnalysis({
-            caseId,
-            model: 'mindstudio-agent',
-            rawText: result.result, // Store the full MindStudio response
-            factsJson: processedResult.factsJson,
-            issuesJson: processedResult.issuesJson,
-            legalBasisJson: processedResult.legalBasisJson,
-            missingDocsJson: processedResult.missingDocuments,
-            riskNotesJson: processedResult.riskNotesJson || []
-          });
-          
-          // Update case status
-          await storage.updateCase(caseId, { 
-            status: "ANALYZED" as CaseStatus,
-            nextActionLabel: "Opstellen aanmaning",
-          });
-          
-          // Update rate limit
-          analysisRateLimit.set(rateLimitKey, now);
-          
+          // Return threadId immediately - client will poll for results
           return res.json({ 
-            analysis,
-            status: 'completed'
+            threadId: result.threadId,
+            status: 'running'
           });
         } catch (error) {
           console.error("Mindstudio analysis failed:", error);
@@ -769,6 +746,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error exporting case:", error);
       res.status(500).json({ message: "Failed to export case" });
+    }
+  });
+
+  // Save analysis to database endpoint
+  app.post('/api/cases/:caseId/analysis', isAuthenticated, async (req, res) => {
+    try {
+      const caseId = req.params.caseId;
+      const userId = req.user?.claims?.sub;
+      
+      // Verify case ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerId !== userId) {
+        return res.status(404).json({ message: 'Case not found' });
+      }
+      
+      // Save analysis to database
+      const analysis = await storage.createAnalysis({
+        caseId,
+        model: req.body.model || 'mindstudio-agent',
+        rawText: req.body.rawText || '',
+        factsJson: req.body.factsJson,
+        issuesJson: req.body.issuesJson,
+        legalBasisJson: req.body.legalBasisJson,
+        missingDocsJson: req.body.missingDocsJson,
+        riskNotesJson: req.body.riskNotesJson || []
+      });
+      
+      // Update case status
+      await storage.updateCase(caseId, { 
+        status: "ANALYZED" as CaseStatus,
+        nextActionLabel: "Opstellen aanmaning",
+      });
+      
+      res.json({ analysis, success: true });
+    } catch (error) {
+      console.error('Error saving analysis:', error);
+      res.status(500).json({ message: 'Failed to save analysis' });
     }
   });
 
