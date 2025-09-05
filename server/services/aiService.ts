@@ -338,7 +338,7 @@ Geef JSON response:
     console.log("Starting SYNCHRONOUS Mindstudio analysis:", variables);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout for MindStudio
+    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minute timeout for MindStudio
 
     try {
       const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
@@ -361,7 +361,14 @@ Geef JSON response:
 
       if (!response.ok) {
         const errorData = await response.text();
-        throw new Error(`Mindstudio API error: ${response.status} ${response.statusText} - ${errorData}`);
+        console.error("Mindstudio API error:", response.status, errorData);
+        
+        // Check for Cloudflare 524 timeout specifically
+        if (response.status === 524 || errorData.includes('Error 524') || errorData.includes('timed out')) {
+          throw new Error("MindStudio analyse duurt langer dan verwacht - de AI werkt nog aan uw complexe zaak");
+        }
+        
+        throw new Error(`MindStudio analyse niet beschikbaar: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();

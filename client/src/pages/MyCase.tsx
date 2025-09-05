@@ -270,7 +270,23 @@ export default function MyCase() {
             </div>
 
             {/* Loading State */}
-            {(analysisLoading || isRefreshingAnalysis) && <AnalysisSkeleton />}
+            {(analysisLoading || isRefreshingAnalysis) && (
+              <div className="space-y-4">
+                <Alert>
+                  <AlertDescription className="flex items-center gap-3">
+                    <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                    <div>
+                      <p className="font-medium">MindStudio AI analyseert uw zaak...</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Dit kan 1-3 minuten duren voor complexe juridische zaken. 
+                        De analyse wordt automatisch geladen zodra deze klaar is.
+                      </p>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+                <AnalysisSkeleton />
+              </div>
+            )}
             
             {/* Error State */}
             {analysisError && !analysisLoading && (
