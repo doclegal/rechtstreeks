@@ -870,8 +870,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const result = AIService.getThreadResult(threadId);
       
+      console.log('🔍 Polling result for threadId:', threadId, '→', JSON.stringify(result, null, 2));
+      
       // If we have a completed result, also process it for the frontend
       if (result.status === 'done' && result.outputText) {
+        console.log('✅ Thread completed, processing result...');
         const processedResult = AIService.mindstudioToAppResult(result.outputText);
         return res.json({
           ...result,
@@ -880,6 +883,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      console.log('⏳ Thread still running or no output yet');
       res.json(result);
     } catch (error) {
       console.error('Error getting thread result:', error);
