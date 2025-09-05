@@ -346,12 +346,12 @@ export default function MyCase() {
                   <SummaryCard text={analysisData.samenvatting_feiten} />
                   <div className="grid md:grid-cols-2 gap-4 mt-4">
                     <ClaimPanel 
-                      hoofdsom={analysisData.vordering.hoofdsom} 
-                      wettelijke_rente={analysisData.vordering.wettelijke_rente} 
+                      hoofdsom={analysisData.vordering?.hoofdsom || "0"} 
+                      wettelijke_rente={analysisData.vordering?.wettelijke_rente || "0"} 
                     />
                     <RiskPanel 
-                      inschatting={analysisData.kansinschatting.inschatting}
-                      redenen={analysisData.kansinschatting.redenen}
+                      inschatting={analysisData.kansinschatting?.inschatting || "Onbekend"}
+                      redenen={analysisData.kansinschatting?.redenen || []}
                     />
                   </div>
                 </Section>
@@ -359,22 +359,22 @@ export default function MyCase() {
                 {/* Juridische Duiding Section */}
                 <Section title="Juridische Duiding">
                   <Qualifiers 
-                    is_kantonzaak={analysisData.kwalificaties.is_kantonzaak}
-                    relatieve_bevoegdheid={analysisData.kwalificaties.relatieve_bevoegdheid}
-                    toepasselijk_recht={analysisData.kwalificaties.toepasselijk_recht}
+                    is_kantonzaak={analysisData.kwalificaties?.is_kantonzaak || false}
+                    relatieve_bevoegdheid={analysisData.kwalificaties?.relatieve_bevoegdheid || "Onbekend"}
+                    toepasselijk_recht={analysisData.kwalificaties?.toepasselijk_recht || "Nederlands recht"}
                   />
                 </Section>
 
                 {/* Feiten & Bewijs Section */}
                 <Section title="Feiten & Bewijs">
                   <div className="grid md:grid-cols-2 gap-4">
-                    <Timeline items={analysisData.belangrijke_data.timeline} />
-                    <Deadlines items={analysisData.belangrijke_data.deadlines_en_termijnen} />
+                    <Timeline items={analysisData.belangrijke_data?.timeline || []} />
+                    <Deadlines items={analysisData.belangrijke_data?.deadlines_en_termijnen || []} />
                   </div>
                   <BurdenOfProof 
-                    wie_moet_wat_bewijzen={analysisData.bewijslast.wie_moet_wat_bewijzen}
-                    beschikbaar_bewijs={analysisData.bewijslast.beschikbaar_bewijs}
-                    ontbrekend_bewijs={analysisData.bewijslast.ontbrekend_bewijs}
+                    wie_moet_wat_bewijzen={analysisData.bewijslast?.wie_moet_wat_bewijzen || []}
+                    beschikbaar_bewijs={analysisData.bewijslast?.beschikbaar_bewijs || []}
+                    ontbrekend_bewijs={analysisData.bewijslast?.ontbrekend_bewijs || []}
                   />
                 </Section>
 
