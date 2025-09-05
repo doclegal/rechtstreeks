@@ -241,10 +241,15 @@ export default function MyCase() {
               <h2 className="text-xl font-semibold">Juridische Analyse</h2>
               <div className="flex gap-2">
                 <Button 
-                  onClick={() => refreshAnalysis()}
+                  onClick={() => {
+                    console.log("Analyse button clicked, caseId:", caseId);
+                    console.log("Starting analysis...");
+                    refreshAnalysis();
+                  }}
                   disabled={analysisLoading || isRefreshingAnalysis}
                   size="sm"
                   variant={analysisData ? "outline" : "default"}
+                  data-testid="button-start-analysis"
                 >
                   {(analysisLoading || isRefreshingAnalysis) ? "Analyseren..." : analysisData ? "Heranalyseren" : "Start analyse"}
                 </Button>
