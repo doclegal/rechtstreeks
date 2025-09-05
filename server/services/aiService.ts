@@ -337,38 +337,53 @@ Geef JSON response:
 
     console.log("Starting SYNCHRONOUS Mindstudio analysis:", variables);
 
-    const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        workerId: process.env.MINDSTUDIO_WORKER_ID,
-        variables,
-        workflow: process.env.MINDSTUDIO_WORKFLOW || "Main.flow",
-        // NO callbackUrl = synchronous response
-        includeBillingCost: true
-      })
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
-    if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(`Mindstudio API error: ${response.status} ${response.statusText} - ${errorData}`);
+    try {
+      const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          workerId: process.env.MINDSTUDIO_WORKER_ID,
+          variables,
+          workflow: process.env.MINDSTUDIO_WORKFLOW || "Main.flow",
+          // NO callbackUrl = synchronous response
+          includeBillingCost: true
+        }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Mindstudio API error: ${response.status} ${response.statusText} - ${errorData}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.threadId) {
+        throw new Error("No threadId received from Mindstudio");
+      }
+
+      // In synchronous mode, result should be available immediately
+      return {
+        result: data.result || '',
+        threadId: data.threadId,
+        billingCost: data.billingCost
+      };
+      
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error("MindStudio analyse timeout - probeer later opnieuw");
+      }
+      throw error;
     }
-
-    const data = await response.json();
-    
-    if (!data.threadId) {
-      throw new Error("No threadId received from Mindstudio");
-    }
-
-    // In synchronous mode, result should be available immediately
-    return {
-      result: data.result || '',
-      threadId: data.threadId,
-      billingCost: data.billingCost
-    };
   }
 
   static storeThreadResult(threadId: string, result: { status: 'running' | 'done' | 'error', outputText?: string, raw?: any, billingCost?: string }) {
