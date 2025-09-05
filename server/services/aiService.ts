@@ -337,60 +337,38 @@ Geef JSON response:
 
     console.log("Starting SYNCHRONOUS Mindstudio analysis:", variables);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minute timeout for MindStudio
+    const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        workerId: process.env.MINDSTUDIO_WORKER_ID,
+        variables,
+        workflow: process.env.MINDSTUDIO_WORKFLOW || "Main.flow",
+        // NO callbackUrl = synchronous response
+        includeBillingCost: true
+      })
+    });
 
-    try {
-      const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          workerId: process.env.MINDSTUDIO_WORKER_ID,
-          variables,
-          workflow: process.env.MINDSTUDIO_WORKFLOW || "Main.flow",
-          // NO callbackUrl = synchronous response
-          includeBillingCost: true
-        }),
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error("Mindstudio API error:", response.status, errorData);
-        
-        // Check for Cloudflare 524 timeout specifically
-        if (response.status === 524 || errorData.includes('Error 524') || errorData.includes('timed out')) {
-          throw new Error("MindStudio analyse duurt langer dan verwacht - de AI werkt nog aan uw complexe zaak");
-        }
-        
-        throw new Error(`MindStudio analyse niet beschikbaar: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      
-      if (!data.threadId) {
-        throw new Error("No threadId received from Mindstudio");
-      }
-
-      // In synchronous mode, result should be available immediately
-      return {
-        result: data.result || '',
-        threadId: data.threadId,
-        billingCost: data.billingCost
-      };
-      
-    } catch (error) {
-      clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error("MindStudio analyse duurt langer dan verwacht - probeer later opnieuw");
-      }
-      throw error;
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`Mindstudio API error: ${response.status} ${response.statusText} - ${errorData}`);
     }
+
+    const data = await response.json();
+    
+    if (!data.threadId) {
+      throw new Error("No threadId received from Mindstudio");
+    }
+
+    // In synchronous mode, result should be available immediately
+    return {
+      result: data.result || '',
+      threadId: data.threadId,
+      billingCost: data.billingCost
+    };
   }
 
   static storeThreadResult(threadId: string, result: { status: 'running' | 'done' | 'error', outputText?: string, raw?: any, billingCost?: string }) {
@@ -401,92 +379,17 @@ Geef JSON response:
     return THREAD_RESULTS.get(threadId) || { status: 'pending' as const };
   }
 
-  static mindstudioToAppResult(outputText: string | any): AppAnalysisResult {
+  static mindstudioToAppResult(outputText: string): AppAnalysisResult {
     // Default empty structure
     const result: AppAnalysisResult = {
       factsJson: [],
       issuesJson: [],
       legalBasisJson: [],
       missingDocuments: [],
-      rawText: typeof outputText === 'string' ? outputText : JSON.stringify(outputText)
+      rawText: outputText
     };
 
     try {
-      console.log('🔍 Processing MindStudio output:', typeof outputText, outputText);
-      
-      // Try to parse JSON string if it looks like JSON
-      let parsedData = outputText;
-      if (typeof outputText === 'string' && (outputText.startsWith('{') || outputText.includes('samenvatting_feiten'))) {
-        try {
-          parsedData = JSON.parse(outputText);
-          console.log('📝 Parsed JSON string successfully');
-        } catch (e) {
-          console.log('⚠️ Failed to parse as JSON, treating as string');
-        }
-      }
-      
-      // If outputText is already an object (new MindStudio format), use it directly
-      if (typeof parsedData === 'object' && parsedData !== null) {
-        console.log('📊 Using direct object format from MindStudio');
-        
-        // Extract data from the structured object
-        if (parsedData.samenvatting_feiten) {
-          if (Array.isArray(parsedData.samenvatting_feiten)) {
-            result.factsJson = parsedData.samenvatting_feiten.map((fact: string, idx: number) => ({
-              label: `Feit ${idx + 1}`,
-              detail: fact
-            }));
-          } else if (typeof parsedData.samenvatting_feiten === 'string') {
-            result.factsJson = [{ label: "Samenvatting", detail: parsedData.samenvatting_feiten }];
-          }
-        }
-        
-        if (parsedData.juridische_analyse) {
-          if (Array.isArray(parsedData.juridische_analyse)) {
-            result.issuesJson = parsedData.juridische_analyse.map((issue: string) => ({
-              issue: issue,
-              risk: undefined
-            }));
-          } else if (typeof parsedData.juridische_analyse === 'string') {
-            result.issuesJson = [{ issue: parsedData.juridische_analyse, risk: undefined }];
-          }
-        }
-        
-        if (parsedData.to_do) {
-          if (Array.isArray(parsedData.to_do)) {
-            result.missingDocuments = parsedData.to_do;
-          } else if (typeof parsedData.to_do === 'string') {
-            result.missingDocuments = parsedData.to_do.split(',').map(item => item.trim());
-          }
-        }
-        
-        // Legal basis from kernredenering if available
-        if (parsedData.kernredenering) {
-          if (Array.isArray(parsedData.kernredenering)) {
-            result.legalBasisJson = parsedData.kernredenering.map((law: string) => ({
-              law: law,
-              article: undefined,
-              note: undefined
-            }));
-          } else if (typeof parsedData.kernredenering === 'string') {
-            result.legalBasisJson = parsedData.kernredenering.split(',').map((law: string) => ({
-              law: law.trim(),
-              article: undefined,
-              note: undefined
-            }));
-          }
-        }
-        
-        console.log('✅ Processed structured MindStudio output successfully');
-        return result;
-      }
-      
-      // Fallback: Parse the markdown-style output from MindStudio (old format)
-      if (typeof outputText !== 'string') {
-        console.log('⚠️ OutputText is not string, converting:', outputText);
-        outputText = String(outputText);
-      }
-      
       // Parse Dutch headings and sections
       const sections = outputText.split(/\n\s*\n/);
       

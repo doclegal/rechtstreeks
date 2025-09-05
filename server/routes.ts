@@ -351,18 +351,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
             input_case_details: caseDetails
           };
           
-          console.log('🚀 Starting ASYNCHRONOUS Mindstudio analysis:', analysisParams);
+          console.log('🚀 Starting SYNCHRONOUS Mindstudio analysis:', analysisParams);
           
-          const aiService = new AIService();
-          const result = await aiService.runMindstudioAnalysis(analysisParams);
+          const result = await aiService.runSynchronousMindstudioAnalysis(analysisParams);
+          
+          // Process the result immediately (no polling needed!)
+          const processedResult = AIService.mindstudioToAppResult(result.result);
+          
+          // Save analysis to database
+          const analysis = await storage.createAnalysis({
+            caseId,
+            model: 'mindstudio-agent',
+            rawText: result.result, // Store the full MindStudio response
+            factsJson: processedResult.factsJson,
+            issuesJson: processedResult.issuesJson,
+            legalBasisJson: processedResult.legalBasisJson,
+            missingDocsJson: processedResult.missingDocuments,
+            riskNotesJson: processedResult.riskNotesJson || []
+          });
+          
+          // Update case status
+          await storage.updateCase(caseId, { 
+            status: "ANALYZED" as CaseStatus,
+            nextActionLabel: "Opstellen aanmaning",
+          });
           
           // Update rate limit
           analysisRateLimit.set(rateLimitKey, now);
           
-          // Return threadId immediately - client will poll for results
           return res.json({ 
-            threadId: result.threadId,
-            status: 'running'
+            analysis,
+            status: 'completed'
           });
         } catch (error) {
           console.error("Mindstudio analysis failed:", error);
@@ -753,43 +772,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Save analysis to database endpoint
-  app.post('/api/cases/:caseId/analysis', isAuthenticated, async (req, res) => {
-    try {
-      const caseId = req.params.caseId;
-      const userId = req.user?.claims?.sub;
-      
-      // Verify case ownership
-      const caseData = await storage.getCase(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
-        return res.status(404).json({ message: 'Case not found' });
-      }
-      
-      // Save analysis to database
-      const analysis = await storage.createAnalysis({
-        caseId,
-        model: req.body.model || 'mindstudio-agent',
-        rawText: req.body.rawText || '',
-        factsJson: req.body.factsJson,
-        issuesJson: req.body.issuesJson,
-        legalBasisJson: req.body.legalBasisJson,
-        missingDocsJson: req.body.missingDocsJson,
-        riskNotesJson: req.body.riskNotesJson || []
-      });
-      
-      // Update case status
-      await storage.updateCase(caseId, { 
-        status: "ANALYZED" as CaseStatus,
-        nextActionLabel: "Opstellen aanmaning",
-      });
-      
-      res.json({ analysis, success: true });
-    } catch (error) {
-      console.error('Error saving analysis:', error);
-      res.status(500).json({ message: 'Failed to save analysis' });
-    }
-  });
-
   // Mindstudio callback endpoint (no auth needed - external service)
   app.post('/api/mindstudio/callback', async (req, res) => {
     try {
@@ -870,11 +852,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const result = AIService.getThreadResult(threadId);
       
-      console.log('🔍 Polling result for threadId:', threadId, '→', JSON.stringify(result, null, 2));
-      
       // If we have a completed result, also process it for the frontend
       if (result.status === 'done' && result.outputText) {
-        console.log('✅ Thread completed, processing result...');
         const processedResult = AIService.mindstudioToAppResult(result.outputText);
         return res.json({
           ...result,
@@ -883,7 +862,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      console.log('⏳ Thread still running or no output yet');
       res.json(result);
     } catch (error) {
       console.error('Error getting thread result:', error);
@@ -921,25 +899,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Try to parse the full analysis from rawText if available
-      if (analysis.rawText) {
-        try {
-          const appResult = AIService.mindstudioToAppResult(analysis.rawText);
-          return res.json(appResult);
-        } catch (error) {
-          console.error('Error parsing rawText analysis:', error);
-        }
-      }
-      
-      // Fallback to existing analysis structure with default values
+      // Fallback to existing analysis structure
       const result = {
-        // Required text fields with defaults
-        samenvatting_feiten: "Analyse nog niet volledig beschikbaar. Start een nieuwe analyse.",
-        juridische_analyse: "Volledige juridische analyse nog niet beschikbaar.",
-        verjaring_en_klachttermijnen: "Informatie over verjaring en klachttermijnen nog niet beschikbaar.",
-        kernredenering: ["Volledige analyse vereist voor kernredenering"],
-        
-        // Structured data
         factsJson: Array.isArray(analysis.factsJson) ? 
           analysis.factsJson.map((fact: any, idx: number) => ({ 
             label: `Feit ${idx + 1}`, 
@@ -956,128 +917,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             article: typeof basis === 'object' ? basis.article : undefined,
             note: typeof basis === 'object' ? basis.note : undefined
           })) : [],
-        missingDocuments: Array.isArray(analysis.missingDocsJson) ? analysis.missingDocsJson : [],
-        
-        // Default structured objects
-        conflicten_in_input: [],
-        vordering: { hoofdsom: 0, wettelijke_rente: 0 },
-        kansinschatting: { inschatting: "Onbekend", redenen: [] },
-        kwalificaties: { 
-          is_kantonzaak: false, 
-          relatieve_bevoegdheid: "Onbekend", 
-          toepasselijk_recht: "Nederlands recht" 
-        },
-        belangrijke_data: { timeline: [], deadlines_en_termijnen: [] },
-        bewijslast: { 
-          wie_moet_wat_bewijzen: [], 
-          beschikbaar_bewijs: [], 
-          ontbrekend_bewijs: [] 
-        }
+        missingDocuments: Array.isArray(analysis.missingDocsJson) ? analysis.missingDocsJson : []
       };
       
       res.json(result);
     } catch (error) {
       console.error('Error fetching case analysis:', error);
       res.status(500).json({ message: 'Failed to fetch analysis' });
-    }
-  });
-
-  // New MindStudio analysis endpoint
-  app.post('/api/analyse', isAuthenticated, async (req: any, res) => {
-    try {
-      const { input_case_details, extracted_text } = req.body;
-      
-      // Call real MindStudio API
-      const userId = req.user.claims.sub;
-      
-      // Get user's case data to pass more context to MindStudio
-      const userCases = await storage.getCasesByUser(userId);
-      const currentCase = userCases[0]; // Use first case for MVP
-      
-      let caseDetails = input_case_details || "Juridische casus voor analyse";
-      if (currentCase) {
-        const documents = await storage.getDocumentsByCase(currentCase.id);
-        const documentText = documents.map(doc => doc.extractedText).join('\n\n');
-        
-        caseDetails = `
-Zaak beschrijving: ${currentCase.description || 'Geen beschrijving'}
-Claim bedrag: €${currentCase.claimAmount || 0}
-Tegenpartij type: ${currentCase.counterpartyType || 'Onbekend'}
-Status: ${currentCase.status}
-
-Documenten inhoud:
-${documentText || 'Geen documenten geüpload'}
-        `.trim();
-      }
-      
-      // First, try to call MindStudio synchronously for immediate results
-      try {
-        const result = await aiService.runSynchronousMindstudioAnalysis({
-          input_name: `User ${userId} - Case Analysis`,
-          input_case_details: caseDetails,
-          file_url: undefined // We could pass document URLs here if needed
-        });
-        
-        // If successful, return the structured analysis
-        console.log('Full MindStudio result object:', result);
-        
-        const outputData = result.result || result.outputText;
-        if (outputData) {
-          console.log('MindStudio raw response:', outputData);
-          
-          // Check if outputData is already an object or needs parsing
-          let parsedResponse;
-          if (typeof outputData === 'string') {
-            try {
-              parsedResponse = JSON.parse(outputData);
-            } catch (parseError) {
-              console.error('Failed to parse MindStudio JSON string:', parseError);
-              console.log('Raw string that failed to parse:', outputData);
-              return res.status(500).json({ 
-                message: 'MindStudio returned invalid JSON string',
-                error: 'Geen data beschikbaar - ongeldige JSON string'
-              });
-            }
-          } else if (typeof outputData === 'object') {
-            // Already an object, use directly
-            parsedResponse = outputData;
-          } else {
-            console.error('MindStudio returned unexpected data type:', typeof outputData);
-            return res.status(500).json({ 
-              message: 'MindStudio returned unexpected data type',
-              error: 'Geen data beschikbaar - onverwacht datatype'
-            });
-          }
-          
-          console.log('MindStudio parsed response:', parsedResponse);
-          return res.json(parsedResponse);
-        } else {
-          console.log('MindStudio returned empty result and outputText');
-          console.log('Available fields in result:', Object.keys(result));
-          return res.status(500).json({ 
-            message: 'MindStudio returned empty response',
-            error: 'Geen data beschikbaar - lege response'
-          });
-        }
-      } catch (mindstudioError) {
-        console.error('MindStudio analysis failed:', mindstudioError);
-        return res.status(500).json({ 
-          message: 'MindStudio API call failed',
-          error: 'Geen data beschikbaar - API fout'
-        });
-      }
-      
-      // Should never reach here, but just in case
-      return res.status(500).json({ 
-        message: 'Unexpected error in analysis',
-        error: 'Geen data beschikbaar - onverwachte fout'
-      });
-    } catch (error) {
-      console.error('Error in MindStudio analysis endpoint:', error);
-      res.status(500).json({ 
-        message: 'Failed to process analysis request',
-        error: 'Geen data beschikbaar - algemene fout'
-      });
     }
   });
 
