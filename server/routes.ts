@@ -913,8 +913,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Fallback to existing analysis structure
+      // Try to parse the full analysis from rawText if available
+      if (analysis.rawText) {
+        try {
+          const appResult = AIService.mindstudioToAppResult(analysis.rawText);
+          return res.json(appResult);
+        } catch (error) {
+          console.error('Error parsing rawText analysis:', error);
+        }
+      }
+      
+      // Fallback to existing analysis structure with default values
       const result = {
+        // Required text fields with defaults
+        samenvatting_feiten: "Analyse nog niet volledig beschikbaar. Start een nieuwe analyse.",
+        juridische_analyse: "Volledige juridische analyse nog niet beschikbaar.",
+        verjaring_en_klachttermijnen: "Informatie over verjaring en klachttermijnen nog niet beschikbaar.",
+        kernredenering: ["Volledige analyse vereist voor kernredenering"],
+        
+        // Structured data
         factsJson: Array.isArray(analysis.factsJson) ? 
           analysis.factsJson.map((fact: any, idx: number) => ({ 
             label: `Feit ${idx + 1}`, 
@@ -931,7 +948,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             article: typeof basis === 'object' ? basis.article : undefined,
             note: typeof basis === 'object' ? basis.note : undefined
           })) : [],
-        missingDocuments: Array.isArray(analysis.missingDocsJson) ? analysis.missingDocsJson : []
+        missingDocuments: Array.isArray(analysis.missingDocsJson) ? analysis.missingDocsJson : [],
+        
+        // Default structured objects
+        conflicten_in_input: [],
+        vordering: { hoofdsom: 0, wettelijke_rente: 0 },
+        kansinschatting: { inschatting: "Onbekend", redenen: [] },
+        kwalificaties: { 
+          is_kantonzaak: false, 
+          relatieve_bevoegdheid: "Onbekend", 
+          toepasselijk_recht: "Nederlands recht" 
+        },
+        belangrijke_data: { timeline: [], deadlines_en_termijnen: [] },
+        bewijslast: { 
+          wie_moet_wat_bewijzen: [], 
+          beschikbaar_bewijs: [], 
+          ontbrekend_bewijs: [] 
+        }
       };
       
       res.json(result);
