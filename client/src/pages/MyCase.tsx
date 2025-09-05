@@ -281,13 +281,23 @@ export default function MyCase() {
                     <strong>Analyse tijdelijk niet beschikbaar</strong>
                   </div>
                   <div className="text-sm">
-                    {analysisError.message.includes('timeout') || analysisError.message.includes('niet beschikbaar') ? (
+                    {analysisError.message.includes('timeout') || analysisError.message.includes('niet beschikbaar') || analysisError.message.includes('duurt langer') ? (
                       <>
-                        <p>MindStudio AI is momenteel overbelast. Dit kan gebeuren tijdens piekuren.</p>
+                        <p>
+                          {analysisError.message.includes('duurt langer') 
+                            ? 'MindStudio AI heeft meer tijd nodig voor uw complexe zaak. De analyse loopt nog steeds.' 
+                            : 'MindStudio AI is momenteel overbelast. Dit kan gebeuren tijdens piekuren.'
+                          }
+                        </p>
                         <p className="mt-2 font-medium">Wat kunt u doen:</p>
                         <ul className="list-disc list-inside mt-1 space-y-1">
-                          <li>Probeer het over 10-15 minuten opnieuw</li>
-                          <li>De analyse wordt bewaard zodra deze succesvol is</li>
+                          <li>
+                            {analysisError.message.includes('duurt langer') 
+                              ? 'Wacht 2-3 minuten en probeer opnieuw (de analyse is mogelijk al klaar)' 
+                              : 'Probeer het over 10-15 minuten opnieuw'
+                            }
+                          </li>
+                          <li>De analyse wordt automatisch bewaard zodra deze succesvol is</li>
                           <li>U kunt intussen documenten uploaden of zaakgegevens aanvullen</li>
                         </ul>
                       </>

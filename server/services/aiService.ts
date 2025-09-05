@@ -338,7 +338,7 @@ Geef JSON response:
     console.log("Starting SYNCHRONOUS Mindstudio analysis:", variables);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout for MindStudio
 
     try {
       const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
@@ -380,7 +380,7 @@ Geef JSON response:
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error("MindStudio analyse timeout - probeer later opnieuw");
+        throw new Error("MindStudio analyse duurt langer dan verwacht - probeer later opnieuw");
       }
       throw error;
     }
