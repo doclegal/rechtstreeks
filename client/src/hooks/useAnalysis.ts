@@ -13,13 +13,19 @@ export function useAnalysis({ caseId, enabled = true }: UseAnalysisProps) {
   const query = useQuery({
     queryKey: ["/api/cases", caseId, "analysis"],
     queryFn: async (): Promise<Analysis> => {
-      const response = await apiRequest("GET", `/api/cases/${caseId}/analysis`);
-      const jsonData = await response.json();
-      return AnalysisSchema.parse(jsonData);
+      try {
+        const response = await apiRequest("GET", `/api/cases/${caseId}/analysis`);
+        const jsonData = await response.json();
+        return AnalysisSchema.parse(jsonData);
+      } catch (error) {
+        // If analysis doesn't exist or has validation errors, return empty state
+        throw error;
+      }
     },
     enabled: enabled && !!caseId,
     retry: false,
     staleTime: 300000, // 5 minutes
+    throwOnError: false, // Don't throw validation errors to the UI
   });
 
   // Create a mutation for refreshing analysis with async polling

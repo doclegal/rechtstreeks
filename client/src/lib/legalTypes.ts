@@ -29,15 +29,15 @@ export const BewijslastSchema = z.object({
 });
 
 export const AnalysisSchema = z.object({
-  samenvatting_feiten: z.string(),
-  juridische_analyse: z.string(),
+  samenvatting_feiten: z.string().optional().default("Analyse nog niet beschikbaar"),
+  juridische_analyse: z.string().optional().default("Analyse nog niet beschikbaar"),
   // Make these optional and accept both objects and strings
   kwalificaties: KwalificatiesSchema.optional().or(z.string().optional()),
   vordering: VorderingSchema.optional().or(z.string().optional()),
   kansinschatting: KansschattingSchema.optional().or(z.string().optional()),
   belangrijke_data: BelangrijkeDataSchema.optional().or(z.string().optional()),
   bewijslast: BewijslastSchema.optional().or(z.string().optional()),
-  verjaring_en_klachttermijnen: z.string(),
+  verjaring_en_klachttermijnen: z.string().optional().default("Analyse nog niet beschikbaar"),
   // Accept both arrays and comma-separated strings
   conflicten_in_input: z.array(z.string()).or(z.string()).optional(),
   to_do: z.array(z.string()).or(z.string()).optional(),
