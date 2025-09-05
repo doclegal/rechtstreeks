@@ -42,7 +42,314 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
     }
   }
 
-  // Show structured JSON output if available
+  // Check for triage data in the parsed analysis
+  const triageData = parsedAnalysis?.output_triage_flow || parsedAnalysis;
+  const isTriageFormat = triageData && (triageData.case_type || triageData.summary || triageData.parties);
+
+  // Show triage format if available
+  if (isTriageFormat) {
+    return (
+      <div className="space-y-4">
+        {/* Header with summary and case type */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-green-700 flex items-center gap-2">
+                <Scale className="w-5 h-5" />
+                Juridische Triage Voltooid
+              </CardTitle>
+              {onAnalyze && (
+                <Button
+                  onClick={onAnalyze}
+                  disabled={isAnalyzing || (!!analysis && !hasNewInfo)}
+                  variant={hasNewInfo ? "destructive" : "secondary"}
+                  size="sm"
+                  data-testid="button-start-analysis"
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <Clock className="mr-2 h-4 w-4 animate-spin" />
+                      Analyseren...
+                    </>
+                  ) : hasNewInfo ? (
+                    <>
+                      <Play className="mr-2 h-4 w-4" />
+                      Nieuwe analyse uitvoeren
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Triage voltooid
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Summary */}
+            {triageData.summary && (
+              <div>
+                <h4 className="font-medium mb-2">Samenvatting</h4>
+                <p className="text-sm text-gray-700" data-testid="text-summary">
+                  {triageData.summary}
+                </p>
+              </div>
+            )}
+            
+            {/* Case type and confidence */}
+            <div className="flex items-center gap-2">
+              {triageData.case_type && (
+                <Badge variant="secondary" data-testid="badge-case-type">
+                  {triageData.case_type}
+                </Badge>
+              )}
+              {triageData.confidence && (
+                <Badge variant="outline" data-testid="badge-confidence">
+                  {Math.round(triageData.confidence * 100)}% zekerheid
+                </Badge>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Claims */}
+        {triageData.claims && Array.isArray(triageData.claims) && triageData.claims.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Euro className="w-5 h-5" />
+                Vorderingen
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {triageData.claims.map((claim: any, idx: number) => (
+                <div key={idx} className="border rounded p-3 space-y-2" data-testid={`card-claim-${idx}`}>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" data-testid={`badge-claim-type-${idx}`}>
+                      {claim.type || 'Onbekend type'}
+                    </Badge>
+                    {claim.confidence && (
+                      <Badge variant="outline" data-testid={`badge-claim-confidence-${idx}`}>
+                        {Math.round(claim.confidence * 100)}%
+                      </Badge>
+                    )}
+                  </div>
+                  {claim.value?.principal_eur && (
+                    <p className="text-lg font-medium text-green-700" data-testid={`text-claim-amount-${idx}`}>
+                      € {claim.value.principal_eur.toLocaleString()}
+                    </p>
+                  )}
+                  {claim.value?.what_to_perform && (
+                    <p className="text-sm text-gray-600" data-testid={`text-claim-description-${idx}`}>
+                      {claim.value.what_to_perform}
+                    </p>
+                  )}
+                  {claim.value?.legal_basis && (
+                    <p className="text-xs text-gray-500" data-testid={`text-claim-legal-basis-${idx}`}>
+                      Rechtsgrond: {claim.value.legal_basis}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Parties */}
+        {triageData.parties && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Users className="w-5 h-5" />
+                Partijen
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="border rounded p-3" data-testid="card-claimant">
+                  <h5 className="font-medium text-green-700">Eiser</h5>
+                  <p className="text-sm" data-testid="text-claimant-name">
+                    {triageData.parties.value?.claimant_name || "(onbekend)"}
+                  </p>
+                </div>
+                <div className="border rounded p-3" data-testid="card-defendant">
+                  <h5 className="font-medium text-red-700">Verweerder</h5>
+                  <p className="text-sm" data-testid="text-defendant-name">
+                    {triageData.parties.value?.defendant_name || "(onbekend)"}
+                  </p>
+                </div>
+              </div>
+              {triageData.parties.value?.relationship && (
+                <p className="text-xs text-gray-500 mt-2" data-testid="text-relationship">
+                  Relatie: {triageData.parties.value.relationship}
+                </p>
+              )}
+              {triageData.parties.needed && (
+                <Badge variant="destructive" className="mt-2" data-testid="badge-parties-missing">
+                  Informatie ontbreekt
+                </Badge>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Agreement */}
+        {triageData.agreement && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <FileText className="w-5 h-5" />
+                Overeenkomst
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className="text-sm" data-testid="text-agreement-exists">
+                Type: <span className="font-medium">{triageData.agreement.exists}</span>
+              </p>
+              {triageData.agreement.attachments && triageData.agreement.attachments.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium">Bijlagen:</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {triageData.agreement.attachments.map((attachment: string, idx: number) => (
+                      <Badge key={idx} variant="outline" data-testid={`badge-attachment-${idx}`}>
+                        {attachment}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {triageData.agreement.needed && (
+                <Badge variant="destructive" data-testid="badge-agreement-missing">
+                  Contract upload gewenst
+                </Badge>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Facts Timeline */}
+        {triageData.facts?.timeline && Array.isArray(triageData.facts.timeline) && triageData.facts.timeline.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Calendar className="w-5 h-5" />
+                Tijdlijn
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {triageData.facts.timeline.map((item: any, idx: number) => (
+                <div key={idx} className="flex items-start gap-3 border-l-2 border-blue-200 pl-3" data-testid={`timeline-item-${idx}`}>
+                  <div className="text-sm">
+                    <p className="font-medium" data-testid={`timeline-date-${idx}`}>
+                      {item.date || 'Datum onbekend'}
+                    </p>
+                    <p className="text-gray-600" data-testid={`timeline-event-${idx}`}>
+                      {item.event || 'Geen beschrijving'}
+                    </p>
+                    <p className="text-xs text-gray-400" data-testid={`timeline-source-${idx}`}>
+                      Bron: {item.source || 'onbekend'}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {triageData.facts.timeline.length === 0 && (
+                <p className="text-sm text-gray-500" data-testid="text-timeline-empty">
+                  Geen tijdlijn geëxtraheerd.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Procedural info */}
+        {triageData.procedural && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Scale className="w-5 h-5" />
+                Procedureel
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div data-testid="procedural-urgent">
+                  <p className="text-sm">Spoedeisend: <span className="font-medium">
+                    {triageData.procedural.value?.urgent === null ? 'Onbekend' : 
+                     triageData.procedural.value?.urgent ? 'Ja' : 'Nee'}
+                  </span></p>
+                </div>
+                <div data-testid="procedural-forum">
+                  <p className="text-sm">Forumkeuze: <span className="font-medium">
+                    {triageData.procedural.value?.forum_clause || 'Geen'}
+                  </span></p>
+                </div>
+              </div>
+              {triageData.procedural.needed && (
+                <Badge variant="destructive" data-testid="badge-procedural-missing">
+                  Ontbrekende informatie
+                </Badge>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Needed Questions */}
+        {triageData.needed_questions && Array.isArray(triageData.needed_questions) && triageData.needed_questions.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <AlertTriangle className="w-5 h-5" />
+                Vervolgvragen
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {triageData.needed_questions.map((question: any, idx: number) => (
+                <div key={idx} className="border rounded p-3 space-y-2" data-testid={`question-${idx}`}>
+                  <div className="flex items-start gap-2">
+                    <input type="checkbox" className="mt-1" data-testid={`checkbox-question-${idx}`} />
+                    <div>
+                      <p className="text-sm font-medium" data-testid={`question-label-${idx}`}>
+                        {question.label}
+                      </p>
+                      <p className="text-xs text-gray-500" data-testid={`question-reason-${idx}`}>
+                        {question.reason}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {triageData.needed_questions.length === 0 && (
+                <p className="text-sm text-gray-500" data-testid="text-questions-empty">
+                  Geen vervolgvragen.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Raw JSON Debug Panel */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <FileText className="w-5 h-5" />
+              Ruwe data (ontwikkelaars)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <details className="cursor-pointer">
+              <summary className="text-sm font-medium mb-2">Klik om JSON data te tonen</summary>
+              <pre className="text-xs bg-gray-50 p-3 rounded overflow-auto max-h-96 whitespace-pre-wrap" data-testid="raw-json">
+                {JSON.stringify(triageData.full_json || triageData, null, 2)}
+              </pre>
+            </details>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show structured JSON output if available (legacy format)
   if (parsedAnalysis) {
     return (
       <div className="space-y-4">

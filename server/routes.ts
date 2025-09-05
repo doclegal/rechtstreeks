@@ -356,13 +356,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const result = await aiService.runSynchronousMindstudioAnalysis(analysisParams);
           
           // Process the result immediately (no polling needed!)
-          const processedResult = AIService.mindstudioToAppResult(result.result);
+          console.log('🔍 Raw result from MindStudio:', typeof result.result, result.result);
+          
+          // Parse the result - could be JSON object or string
+          let parsedResult;
+          if (typeof result.result === 'string') {
+            try {
+              parsedResult = JSON.parse(result.result);
+            } catch (e) {
+              // If it's not JSON, treat as text
+              parsedResult = result.result;
+            }
+          } else {
+            parsedResult = result.result;
+          }
+          
+          const processedResult = AIService.mindstudioToAppResult(parsedResult);
           
           // Save analysis to database
           const analysis = await storage.createAnalysis({
             caseId,
             model: 'mindstudio-agent',
-            rawText: result.result, // Store the full MindStudio response
+            rawText: typeof parsedResult === 'object' ? JSON.stringify(parsedResult, null, 2) : parsedResult,
             factsJson: processedResult.factsJson,
             issuesJson: processedResult.issuesJson,
             legalBasisJson: processedResult.legalBasisJson,

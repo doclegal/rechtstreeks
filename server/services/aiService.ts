@@ -379,46 +379,96 @@ Geef JSON response:
     return THREAD_RESULTS.get(threadId) || { status: 'pending' as const };
   }
 
-  static mindstudioToAppResult(outputText: string): AppAnalysisResult {
+  static mindstudioToAppResult(outputData: any): AppAnalysisResult {
     // Default empty structure
     const result: AppAnalysisResult = {
       factsJson: [],
       issuesJson: [],
       legalBasisJson: [],
       missingDocuments: [],
-      rawText: outputText
+      rawText: typeof outputData === 'string' ? outputData : JSON.stringify(outputData, null, 2)
     };
 
     try {
-      // Parse Dutch headings and sections
-      const sections = outputText.split(/\n\s*\n/);
-      
-      for (const section of sections) {
-        const lines = section.split('\n').map(l => l.trim()).filter(l => l);
-        if (lines.length === 0) continue;
+      // Handle both old text format and new JSON format
+      if (typeof outputData === 'string') {
+        // Legacy text parsing
+        const sections = outputData.split(/\n\s*\n/);
         
-        const heading = lines[0].toLowerCase();
-        const content = lines.slice(1);
-        
-        if (heading.includes('feiten') || heading.includes('samenvatting')) {
-          result.factsJson = content.map((item, idx) => ({
-            label: `Feit ${idx + 1}`,
-            detail: item.replace(/^[•\-*]\s*/, '')
-          }));
-        } else if (heading.includes('juridische') || heading.includes('geschilpunt') || heading.includes('kwestie')) {
-          result.issuesJson = content.map(item => ({
-            issue: item.replace(/^[•\-*]\s*/, ''),
-            risk: undefined
-          }));
-        } else if (heading.includes('wetsartikelen') || heading.includes('rechtsgrond') || heading.includes('juridische grondslag')) {
-          result.legalBasisJson = content.map(item => ({
-            law: item.replace(/^[•\-*]\s*/, ''),
-            article: undefined,
-            note: undefined
-          }));
-        } else if (heading.includes('ontbrekende') && heading.includes('document')) {
-          result.missingDocuments = content.map(item => item.replace(/^[•\-*]\s*/, ''));
+        for (const section of sections) {
+          const lines = section.split('\n').map(l => l.trim()).filter(l => l);
+          if (lines.length === 0) continue;
+          
+          const heading = lines[0].toLowerCase();
+          const content = lines.slice(1);
+          
+          if (heading.includes('feiten') || heading.includes('samenvatting')) {
+            result.factsJson = content.map((item, idx) => ({
+              label: `Feit ${idx + 1}`,
+              detail: item.replace(/^[•\-*]\s*/, '')
+            }));
+          } else if (heading.includes('juridische') || heading.includes('geschilpunt') || heading.includes('kwestie')) {
+            result.issuesJson = content.map(item => ({
+              issue: item.replace(/^[•\-*]\s*/, ''),
+              risk: undefined
+            }));
+          } else if (heading.includes('wetsartikelen') || heading.includes('rechtsgrond') || heading.includes('juridische grondslag')) {
+            result.legalBasisJson = content.map(item => ({
+              law: item.replace(/^[•\-*]\s*/, ''),
+              article: undefined,
+              note: undefined
+            }));
+          } else if (heading.includes('ontbrekende') && heading.includes('document')) {
+            result.missingDocuments = content.map(item => item.replace(/^[•\-*]\s*/, ''));
+          }
         }
+      } else if (outputData && typeof outputData === 'object') {
+        // New JSON format from MindStudio triage
+        const triageData = outputData.output_triage_flow || outputData;
+        
+        // Extract facts from timeline and summary
+        if (triageData.summary) {
+          result.factsJson.push({
+            label: 'Samenvatting',
+            detail: triageData.summary
+          });
+        }
+        
+        if (triageData.facts && triageData.facts.timeline && Array.isArray(triageData.facts.timeline)) {
+          triageData.facts.timeline.forEach((item: any, idx: number) => {
+            result.factsJson.push({
+              label: `Timeline ${idx + 1}`,
+              detail: `${item.date || 'Datum onbekend'}: ${item.event || 'Gebeurtenis niet beschreven'}`
+            });
+          });
+        }
+        
+        // Extract claims as issues
+        if (triageData.claims && Array.isArray(triageData.claims)) {
+          result.issuesJson = triageData.claims.map((claim: any) => ({
+            issue: `${claim.type || 'Onbekend type'}: ${claim.value?.what_to_perform || 'Beschrijving ontbreekt'}`,
+            risk: claim.confidence ? `${Math.round(claim.confidence * 100)}% zekerheid` : undefined
+          }));
+        }
+        
+        // Legal basis from case type and claims
+        if (triageData.case_type) {
+          result.legalBasisJson.push({
+            law: `Zaaktype: ${triageData.case_type}`,
+            article: undefined,
+            note: triageData.confidence ? `Zekerheid: ${Math.round(triageData.confidence * 100)}%` : undefined
+          });
+        }
+        
+        // Missing documents from needed questions
+        if (triageData.needed_questions && Array.isArray(triageData.needed_questions)) {
+          result.missingDocuments = triageData.needed_questions
+            .filter((q: any) => q.needed)
+            .map((q: any) => q.label || 'Onbekende vraag');
+        }
+        
+        // Store the full triage data for the frontend
+        (result as any).triageData = triageData;
       }
       
       // Ensure arrays are never empty - add fallback content
