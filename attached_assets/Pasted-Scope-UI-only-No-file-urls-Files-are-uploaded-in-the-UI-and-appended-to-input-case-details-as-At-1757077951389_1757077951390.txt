@@ -1,0 +1,141 @@
+Scope: UI only. No file_urls. Files are uploaded in the UI and appended to input_case_details as [Attachment] <filename> — <short note or excerpt> before submitting.
+
+Goal
+Make the UI “non-lawyer friendly”:
+
+show Kantonrechter suitability card,
+
+show a clear facts summary,
+
+highlight Parties and Claims (with total),
+
+ask for missing info with plain language and “Upload here” where ui:"file".
+
+Do
+
+Top banner: Kantonrechter
+
+New card under the header:
+
+Title: “Kantonrechter: {ja|nee|onzeker}” (from jurisdiction.kanton_geschikt)
+
+Subtext: {jurisdiction.reason}
+
+Badge with Math.round(jurisdiction.confidence*100)%
+
+Colors: success (ja), warning (onzeker), neutral/danger (nee).
+
+Summary card (plain)
+
+Keep existing summary.
+
+Under it, small chips: case type + global confidence.
+
+Parties card
+
+Three rows: Eiser / Verweerder / Relatie.
+
+If parties.needed === true → show small red “Ontbreekt” that scrolls to the corresponding Missing row.
+
+Claims card
+
+For each claim show a fixed trio:
+
+Vordering: {type} (chip) + claim confidence chip.
+
+Bedrag: format NL locale or “–”.
+
+Te verrichten: what_to_perform or “–”.
+
+Rechtsgrond: legal_basis or “–”.
+
+Footer: Totaal belang: total_principal_eur formatted (or “–”).
+
+Missing Information (aggregate)
+
+Build one list from:
+
+Any top-level with .needed === true (parties, agreement, procedural)
+
+Each claim where claims[i].needed === true
+
+All needed_questions[]
+
+Fallbacks (even if .needed false):
+
+agreement.exists null/“onbekend”
+
+procedural.value.urgent null/“onbekend” or forum_clause null
+
+any claim subfield missing
+
+timeline entries where date === null → create synthetic id facts.timeline.<i>.date
+
+Render only when Y > 0. Title: “Nog ontbrekende informatie ({Y} items)”.
+
+Row rendering with UI hints
+
+Use label for the main line (plain language).
+
+Subline: “Waarom: {reason}”.
+
+If ui:"select" render a select with options.
+
+If ui:"text" render text/textarea with placeholder or example.
+
+If ui:"file" render an upload dropzone. On file select:
+
+Extract a short text excerpt (first ~2–4k chars if available).
+
+Stage an [Attachment] marker that will be appended to input_case_details on submit:
+
+[Attachment] <filename> — <short description or excerpt>
+
+
+Optionally stage followup_answers["agreement.attachment_note"] = "<filename>".
+
+Per row button “Beantwoorden/Uploaden” stages answers into followup_answers by id. Do not send yet.
+
+Primary CTA
+
+Button: “Ontbrekende info indienen”.
+
+On click, resubmit with:
+
+input_case_details: <original text + all new [Attachment] markers appended>,
+followup_answers: <staged map>
+
+
+Blocking “Analyseren…” state while waiting.
+
+Post-run refresh
+
+Recompute X/Y:
+
+X = count of required fields now filled (parties=3, agreement.exists=1 (+1 if schriftelijk & attachment present via [Attachment] marker), procedural=2, per claim=3).
+
+Y = size of the missing list (incl. fallbacks).
+
+If Y === 0: show green callout “Intake compleet — klaar voor juridische beoordeling.” and a primary CTA “Juridische beoordeling starten” (next flow).
+
+A11y & formatting
+
+Euro in NL locale (e.g., € 20.300,00), “–/ (onbekend)” for nulls.
+
+Do not rely on color alone; include labels/icons.
+
+Keep Raw JSON collapsible.
+
+Acceptance
+
+Kanton-card renders with ja/nee/onzeker + reason + confidence.
+
+Claims show type, amount, what_to_perform, legal_basis; total displayed.
+
+Missing list includes all .needed + all needed_questions + fallback detections.
+
+ui:"file" rows allow upload and append proper [Attachment] markers to input_case_details prior to submit.
+
+X/Y chips update correctly; Y→0 shows green callout + “Juridische beoordeling starten”.
+
+No crashes with null/empty arrays.

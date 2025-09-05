@@ -53,13 +53,32 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
   const triageData = parsedAnalysis?.full_json || parsedAnalysis?.output_triage_flow || parsedAnalysis;
   const isTriageFormat = triageData && (triageData.case_type || triageData.summary || triageData.parties);
 
-  // State for followup answers
+  // State for followup answers and attachments
   const [followupAnswers, setFollowupAnswers] = useState<Record<string, string>>({});
   const [isSubmittingFollowup, setIsSubmittingFollowup] = useState(false);
+  const [attachmentMarkers, setAttachmentMarkers] = useState<string[]>([]);
 
   // Helper functions
   const updateFollowupAnswer = (key: string, value: string) => {
     setFollowupAnswers(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleFileUpload = (item: any, file: File) => {
+    // Extract short excerpt from file (mock implementation)
+    const fileName = file.name;
+    const fileSize = Math.round(file.size / 1024);
+    const excerpt = `${fileName} (${fileSize}KB)`;
+    
+    // Create attachment marker
+    const attachmentMarker = `[Attachment] ${fileName} — ${excerpt}`;
+    
+    // Add to attachment markers array
+    setAttachmentMarkers(prev => [...prev, attachmentMarker]);
+    
+    // Stage answer for agreement if it's an agreement file
+    if (item.type === 'agreement') {
+      updateFollowupAnswer('agreement.attachment_note', fileName);
+    }
   };
 
   // Robust Missing Information aggregator
@@ -238,24 +257,25 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
   };
 
   const handleSubmitFollowup = async () => {
-    if (!onAnalyze || Object.keys(followupAnswers).length === 0) return;
+    if (!onAnalyze || (Object.keys(followupAnswers).length === 0 && attachmentMarkers.length === 0)) return;
     
     setIsSubmittingFollowup(true);
     try {
-      // Call MindStudio with followup_answers according to spec
-      // Note: This would need to be implemented to send followup_answers to the backend
-      // The backend should then call MindStudio with:
-      // {
-      //   "input_case_details": "<existing>",
-      //   "file_urls": ["<existing + new>"],
-      //   "followup_answers": followupAnswers
-      // }
+      // Submit with input_case_details + attachment markers and followup_answers
+      // This mimics appending [Attachment] markers to the original case details
+      // and sending followup_answers for structured fields
       
       // For now, just re-run the regular analysis
+      // In real implementation, this would send:
+      // {
+      //   input_case_details: "<original text>" + "\n\n" + attachmentMarkers.join("\n"),
+      //   followup_answers: followupAnswers
+      // }
       await onAnalyze();
       
-      // Clear the answers after successful submission
+      // Clear the answers and attachments after successful submission
       setFollowupAnswers({});
+      setAttachmentMarkers([]);
     } finally {
       setIsSubmittingFollowup(false);
     }
@@ -271,40 +291,41 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
 
     return (
       <div className="space-y-6">
-        {/* A. Header strip */}
-        <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-green-800 mb-1">
-                Eerste juridische triage voltooid
-              </h2>
-              <p className="text-sm text-green-700">
-                Dit is de eerste analyse: hieronder zie je het zaaktype, een samenvatting en wat nog ontbreekt.
+        {/* Kantonrechter suitability banner */}
+        {triageData.jurisdiction && (
+          <Card className={`border-2 ${
+            triageData.jurisdiction.kanton_geschikt === 'ja' ? 'border-green-500 bg-green-50' :
+            triageData.jurisdiction.kanton_geschikt === 'onzeker' ? 'border-yellow-500 bg-yellow-50' :
+            'border-red-500 bg-red-50'
+          }`}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                Kantonrechter: 
+                <Badge variant={
+                  triageData.jurisdiction.kanton_geschikt === 'ja' ? 'default' :
+                  triageData.jurisdiction.kanton_geschikt === 'onzeker' ? 'secondary' :
+                  'destructive'
+                } className={
+                  triageData.jurisdiction.kanton_geschikt === 'ja' ? 'bg-green-600 hover:bg-green-700' :
+                  triageData.jurisdiction.kanton_geschikt === 'onzeker' ? 'bg-yellow-600 hover:bg-yellow-700' :
+                  'bg-red-600 hover:bg-red-700'
+                }>
+                  {triageData.jurisdiction.kanton_geschikt}
+                </Badge>
+                <Badge variant="outline">
+                  {Math.round(triageData.jurisdiction.confidence * 100)}%
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm" data-testid="jurisdiction-reason">
+                {triageData.jurisdiction.reason}
               </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {triageData.case_type && (
-                <Badge variant="secondary" className="text-sm font-medium" data-testid="badge-case-type">
-                  {triageData.case_type}
-                </Badge>
-              )}
-              {triageData.confidence && confidenceStyle && (
-                <Badge 
-                  variant={confidenceStyle.variant} 
-                  className={`text-sm ${confidenceStyle.className}`} 
-                  data-testid="badge-confidence"
-                >
-                  {Math.round(triageData.confidence * 100)}% zekerheid
-                  {triageData.confidence < 0.6 && (
-                    <span className="block text-xs mt-1">Overweeg extra toelichting / upload</span>
-                  )}
-                </Badge>
-              )}
-            </div>
-          </div>
-        </div>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* B. Summary card */}
+        {/* Summary card (plain) */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Samenvatting</CardTitle>
@@ -328,6 +349,95 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
             </div>
           </CardContent>
         </Card>
+
+        {/* Parties card */}
+        {triageData.parties && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                Partijen
+                {triageData.parties.needed && (
+                  <Badge variant="destructive" className="text-xs">
+                    Ontbreekt
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="font-medium">Eiser:</span>
+                  <span data-testid="parties-claimant">
+                    {triageData.parties.value?.claimant_name || "–"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Verweerder:</span>
+                  <span data-testid="parties-defendant">
+                    {triageData.parties.value?.defendant_name || "–"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Relatie:</span>
+                  <span data-testid="parties-relationship">
+                    {triageData.parties.value?.relationship || "–"}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Claims card */}
+        {triageData.claims && Array.isArray(triageData.claims) && triageData.claims.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Vorderingen ({triageData.claims.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {triageData.claims.map((claim: any, idx: number) => (
+                  <div key={`claim-display-${idx}`} className="border rounded-lg p-3 bg-gray-50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge variant="outline" className="text-xs">
+                        {claim.type || 'Onbekend'}
+                      </Badge>
+                      {claim.confidence && (
+                        <Badge variant="secondary" className="text-xs">
+                          {Math.round(claim.confidence * 100)}%
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span className="font-medium">Bedrag:</span>
+                        <span>{formatEuro(claim.value?.principal_eur)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium">Te verrichten:</span>
+                        <span className="text-right">{claim.value?.what_to_perform || "–"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium">Rechtsgrond:</span>
+                        <span className="text-right">{claim.value?.legal_basis || "–"}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div className="border-t pt-3 mt-3">
+                  <div className="flex justify-between font-semibold">
+                    <span>Totaal belang:</span>
+                    <span data-testid="claims-total">
+                      {formatEuro(triageData.claims.reduce((sum: number, claim: any) => 
+                        sum + (claim.value?.principal_eur || 0), 0
+                      ))}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* C. Completeness chips row */}
         <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
@@ -375,10 +485,10 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
             </CardHeader>
             <CardContent className="space-y-4">
               {missingList.map((item, idx) => (
-                <div key={item.id} className="border border-orange-200 rounded-lg p-4 bg-white">
+                <div key={`missing-${item.id}-${idx}`} className="border border-orange-200 rounded-lg p-4 bg-white">
                   <div className="mb-3">
-                    <h4 className="font-medium text-orange-800">Ontbreekt: {item.title}</h4>
-                    <p className="text-sm text-orange-600">{item.reason}</p>
+                    <h4 className="font-medium text-orange-800">{item.title}</h4>
+                    <p className="text-sm text-orange-600">Waarom: {item.reason}</p>
                   </div>
                   
                   {/* Parties inputs */}
@@ -504,7 +614,7 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
               ))}
 
               {/* Submit button */}
-              {Object.keys(followupAnswers).length > 0 && (
+              {(Object.keys(followupAnswers).length > 0 || attachmentMarkers.length > 0) && (
                 <div className="pt-4 border-t border-orange-200">
                   <Button
                     onClick={handleSubmitFollowup}
