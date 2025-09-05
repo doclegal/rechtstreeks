@@ -62,25 +62,84 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
     setFollowupAnswers(prev => ({ ...prev, [key]: value }));
   };
 
+  // Missing items aggregator
+  const buildMissingList = (data: any) => {
+    const missing: any[] = [];
+
+    // Top-level: parties, agreement, procedural
+    if (data.parties?.needed === true) {
+      missing.push({ id: 'parties', type: 'parties', title: 'Partijen (namen/rol)', reason: 'Namen/rol nodig voor juridische check' });
+    }
+    if (data.agreement?.needed === true) {
+      missing.push({ id: 'agreement', type: 'agreement', title: 'Overeenkomst (type/contract)', reason: 'Type/contract of upload nodig' });
+    }
+    if (data.procedural?.needed === true) {
+      missing.push({ id: 'procedural', type: 'procedural', title: 'Procedueel (spoed/forumkeuze)', reason: 'Geef spoed en forumkeuze aan' });
+    }
+
+    // Claims: iterate claims[] and include each where claim.needed === true
+    if (data.claims && Array.isArray(data.claims)) {
+      data.claims.forEach((claim: any, idx: number) => {
+        if (claim.needed === true) {
+          missing.push({
+            id: `claim-${idx}`,
+            type: 'claim',
+            title: `Claim – ${claim.type || 'Onbekend'}`,
+            reason: 'Specificeer bedrag/handelingen/juridische grondslag',
+            claimIndex: idx
+          });
+        }
+        // Fallback: if claim.needed === false but required subfields are null/empty
+        else if (claim.needed === false || claim.needed === undefined) {
+          const value = claim.value || {};
+          const missingSubfields: string[] = [];
+          if (!value.principal_eur) missingSubfields.push('bedrag');
+          if (!value.what_to_perform) missingSubfields.push('te verrichten');
+          if (!value.legal_basis) missingSubfields.push('rechtsgrond');
+          
+          if (missingSubfields.length > 0) {
+            missing.push({
+              id: `claim-${idx}`,
+              type: 'claim',
+              title: `Claim – ${claim.type || 'Onbekend'} (details)`,
+              reason: `Ontbrekende details: ${missingSubfields.join(', ')}`,
+              claimIndex: idx,
+              isFallback: true
+            });
+          }
+        }
+      });
+    }
+
+    // needed_questions[]: include all entries
+    if (data.needed_questions && Array.isArray(data.needed_questions)) {
+      data.needed_questions.forEach((question: any) => {
+        missing.push({
+          id: question.id,
+          type: 'question',
+          title: question.label,
+          reason: question.reason,
+          question: question
+        });
+      });
+    }
+
+    return missing;
+  };
+
   const countFilledFields = (data: any) => {
     let count = 0;
     if (data.summary) count++;
     if (data.case_type) count++;
     if (data.parties?.value?.claimant_name || data.parties?.value?.defendant_name) count++;
-    if (data.agreement?.exists !== 'onbekend') count++;
-    if (data.claims?.length > 0) count++;
+    if (data.agreement?.exists && data.agreement.exists !== 'onbekend') count++;
+    if (data.claims?.length > 0) {
+      data.claims.forEach((claim: any) => {
+        if (claim.value?.principal_eur || claim.value?.what_to_perform || claim.value?.legal_basis) count++;
+      });
+    }
     if (data.facts?.timeline?.length > 0) count++;
     if (data.procedural?.value?.urgent !== null || data.procedural?.value?.forum_clause) count++;
-    return count;
-  };
-
-  const countMissingFields = (data: any) => {
-    let count = 0;
-    if (data.parties?.needed) count++;
-    if (data.agreement?.needed) count++;
-    if (data.procedural?.needed) count++;
-    if (data.claims?.some((c: any) => c.needed)) count += data.claims.filter((c: any) => c.needed).length;
-    if (data.needed_questions?.length > 0) count += data.needed_questions.length;
     return count;
   };
 
@@ -89,8 +148,20 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
     
     setIsSubmittingFollowup(true);
     try {
-      // This would need to be implemented to call the analysis with followup_answers
-      await onAnalyze(); // For now, just re-run analysis
+      // Call MindStudio with followup_answers according to spec
+      // Note: This would need to be implemented to send followup_answers to the backend
+      // The backend should then call MindStudio with:
+      // {
+      //   "input_case_details": "<existing>",
+      //   "file_urls": ["<existing + new>"],
+      //   "followup_answers": followupAnswers
+      // }
+      
+      // For now, just re-run the regular analysis
+      await onAnalyze();
+      
+      // Clear the answers after successful submission
+      setFollowupAnswers({});
     } finally {
       setIsSubmittingFollowup(false);
     }
@@ -98,8 +169,9 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
 
   // Show triage format if available
   if (isTriageFormat) {
+    const missingList = buildMissingList(triageData);
     const filledCount = countFilledFields(triageData);
-    const missingCount = countMissingFields(triageData);
+    const missingCount = missingList.length;
     const isIntakeComplete = missingCount === 0;
 
     return (
@@ -182,115 +254,125 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
             <CardHeader>
               <CardTitle className="text-orange-800 flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5" />
-                Nog ontbrekende informatie
+                Nog ontbrekende informatie ({missingCount} items)
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Missing parties */}
-              {triageData.parties?.needed && (
-                <div className="border border-orange-200 rounded-lg p-4 bg-white">
+              {missingList.map((item, idx) => (
+                <div key={item.id} className="border border-orange-200 rounded-lg p-4 bg-white">
                   <div className="mb-3">
-                    <h4 className="font-medium text-orange-800">Ontbreekt: Partijen (namen/rol)</h4>
-                    <p className="text-sm text-orange-600">Namen/rol nodig voor juridische check</p>
+                    <h4 className="font-medium text-orange-800">Ontbreekt: {item.title}</h4>
+                    <p className="text-sm text-orange-600">{item.reason}</p>
                   </div>
-                  <div className="space-y-2">
-                    <Input
-                      placeholder="Naam eiser"
-                      value={followupAnswers["parties.claimant_name"] || ""}
-                      onChange={(e) => updateFollowupAnswer("parties.claimant_name", e.target.value)}
-                      data-testid="input-claimant-name"
-                    />
-                    <Input
-                      placeholder="Naam verweerder"
-                      value={followupAnswers["parties.defendant_name"] || ""}
-                      onChange={(e) => updateFollowupAnswer("parties.defendant_name", e.target.value)}
-                      data-testid="input-defendant-name"
-                    />
-                    <Input
-                      placeholder="Relatie (bijv. huurder-verhuurder)"
-                      value={followupAnswers["parties.relationship"] || ""}
-                      onChange={(e) => updateFollowupAnswer("parties.relationship", e.target.value)}
-                      data-testid="input-relationship"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Missing agreement */}
-              {triageData.agreement?.needed && (
-                <div className="border border-orange-200 rounded-lg p-4 bg-white">
-                  <div className="mb-3">
-                    <h4 className="font-medium text-orange-800">Ontbreekt: Overeenkomst (type/contract)</h4>
-                    <p className="text-sm text-orange-600">Type/contract of upload nodig</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Select
-                      value={followupAnswers["agreement.exists"] || ""}
-                      onValueChange={(value) => updateFollowupAnswer("agreement.exists", value)}
-                    >
-                      <SelectTrigger data-testid="select-agreement-type">
-                        <SelectValue placeholder="Selecteer type overeenkomst" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="schriftelijk">Schriftelijk</SelectItem>
-                        <SelectItem value="mondeling">Mondeling</SelectItem>
-                        <SelectItem value="geen">Geen</SelectItem>
-                        <SelectItem value="onbekend">Onbekend</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="flex items-center gap-2 p-2 border border-dashed border-gray-300 rounded">
-                      <Upload className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm text-gray-500">Contract upload (nog niet geïmplementeerd)</span>
+                  
+                  {/* Parties inputs */}
+                  {item.type === 'parties' && (
+                    <div className="space-y-2">
+                      <Input
+                        placeholder="Naam eiser"
+                        value={followupAnswers["parties.claimant_name"] || ""}
+                        onChange={(e) => updateFollowupAnswer("parties.claimant_name", e.target.value)}
+                        data-testid="input-claimant-name"
+                      />
+                      <Input
+                        placeholder="Naam verweerder"
+                        value={followupAnswers["parties.defendant_name"] || ""}
+                        onChange={(e) => updateFollowupAnswer("parties.defendant_name", e.target.value)}
+                        data-testid="input-defendant-name"
+                      />
+                      <Input
+                        placeholder="Relatie (bijv. huurder-verhuurder)"
+                        value={followupAnswers["parties.relationship"] || ""}
+                        onChange={(e) => updateFollowupAnswer("parties.relationship", e.target.value)}
+                        data-testid="input-relationship"
+                      />
                     </div>
-                  </div>
-                </div>
-              )}
+                  )}
 
-              {/* Missing procedural */}
-              {triageData.procedural?.needed && (
-                <div className="border border-orange-200 rounded-lg p-4 bg-white">
-                  <div className="mb-3">
-                    <h4 className="font-medium text-orange-800">Ontbreekt: Procedueel (spoed/forumkeuze)</h4>
-                    <p className="text-sm text-orange-600">Geef spoed en forumkeuze aan</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Select
-                      value={followupAnswers["procedural.urgent"] || ""}
-                      onValueChange={(value) => updateFollowupAnswer("procedural.urgent", value)}
-                    >
-                      <SelectTrigger data-testid="select-urgent">
-                        <SelectValue placeholder="Is dit spoedeisend?" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ja">Ja</SelectItem>
-                        <SelectItem value="nee">Nee</SelectItem>
-                        <SelectItem value="onbekend">Onbekend</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      placeholder="Forumkeuze (bepaling of 'geen')"
-                      value={followupAnswers["procedural.forum_clause"] || ""}
-                      onChange={(e) => updateFollowupAnswer("procedural.forum_clause", e.target.value)}
-                      data-testid="input-forum-clause"
+                  {/* Agreement inputs */}
+                  {item.type === 'agreement' && (
+                    <div className="space-y-2">
+                      <Select
+                        value={followupAnswers["agreement.exists"] || ""}
+                        onValueChange={(value) => updateFollowupAnswer("agreement.exists", value)}
+                      >
+                        <SelectTrigger data-testid="select-agreement-type">
+                          <SelectValue placeholder="Selecteer type overeenkomst" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="schriftelijk">Schriftelijk</SelectItem>
+                          <SelectItem value="mondeling">Mondeling</SelectItem>
+                          <SelectItem value="geen">Geen</SelectItem>
+                          <SelectItem value="onbekend">Onbekend</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="flex items-center gap-2 p-2 border border-dashed border-gray-300 rounded">
+                        <Upload className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm text-gray-500">Contract upload (nog niet geïmplementeerd)</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Procedural inputs */}
+                  {item.type === 'procedural' && (
+                    <div className="space-y-2">
+                      <Select
+                        value={followupAnswers["procedural.urgent"] || ""}
+                        onValueChange={(value) => updateFollowupAnswer("procedural.urgent", value)}
+                      >
+                        <SelectTrigger data-testid="select-urgent">
+                          <SelectValue placeholder="Is dit spoedeisend?" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ja">Ja</SelectItem>
+                          <SelectItem value="nee">Nee</SelectItem>
+                          <SelectItem value="onbekend">Onbekend</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        placeholder="Forumkeuze (bepaling of 'geen')"
+                        value={followupAnswers["procedural.forum_clause"] || ""}
+                        onChange={(e) => updateFollowupAnswer("procedural.forum_clause", e.target.value)}
+                        data-testid="input-forum-clause"
+                      />
+                    </div>
+                  )}
+
+                  {/* Claim inputs */}
+                  {item.type === 'claim' && (
+                    <div className="space-y-2">
+                      <Input
+                        type="number"
+                        placeholder="Hoofdsom (EUR)"
+                        value={followupAnswers[`claims.${item.claimIndex}.principal_eur`] || ""}
+                        onChange={(e) => updateFollowupAnswer(`claims.${item.claimIndex}.principal_eur`, e.target.value)}
+                        data-testid={`input-claim-amount-${item.claimIndex}`}
+                      />
+                      <Input
+                        placeholder="Wat moet de wederpartij doen/nakomen?"
+                        value={followupAnswers[`claims.${item.claimIndex}.what_to_perform`] || ""}
+                        onChange={(e) => updateFollowupAnswer(`claims.${item.claimIndex}.what_to_perform`, e.target.value)}
+                        data-testid={`input-claim-performance-${item.claimIndex}`}
+                      />
+                      <Input
+                        placeholder="Juridische grondslag (artikelen/regels)"
+                        value={followupAnswers[`claims.${item.claimIndex}.legal_basis`] || ""}
+                        onChange={(e) => updateFollowupAnswer(`claims.${item.claimIndex}.legal_basis`, e.target.value)}
+                        data-testid={`input-claim-legal-basis-${item.claimIndex}`}
+                      />
+                    </div>
+                  )}
+
+                  {/* Question inputs */}
+                  {item.type === 'question' && (
+                    <Textarea
+                      placeholder="Uw antwoord..."
+                      value={followupAnswers[item.id] || ""}
+                      onChange={(e) => updateFollowupAnswer(item.id, e.target.value)}
+                      data-testid={`textarea-question-${item.id}`}
+                      className="min-h-20"
                     />
-                  </div>
-                </div>
-              )}
-
-              {/* Missing questions */}
-              {triageData.needed_questions?.map((question: any, idx: number) => (
-                <div key={idx} className="border border-orange-200 rounded-lg p-4 bg-white">
-                  <div className="mb-3">
-                    <h4 className="font-medium text-orange-800">{question.label}</h4>
-                    <p className="text-sm text-orange-600">Waarom: {question.reason}</p>
-                  </div>
-                  <Textarea
-                    placeholder="Uw antwoord..."
-                    value={followupAnswers[question.id] || ""}
-                    onChange={(e) => updateFollowupAnswer(question.id, e.target.value)}
-                    data-testid={`textarea-question-${idx}`}
-                    className="min-h-20"
-                  />
+                  )}
                 </div>
               ))}
 
@@ -329,7 +411,7 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
             <CardTitle className="flex items-center gap-2 text-lg">
               <Users className="w-5 h-5" />
               Partijen
-              {triageData.parties?.needed && (
+              {missingList.some(item => item.id === 'parties') && (
                 <Badge variant="destructive" className="text-xs">
                   <X className="w-3 h-3 mr-1" />
                   Ontbreekt

@@ -1,0 +1,79 @@
+Goal
+Ensure the “Missing information” section aggregates all relevant gaps (top-level needed, per-claim needed, and every needed_questions[]), correctly updates after a re-run, and stops asking for fields that are already present.
+
+Do
+
+Missing list builder
+
+Rebuild the aggregator so it constructs one list from:
+
+Top-level: include parties, agreement, procedural iff .needed === true.
+
+Claims: iterate claims[]; include each claim where claim.needed === true.
+
+needed_questions[]: include all entries.
+
+Add a fallback: if a section has .needed === false but any required subfield is null/empty (e.g., principal_eur, what_to_perform, legal_basis), still surface it as missing with a stable synthetic id.
+
+Stable IDs & follow-up mapping
+
+For top-level items, use ids: parties, agreement, procedural.
+
+For claims, use claim-{index} and map inputs to keys:
+
+claims.{index}.principal_eur, claims.{index}.what_to_perform, claims.{index}.legal_basis.
+
+For questions, use their provided id.
+
+When the user clicks “Beantwoorden/Uploaden” on a row, stage values into a followup_answers object using these keys. Do not send yet.
+
+Uploads → payload
+
+When a file is uploaded on any row, append its URL to file_urls (preserve existing URLs) and stage agreement.attachment_url or the question’s id as the answer value when applicable.
+
+Primary CTA
+
+On “Ontbrekende info indienen”, call the same MindStudio workflow with:
+
+{
+  "input_case_details": "<existing>",
+  "file_urls": ["<existing + new>"],
+  "followup_answers": { "...": "..." }
+}
+
+
+Show a blocking “Analyzing…” state and disable inputs until the response arrives.
+
+Post-run refresh
+
+Recompute X/Y chips:
+
+X = count of fields now present (non-empty) across sections.
+
+Y = total of all surfaced missings (top-level .needed===true + count of claims[].needed===true + needed_questions.length, with the fallback rule).
+
+Remove items that are now satisfied.
+
+If Y === 0, show the green callout: “Intake compleet — klaar voor juridische beoordeling.”
+
+Section badges
+
+If a section/claim is missing, show a small red “Ontbreekt” tag that scrolls/focuses the corresponding row in the Missing list.
+
+Don’t
+
+Don’t change the API contract or the Terminator JSON shape.
+
+Don’t suppress the Raw JSON panel. Keep it collapsible.
+
+Acceptance
+
+All claim-level missings appear in the Missing list.
+
+Re-runs reduce the list when answers are provided.
+
+No crashes with null or empty arrays; render “– / (onbekend)”.
+
+Uploads expand file_urls and are included in the next payload.
+
+X/Y chips are correct and update after each run.
