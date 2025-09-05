@@ -13,10 +13,7 @@ export function useAnalysis({ caseId, enabled = true }: UseAnalysisProps) {
   const query = useQuery({
     queryKey: ["/api/cases", caseId, "analysis"],
     queryFn: async (): Promise<Analysis> => {
-      const response = await apiRequest(`/api/cases/${caseId}/analysis`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch analysis");
-      }
+      const response = await apiRequest("GET", `/api/cases/${caseId}/analysis`);
       const jsonData = await response.json();
       return AnalysisSchema.parse(jsonData);
     },
@@ -29,9 +26,7 @@ export function useAnalysis({ caseId, enabled = true }: UseAnalysisProps) {
   const refreshMutation = useMutation({
     mutationFn: async (): Promise<Analysis> => {
       // Start the asynchronous analysis
-      const response = await apiRequest(`/api/cases/${caseId}/analyze`, {
-        method: 'POST'
-      });
+      const response = await apiRequest("POST", `/api/cases/${caseId}/analyze`);
       
       if (!response.ok) {
         const error = await response.json();
@@ -66,10 +61,7 @@ export function useAnalysis({ caseId, enabled = true }: UseAnalysisProps) {
   const pollForResult = async (threadId: string, maxAttempts = 60): Promise<Analysis> => {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
-        const response = await apiRequest(`/api/mindstudio/result?threadId=${threadId}`);
-        if (!response.ok) {
-          throw new Error('Polling failed');
-        }
+        const response = await apiRequest("GET", `/api/mindstudio/result?threadId=${threadId}`);
         
         const result = await response.json();
         
@@ -103,18 +95,14 @@ export function useAnalysis({ caseId, enabled = true }: UseAnalysisProps) {
     if (!result.processedResult) return;
     
     try {
-      const saveResponse = await apiRequest(`/api/cases/${caseId}/analysis`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'mindstudio-agent',
-          rawText: result.outputText,
-          factsJson: result.processedResult.factsJson,
-          issuesJson: result.processedResult.issuesJson,
-          legalBasisJson: result.processedResult.legalBasisJson,
-          missingDocsJson: result.processedResult.missingDocuments,
-          riskNotesJson: result.processedResult.riskNotesJson || []
-        })
+      const saveResponse = await apiRequest("POST", `/api/cases/${caseId}/analysis`, {
+        model: 'mindstudio-agent',
+        rawText: result.outputText,
+        factsJson: result.processedResult.factsJson,
+        issuesJson: result.processedResult.issuesJson,
+        legalBasisJson: result.processedResult.legalBasisJson,
+        missingDocsJson: result.processedResult.missingDocuments,
+        riskNotesJson: result.processedResult.riskNotesJson || []
       });
       
       if (!saveResponse.ok) {
