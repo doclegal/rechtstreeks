@@ -1,0 +1,143 @@
+Analysis saved successfully
+Console.js:61 Error checking deadlines: SyntaxError: Failed to execute 'json' on 'Response': Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+    at checkDeadlines (DeadlineWarning.tsx:29:39)
+Mt.forEach.n.<computed> @ Console.js:61
+checkDeadlines @ DeadlineWarning.tsx:35Understand this error
+shared-87b88fc3699193ae6c7dde630cd1b958.js:1  POST https://r.stripe.com/b net::ERR_BLOCKED_BY_CLIENT
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+(anonymous) @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1Understand this error
+_app-f068e4db5ebfa29e.js:40  POST https://o1151714.ingest.sentry.io/api/6318792/envelope/?sentry_key=8aa91189a4274b5a8c9b7b01d46ea360&sentry_version=7&sentry_client=sentry.javascript.browser%2F7.112.0 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-f068e4db5ebfa29e.js:40
+(anonymous) @ _app-f068e4db5ebfa29e.js:38
+add @ _app-f068e4db5ebfa29e.js:38
+i @ _app-f068e4db5ebfa29e.js:38
+_sendEnvelope @ _app-f068e4db5ebfa29e.js:38
+_flushOutcomes @ _app-f068e4db5ebfa29e.js:38
+(anonymous) @ _app-f068e4db5ebfa29e.js:38Understand this error
+_app-f068e4db5ebfa29e.js:40  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Abeacon%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Adede544a&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=9c89d583-2898-4a7f-8ca8-1d9f5016b2f2 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-f068e4db5ebfa29e.js:40
+sendOnExit @ _app-f068e4db5ebfa29e.js:40
+e.flush @ _app-f068e4db5ebfa29e.js:1
+(anonymous) @ _app-f068e4db5ebfa29e.js:1
+(anonymous) @ _app-f068e4db5ebfa29e.js:1
+e.notify @ _app-f068e4db5ebfa29e.js:1
+f @ _app-f068e4db5ebfa29e.js:1
+(anonymous) @ _app-f068e4db5ebfa29e.js:1
+(anonymous) @ _app-f068e4db5ebfa29e.js:1
+e.notify @ _app-f068e4db5ebfa29e.js:1
+r.capture @ _app-f068e4db5ebfa29e.js:1
+d @ _app-f068e4db5ebfa29e.js:1
+(anonymous) @ _app-f068e4db5ebfa29e.js:1Understand this error
+shared-87b88fc3699193ae6c7dde630cd1b958.js:1  POST https://r.stripe.com/b net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+e @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+c @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+(anonymous) @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+setTimeout
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+(anonymous) @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+log @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+log @ controller-with-preconnect-fbcea5507b599ab4636f1179caa9ee06.js:1
+Ce @ controller-with-preconnect-fbcea5507b599ab4636f1179caa9ee06.js:1
+(anonymous) @ controller-with-preconnect-fbcea5507b599ab4636f1179caa9ee06.js:1Understand this error
+shared-87b88fc3699193ae6c7dde630cd1b958.js:1 Uncaught (in promise) FetchError: Error fetching https://r.stripe.com/b: Failed to fetch
+    at shared-87b88fc3699193ae6c7dde630cd1b958.js:1:220985
+(anonymous) @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+Promise.catch
+(anonymous) @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+e @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+c @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+(anonymous) @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+setTimeout
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+(anonymous) @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+log @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+log @ controller-with-preconnect-fbcea5507b599ab4636f1179caa9ee06.js:1
+Ce @ controller-with-preconnect-fbcea5507b599ab4636f1179caa9ee06.js:1
+(anonymous) @ controller-with-preconnect-fbcea5507b599ab4636f1179caa9ee06.js:1Understand this error
+shared-87b88fc3699193ae6c7dde630cd1b958.js:1  POST https://r.stripe.com/b net::ERR_BLOCKED_BY_CLIENT
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+(anonymous) @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1Understand this error
+_app-f068e4db5ebfa29e.js:40  POST https://o1151714.ingest.sentry.io/api/6318792/envelope/?sentry_key=8aa91189a4274b5a8c9b7b01d46ea360&sentry_version=7&sentry_client=sentry.javascript.browser%2F7.112.0 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-f068e4db5ebfa29e.js:40
+(anonymous) @ _app-f068e4db5ebfa29e.js:38
+add @ _app-f068e4db5ebfa29e.js:38
+i @ _app-f068e4db5ebfa29e.js:38
+_sendEnvelope @ _app-f068e4db5ebfa29e.js:38
+_flushOutcomes @ _app-f068e4db5ebfa29e.js:38
+(anonymous) @ _app-f068e4db5ebfa29e.js:38Understand this error
+_app-f068e4db5ebfa29e.js:40  POST https://logs.browser-intake-us5-datadoghq.com/api/v2/logs?ddsource=browser&ddtags=sdk_version%3A4.46.0%2Capi%3Abeacon%2Cenv%3Aproduction%2Cservice%3Awebsite%2Cversion%3Adede544a&dd-api-key=pub31a5047a3a4692afb84a423db984dc57&dd-evp-origin-version=4.46.0&dd-evp-origin=browser&dd-request-id=a1f40e9e-abaa-4736-8f77-ed1819ed5f90 net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ _app-f068e4db5ebfa29e.js:40
+sendOnExit @ _app-f068e4db5ebfa29e.js:40
+e.flush @ _app-f068e4db5ebfa29e.js:1
+(anonymous) @ _app-f068e4db5ebfa29e.js:1
+(anonymous) @ _app-f068e4db5ebfa29e.js:1
+e.notify @ _app-f068e4db5ebfa29e.js:1
+f @ _app-f068e4db5ebfa29e.js:1
+(anonymous) @ _app-f068e4db5ebfa29e.js:1
+(anonymous) @ _app-f068e4db5ebfa29e.js:1
+e.notify @ _app-f068e4db5ebfa29e.js:1
+r.capture @ _app-f068e4db5ebfa29e.js:1
+d @ _app-f068e4db5ebfa29e.js:1
+(anonymous) @ _app-f068e4db5ebfa29e.js:1Understand this error
+shared-87b88fc3699193ae6c7dde630cd1b958.js:1  POST https://r.stripe.com/b net::ERR_BLOCKED_BY_CLIENT
+(anonymous) @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+e @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+c @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+(anonymous) @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+setTimeout
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+(anonymous) @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+log @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+log @ controller-with-preconnect-fbcea5507b599ab4636f1179caa9ee06.js:1
+Ce @ controller-with-preconnect-fbcea5507b599ab4636f1179caa9ee06.js:1
+(anonymous) @ controller-with-preconnect-fbcea5507b599ab4636f1179caa9ee06.js:1Understand this error
+shared-87b88fc3699193ae6c7dde630cd1b958.js:1 Uncaught (in promise) FetchError: Error fetching https://r.stripe.com/b: Failed to fetch
+    at shared-87b88fc3699193ae6c7dde630cd1b958.js:1:220985
+(anonymous) @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+Promise.catch
+(anonymous) @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+e @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+c @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+(anonymous) @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+setTimeout
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+(anonymous) @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+value @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+log @ shared-87b88fc3699193ae6c7dde630cd1b958.js:1
+log @ controller-with-preconnect-fbcea5507b599ab4636f1179caa9ee06.js:1
+Ce @ controller-with-preconnect-fbcea5507b599ab4636f1179caa9ee06.js:1
+(anonymous) @ controller-with-preconnect-fbcea5507b599ab4636f1179caa9ee06.js:1Understand this error

@@ -401,17 +401,59 @@ Geef JSON response:
     return THREAD_RESULTS.get(threadId) || { status: 'pending' as const };
   }
 
-  static mindstudioToAppResult(outputText: string): AppAnalysisResult {
+  static mindstudioToAppResult(outputText: string | any): AppAnalysisResult {
     // Default empty structure
     const result: AppAnalysisResult = {
       factsJson: [],
       issuesJson: [],
       legalBasisJson: [],
       missingDocuments: [],
-      rawText: outputText
+      rawText: typeof outputText === 'string' ? outputText : JSON.stringify(outputText)
     };
 
     try {
+      console.log('🔍 Processing MindStudio output:', typeof outputText, outputText);
+      
+      // If outputText is already an object (new MindStudio format), use it directly
+      if (typeof outputText === 'object' && outputText !== null) {
+        console.log('📊 Using direct object format from MindStudio');
+        
+        // Extract data from the structured object
+        if (outputText.samenvatting_feiten && Array.isArray(outputText.samenvatting_feiten)) {
+          result.factsJson = outputText.samenvatting_feiten.map((fact: string, idx: number) => ({
+            label: `Feit ${idx + 1}`,
+            detail: fact
+          }));
+        }
+        if (outputText.juridische_analyse && Array.isArray(outputText.juridische_analyse)) {
+          result.issuesJson = outputText.juridische_analyse.map((issue: string) => ({
+            issue: issue,
+            risk: undefined
+          }));
+        }
+        if (outputText.to_do && Array.isArray(outputText.to_do)) {
+          result.missingDocuments = outputText.to_do;
+        }
+        
+        // Legal basis from kernredenering if available
+        if (outputText.kernredenering && Array.isArray(outputText.kernredenering)) {
+          result.legalBasisJson = outputText.kernredenering.map((law: string) => ({
+            law: law,
+            article: undefined,
+            note: undefined
+          }));
+        }
+        
+        console.log('✅ Processed structured MindStudio output successfully');
+        return result;
+      }
+      
+      // Fallback: Parse the markdown-style output from MindStudio (old format)
+      if (typeof outputText !== 'string') {
+        console.log('⚠️ OutputText is not string, converting:', outputText);
+        outputText = String(outputText);
+      }
+      
       // Parse Dutch headings and sections
       const sections = outputText.split(/\n\s*\n/);
       
