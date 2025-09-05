@@ -353,7 +353,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log('🚀 Starting ASYNCHRONOUS Mindstudio analysis:', analysisParams);
           
+          const aiService = new AIService();
           const result = await aiService.runMindstudioAnalysis(analysisParams);
+          
+          // Update rate limit
+          analysisRateLimit.set(rateLimitKey, now);
           
           // Return threadId immediately - client will poll for results
           return res.json({ 
