@@ -32,7 +32,7 @@ import {
   AnalysisSkeleton
 } from "@/components/legal";
 import { Link, useLocation } from "wouter";
-import { PlusCircle, Headset, MessageSquare, ArrowLeft, RefreshCw } from "lucide-react";
+import { PlusCircle, Headset, MessageSquare, ArrowLeft, RefreshCw, AlertCircle } from "lucide-react";
 
 export default function MyCase() {
   const { user, isLoading: authLoading } = useAuth();
@@ -275,16 +275,36 @@ export default function MyCase() {
             {/* Error State */}
             {analysisError && !analysisLoading && (
               <Alert variant="destructive">
-                <AlertDescription className="flex items-center justify-between">
-                  <span>Fout bij ophalen analyse: {analysisError.message}</span>
-                  <Button 
-                    onClick={() => refetchAnalysis()}
-                    size="sm"
-                    variant="outline"
-                  >
-                    <RefreshCw className="h-4 w-4 mr-1" />
-                    Opnieuw proberen
-                  </Button>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="space-y-3">
+                  <div>
+                    <strong>Analyse tijdelijk niet beschikbaar</strong>
+                  </div>
+                  <div className="text-sm">
+                    {analysisError.message.includes('timeout') || analysisError.message.includes('niet beschikbaar') ? (
+                      <>
+                        <p>MindStudio AI is momenteel overbelast. Dit kan gebeuren tijdens piekuren.</p>
+                        <p className="mt-2 font-medium">Wat kunt u doen:</p>
+                        <ul className="list-disc list-inside mt-1 space-y-1">
+                          <li>Probeer het over 10-15 minuten opnieuw</li>
+                          <li>De analyse wordt bewaard zodra deze succesvol is</li>
+                          <li>U kunt intussen documenten uploaden of zaakgegevens aanvullen</li>
+                        </ul>
+                      </>
+                    ) : (
+                      <p>Er is een onverwachte fout opgetreden: {analysisError.message}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button 
+                      onClick={() => refreshAnalysis()}
+                      size="sm"
+                      variant="outline"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                      Nu opnieuw proberen
+                    </Button>
+                  </div>
                 </AlertDescription>
               </Alert>
             )}
