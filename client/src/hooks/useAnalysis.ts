@@ -98,9 +98,18 @@ export function useAnalysis({ caseId, enabled = true }: UseAnalysisProps) {
 
   // Save the processed result to the database
   const saveAnalysisToDatabase = async (result: any, caseId: string) => {
-    if (!result.processedResult) return;
+    if (!result.processedResult) {
+      console.log('⚠️ No processedResult in result, skipping database save');
+      return;
+    }
     
     try {
+      console.log('💾 Saving analysis to database:', {
+        caseId,
+        hasProcessedResult: !!result.processedResult,
+        resultKeys: Object.keys(result)
+      });
+      
       const saveResponse = await apiRequest("POST", `/api/cases/${caseId}/analysis`, {
         model: 'mindstudio-agent',
         rawText: result.outputText,
@@ -113,6 +122,8 @@ export function useAnalysis({ caseId, enabled = true }: UseAnalysisProps) {
       
       if (!saveResponse.ok) {
         console.error('Failed to save analysis to database');
+      } else {
+        console.log('✅ Analysis saved successfully');
       }
     } catch (error) {
       console.error('Error saving analysis to database:', error);

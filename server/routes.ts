@@ -761,7 +761,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify case ownership
       const caseData = await storage.getCase(caseId);
-      if (!caseData || caseData.ownerId !== userId) {
+      if (!caseData || caseData.ownerUserId !== userId) {
         return res.status(404).json({ message: 'Case not found' });
       }
       
