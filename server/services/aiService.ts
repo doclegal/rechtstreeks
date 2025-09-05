@@ -424,7 +424,19 @@ Geef JSON response:
         }
       } else if (outputData && typeof outputData === 'object') {
         // New JSON format from MindStudio triage
-        const triageData = outputData.output_triage_flow || outputData;
+        let triageData = outputData.output_triage_flow || outputData;
+        
+        // MindStudio sometimes returns nested objects as strings, parse them
+        if (triageData.full_json && typeof triageData.full_json === 'object') {
+          triageData = triageData.full_json;
+        }
+        
+        // Parse any string-encoded objects
+        Object.keys(triageData).forEach(key => {
+          if (typeof triageData[key] === 'string' && triageData[key].startsWith('[object Object]')) {
+            console.log(`Warning: ${key} is string "[object Object]", checking full_json`);
+          }
+        });
         
         // Extract facts from timeline and summary
         if (triageData.summary) {

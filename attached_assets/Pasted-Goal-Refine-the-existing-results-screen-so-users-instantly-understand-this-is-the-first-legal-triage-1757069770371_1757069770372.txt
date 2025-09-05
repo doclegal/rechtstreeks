@@ -1,0 +1,285 @@
+Goal
+Refine the existing results screen so users instantly understand this is the first legal triage, see case type + summary + confidence, and—most importantly—get a single, actionable “Missing information” list that they can fill inline and resubmit.
+
+Input/contract (unchanged)
+
+Request variables to MindStudio:
+
+input_case_details (string, required)
+
+file_urls (string[], required; empty allowed)
+
+followup_answers (object, optional; key = question/field id, value = user input string or file URL)
+
+Response (Terminator JSON): keys are always present
+
+full_json (object)
+
+case_type (enum)
+
+confidence (float 0..1)
+
+summary (≤ 60 NL words)
+
+parties, agreement, claims[], facts.timeline[], procedural, needed_questions[]
+
+Any subfields may be null or [] → UI must never crash; render “–” or “(onbekend)”.
+
+Layout (no code, structure only)
+
+A. Header strip (top of page)
+
+Title: “Eerste juridische triage voltooid”
+
+Subtitle (one sentence): “Dit is de eerste analyse: hieronder zie je het zaaktype, een samenvatting en wat nog ontbreekt.”
+
+Right side badges:
+
+Case-type chip from case_type (e.g., Koop / Huur / Arbeid / …)
+
+Confidence chip: Math.round(confidence*100)% (e.g., “90% zekerheid”)
+
+B. Summary card
+
+Heading: Samenvatting
+
+Body: show summary.
+
+Footer chips (small, muted): repeat case-type + confidence for quick scan.
+
+C. Completeness chips row
+
+Chip 1: Ingevuld: X velden (count of fields we consider “present”; see Acceptance)
+
+Chip 2: Ontbreekt: Y items ( = count of all needed=true across sections + length of needed_questions )
+
+D. Missing information (prominent section)
+
+Title: Nog ontbrekende informatie (place this ABOVE the detailed sections so users see it first)
+
+For each missing item, render a compact row with:
+
+Main label
+
+For needed=true fields: “Ontbreekt: [Partijen]”, “Ontbreekt: [Overeenkomst]”, “Ontbreekt: [Procedueel]”, or “Ontbreekt: [Claim: betaling]” etc.
+
+For needed_questions[i]: use label.
+
+Reason line (muted)
+
+For needed_questions[i]: “Waarom: {reason}”
+
+For needed=true objects: a short stock reason:
+
+Parties → “Namen/rol nodig voor juridische check”
+
+Agreement → “Type/contract of upload nodig”
+
+Procedural → “Geef spoed en forumkeuze aan”
+
+Claim → “Specificeer bedrag/handelingen/juridische grondslag”
+
+Inline input
+
+Text input for short answers.
+
+Textarea for longer.
+
+File upload field when a document is requested.
+
+Action button on each row: “Beantwoorden/Uploaden” adds the user’s input to a pending followup_answers map (key = item id if from needed_questions, or a stable synthetic id for needed fields like parties, agreement, procedural, claim:<index>). Do not send yet.
+
+Primary CTA at the bottom of this section: “Ontbrekende info indienen”
+
+On click: build payload with the current input_case_details, current file_urls (+ any new uploads), and followup_answers collected above.
+
+Run the same MindStudio workflow again.
+
+While waiting: show “Analyseren…” state and disable inputs.
+
+E. Detailed sections (below Missing info)
+
+Partijen
+
+3 rows: Eiser, Verweerder, Relatie.
+
+If parties.needed === true, show a small red “Ontbreekt” tag that jumps/focuses the relevant item in the Missing Info section.
+
+Overeenkomst
+
+Show exists (schriftelijk/mondeling/geen/onbekend).
+
+If attachments.length === 0 and agreement.needed === true, show “Contract upload gevraagd” (warning style) + link focus to Missing Info row.
+
+Claims (list)
+
+For each claim: chip with type, small confidence label (e.g., “83%”).
+
+Show value.principal_eur and value.what_to_perform or “–”.
+
+Optional yes/no: “Klopt dit?” → if “Nee”, scroll to Missing Info and pre-select the relevant claim row.
+
+Procedueel
+
+Show “Spoed: ja/nee/onbekend” from value.urgent and “Forumkeuze: …” from value.forum_clause (or “–”).
+
+If procedural.needed === true, show red “Ontbreekt” tag linking to Missing Info.
+
+Feiten / Tijdlijn
+
+Chronological listing of facts.timeline[]; empty state text: “Geen tijdlijn gedetecteerd”.
+
+Ruwe data (ontwikkelaars)
+
+Collapsible, pretty-printed full_json.
+
+Example rendering for “Missing information” rows
+
+When parties.needed === true:
+
+Label: “Ontbreekt: Partijen (namen/rol)”
+
+Reason: “Namen/rol nodig voor juridische check”
+
+Inputs:
+
+Text input: “Naam eiser”
+
+Text input: “Naam verweerder”
+
+Text input: “Relatie (bijv. huurder-verhuurder)”
+
+Per-row action: “Beantwoorden” → stages answers under keys:
+
+followup_answers["parties.claimant_name"] = "<value>"
+
+followup_answers["parties.defendant_name"] = "<value>"
+
+followup_answers["parties.relationship"] = "<value>"
+
+When agreement.needed === true:
+
+Label: “Ontbreekt: Overeenkomst (type/contract)”
+
+Reason: “Type/contract of upload nodig”
+
+Inputs:
+
+Select: schriftelijk / mondeling / geen / onbekend
+
+File upload: contract PDF
+
+Staged answers:
+
+followup_answers["agreement.exists"] = "schriftelijk|mondeling|geen|onbekend"
+
+If file uploaded: push its URL into file_urls and set followup_answers["agreement.attachment_url"] = "<url>"
+
+When a claim is incomplete (per item in claims[] with needed === true):
+
+Label: Ontbreekt: Claim – ${type}
+
+Reason: “Specificeer bedrag/handelingen/juridische grondslag”
+
+Inputs:
+
+Number input: “Hoofdsom (EUR)”
+
+Text input: “Wat moet de wederpartij doen/nakomen?”
+
+Text input: “Juridische grondslag (artikelen/regels)”
+
+Staged answers (index = claim index):
+
+followup_answers["claims.${index}.principal_eur"] = "<number>"
+
+followup_answers["claims.${index}.what_to_perform"] = "<text>"
+
+followup_answers["claims.${index}.legal_basis"] = "<text>"
+
+When procedural.needed === true:
+
+Label: “Ontbreekt: Procedueel (spoed/forumkeuze)”
+
+Reason: “Geef spoed en forumkeuze aan”
+
+Inputs:
+
+Select: “Spoed” → ja/nee/onbekend
+
+Text input: “Forumkeuze (bepaling of ‘geen’)”
+
+Staged answers:
+
+followup_answers["procedural.urgent"] = "ja|nee|onbekend"
+
+followup_answers["procedural.forum_clause"] = "<text>"
+
+For each item in needed_questions[]:
+
+Label (main): value of label
+
+Reason (sub): “Waarom: {reason}”
+
+Inputs:
+
+Textarea by default; use file upload if label suggests a document.
+
+Staged answers:
+
+followup_answers["${id}"] = "<text or file URL>"
+
+Interaction & state
+
+Primary CTA “Ontbrekende info indienen”:
+
+Build payload:
+
+{
+  "input_case_details": "<current text>",
+  "file_urls": ["<existing + newly uploaded URLs>"],
+  "followup_answers": { "<keys as staged above>": "<values>" }
+}
+
+
+Re-run the MindStudio workflow.
+
+Loading state: show “Analyseren…” and disable inputs.
+
+After response:
+
+Recompute X/Y chips.
+
+Any item now satisfied should disappear from “Missing information”.
+
+If Y === 0 → show green callout: “Intake compleet — klaar voor juridische beoordeling.”
+
+Persistence: keep the last successful analysis visible until a new run finishes.
+
+Error: show a clear banner with Retry; preserve user inputs.
+
+Accessibility & resilience
+
+Never rely on color alone; add icons/text for status.
+
+Replace null/empty with “–” or “(onbekend)”.
+
+Keyboard-navigable controls.
+
+Long labels wrap instead of truncating critical info.
+
+Acceptance (must pass)
+
+The Missing information section aggregates all needed=true objects and all needed_questions.
+
+Clicking “Beantwoorden/Uploaden” on a row stages entries under followup_answers (no network call yet).
+
+“Ontbrekende info indienen” sends input_case_details, file_urls, and followup_answers to MindStudio.
+
+Chips show correct X filled / Y missing, updating after each run.
+
+No crashes with null or empty arrays.
+
+Each missing field in other sections shows a small “Ontbreekt” tag that focuses the corresponding row in Missing information.
+
+If Y = 0, show the green “Intake compleet — klaar voor juridische beoordeling” callout.

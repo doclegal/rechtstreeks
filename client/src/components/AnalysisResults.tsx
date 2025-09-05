@@ -1,7 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { useState } from "react";
 import { 
   CheckCircle, 
   AlertTriangle, 
@@ -12,7 +16,10 @@ import {
   Play,
   Clock,
   Calendar,
-  Euro
+  Euro,
+  Upload,
+  Check,
+  X
 } from "lucide-react";
 
 interface AnalysisResultsProps {
@@ -43,78 +50,313 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
   }
 
   // Check for triage data in the parsed analysis
-  const triageData = parsedAnalysis?.output_triage_flow || parsedAnalysis;
+  const triageData = parsedAnalysis?.full_json || parsedAnalysis?.output_triage_flow || parsedAnalysis;
   const isTriageFormat = triageData && (triageData.case_type || triageData.summary || triageData.parties);
+
+  // State for followup answers
+  const [followupAnswers, setFollowupAnswers] = useState<Record<string, string>>({});
+  const [isSubmittingFollowup, setIsSubmittingFollowup] = useState(false);
+
+  // Helper functions
+  const updateFollowupAnswer = (key: string, value: string) => {
+    setFollowupAnswers(prev => ({ ...prev, [key]: value }));
+  };
+
+  const countFilledFields = (data: any) => {
+    let count = 0;
+    if (data.summary) count++;
+    if (data.case_type) count++;
+    if (data.parties?.value?.claimant_name || data.parties?.value?.defendant_name) count++;
+    if (data.agreement?.exists !== 'onbekend') count++;
+    if (data.claims?.length > 0) count++;
+    if (data.facts?.timeline?.length > 0) count++;
+    if (data.procedural?.value?.urgent !== null || data.procedural?.value?.forum_clause) count++;
+    return count;
+  };
+
+  const countMissingFields = (data: any) => {
+    let count = 0;
+    if (data.parties?.needed) count++;
+    if (data.agreement?.needed) count++;
+    if (data.procedural?.needed) count++;
+    if (data.claims?.some((c: any) => c.needed)) count += data.claims.filter((c: any) => c.needed).length;
+    if (data.needed_questions?.length > 0) count += data.needed_questions.length;
+    return count;
+  };
+
+  const handleSubmitFollowup = async () => {
+    if (!onAnalyze || Object.keys(followupAnswers).length === 0) return;
+    
+    setIsSubmittingFollowup(true);
+    try {
+      // This would need to be implemented to call the analysis with followup_answers
+      await onAnalyze(); // For now, just re-run analysis
+    } finally {
+      setIsSubmittingFollowup(false);
+    }
+  };
 
   // Show triage format if available
   if (isTriageFormat) {
+    const filledCount = countFilledFields(triageData);
+    const missingCount = countMissingFields(triageData);
+    const isIntakeComplete = missingCount === 0;
+
     return (
-      <div className="space-y-4">
-        {/* Header with summary and case type */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-green-700 flex items-center gap-2">
-                <Scale className="w-5 h-5" />
-                Juridische Triage Voltooid
-              </CardTitle>
-              {onAnalyze && (
-                <Button
-                  onClick={onAnalyze}
-                  disabled={isAnalyzing || (!!analysis && !hasNewInfo)}
-                  variant={hasNewInfo ? "destructive" : "secondary"}
-                  size="sm"
-                  data-testid="button-start-analysis"
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <Clock className="mr-2 h-4 w-4 animate-spin" />
-                      Analyseren...
-                    </>
-                  ) : hasNewInfo ? (
-                    <>
-                      <Play className="mr-2 h-4 w-4" />
-                      Nieuwe analyse uitvoeren
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Triage voltooid
-                    </>
-                  )}
-                </Button>
-              )}
+      <div className="space-y-6">
+        {/* A. Header strip */}
+        <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-green-800 mb-1">
+                Eerste juridische triage voltooid
+              </h2>
+              <p className="text-sm text-green-700">
+                Dit is de eerste analyse: hieronder zie je het zaaktype, een samenvatting en wat nog ontbreekt.
+              </p>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Summary */}
-            {triageData.summary && (
-              <div>
-                <h4 className="font-medium mb-2">Samenvatting</h4>
-                <p className="text-sm text-gray-700" data-testid="text-summary">
-                  {triageData.summary}
-                </p>
-              </div>
-            )}
-            
-            {/* Case type and confidence */}
             <div className="flex items-center gap-2">
               {triageData.case_type && (
-                <Badge variant="secondary" data-testid="badge-case-type">
+                <Badge variant="secondary" className="text-sm font-medium" data-testid="badge-case-type">
                   {triageData.case_type}
                 </Badge>
               )}
               {triageData.confidence && (
-                <Badge variant="outline" data-testid="badge-confidence">
+                <Badge variant="outline" className="text-sm" data-testid="badge-confidence">
                   {Math.round(triageData.confidence * 100)}% zekerheid
                 </Badge>
               )}
+            </div>
+          </div>
+        </div>
+
+        {/* B. Summary card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Samenvatting</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-700 mb-4" data-testid="text-summary">
+              {triageData.summary || "Geen samenvatting beschikbaar"}
+            </p>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-xs">
+                {triageData.case_type || "Onbekend type"}
+              </Badge>
+              <Badge variant="outline" className="text-xs">
+                {triageData.confidence ? `${Math.round(triageData.confidence * 100)}% zekerheid` : "Onbekende zekerheid"}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* C. Completeness chips row */}
+        <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+          <Badge variant="default" className="bg-green-100 text-green-800">
+            <Check className="w-3 h-3 mr-1" />
+            Ingevuld: {filledCount} velden
+          </Badge>
+          <Badge variant={missingCount > 0 ? "destructive" : "default"} className={missingCount === 0 ? "bg-green-100 text-green-800" : ""}>
+            {missingCount > 0 ? (
+              <AlertTriangle className="w-3 h-3 mr-1" />
+            ) : (
+              <Check className="w-3 h-3 mr-1" />
+            )}
+            {missingCount > 0 ? `Ontbreekt: ${missingCount} items` : "Compleet"}
+          </Badge>
+        </div>
+
+        {/* Green completion callout */}
+        {isIntakeComplete && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 text-green-800">
+              <CheckCircle className="w-5 h-5" />
+              <span className="font-medium">Intake compleet — klaar voor juridische beoordeling.</span>
+            </div>
+          </div>
+        )}
+
+        {/* D. Missing information (prominent section) */}
+        {missingCount > 0 && (
+          <Card className="border-orange-200 bg-orange-50">
+            <CardHeader>
+              <CardTitle className="text-orange-800 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                Nog ontbrekende informatie
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Missing parties */}
+              {triageData.parties?.needed && (
+                <div className="border border-orange-200 rounded-lg p-4 bg-white">
+                  <div className="mb-3">
+                    <h4 className="font-medium text-orange-800">Ontbreekt: Partijen (namen/rol)</h4>
+                    <p className="text-sm text-orange-600">Namen/rol nodig voor juridische check</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Naam eiser"
+                      value={followupAnswers["parties.claimant_name"] || ""}
+                      onChange={(e) => updateFollowupAnswer("parties.claimant_name", e.target.value)}
+                      data-testid="input-claimant-name"
+                    />
+                    <Input
+                      placeholder="Naam verweerder"
+                      value={followupAnswers["parties.defendant_name"] || ""}
+                      onChange={(e) => updateFollowupAnswer("parties.defendant_name", e.target.value)}
+                      data-testid="input-defendant-name"
+                    />
+                    <Input
+                      placeholder="Relatie (bijv. huurder-verhuurder)"
+                      value={followupAnswers["parties.relationship"] || ""}
+                      onChange={(e) => updateFollowupAnswer("parties.relationship", e.target.value)}
+                      data-testid="input-relationship"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Missing agreement */}
+              {triageData.agreement?.needed && (
+                <div className="border border-orange-200 rounded-lg p-4 bg-white">
+                  <div className="mb-3">
+                    <h4 className="font-medium text-orange-800">Ontbreekt: Overeenkomst (type/contract)</h4>
+                    <p className="text-sm text-orange-600">Type/contract of upload nodig</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Select
+                      value={followupAnswers["agreement.exists"] || ""}
+                      onValueChange={(value) => updateFollowupAnswer("agreement.exists", value)}
+                    >
+                      <SelectTrigger data-testid="select-agreement-type">
+                        <SelectValue placeholder="Selecteer type overeenkomst" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="schriftelijk">Schriftelijk</SelectItem>
+                        <SelectItem value="mondeling">Mondeling</SelectItem>
+                        <SelectItem value="geen">Geen</SelectItem>
+                        <SelectItem value="onbekend">Onbekend</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="flex items-center gap-2 p-2 border border-dashed border-gray-300 rounded">
+                      <Upload className="w-4 h-4 text-gray-400" />
+                      <span className="text-sm text-gray-500">Contract upload (nog niet geïmplementeerd)</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Missing procedural */}
+              {triageData.procedural?.needed && (
+                <div className="border border-orange-200 rounded-lg p-4 bg-white">
+                  <div className="mb-3">
+                    <h4 className="font-medium text-orange-800">Ontbreekt: Procedueel (spoed/forumkeuze)</h4>
+                    <p className="text-sm text-orange-600">Geef spoed en forumkeuze aan</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Select
+                      value={followupAnswers["procedural.urgent"] || ""}
+                      onValueChange={(value) => updateFollowupAnswer("procedural.urgent", value)}
+                    >
+                      <SelectTrigger data-testid="select-urgent">
+                        <SelectValue placeholder="Is dit spoedeisend?" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ja">Ja</SelectItem>
+                        <SelectItem value="nee">Nee</SelectItem>
+                        <SelectItem value="onbekend">Onbekend</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      placeholder="Forumkeuze (bepaling of 'geen')"
+                      value={followupAnswers["procedural.forum_clause"] || ""}
+                      onChange={(e) => updateFollowupAnswer("procedural.forum_clause", e.target.value)}
+                      data-testid="input-forum-clause"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Missing questions */}
+              {triageData.needed_questions?.map((question: any, idx: number) => (
+                <div key={idx} className="border border-orange-200 rounded-lg p-4 bg-white">
+                  <div className="mb-3">
+                    <h4 className="font-medium text-orange-800">{question.label}</h4>
+                    <p className="text-sm text-orange-600">Waarom: {question.reason}</p>
+                  </div>
+                  <Textarea
+                    placeholder="Uw antwoord..."
+                    value={followupAnswers[question.id] || ""}
+                    onChange={(e) => updateFollowupAnswer(question.id, e.target.value)}
+                    data-testid={`textarea-question-${idx}`}
+                    className="min-h-20"
+                  />
+                </div>
+              ))}
+
+              {/* Submit button */}
+              {Object.keys(followupAnswers).length > 0 && (
+                <div className="pt-4 border-t border-orange-200">
+                  <Button
+                    onClick={handleSubmitFollowup}
+                    disabled={isSubmittingFollowup}
+                    className="w-full"
+                    data-testid="button-submit-followup"
+                  >
+                    {isSubmittingFollowup ? (
+                      <>
+                        <Clock className="mr-2 h-4 w-4 animate-spin" />
+                        Analyseren...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="mr-2 h-4 w-4" />
+                        Ontbrekende info indienen
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* E. Detailed sections (below Missing info) */}
+        
+        {/* Partijen */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Users className="w-5 h-5" />
+              Partijen
+              {triageData.parties?.needed && (
+                <Badge variant="destructive" className="text-xs">
+                  <X className="w-3 h-3 mr-1" />
+                  Ontbreekt
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div data-testid="party-claimant">
+                <p className="font-medium">Eiser</p>
+                <p className="text-gray-600">{triageData.parties?.value?.claimant_name || "(onbekend)"}</p>
+              </div>
+              <div data-testid="party-defendant">
+                <p className="font-medium">Verweerder</p>
+                <p className="text-gray-600">{triageData.parties?.value?.defendant_name || "(onbekend)"}</p>
+              </div>
+              <div data-testid="party-relationship">
+                <p className="font-medium">Relatie</p>
+                <p className="text-gray-600">{triageData.parties?.value?.relationship || "(onbekend)"}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Claims */}
-        {triageData.claims && Array.isArray(triageData.claims) && triageData.claims.length > 0 && (
+        {triageData.claims && Array.isArray(triageData.claims) && triageData.claims.length > 0 ? (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -124,211 +366,55 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
             </CardHeader>
             <CardContent className="space-y-3">
               {triageData.claims.map((claim: any, idx: number) => (
-                <div key={idx} className="border rounded p-3 space-y-2" data-testid={`card-claim-${idx}`}>
+                <div key={idx} className="border rounded p-3 space-y-2" data-testid={`detailed-claim-${idx}`}>
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" data-testid={`badge-claim-type-${idx}`}>
+                    <Badge variant="secondary" data-testid={`detailed-claim-type-${idx}`}>
                       {claim.type || 'Onbekend type'}
                     </Badge>
                     {claim.confidence && (
-                      <Badge variant="outline" data-testid={`badge-claim-confidence-${idx}`}>
+                      <Badge variant="outline" className="text-xs">
                         {Math.round(claim.confidence * 100)}%
                       </Badge>
                     )}
+                    {claim.needed && (
+                      <Badge variant="destructive" className="text-xs">
+                        <X className="w-3 h-3 mr-1" />
+                        Ontbreekt
+                      </Badge>
+                    )}
                   </div>
-                  {claim.value?.principal_eur && (
-                    <p className="text-lg font-medium text-green-700" data-testid={`text-claim-amount-${idx}`}>
-                      € {claim.value.principal_eur.toLocaleString()}
+                  <div className="space-y-1 text-sm">
+                    <p data-testid={`detailed-claim-amount-${idx}`}>
+                      <span className="font-medium">Bedrag:</span> {claim.value?.principal_eur ? `€ ${claim.value.principal_eur.toLocaleString()}` : "–"}
                     </p>
-                  )}
-                  {claim.value?.what_to_perform && (
-                    <p className="text-sm text-gray-600" data-testid={`text-claim-description-${idx}`}>
-                      {claim.value.what_to_perform}
+                    <p data-testid={`detailed-claim-performance-${idx}`}>
+                      <span className="font-medium">Te verrichten:</span> {claim.value?.what_to_perform || "–"}
                     </p>
-                  )}
-                  {claim.value?.legal_basis && (
-                    <p className="text-xs text-gray-500" data-testid={`text-claim-legal-basis-${idx}`}>
-                      Rechtsgrond: {claim.value.legal_basis}
+                    <p data-testid={`detailed-claim-legal-basis-${idx}`}>
+                      <span className="font-medium">Rechtsgrond:</span> {claim.value?.legal_basis || "–"}
                     </p>
-                  )}
+                  </div>
                 </div>
               ))}
             </CardContent>
           </Card>
-        )}
-
-        {/* Parties */}
-        {triageData.parties && (
+        ) : (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Users className="w-5 h-5" />
-                Partijen
+                <Euro className="w-5 h-5" />
+                Vorderingen
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="border rounded p-3" data-testid="card-claimant">
-                  <h5 className="font-medium text-green-700">Eiser</h5>
-                  <p className="text-sm" data-testid="text-claimant-name">
-                    {triageData.parties.value?.claimant_name || "(onbekend)"}
-                  </p>
-                </div>
-                <div className="border rounded p-3" data-testid="card-defendant">
-                  <h5 className="font-medium text-red-700">Verweerder</h5>
-                  <p className="text-sm" data-testid="text-defendant-name">
-                    {triageData.parties.value?.defendant_name || "(onbekend)"}
-                  </p>
-                </div>
-              </div>
-              {triageData.parties.value?.relationship && (
-                <p className="text-xs text-gray-500 mt-2" data-testid="text-relationship">
-                  Relatie: {triageData.parties.value.relationship}
-                </p>
-              )}
-              {triageData.parties.needed && (
-                <Badge variant="destructive" className="mt-2" data-testid="badge-parties-missing">
-                  Informatie ontbreekt
-                </Badge>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Agreement */}
-        {triageData.agreement && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <FileText className="w-5 h-5" />
-                Overeenkomst
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <p className="text-sm" data-testid="text-agreement-exists">
-                Type: <span className="font-medium">{triageData.agreement.exists}</span>
+              <p className="text-sm text-gray-500" data-testid="no-claims">
+                Geen vorderingen gedetecteerd.
               </p>
-              {triageData.agreement.attachments && triageData.agreement.attachments.length > 0 && (
-                <div>
-                  <p className="text-sm font-medium">Bijlagen:</p>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {triageData.agreement.attachments.map((attachment: string, idx: number) => (
-                      <Badge key={idx} variant="outline" data-testid={`badge-attachment-${idx}`}>
-                        {attachment}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {triageData.agreement.needed && (
-                <Badge variant="destructive" data-testid="badge-agreement-missing">
-                  Contract upload gewenst
-                </Badge>
-              )}
             </CardContent>
           </Card>
         )}
 
-        {/* Facts Timeline */}
-        {triageData.facts?.timeline && Array.isArray(triageData.facts.timeline) && triageData.facts.timeline.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Calendar className="w-5 h-5" />
-                Tijdlijn
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {triageData.facts.timeline.map((item: any, idx: number) => (
-                <div key={idx} className="flex items-start gap-3 border-l-2 border-blue-200 pl-3" data-testid={`timeline-item-${idx}`}>
-                  <div className="text-sm">
-                    <p className="font-medium" data-testid={`timeline-date-${idx}`}>
-                      {item.date || 'Datum onbekend'}
-                    </p>
-                    <p className="text-gray-600" data-testid={`timeline-event-${idx}`}>
-                      {item.event || 'Geen beschrijving'}
-                    </p>
-                    <p className="text-xs text-gray-400" data-testid={`timeline-source-${idx}`}>
-                      Bron: {item.source || 'onbekend'}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {triageData.facts.timeline.length === 0 && (
-                <p className="text-sm text-gray-500" data-testid="text-timeline-empty">
-                  Geen tijdlijn geëxtraheerd.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Procedural info */}
-        {triageData.procedural && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Scale className="w-5 h-5" />
-                Procedureel
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div data-testid="procedural-urgent">
-                  <p className="text-sm">Spoedeisend: <span className="font-medium">
-                    {triageData.procedural.value?.urgent === null ? 'Onbekend' : 
-                     triageData.procedural.value?.urgent ? 'Ja' : 'Nee'}
-                  </span></p>
-                </div>
-                <div data-testid="procedural-forum">
-                  <p className="text-sm">Forumkeuze: <span className="font-medium">
-                    {triageData.procedural.value?.forum_clause || 'Geen'}
-                  </span></p>
-                </div>
-              </div>
-              {triageData.procedural.needed && (
-                <Badge variant="destructive" data-testid="badge-procedural-missing">
-                  Ontbrekende informatie
-                </Badge>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Needed Questions */}
-        {triageData.needed_questions && Array.isArray(triageData.needed_questions) && triageData.needed_questions.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <AlertTriangle className="w-5 h-5" />
-                Vervolgvragen
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {triageData.needed_questions.map((question: any, idx: number) => (
-                <div key={idx} className="border rounded p-3 space-y-2" data-testid={`question-${idx}`}>
-                  <div className="flex items-start gap-2">
-                    <input type="checkbox" className="mt-1" data-testid={`checkbox-question-${idx}`} />
-                    <div>
-                      <p className="text-sm font-medium" data-testid={`question-label-${idx}`}>
-                        {question.label}
-                      </p>
-                      <p className="text-xs text-gray-500" data-testid={`question-reason-${idx}`}>
-                        {question.reason}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {triageData.needed_questions.length === 0 && (
-                <p className="text-sm text-gray-500" data-testid="text-questions-empty">
-                  Geen vervolgvragen.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Raw JSON Debug Panel */}
+        {/* Ruwe data (ontwikkelaars) */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -339,8 +425,8 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
           <CardContent>
             <details className="cursor-pointer">
               <summary className="text-sm font-medium mb-2">Klik om JSON data te tonen</summary>
-              <pre className="text-xs bg-gray-50 p-3 rounded overflow-auto max-h-96 whitespace-pre-wrap" data-testid="raw-json">
-                {JSON.stringify(triageData.full_json || triageData, null, 2)}
+              <pre className="text-xs bg-gray-50 p-3 rounded overflow-auto max-h-96 whitespace-pre-wrap" data-testid="detailed-raw-json">
+                {JSON.stringify(triageData, null, 2)}
               </pre>
             </details>
           </CardContent>
@@ -349,336 +435,23 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
     );
   }
 
-  // Show structured JSON output if available (legacy format)
-  if (parsedAnalysis) {
-    return (
-      <div className="space-y-4">
-        {/* Header */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-green-700 flex items-center gap-2">
-                <Scale className="w-5 h-5" />
-                Juridische Analyse Voltooid
-              </CardTitle>
-              {onAnalyze && (
-                <Button
-                  onClick={onAnalyze}
-                  disabled={isAnalyzing || (!!analysis && !hasNewInfo)}
-                  variant={hasNewInfo ? "destructive" : "secondary"}
-                  size="sm"
-                  data-testid="button-start-analysis"
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <Clock className="mr-2 h-4 w-4 animate-spin" />
-                      Analyseren...
-                    </>
-                  ) : hasNewInfo ? (
-                    <>
-                      <Play className="mr-2 h-4 w-4" />
-                      Nieuwe analyse uitvoeren
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Analyse voltooid
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-          </CardHeader>
-        </Card>
-
-        {/* Basisinformatie */}
-        {parsedAnalysis.basisinformatie && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Users className="w-5 h-5" />
-                Zaak Overzicht
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h4 className="font-medium mb-2">Samenvatting</h4>
-                <p className="text-sm text-gray-700">{parsedAnalysis.basisinformatie.samenvatting}</p>
-              </div>
-              
-              {parsedAnalysis.basisinformatie.partijen && (
-                <div>
-                  <h4 className="font-medium mb-2">Partijen</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="border rounded p-3">
-                      <h5 className="font-medium text-green-700">Eiser</h5>
-                      <p className="text-sm">{parsedAnalysis.basisinformatie.partijen.eiser?.naam}</p>
-                      <p className="text-xs text-gray-600">{parsedAnalysis.basisinformatie.partijen.eiser?.rol}</p>
-                    </div>
-                    <div className="border rounded p-3">
-                      <h5 className="font-medium text-red-700">Gedaagde</h5>
-                      <p className="text-sm">{parsedAnalysis.basisinformatie.partijen.gedaagde?.naam}</p>
-                      <p className="text-xs text-gray-600">{parsedAnalysis.basisinformatie.partijen.gedaagde?.adres || 'Adres onbekend'}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {parsedAnalysis.basisinformatie.gevorderdResultaat && (
-                <div>
-                  <h4 className="font-medium mb-2 flex items-center gap-2">
-                    <Euro className="w-4 h-4" />
-                    Gevorderd Bedrag
-                  </h4>
-                  <div className="bg-blue-50 p-3 rounded">
-                    <p className="text-lg font-medium text-blue-900">
-                      € {parsedAnalysis.basisinformatie.gevorderdResultaat.hoofdsom?.toLocaleString()}
-                    </p>
-                    <p className="text-sm text-blue-700">
-                      {parsedAnalysis.basisinformatie.gevorderdResultaat.renteType} vanaf {parsedAnalysis.basisinformatie.gevorderdResultaat.renteVanaf}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Juridische Duiding */}
-        {parsedAnalysis.juridischeDuiding && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Scale className="w-5 h-5" />
-                Juridische Duiding
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-medium mb-2">Rechtbank</h4>
-                  <p className="text-sm">{parsedAnalysis.juridischeDuiding.bevoegdeRechtbankLocatie}</p>
-                  {parsedAnalysis.juridischeDuiding.isKantonzaak && (
-                    <Badge className="mt-1">Kantonzaak</Badge>
-                  )}
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2">Kansschatting</h4>
-                  <Badge variant={parsedAnalysis.juridischeDuiding.kansinschatting?.kwalitatief === 'Hoog' ? 'default' : 'secondary'}>
-                    {parsedAnalysis.juridischeDuiding.kansinschatting?.kwalitatief}
-                  </Badge>
-                </div>
-              </div>
-              
-              {parsedAnalysis.juridischeDuiding.rechtsgronden && (
-                <div>
-                  <h4 className="font-medium mb-2">Rechtsgronden</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {parsedAnalysis.juridischeDuiding.rechtsgronden.map((grond: string, index: number) => (
-                      <Badge key={index} variant="outline">{grond}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {parsedAnalysis.juridischeDuiding.kansinschatting?.belangrijksteRedenen && (
-                <div>
-                  <h4 className="font-medium mb-2">Belangrijkste Redenen</h4>
-                  <ul className="text-sm space-y-1">
-                    {parsedAnalysis.juridischeDuiding.kansinschatting.belangrijksteRedenen.map((reden: string, index: number) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <span className="text-green-600 mt-0.5">•</span>
-                        {reden}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Feiten en Bewijs */}
-        {parsedAnalysis.feitenEnBewijs && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <FileText className="w-5 h-5" />
-                Feiten & Bewijs
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {parsedAnalysis.feitenEnBewijs.tijdlijn && (
-                <div>
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    Tijdlijn
-                  </h4>
-                  <div className="space-y-2">
-                    {parsedAnalysis.feitenEnBewijs.tijdlijn.map((item: any, index: number) => (
-                      <div key={index} className="flex items-start gap-3 p-2 border-l-2 border-blue-200">
-                        <div className="text-sm font-medium text-blue-700 min-w-20">
-                          {item.datum}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{item.gebeurtenis}</p>
-                          <p className="text-xs text-gray-600">{item.bron}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {parsedAnalysis.feitenEnBewijs.beschikbaarBewijs && (
-                <div>
-                  <h4 className="font-medium mb-2">Beschikbaar Bewijs</h4>
-                  <div className="grid gap-2">
-                    {parsedAnalysis.feitenEnBewijs.beschikbaarBewijs.map((bewijs: any, index: number) => (
-                      <div key={index} className="border rounded p-3">
-                        <p className="font-medium text-sm">{bewijs.type}</p>
-                        <p className="text-xs text-gray-700">{bewijs.beschrijving}</p>
-                        <Badge variant="outline" className="mt-1 text-xs">{bewijs.relevantie}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Billing cost if available */}
-        {analysis?.billingCost && (
-          <div className="text-xs text-muted-foreground">
-            Analyse kosten: {analysis?.billingCost}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Fallback to text display if JSON parsing failed but rawText available
-  if (analysis?.rawText) {
-    return (
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold flex items-center space-x-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <span>Juridische Analyse Voltooid</span>
-            </CardTitle>
-            {onAnalyze && (
-              <Button
-                onClick={onAnalyze}
-                disabled={isAnalyzing || (analysis && !hasNewInfo)}
-                variant={hasNewInfo ? "destructive" : "secondary"}
-                size="sm"
-                data-testid="button-start-analysis"
-              >
-                {isAnalyzing ? (
-                  <>
-                    <Clock className="mr-2 h-4 w-4 animate-spin" />
-                    Analyseren...
-                  </>
-                ) : hasNewInfo ? (
-                  <>
-                    <Play className="mr-2 h-4 w-4" />
-                    Nieuwe analyse uitvoeren
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Analyse voltooid
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-            <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300 font-sans">
-              {analysis.rawText}
-            </pre>
-          </div>
-          {analysis.billingCost && (
-            <div className="mt-4 text-xs text-muted-foreground">
-              Analyse kosten: {analysis.billingCost}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // If no analysis yet, show empty state with analyze button
+  // Legacy format fallback
   if (!analysis) {
     return (
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold flex items-center space-x-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              <span>AI Analyse resultaten</span>
-            </CardTitle>
-            {onAnalyze && (
-              <Button
-                onClick={onAnalyze}
-                disabled={isAnalyzing}
-                variant="default"
-                size="sm"
-                data-testid="button-start-analysis"
-              >
-                {isAnalyzing ? (
-                  <>
-                    <Clock className="mr-2 h-4 w-4 animate-spin" />
-                    Analyseren...
-                  </>
-                ) : (
-                  <>
-                    <Play className="mr-2 h-4 w-4" />
-                    Start analyse
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
+          <CardTitle className="text-blue-700 flex items-center gap-2">
+            <Scale className="w-5 h-5" />
+            Juridische Analyse
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <TrendingUp className="mx-auto h-12 w-12 mb-4 opacity-30" />
-            <p>Nog geen analyse uitgevoerd.</p>
-            <p className="text-sm">Start de analyse om juridische insights te krijgen.</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Defensive rendering - always ensure arrays exist
-  const facts = Array.isArray(analysis.factsJson) ? analysis.factsJson : [];
-  const issues = Array.isArray(analysis.issuesJson) ? analysis.issuesJson : [];
-  const legalBasis = Array.isArray(analysis.legalBasisJson) ? analysis.legalBasisJson : [];
-  const riskNotes = Array.isArray(analysis.riskNotesJson) ? analysis.riskNotesJson : [];
-  const missingDocs = Array.isArray(analysis.missingDocuments) ? analysis.missingDocuments : 
-                      Array.isArray(analysis.missingDocsJson) ? analysis.missingDocsJson : [];
-
-  // Show the analysis section with "Start analyse" button
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold flex items-center space-x-2">
-            <TrendingUp className="h-5 w-5 text-primary" />
-            <span>AI Analyse resultaten</span>
-          </CardTitle>
           {onAnalyze && (
             <Button
               onClick={onAnalyze}
-              disabled={isAnalyzing || (analysis && !hasNewInfo)}
-              variant={hasNewInfo ? "destructive" : analysis ? "secondary" : "default"}
-              size="sm"
+              disabled={isAnalyzing}
+              variant="default"
+              className="w-full"
               data-testid="button-start-analysis"
             >
               {isAnalyzing ? (
@@ -686,137 +459,34 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
                   <Clock className="mr-2 h-4 w-4 animate-spin" />
                   Analyseren...
                 </>
-              ) : analysis && !hasNewInfo ? (
-                <>
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Analyse voltooid
-                </>
               ) : (
                 <>
                   <Play className="mr-2 h-4 w-4" />
-                  {hasNewInfo ? "Nieuwe analyse uitvoeren" : "Start analyse"}
+                  Start juridische analyse
                 </>
               )}
             </Button>
           )}
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Facts */}
-          <div>
-            <h3 className="font-semibold text-foreground mb-3 flex items-center">
-              <CheckCircle className="text-primary mr-2 h-4 w-4" />
-              Belangrijkste feiten
-            </h3>
-            {facts.length > 0 ? (
-              <ul className="space-y-2" data-testid="list-facts">
-                {facts.map((fact, index) => (
-                  <li key={index} className="text-sm text-muted-foreground flex items-start space-x-2">
-                    <span className="text-primary mt-1.5 text-xs">•</span>
-                    <span>{typeof fact === 'string' ? fact : fact.detail || fact.label || fact.description || fact.text || JSON.stringify(fact)}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">Geen feiten geïdentificeerd</p>
-            )}
-          </div>
-          
-          {/* Legal Basis */}
-          <div>
-            <h3 className="font-semibold text-foreground mb-3 flex items-center">
-              <Scale className="text-warning mr-2 h-4 w-4" />
-              Juridische grondslag
-            </h3>
-            {legalBasis.length > 0 ? (
-              <ul className="space-y-2" data-testid="list-legal-basis">
-                {legalBasis.map((basis, index) => (
-                  <li key={index} className="text-sm text-muted-foreground flex items-start space-x-2">
-                    <span className="text-primary mt-1.5 text-xs">•</span>
-                    <span>{typeof basis === 'string' ? basis : basis.law || basis.article || basis.label || basis.text || JSON.stringify(basis)}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">Geen juridische grondslag gevonden</p>
-            )}
-          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
-          {/* Issues */}
-          {issues.length > 0 && (
-            <div>
-              <h3 className="font-semibold text-foreground mb-3 flex items-center">
-                <AlertTriangle className="text-warning mr-2 h-4 w-4" />
-                Geïdentificeerde problemen
-              </h3>
-              <ul className="space-y-2" data-testid="list-issues">
-                {issues.map((issue, index) => (
-                  <li key={index} className="text-sm text-muted-foreground flex items-start space-x-2">
-                    <span className="text-warning mt-1.5 text-xs">•</span>
-                    <span>{typeof issue === 'string' ? issue : issue.issue || issue.description || issue.label || issue.text || JSON.stringify(issue)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-        
-        {/* Risk Assessment */}
-        {riskNotes.length > 0 && (
-          <div className="mt-6 p-4 bg-accent rounded-lg">
-            <h4 className="font-medium text-accent-foreground mb-2 flex items-center">
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              Risico-inschatting
-            </h4>
-            <div className="space-y-1" data-testid="risk-assessment">
-              {riskNotes.map((note, index) => (
-                <p key={index} className="text-sm text-accent-foreground">
-                  {typeof note === 'string' ? note : note.description || note.text}
-                </p>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Missing Documents */}
-        {missingDocs.length > 0 && (
-          <div className="mt-6">
-            <h4 className="font-medium text-foreground mb-2 flex items-center">
-              <FileText className="h-4 w-4 mr-2" />
-              Ontbrekende documenten
-            </h4>
-            <ul className="space-y-1" data-testid="missing-documents">
-              {missingDocs.map((doc, index) => (
-                <li key={index} className="text-sm text-muted-foreground flex items-start space-x-2">
-                  <span className="text-primary mt-1.5 text-xs">•</span>
-                  <span>{typeof doc === 'string' ? doc : doc.name || doc.label || doc.text || JSON.stringify(doc)}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Raw text fallback */}
-        {analysis.rawText && (facts.length === 0 || issues.length === 0 || legalBasis.length === 0) && (
-          <div className="mt-6 p-4 bg-muted rounded-lg">
-            <h4 className="font-medium text-foreground mb-2 flex items-center">
-              <FileText className="h-4 w-4 mr-2" />
-              Volledige analyse tekst
-            </h4>
-            <div className="text-sm text-muted-foreground whitespace-pre-wrap" data-testid="raw-analysis-text">
-              {analysis.rawText}
-            </div>
-          </div>
-        )}
-
-        {/* Billing cost if available */}
-        {analysis.billingCost && (
-          <div className="mt-4 text-xs text-muted-foreground">
-            Analyse kosten: {analysis.billingCost}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-green-700 flex items-center gap-2">
+            <Scale className="w-5 h-5" />
+            Analyse Resultaten
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <pre className="text-xs bg-gray-50 p-3 rounded overflow-auto max-h-96 whitespace-pre-wrap">
+            {analysis.rawText || "Geen resultaten beschikbaar"}
+          </pre>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
