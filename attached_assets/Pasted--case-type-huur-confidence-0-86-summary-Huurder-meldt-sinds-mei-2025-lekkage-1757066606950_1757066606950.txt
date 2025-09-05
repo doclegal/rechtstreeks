@@ -1,0 +1,56 @@
+{
+  "case_type": "huur",
+  "confidence": 0.86,
+  "summary": "Huurder meldt sinds mei 2025 lekkage die niet is verholpen. Vordert huurprijsvermindering (€1.200) en overweegt ontbinding. Verhuurder reageert niet op aanmaningen.",
+  "parties": {
+    "relevant": true,
+    "needed": true,
+    "value": { "claimant_name": null, "defendant_name": null, "relationship": "huurder-verhuurder" },
+    "source": "inferred"
+  },
+  "agreement": {
+    "exists": "schriftelijk",
+    "attachments": [],
+    "relevant": true,
+    "needed": true,
+    "source": "missing"
+  },
+  "claims": [
+    {
+      "type": "betaling",
+      "confidence": 0.83,
+      "relevant": true,
+      "needed": false,
+      "value": { "principal_eur": 1200.0, "what_to_perform": "huurprijsvermindering", "legal_basis": "huurgebrek (omschrijving)" },
+      "source": "story"
+    },
+    {
+      "type": "ontbinding",
+      "confidence": 0.62,
+      "relevant": true,
+      "needed": false,
+      "value": { "principal_eur": null, "what_to_perform": "ontbinding huurovereenkomst", "legal_basis": "ernstige tekortkoming (omschrijving)" },
+      "source": "story"
+    }
+  ],
+  "facts": {
+    "relevant": true,
+    "needed": false,
+    "timeline": [
+      { "date": "2025-05-12", "event": "Eerste melding lekkage aan verhuurder", "source": "story" },
+      { "date": "2025-06-15", "event": "Herhaalde klacht; geen herstel", "source": "story" }
+    ]
+  },
+  "procedural": {
+    "relevant": true,
+    "needed": true,
+    "value": { "urgent": null, "forum_clause": null },
+    "source": "missing"
+  },
+  "default_questions": [
+    { "id": "namen_partijen", "label": "Wat zijn de namen van eiser en verhuurder?", "needed": true, "reason": "partijnamen ontbreken" },
+    { "id": "contract_upload", "label": "Upload het huurcontract", "needed": true, "reason": "overeenkomst genoemd maar ontbreekt" },
+    { "id": "bewijslast_gebrek", "label": "Heeft u foto’s/rapport van de lekkage?", "needed": true, "reason": "onderbouwing gebrek" },
+    { "id": "spoed", "label": "Is er spoed en waarom?", "needed": true, "reason": "overweeg voorlopige voorziening" }
+  ]
+}

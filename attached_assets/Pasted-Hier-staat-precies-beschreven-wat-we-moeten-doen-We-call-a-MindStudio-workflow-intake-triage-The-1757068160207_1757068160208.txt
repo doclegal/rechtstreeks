@@ -1,0 +1,182 @@
+Hier staat precies beschreven wat we moeten doen: We call a MindStudio workflow (intake/triage). The workflow’s Generate Text block returns JSON and the Terminator block maps the final response. I need the Replit app to (1) send input to MindStudio (like it already does), (2) receive the Terminator JSON, and (3) render the results on screen, cleanly and robustly.
+
+API Contract from MindStudio (Response)
+
+The Terminator block returns a JSON object with the following keys (all are present):
+
+{
+  "full_json": { },
+  "case_type": "huur|arbeid|koop|lening|onrechtmatige_daad|overig",
+  "confidence": 0.0,
+  "summary": "short Dutch summary (≤ 60 words)",
+  "parties": {
+    "relevant": true,
+    "needed": false,
+    "value": { "claimant_name": null, "defendant_name": null, "relationship": "…" },
+    "source": "story|document|inferred|missing"
+  },
+  "agreement": {
+    "exists": "schriftelijk|mondeling|geen|onbekend",
+    "attachments": [],
+    "relevant": true,
+    "needed": false,
+    "source": "story|document|missing"
+  },
+  "claims": [
+    {
+      "type": "betaling|nakoming|schadevergoeding|ontbinding|vernietiging|ontruiming|teruggave|verklaring_voor_recht|voorlopige_voorziening|dwangsom|wijziging_overeenkomst",
+      "confidence": 0.0,
+      "relevant": true,
+      "needed": false,
+      "value": {
+        "principal_eur": null,
+        "what_to_perform": null,
+        "legal_basis": null
+      },
+      "source": "story|document|inferred|missing"
+    }
+  ],
+  "facts": {
+    "relevant": true,
+    "needed": false,
+    "timeline": [
+      { "date": "YYYY-MM-DD", "event": "…", "source": "story|document" }
+    ]
+  },
+  "procedural": {
+    "relevant": true,
+    "needed": false,
+    "value": { "urgent": null, "forum_clause": null },
+    "source": "story|document|missing"
+  },
+  "needed_questions": [
+    { "id": "…", "label": "…", "needed": true, "reason": "…" }
+  ]
+}
+
+
+Important implementation notes
+
+full_json is the entire underlying object (stringify for debug/download).
+
+Some nested fields may hold null values; do NOT crash on nulls.
+
+Arrays may be empty; render empty states gracefully.
+
+UI Requirements (what to render)
+
+A. Input area
+
+Textarea for user_story (required).
+
+
+
+“Analyze” button (disabled while loading).
+
+B. Loading / error states
+
+Show a loading spinner + message .
+
+On error: show a clear error banner with a retry action; keep previous inputs intact.
+
+C. Results layout (after success)
+Render the response in distinct, readable blocks:
+
+Header
+
+Summary (summary) as the main text.
+
+Case type (case_type) as a badge (map values to labels one-to-one; do not translate).
+
+Claims (claims)
+
+For each claim:
+
+Show type as a chip/badge.
+
+Show value.principal_eur (amount) if present; otherwise show “–”.
+
+Show value.what_to_perform (short text) if present.
+
+Optional metadata: confidence (as a small %, e.g., “83%”).
+
+Parties (parties)
+
+Table-like view with:
+
+Claimant (from value.claimant_name or “(onbekend)”)
+
+Defendant (from value.defendant_name or “(onbekend)”)
+
+Relationship (from value.relationship if present)
+
+If needed: true, display a small “missing information” tag.
+
+Agreement (agreement)
+
+Exists (exists) as text: schriftelijk/mondeling/geen/onbekend.
+
+If attachments list is non-empty, list filenames or simple chips.
+
+If needed: true, show a request marker (“contract upload requested”).
+
+Facts / Timeline (facts.timeline)
+
+Vertical list: date – event – source.
+
+Handle empty timeline by showing “No timeline extracted.”
+
+Procedural (procedural.value)
+
+Two short rows: Urgent (yes/no/null) and Forum clause (text/null).
+
+If needed: true, mark as missing.
+
+Needed questions (needed_questions)
+
+Render as a to-do list with checkboxes or “answer” buttons.
+
+Each item shows label and a subtle hint with reason.
+
+Keep the id available (non-visible data attribute) to wire follow-up actions later.
+
+Raw JSON (developer toggle)
+
+Collapsible panel with stringified full_json for debugging/export.
+
+D. Empty states
+
+If claims is empty, show “No claims detected” placeholder.
+
+If needed_questions is empty, show “No follow-up questions.”
+
+E. Accessibility & resilience
+
+Do not rely on color alone; add text labels in Dutch for badges/tags.
+
+Never crash on missing/null fields; default to “(onbekend)”/“–”.
+
+4) Data Flow & State
+
+On submit: build a payload with user_story .
+
+Save the entire MindStudio response JSON in a single state object (e.g. analysis).
+
+Derive all UI fragments from analysis keys exactly as named above.
+
+Keep the previous successful analysis visible until a new call finishes.
+
+5) QA / Acceptance Checklist (must pass)
+
+
+ All fields render without errors if some nested values are null.
+
+ Claims list shows chips and amounts where available.
+
+ Needed questions list appears only when array length > 0.
+
+ Collapsible raw JSON panel shows the exact response (pretty-printed).
+
+ Loading and error states are visible and accessible.
+
+ Case type badge shows one of: huur, arbeid, koop, lening, onrechtmatige_daad, overig.
