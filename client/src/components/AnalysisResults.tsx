@@ -127,20 +127,59 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
     return missing;
   };
 
-  const countFilledFields = (data: any) => {
+  // Deterministic "Ingevuld: X" calculation - count only required subfields as filled
+  const computeFilledRequiredFields = (data: any, inputCaseDetails?: string) => {
     let count = 0;
-    if (data.summary) count++;
-    if (data.case_type) count++;
-    if (data.parties?.value?.claimant_name || data.parties?.value?.defendant_name) count++;
-    if (data.agreement?.exists && data.agreement.exists !== 'onbekend') count++;
-    if (data.claims?.length > 0) {
+    
+    // parties: claimant_name, defendant_name, relationship (3)
+    if (data.parties?.value?.claimant_name) count++;
+    if (data.parties?.value?.defendant_name) count++;
+    if (data.parties?.value?.relationship) count++;
+    
+    // agreement: exists (1) and if schriftelijk, require attachment marker (adds 1)
+    if (data.agreement?.exists && data.agreement.exists !== 'onbekend') {
+      count++;
+      if (data.agreement.exists === 'schriftelijk') {
+        // Check for [Attachment] marker in input_case_details
+        if (inputCaseDetails && inputCaseDetails.includes('[Attachment]')) {
+          count++;
+        }
+      }
+    }
+    
+    // procedural: urgent, forum_clause (2)
+    if (data.procedural?.value?.urgent !== null && data.procedural?.value?.urgent !== 'onbekend') count++;
+    if (data.procedural?.value?.forum_clause) count++;
+    
+    // Per claim: principal_eur, what_to_perform, legal_basis (3 per claim)
+    if (data.claims && Array.isArray(data.claims)) {
       data.claims.forEach((claim: any) => {
-        if (claim.value?.principal_eur || claim.value?.what_to_perform || claim.value?.legal_basis) count++;
+        if (claim.value?.principal_eur) count++;
+        if (claim.value?.what_to_perform) count++;
+        if (claim.value?.legal_basis) count++;
       });
     }
-    if (data.facts?.timeline?.length > 0) count++;
-    if (data.procedural?.value?.urgent !== null || data.procedural?.value?.forum_clause) count++;
+    
     return count;
+  };
+
+  // Format Euro amounts in Dutch locale
+  const formatEuro = (amount: number | null | undefined) => {
+    if (!amount) return "–";
+    return new Intl.NumberFormat('nl-NL', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
+  // Get confidence style based on thresholds
+  const getConfidenceStyle = (confidence: number) => {
+    const percentage = Math.round(confidence * 100);
+    if (percentage >= 80) return { variant: "default" as const, className: "bg-green-100 text-green-800" };
+    if (percentage >= 60) return { variant: "secondary" as const, className: "bg-yellow-100 text-yellow-800" };
+    return { variant: "outline" as const, className: "bg-gray-100 text-gray-600" };
   };
 
   const handleSubmitFollowup = async () => {
@@ -170,9 +209,10 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
   // Show triage format if available
   if (isTriageFormat) {
     const missingList = buildMissingList(triageData);
-    const filledCount = countFilledFields(triageData);
+    const filledCount = computeFilledRequiredFields(triageData);
     const missingCount = missingList.length;
     const isIntakeComplete = missingCount === 0;
+    const confidenceStyle = triageData.confidence ? getConfidenceStyle(triageData.confidence) : null;
 
     return (
       <div className="space-y-6">
@@ -193,9 +233,16 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
                   {triageData.case_type}
                 </Badge>
               )}
-              {triageData.confidence && (
-                <Badge variant="outline" className="text-sm" data-testid="badge-confidence">
+              {triageData.confidence && confidenceStyle && (
+                <Badge 
+                  variant={confidenceStyle.variant} 
+                  className={`text-sm ${confidenceStyle.className}`} 
+                  data-testid="badge-confidence"
+                >
                   {Math.round(triageData.confidence * 100)}% zekerheid
+                  {triageData.confidence < 0.6 && (
+                    <span className="block text-xs mt-1">Overweeg extra toelichting / upload</span>
+                  )}
                 </Badge>
               )}
             </div>
@@ -209,15 +256,20 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 mb-4" data-testid="text-summary">
-              {triageData.summary || "Geen samenvatting beschikbaar"}
+              {triageData.summary || "Samenvatting niet beschikbaar."}
             </p>
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-xs">
                 {triageData.case_type || "Onbekend type"}
               </Badge>
-              <Badge variant="outline" className="text-xs">
-                {triageData.confidence ? `${Math.round(triageData.confidence * 100)}% zekerheid` : "Onbekende zekerheid"}
-              </Badge>
+              {triageData.confidence && confidenceStyle && (
+                <Badge 
+                  variant={confidenceStyle.variant} 
+                  className={`text-xs ${confidenceStyle.className}`}
+                >
+                  {Math.round(triageData.confidence * 100)}% zekerheid
+                </Badge>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -238,12 +290,21 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
           </Badge>
         </div>
 
-        {/* Green completion callout */}
+        {/* Green completion callout with next-step CTA */}
         {isIntakeComplete && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="flex items-center gap-2 text-green-800">
-              <CheckCircle className="w-5 h-5" />
-              <span className="font-medium">Intake compleet — klaar voor juridische beoordeling.</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-green-800">
+                <CheckCircle className="w-5 h-5" />
+                <span className="font-medium">Intake compleet — klaar voor juridische beoordeling.</span>
+              </div>
+              <Button 
+                variant="default" 
+                className="bg-green-600 hover:bg-green-700"
+                data-testid="button-start-legal-review"
+              >
+                Juridische beoordeling starten
+              </Button>
             </div>
           </div>
         )}
@@ -467,7 +528,7 @@ export default function AnalysisResults({ analysis, onAnalyze, isAnalyzing = fal
                   </div>
                   <div className="space-y-1 text-sm">
                     <p data-testid={`detailed-claim-amount-${idx}`}>
-                      <span className="font-medium">Bedrag:</span> {claim.value?.principal_eur ? `€ ${claim.value.principal_eur.toLocaleString()}` : "–"}
+                      <span className="font-medium">Bedrag:</span> {formatEuro(claim.value?.principal_eur)}
                     </p>
                     <p data-testid={`detailed-claim-performance-${idx}`}>
                       <span className="font-medium">Te verrichten:</span> {claim.value?.what_to_perform || "–"}

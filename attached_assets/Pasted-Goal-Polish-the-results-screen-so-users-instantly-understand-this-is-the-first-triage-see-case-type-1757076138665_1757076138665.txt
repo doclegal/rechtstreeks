@@ -1,0 +1,192 @@
+Goal
+Polish the results screen so users instantly understand this is the first triage, see case type + summary + confidence, and—most importantly—get a correct completeness status. When nothing is missing (Y=0), show a clear next-step CTA. When items are missing, aggregate all of them in one “Nog ontbrekende informatie” section.
+
+API contract used by the UI (send only these):
+
+input_case_details (string, required) — includes the freeform case text and any attachment markers you add from the UI.
+
+followup_answers (object, optional) — map of key/value follow-ups.
+
+Do not send file_urls. Ignore any legacy field.
+
+Do (UI/logic only, no other API changes)
+
+Missing aggregator (single source of truth)
+
+Build one list from:
+
+Top-level objects where .needed === true: parties, agreement, procedural.
+
+Each claim where claims[i].needed === true.
+
+Every entry in needed_questions[].
+
+Add a fallback: if .needed is false but any required subfield is empty/null, still surface it as missing (with a stable synthetic id).
+
+Render “Nog ontbrekende informatie” only when Y > 0; hide the section when Y = 0.
+
+Stable IDs & follow-up mapping
+
+IDs: parties, agreement, procedural, and claim-{index} for claims; for questions use their given id.
+
+Stage answers into a followup_answers map with keys:
+
+parties.claimant_name, parties.defendant_name, parties.relationship
+
+agreement.exists
+
+claims.{index}.principal_eur, claims.{index}.what_to_perform, claims.{index}.legal_basis
+
+For questions: {id} = <text>
+
+Do not send on per-row submit; send only via the primary CTA.
+
+Uploads → embed into input_case_details (no file_urls)
+
+When a user uploads a file in any Missing row, do not create or send file_urls.
+
+Instead, create a normalized attachment marker and append it to input_case_details before submitting:
+
+Format:
+
+\n[Attachment] <filename> — <short description or public link if available>\n
+
+
+If multiple uploads, append one marker per file.
+
+(Optional) You may also stage a note like followup_answers["agreement.attachment_note"] = "<filename>", but the attachment itself must be represented in input_case_details via the marker above.
+
+Primary CTA (when Y > 0)
+
+Button: “Ontbrekende info indienen”.
+
+On click, re-run the same MindStudio workflow with:
+
+input_case_details: <current text including any appended [Attachment] markers>,
+followup_answers: <staged map>
+
+
+Show a blocking “Analyseren…” state; re-enable inputs after the response.
+
+Post-run refresh
+
+Rebuild the missing list and update progress chips:
+
+X = count of required subfields now non-empty (see #6).
+
+Y = total items in the missing list (top-level needed + per-claim needed + all questions, incl. fallback).
+
+Remove satisfied items from the list.
+
+If Y === 0, render the green callout: “Intake compleet — klaar voor juridische beoordeling.”, then show the next-step CTA (see #7).
+
+Deterministic “Ingevuld: X”
+Count only required subfields as “filled”:
+
+parties: claimant_name, defendant_name, relationship (3)
+
+agreement: exists (1) and, if exists = "schriftelijk", require at least one attachment indicated via an [Attachment] marker in input_case_details (adds 1)
+
+procedural: urgent, forum_clause (2)
+
+Per claim: principal_eur, what_to_perform, legal_basis (3 per claim)
+Implement a single helper (concept level) like computeFilledRequiredFields(json) to compute X consistently.
+
+Next-step CTA (when Y = 0)
+
+Primary button under the green callout: “Juridische beoordeling starten”.
+
+It triggers your next workflow step with the available data (full_json, original input_case_details). No file_urls.
+
+Claims presentation (clarity)
+
+For each claim, always show:
+
+Bedrag: formatted or “–”
+
+Te verrichten: what_to_perform or “–”
+
+Rechtsgrond: legal_basis or “–”
+
+Ensure type labels are correct Dutch (e.g., “teruggave”, not “terugvage”).
+
+If a claim is incomplete, show a red “Ontbreekt” tag that scrolls/focuses the corresponding Missing row.
+
+Confidence badges with thresholds
+
+Chip value: Math.round(confidence * 100)%.
+
+Visual thresholds (use color + text):
+
+≥ 80%: success style
+
+60–79%: warning style
+
+< 60%: neutral/gray + helper text: “Overweeg extra toelichting / upload”
+
+Formatting & accessibility
+
+Euro amounts in Dutch locale (e.g., € 20.300,00).
+
+Replace null/empty with “–” or “(onbekend)”.
+
+Do not rely on color alone; include icons/labels.
+
+Keep Raw JSON collapsible and unchanged.
+
+Audit trail (collapsible)
+
+“Analysehistorie” logs: timestamp, MindStudio run ID, X/Y values, keys sent in followup_answers, and whether attachment markers were appended to input_case_details.
+
+Edge-case checks (manual QA)
+
+Multiple claims: only incomplete ones show in Missing info.
+
+agreement.exists = "schriftelijk" with no [Attachment] marker in input_case_details → remains missing.
+
+procedural.urgent = onbekend → shows as missing until clarified.
+
+Empty summary → show fallback “Samenvatting niet beschikbaar.”
+
+Texts (Dutch UI labels)
+
+Header: “Eerste juridische triage voltooid”
+Subtitle: “Dit is de eerste analyse: hieronder zie je het zaaktype, een samenvatting en wat nog ontbreekt.”
+
+Chips: “Ingevuld: {X} velden”, “Ontbreekt: {Y} items”
+
+Missing title: “Nog ontbrekende informatie”
+
+Green callout (Y=0): “Intake compleet — klaar voor juridische beoordeling.”
+
+CTA (Y>0): “Ontbrekende info indienen”
+
+CTA (Y=0): “Juridische beoordeling starten”
+
+Row action: “Beantwoorden/Uploaden”
+
+Loading: “Analyseren…”
+
+Empty timeline: “Geen tijdlijn gedetecteerd”
+
+Don’t
+
+Don’t send or reference file_urls anywhere.
+
+Don’t change the MindStudio workflow id or the JSON response shape.
+
+Don’t auto-expand the Raw JSON panel.
+
+Acceptance
+
+The Missing list includes all relevant gaps (top-level .needed, per-claim .needed, and all needed_questions[], plus the fallback rule).
+
+X/Y chips update correctly after every run.
+
+When Y becomes 0, the green callout and next-step CTA appear.
+
+No crashes on null/empty arrays; proper placeholders are shown.
+
+Clicking any “Ontbreekt” badge scrolls/focuses the corresponding item in Missing info.
+
+Uploads are reflected only by appending [Attachment] markers to input_case_details; no file_urls are sent.
