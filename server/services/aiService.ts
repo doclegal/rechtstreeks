@@ -414,34 +414,67 @@ Geef JSON response:
     try {
       console.log('🔍 Processing MindStudio output:', typeof outputText, outputText);
       
+      // Try to parse JSON string if it looks like JSON
+      let parsedData = outputText;
+      if (typeof outputText === 'string' && (outputText.startsWith('{') || outputText.includes('samenvatting_feiten'))) {
+        try {
+          parsedData = JSON.parse(outputText);
+          console.log('📝 Parsed JSON string successfully');
+        } catch (e) {
+          console.log('⚠️ Failed to parse as JSON, treating as string');
+        }
+      }
+      
       // If outputText is already an object (new MindStudio format), use it directly
-      if (typeof outputText === 'object' && outputText !== null) {
+      if (typeof parsedData === 'object' && parsedData !== null) {
         console.log('📊 Using direct object format from MindStudio');
         
         // Extract data from the structured object
-        if (outputText.samenvatting_feiten && Array.isArray(outputText.samenvatting_feiten)) {
-          result.factsJson = outputText.samenvatting_feiten.map((fact: string, idx: number) => ({
-            label: `Feit ${idx + 1}`,
-            detail: fact
-          }));
+        if (parsedData.samenvatting_feiten) {
+          if (Array.isArray(parsedData.samenvatting_feiten)) {
+            result.factsJson = parsedData.samenvatting_feiten.map((fact: string, idx: number) => ({
+              label: `Feit ${idx + 1}`,
+              detail: fact
+            }));
+          } else if (typeof parsedData.samenvatting_feiten === 'string') {
+            result.factsJson = [{ label: "Samenvatting", detail: parsedData.samenvatting_feiten }];
+          }
         }
-        if (outputText.juridische_analyse && Array.isArray(outputText.juridische_analyse)) {
-          result.issuesJson = outputText.juridische_analyse.map((issue: string) => ({
-            issue: issue,
-            risk: undefined
-          }));
+        
+        if (parsedData.juridische_analyse) {
+          if (Array.isArray(parsedData.juridische_analyse)) {
+            result.issuesJson = parsedData.juridische_analyse.map((issue: string) => ({
+              issue: issue,
+              risk: undefined
+            }));
+          } else if (typeof parsedData.juridische_analyse === 'string') {
+            result.issuesJson = [{ issue: parsedData.juridische_analyse, risk: undefined }];
+          }
         }
-        if (outputText.to_do && Array.isArray(outputText.to_do)) {
-          result.missingDocuments = outputText.to_do;
+        
+        if (parsedData.to_do) {
+          if (Array.isArray(parsedData.to_do)) {
+            result.missingDocuments = parsedData.to_do;
+          } else if (typeof parsedData.to_do === 'string') {
+            result.missingDocuments = parsedData.to_do.split(',').map(item => item.trim());
+          }
         }
         
         // Legal basis from kernredenering if available
-        if (outputText.kernredenering && Array.isArray(outputText.kernredenering)) {
-          result.legalBasisJson = outputText.kernredenering.map((law: string) => ({
-            law: law,
-            article: undefined,
-            note: undefined
-          }));
+        if (parsedData.kernredenering) {
+          if (Array.isArray(parsedData.kernredenering)) {
+            result.legalBasisJson = parsedData.kernredenering.map((law: string) => ({
+              law: law,
+              article: undefined,
+              note: undefined
+            }));
+          } else if (typeof parsedData.kernredenering === 'string') {
+            result.legalBasisJson = parsedData.kernredenering.split(',').map((law: string) => ({
+              law: law.trim(),
+              article: undefined,
+              note: undefined
+            }));
+          }
         }
         
         console.log('✅ Processed structured MindStudio output successfully');
