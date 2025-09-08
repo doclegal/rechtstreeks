@@ -9,6 +9,20 @@ const THREAD_RESULTS = new Map<string, {
   billingCost?: string 
 }>();
 
+export interface KantonCheckResult {
+  ok: boolean;
+  phase?: string;
+  decision?: string;
+  reason?: string;
+  summary?: string;
+  parties?: any;
+  basis?: string;
+  rationale?: string;
+  questions?: any[];
+  rawText?: string;
+  billingCost?: string;
+}
+
 export interface AppAnalysisResult {
   factsJson: Array<{ label: string; detail?: string }>;
   issuesJson: Array<{ issue: string; risk?: string }>;
@@ -100,13 +114,13 @@ export class AIService {
       const latency = Date.now() - startTime;
       
       return {
-        facts: analysisResult.facts || [],
-        issues: analysisResult.issues || [],
-        missing_documents: analysisResult.missing_documents || [],
-        claims: analysisResult.claims || [],
-        defenses: analysisResult.defenses || [],
-        legal_basis: analysisResult.legal_basis || [],
-        risk_notes: analysisResult.risk_notes || [],
+        facts: Array.isArray(analysisResult.facts) ? analysisResult.facts : [],
+        issues: Array.isArray(analysisResult.issues) ? analysisResult.issues : [],
+        missing_documents: Array.isArray(analysisResult.missing_documents) ? analysisResult.missing_documents : [],
+        claims: Array.isArray(analysisResult.claims) ? analysisResult.claims : [],
+        defenses: Array.isArray(analysisResult.defenses) ? analysisResult.defenses : [],
+        legal_basis: Array.isArray(analysisResult.legal_basis) ? analysisResult.legal_basis : [],
+        risk_notes: Array.isArray(analysisResult.risk_notes) ? analysisResult.risk_notes : [],
         latency,
         tokens: this.estimateTokens(response) // Simplified token estimation
       };
@@ -319,7 +333,68 @@ Geef JSON response:
     return { threadId: data.threadId };
   }
 
-  // NEW: Synchronous version - no callback, direct result
+  // NEW: Kanton check - determine if case is suitable for kantongerecht
+  async runKantonCheck(params: { input_name: string; input_case_details: string; file_url?: string }): Promise<KantonCheckResult> {
+    const variables: any = {
+      input_name: params.input_name,
+      input_case_details: params.input_case_details
+    };
+    
+    // Add file_url if provided
+    if (params.file_url) {
+      variables.file_url = params.file_url;
+    }
+
+    console.log("Starting Kanton check analysis:", variables);
+
+    const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        workerId: process.env.MINDSTUDIO_WORKER_ID,
+        variables,
+        workflow: process.env.MINDSTUDIO_WORKFLOW || "Main.flow",
+        // NO callbackUrl = synchronous response
+        includeBillingCost: true
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`Mindstudio API error: ${response.status} ${response.statusText} - ${errorData}`);
+    }
+
+    const data = await response.json();
+    console.log("🔍 Raw result from MindStudio:", typeof data.app_response, data.app_response);
+    
+    if (!data.threadId) {
+      throw new Error("No threadId received from Mindstudio");
+    }
+
+    // Parse the {{app_response}} from MindStudio
+    let appResponse;
+    try {
+      if (typeof data.app_response === 'string') {
+        appResponse = JSON.parse(data.app_response);
+      } else {
+        appResponse = data.app_response;
+      }
+    } catch (error) {
+      console.error("Failed to parse app_response:", data.app_response);
+      throw new Error("Invalid JSON response from kanton check");
+    }
+
+    return {
+      ...appResponse,
+      rawText: JSON.stringify(data, null, 2),
+      billingCost: data.billingCost
+    };
+  }
+
+  // OLD: Synchronous version - no callback, direct result
   async runSynchronousMindstudioAnalysis(params: { input_name: string; input_case_details: string; file_url?: string }): Promise<{ 
     result: string; 
     threadId: string; 

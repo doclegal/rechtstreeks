@@ -290,7 +290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rate limiting for analyses (simple in-memory tracking)
   const analysisRateLimit = new Map<string, number>();
 
-  // Analysis routes
+  // Kanton check route - first step to determine if case is suitable
   app.post('/api/cases/:id/analyze', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -313,7 +313,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Case not found" });
       }
 
-      // First try Mindstudio async analysis
+      // Kanton check with Mindstudio
       if (process.env.MINDSTUDIO_API_KEY && process.env.MINDSTUDIO_WORKER_ID) {
         try {
           // Get user info for analysis
@@ -323,7 +323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Get documents for analysis
           const documents = await storage.getDocumentsByCase(caseId);
           
-          console.log('📄 Found documents for analysis:');
+          console.log('📄 Found documents for kanton check:');
           documents.forEach(doc => {
             console.log(`  - ${doc.filename} (extractedText: ${doc.extractedText ? '✅ Available' : '❌ None'})`);
           });
@@ -342,73 +342,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 caseDetails += `[Geen tekst geëxtraheerd uit dit document]\n\n`;
               }
             });
-            console.log('✅ Including document content directly in analysis');
+            console.log('✅ Including document content directly in kanton check');
           }
           
-          // Run SYNCHRONOUS Mindstudio analysis (no callback, direct result)
-          const analysisParams: any = {
+          // Run Kanton check with new method
+          const kantonParams = {
             input_name: userName,
             input_case_details: caseDetails
           };
           
-          console.log('🚀 Starting SYNCHRONOUS Mindstudio analysis:', analysisParams);
+          console.log('🚀 Starting Kanton check analysis:', kantonParams);
           
-          const result = await aiService.runSynchronousMindstudioAnalysis(analysisParams);
+          const kantonResult = await aiService.runKantonCheck(kantonParams);
           
-          // Process the result immediately (no polling needed!)
-          console.log('🔍 Raw result from MindStudio:', typeof result.result, result.result);
+          console.log('🔍 Kanton check result:', kantonResult);
           
-          // Parse the result - could be JSON object or string
-          let parsedResult;
-          if (typeof result.result === 'string') {
-            try {
-              parsedResult = JSON.parse(result.result);
-            } catch (e) {
-              // If it's not JSON, treat as text
-              parsedResult = result.result;
-            }
-          } else {
-            parsedResult = result.result;
-          }
-          
-          const processedResult = AIService.mindstudioToAppResult(parsedResult);
-          
-          // Save analysis to database
+          // Save simplified analysis to database
           const analysis = await storage.createAnalysis({
             caseId,
-            model: 'mindstudio-agent',
-            rawText: typeof parsedResult === 'object' ? JSON.stringify(parsedResult, null, 2) : parsedResult,
-            factsJson: processedResult.factsJson,
-            issuesJson: processedResult.issuesJson,
-            legalBasisJson: processedResult.legalBasisJson,
-            missingDocsJson: processedResult.missingDocuments,
-            riskNotesJson: processedResult.riskNotesJson || []
+            model: 'mindstudio-kanton-check',
+            rawText: kantonResult.rawText || JSON.stringify(kantonResult, null, 2),
+            factsJson: [{ label: 'Samenvatting', detail: kantonResult.summary || 'Geen samenvatting' }],
+            issuesJson: kantonResult.ok ? 
+              [{ issue: 'Zaak geschikt voor kantongerecht', risk: 'Geen' }] : 
+              [{ issue: kantonResult.reason === 'not_kantonzaak' ? 'Niet geschikt voor kantongerecht' : 'Onvoldoende informatie', risk: kantonResult.rationale || 'Zie details' }],
+            legalBasisJson: kantonResult.basis ? [{ law: kantonResult.basis }] : [],
+            missingDocsJson: kantonResult.questions ? kantonResult.questions.map((q: any) => q.label || q) : [],
+            riskNotesJson: []
           });
           
-          // Update case status
-          await storage.updateCase(caseId, { 
-            status: "ANALYZED" as CaseStatus,
-            nextActionLabel: "Opstellen aanmaning",
-          });
+          // Update case status based on kanton check result
+          if (kantonResult.ok) {
+            await storage.updateCase(caseId, { 
+              status: "ANALYZED" as CaseStatus,
+              nextActionLabel: "Start volledige analyse",
+            });
+          } else {
+            await storage.updateCase(caseId, { 
+              status: "DOCS_UPLOADED" as CaseStatus,
+              nextActionLabel: kantonResult.reason === 'insufficient_info' ? "Meer informatie toevoegen" : "Zaak niet geschikt",
+            });
+          }
           
           // Update rate limit
           analysisRateLimit.set(rateLimitKey, now);
           
           return res.json({ 
             analysis,
+            kantonCheck: kantonResult,
             status: 'completed'
           });
         } catch (error) {
-          console.error("Mindstudio analysis failed:", error);
+          console.error("Kanton check failed:", error);
           return res.status(503).json({ 
-            message: "Sorry, de analyse lukt niet. Mindstudio AI is niet beschikbaar." 
+            message: "Sorry, de kantonzaak controle lukt niet. Mindstudio AI is niet beschikbaar." 
           });
         }
       }
       
       // No Mindstudio available - return error
       return res.status(503).json({ 
-        message: "Sorry, de analyse lukt niet. Mindstudio AI is niet beschikbaar." 
+        message: "Sorry, de kantonzaak controle lukt niet. Mindstudio AI is niet beschikbaar." 
       });
     } catch (error) {
       console.error("Error analyzing case:", error);
