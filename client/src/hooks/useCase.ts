@@ -94,12 +94,35 @@ export function useAnalyzeCase(caseId: string) {
       const response = await apiRequest("POST", `/api/cases/${caseId}/analyze`);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId] });
-      toast({
-        title: "Analyse voltooid",
-        description: "De AI-analyse van uw zaak is voltooid",
-      });
+      
+      // Update toast message based on kanton check result
+      if (data.kantonCheck) {
+        if (data.kantonCheck.ok) {
+          toast({
+            title: "Kantonzaak controle geslaagd",
+            description: "Uw zaak is geschikt voor het kantongerecht",
+          });
+        } else if (data.kantonCheck.reason === 'insufficient_info') {
+          toast({
+            title: "Meer informatie nodig",
+            description: "Voeg meer documenten of informatie toe voor een volledige beoordeling",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Zaak niet geschikt",
+            description: "Deze zaak is niet geschikt voor behandeling via het kantongerecht",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Analyse voltooid",
+          description: "De AI-analyse van uw zaak is voltooid",
+        });
+      }
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {

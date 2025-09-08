@@ -22,6 +22,7 @@ export default function MyCase() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [kantonCheckResult, setKantonCheckResult] = useState<any>(null);
   
   // For MVP, we'll use the first case as the main case
   const currentCase = Array.isArray(cases) && cases.length > 0 ? cases[0] : undefined;
@@ -42,15 +43,20 @@ export default function MyCase() {
     }
   }, [window.location.pathname]);
 
-  // Refresh case data after successful analysis
+  // Store kanton check result and refresh case data after successful analysis
   useEffect(() => {
-    if (analyzeMutation.isSuccess) {
+    if (analyzeMutation.isSuccess && analyzeMutation.data) {
+      // Store the kanton check result
+      if (analyzeMutation.data.kantonCheck) {
+        setKantonCheckResult(analyzeMutation.data.kantonCheck);
+      }
+      
       // Small delay to ensure DB is updated before refetch
       setTimeout(() => {
         refetch();
       }, 500);
     }
-  }, [analyzeMutation.isSuccess, refetch]);
+  }, [analyzeMutation.isSuccess, analyzeMutation.data, refetch]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -257,6 +263,7 @@ export default function MyCase() {
               </div>
               <AnalysisResults 
                 analysis={currentCase.analysis}
+                kantonCheck={kantonCheckResult}
                 onAnalyze={() => analyzeMutation.mutate()}
                 isAnalyzing={analyzeMutation.isPending}
                 hasNewInfo={(() => {
