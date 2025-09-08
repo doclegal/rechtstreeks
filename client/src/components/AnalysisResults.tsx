@@ -1,7 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { useState } from "react";
 import { 
   CheckCircle, 
   AlertTriangle, 
@@ -9,7 +13,8 @@ import {
   HelpCircle,
   FileText,
   Users,
-  Scale
+  Scale,
+  Send
 } from "lucide-react";
 
 interface KantonCheckResult {
@@ -50,6 +55,8 @@ export default function AnalysisResults({
   isAnalyzing = false, 
   hasNewInfo = false 
 }: AnalysisResultsProps) {
+  const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({});
+  const [isSubmittingAnswers, setIsSubmittingAnswers] = useState(false);
   
   // Extract kanton check result from rawText if not provided separately
   let parsedKantonCheck = kantonCheck;
@@ -63,6 +70,20 @@ export default function AnalysisResults({
       console.log('Could not parse kanton check from rawText');
     }
   }
+
+  const handleQuestionChange = (index: number, value: string) => {
+    setQuestionAnswers(prev => ({ ...prev, [index]: value }));
+  };
+
+  const handleSubmitAnswers = async () => {
+    setIsSubmittingAnswers(true);
+    // TODO: Submit answers back to analysis
+    console.log('Submitting answers:', questionAnswers);
+    setTimeout(() => {
+      setIsSubmittingAnswers(false);
+      alert('Antwoorden opgeslagen. Voer opnieuw een analyse uit.');
+    }, 1000);
+  };
 
   // If no analysis yet, show analyze button
   if (!analysis) {
@@ -173,69 +194,95 @@ export default function AnalysisResults({
               }
             </Badge>
 
-            {/* Summary */}
-            {parsedKantonCheck.summary && (
+            {/* Altijd tonen: Summary en Parties */}
+            <div className="space-y-4">
+              {/* Summary - altijd tonen */}
               <div className="space-y-2">
                 <h4 className="font-medium text-sm">Samenvatting:</h4>
                 <p className="text-sm text-gray-700 dark:text-gray-300" data-testid="text-summary">
-                  {parsedKantonCheck.summary}
+                  {parsedKantonCheck.summary || 'Geen samenvatting beschikbaar'}
                 </p>
               </div>
-            )}
 
-            {/* Parties */}
-            {parsedKantonCheck.parties && (
+              {/* Parties - altijd tonen */}
               <div className="space-y-2">
                 <h4 className="font-medium text-sm flex items-center gap-2">
                   <Users className="h-4 w-4" />
                   Partijen:
                 </h4>
                 <div className="text-sm text-gray-700 dark:text-gray-300" data-testid="text-parties">
-                  {typeof parsedKantonCheck.parties === 'string' 
-                    ? parsedKantonCheck.parties
-                    : JSON.stringify(parsedKantonCheck.parties, null, 2)
+                  {parsedKantonCheck.parties 
+                    ? (typeof parsedKantonCheck.parties === 'string' 
+                        ? parsedKantonCheck.parties
+                        : JSON.stringify(parsedKantonCheck.parties, null, 2))
+                    : 'Geen partijen informatie beschikbaar'
                   }
                 </div>
               </div>
-            )}
+            </div>
 
-            {/* Legal Basis (only for approved cases) */}
-            {parsedKantonCheck.ok && parsedKantonCheck.basis && (
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm flex items-center gap-2">
-                  <Scale className="h-4 w-4" />
-                  Juridische Grondslag:
-                </h4>
-                <p className="text-sm text-gray-700 dark:text-gray-300" data-testid="text-legal-basis">
-                  {parsedKantonCheck.basis}
-                </p>
-              </div>
-            )}
+            {/* Conditionale secties gebaseerd op ok en reason */}
+            <div className="space-y-4">
+              {/* Legal Basis (only for approved cases: ok == true) */}
+              {parsedKantonCheck.ok && parsedKantonCheck.basis && (
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm flex items-center gap-2">
+                    <Scale className="h-4 w-4" />
+                    Juridische Grondslag:
+                  </h4>
+                  <p className="text-sm text-gray-700 dark:text-gray-300" data-testid="text-legal-basis">
+                    {parsedKantonCheck.basis}
+                  </p>
+                </div>
+              )}
 
-            {/* Rationale (for rejected cases) */}
-            {!parsedKantonCheck.ok && parsedKantonCheck.reason === 'not_kantonzaak' && parsedKantonCheck.rationale && (
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">Waarom niet geschikt:</h4>
-                <p className="text-sm text-red-700 dark:text-red-300" data-testid="text-rationale">
-                  {parsedKantonCheck.rationale}
-                </p>
-              </div>
-            )}
+              {/* Rationale (for rejected cases: reason == "not_kantonzaak") */}
+              {!parsedKantonCheck.ok && parsedKantonCheck.reason === 'not_kantonzaak' && parsedKantonCheck.rationale && (
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">Waarom niet geschikt:</h4>
+                  <p className="text-sm text-red-700 dark:text-red-300" data-testid="text-rationale">
+                    {parsedKantonCheck.rationale}
+                  </p>
+                </div>
+              )}
 
-            {/* Missing Info Questions */}
-            {parsedKantonCheck.reason === 'insufficient_info' && parsedKantonCheck.questions && (
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">Benodigde Informatie:</h4>
-                <ul className="space-y-1 text-sm text-yellow-700 dark:text-yellow-300">
-                  {parsedKantonCheck.questions.map((question: any, index: number) => (
-                    <li key={index} className="flex items-start gap-2" data-testid={`question-${index}`}>
-                      <span className="text-yellow-500 mt-1">•</span>
-                      <span>{typeof question === 'string' ? question : question.label || JSON.stringify(question)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+              {/* Questions as Input Fields (for insufficient_info cases: reason == "insufficient_info") */}
+              {parsedKantonCheck.reason === 'insufficient_info' && parsedKantonCheck.questions && (
+                <div className="space-y-4">
+                  <h4 className="font-medium text-sm">Beantwoord de volgende vragen:</h4>
+                  <div className="space-y-4">
+                    {parsedKantonCheck.questions.map((question: any, index: number) => {
+                      const questionText = typeof question === 'string' ? question : question.label || JSON.stringify(question);
+                      return (
+                        <div key={index} className="space-y-2" data-testid={`question-input-${index}`}>
+                          <Label htmlFor={`question-${index}`} className="text-sm font-medium">
+                            {questionText}
+                          </Label>
+                          <Textarea
+                            id={`question-${index}`}
+                            placeholder="Typ uw antwoord hier..."
+                            value={questionAnswers[index] || ''}
+                            onChange={(e) => handleQuestionChange(index, e.target.value)}
+                            className="min-h-[80px]"
+                            data-testid={`textarea-answer-${index}`}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  <Button 
+                    onClick={handleSubmitAnswers}
+                    disabled={isSubmittingAnswers || Object.keys(questionAnswers).length === 0}
+                    className="w-full"
+                    data-testid="button-submit-answers"
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    {isSubmittingAnswers ? 'Verzenden...' : 'Antwoorden Verzenden'}
+                  </Button>
+                </div>
+              )}
+            </div>
 
             <Separator />
 
