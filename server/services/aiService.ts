@@ -385,16 +385,70 @@ Geef JSON response:
       throw new Error("No threadId received from Mindstudio");
     }
 
-    // Parse the {{app_response}} from MindStudio
+    // Parse the {{app_response}} from MindStudio thread variables
     let appResponse;
     try {
-      if (typeof data.app_response === 'string') {
-        appResponse = JSON.parse(data.app_response);
-      } else {
-        appResponse = data.app_response;
+      // Check if app_response is directly available
+      if (data.app_response) {
+        if (typeof data.app_response === 'string') {
+          appResponse = JSON.parse(data.app_response);
+        } else {
+          appResponse = data.app_response;
+        }
+      } 
+      // Otherwise, look in thread variables or posts for the app_response
+      else if (data.thread?.variables?.app_response) {
+        if (typeof data.thread.variables.app_response === 'string') {
+          appResponse = JSON.parse(data.thread.variables.app_response);
+        } else {
+          appResponse = data.thread.variables.app_response;
+        }
       }
+      // Look for it in the thread posts/messages
+      else if (data.thread?.posts) {
+        // Find the last message that contains JSON with our expected structure
+        for (const post of data.thread.posts.reverse()) {
+          if (post.message?.content) {
+            try {
+              const parsed = JSON.parse(post.message.content);
+              if (parsed.ok !== undefined && parsed.phase === 'kanton_check') {
+                appResponse = parsed;
+                break;
+              }
+            } catch (e) {
+              // Not JSON, continue
+            }
+          }
+        }
+      }
+      
+      // If still no response, create a fallback based on the original MindStudio logic
+      if (!appResponse) {
+        console.log("🔍 No app_response found, using fallback extraction from thread data");
+        
+        // Create fallback response - this should not happen but provides safety
+        appResponse = {
+          ok: false,
+          phase: 'kanton_check',
+          decision: false,
+          summary: 'Geen samenvatting beschikbaar',
+          parties: {
+            claimant_name: null,
+            defendant_name: null,
+            relationship: null
+          },
+          basis: {
+            grond: null,
+            belang_eur: null
+          },
+          reason: 'Response parsing failed - app_response not found in MindStudio response'
+        };
+      }
+      
+      console.log("✅ Parsed app_response:", appResponse);
+      
     } catch (error) {
-      console.error("Failed to parse app_response:", data.app_response);
+      console.error("Failed to parse app_response:", error, data.app_response);
       throw new Error("Invalid JSON response from kanton check");
     }
 
