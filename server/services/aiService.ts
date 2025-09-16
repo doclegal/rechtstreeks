@@ -347,19 +347,30 @@ Geef JSON response:
 
     console.log("Starting Kanton check analysis:", variables);
 
+    // Debug: Log API key status
+    const hasApiKey = !!process.env.MINDSTUDIO_API_KEY;
+    const keyPrefix = process.env.MINDSTUDIO_API_KEY ? process.env.MINDSTUDIO_API_KEY.substring(0, 10) + "..." : "MISSING";
+    console.log(`🔑 API Key status: ${hasApiKey ? 'Present' : 'Missing'} (${keyPrefix})`);
+    console.log(`🏭 Worker ID: ${process.env.MINDSTUDIO_WORKER_ID}`);
+    console.log(`⚙️  Workflow: ${process.env.MINDSTUDIO_WORKFLOW}`);
+
+    const requestBody = {
+      workerId: process.env.MINDSTUDIO_WORKER_ID,
+      variables,
+      workflow: process.env.MINDSTUDIO_WORKFLOW || "Main.flow",
+      // NO callbackUrl = synchronous response
+      includeBillingCost: true
+    };
+
+    console.log("📤 Request body:", JSON.stringify(requestBody, null, 2));
+
     const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        workerId: process.env.MINDSTUDIO_WORKER_ID,
-        variables,
-        workflow: process.env.MINDSTUDIO_WORKFLOW || "Main.flow",
-        // NO callbackUrl = synchronous response
-        includeBillingCost: true
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
