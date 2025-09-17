@@ -388,31 +388,34 @@ Geef JSON response:
     // Parse the {{app_response}} from MindStudio thread variables
     let appResponse;
     try {
-      // Check if app_response is directly available
-      if (data.app_response) {
+      // Primary: Look in thread variables for the app_response value
+      if (data.thread?.variables?.app_response?.value) {
+        const responseValue = data.thread.variables.app_response.value;
+        console.log("🔍 Found app_response in thread.variables.app_response.value:", typeof responseValue);
+        
+        if (typeof responseValue === 'string') {
+          appResponse = JSON.parse(responseValue);
+        } else {
+          appResponse = responseValue;
+        }
+      }
+      // Secondary: Check if app_response is directly available at root level  
+      else if (data.app_response) {
+        console.log("🔍 Found app_response at root level:", typeof data.app_response);
         if (typeof data.app_response === 'string') {
           appResponse = JSON.parse(data.app_response);
         } else {
           appResponse = data.app_response;
         }
-      } 
-      // Otherwise, look in thread variables for the app_response
-      else if (data.thread?.variables?.app_response?.value) {
-        if (typeof data.thread.variables.app_response.value === 'string') {
-          appResponse = JSON.parse(data.thread.variables.app_response.value);
-        } else {
-          appResponse = data.thread.variables.app_response.value;
-        }
-        console.log("🔍 Found app_response in thread.variables.app_response.value");
       }
-      // Fallback: check if it's directly in thread.variables.app_response
-      else if (data.thread?.variables?.app_response) {
+      // Fallback: check if it's directly in thread.variables.app_response (without .value)
+      else if (data.thread?.variables?.app_response && !data.thread.variables.app_response.value) {
+        console.log("🔍 Found app_response in thread.variables.app_response (direct)");
         if (typeof data.thread.variables.app_response === 'string') {
           appResponse = JSON.parse(data.thread.variables.app_response);
         } else {
           appResponse = data.thread.variables.app_response;
         }
-        console.log("🔍 Found app_response in thread.variables.app_response");
       }
       // Look for it in the thread posts/messages
       else if (data.thread?.posts) {

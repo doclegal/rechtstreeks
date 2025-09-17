@@ -7,6 +7,7 @@ import { aiService, AIService } from "./services/aiService";
 import { fileService } from "./services/fileService";
 import { pdfService } from "./services/pdfService";
 import { mockIntegrations } from "./services/mockIntegrations";
+import { handleDatabaseError } from "./db";
 import multer from "multer";
 import { z } from "zod";
 
@@ -52,8 +53,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(newCase);
     } catch (error) {
-      console.error("Error creating case:", error);
-      res.status(500).json({ message: "Failed to create case" });
+      const dbError = handleDatabaseError(error);
+      res.status(dbError.status).json({ message: dbError.message });
     }
   });
 
@@ -84,8 +85,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(casesWithDetails);
     } catch (error) {
-      console.error("Error fetching cases:", error);
-      res.status(500).json({ message: "Failed to fetch cases" });
+      const dbError = handleDatabaseError(error);
+      res.status(dbError.status).json({ message: dbError.message });
     }
   });
 
@@ -146,6 +147,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating case:", error);
       res.status(500).json({ message: "Failed to update case" });
+    }
+  });
+
+  // Case deadlines endpoint
+  app.get('/api/cases/:id/deadlines', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseData = await storage.getCase(req.params.id);
+      
+      if (!caseData) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      if (caseData.ownerUserId !== userId) {
+        return res.status(403).json({ message: "Unauthorized access to case" });
+      }
+      
+      // For now, return empty deadlines. Later this can be enhanced with actual deadline logic
+      const deadlines: Array<{ id: string; title: string; date: Date; priority: 'high' | 'medium' | 'low' }> = [];
+      
+      res.json({ deadlines });
+    } catch (error) {
+      const dbError = handleDatabaseError(error);
+      res.status(dbError.status).json({ message: dbError.message });
     }
   });
 
