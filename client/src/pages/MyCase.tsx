@@ -20,7 +20,7 @@ export default function MyCase() {
   const { user, isLoading: authLoading } = useAuth();
   const { data: cases, isLoading: casesLoading, refetch } = useCases();
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [kantonCheckResult, setKantonCheckResult] = useState<any>(null);
   
@@ -38,10 +38,10 @@ export default function MyCase() {
 
   // Reset expanded section when navigating back to /my-case
   useEffect(() => {
-    if (window.location.pathname === '/my-case' || window.location.pathname === '/') {
+    if (location === '/my-case' || location === '/') {
       setExpandedSection(null);
     }
-  }, [window.location.pathname]);
+  }, [location]);
 
   // Store kanton check result and refresh case data after successful analysis
   useEffect(() => {
