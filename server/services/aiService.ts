@@ -388,37 +388,12 @@ Geef JSON response:
     // Parse the {{app_response}} from MindStudio thread variables
     let appResponse;
     try {
-      // Primary: Look in thread variables for the app_response value
-      if (data.thread?.variables?.app_response?.value) {
-        const responseValue = data.thread.variables.app_response.value;
-        console.log("🔍 Found app_response in thread.variables.app_response.value:", typeof responseValue);
-        
-        if (typeof responseValue === 'string') {
-          appResponse = JSON.parse(responseValue);
-        } else {
-          appResponse = responseValue;
-        }
-      }
-      // Secondary: Check if app_response is directly available at root level  
-      else if (data.app_response) {
-        console.log("🔍 Found app_response at root level:", typeof data.app_response);
-        if (typeof data.app_response === 'string') {
-          appResponse = JSON.parse(data.app_response);
-        } else {
-          appResponse = data.app_response;
-        }
-      }
-      // Fallback: check if it's directly in thread.variables.app_response (without .value)
-      else if (data.thread?.variables?.app_response && !data.thread.variables.app_response.value) {
-        console.log("🔍 Found app_response in thread.variables.app_response (direct)");
-        if (typeof data.thread.variables.app_response === 'string') {
-          appResponse = JSON.parse(data.thread.variables.app_response);
-        } else {
-          appResponse = data.thread.variables.app_response;
-        }
-      }
-      // Check in debugLog newState variables (newer MindStudio response format)
-      else if (data.thread?.posts) {
+      console.log("🔍 DEBUG: Starting response parsing");
+      console.log("🔍 DEBUG: data.thread?.variables:", !!data.thread?.variables);
+      console.log("🔍 DEBUG: data.thread?.posts:", !!data.thread?.posts);
+      
+      // Primary: Check in debugLog newState variables (newer MindStudio response format)
+      if (data.thread?.posts) {
         console.log("🔍 Searching in thread posts for app_response...");
         for (const post of data.thread.posts) {
           // Look in debugLog newState variables
@@ -446,6 +421,27 @@ Geef JSON response:
               // Not JSON, continue
             }
           }
+        }
+      }
+      
+      // Secondary: Look in thread variables for the app_response value
+      if (!appResponse && data.thread?.variables?.app_response?.value) {
+        const responseValue = data.thread.variables.app_response.value;
+        console.log("🔍 Found app_response in thread.variables.app_response.value:", typeof responseValue);
+        
+        if (typeof responseValue === 'string') {
+          appResponse = JSON.parse(responseValue);
+        } else {
+          appResponse = responseValue;
+        }
+      }
+      // Tertiary: Check if app_response is directly available at root level  
+      else if (!appResponse && data.app_response) {
+        console.log("🔍 Found app_response at root level:", typeof data.app_response);
+        if (typeof data.app_response === 'string') {
+          appResponse = JSON.parse(data.app_response);
+        } else {
+          appResponse = data.app_response;
         }
       }
       
