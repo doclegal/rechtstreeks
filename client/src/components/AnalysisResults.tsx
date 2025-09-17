@@ -23,8 +23,17 @@ interface KantonCheckResult {
   decision?: string;
   reason?: string;
   summary?: string;
-  parties?: any;
-  basis?: string;
+  parties?: {
+    claimant_name?: string | null;
+    defendant_name?: string | null;
+    relationship?: string | null;
+    source?: string;
+  };
+  basis?: {
+    grond?: string | null;
+    belang_eur?: number | null;
+    bijzondere_regel?: string | null;
+  };
   rationale?: string;
   questions?: any[];
   rawText?: string;
@@ -211,12 +220,19 @@ export default function AnalysisResults({
                   Partijen:
                 </h4>
                 <div className="text-sm text-gray-700 dark:text-gray-300" data-testid="text-parties">
-                  {parsedKantonCheck.parties 
-                    ? (typeof parsedKantonCheck.parties === 'string' 
-                        ? parsedKantonCheck.parties
-                        : JSON.stringify(parsedKantonCheck.parties, null, 2))
-                    : 'Geen partijen informatie beschikbaar'
-                  }
+                  {parsedKantonCheck.parties ? (
+                    <div className="space-y-1">
+                      {parsedKantonCheck.parties.claimant_name && (
+                        <div><strong>Eiser:</strong> {parsedKantonCheck.parties.claimant_name}</div>
+                      )}
+                      {parsedKantonCheck.parties.defendant_name && (
+                        <div><strong>Verweerder:</strong> {parsedKantonCheck.parties.defendant_name}</div>
+                      )}
+                      {parsedKantonCheck.parties.relationship && (
+                        <div><strong>Relatie:</strong> {parsedKantonCheck.parties.relationship}</div>
+                      )}
+                    </div>
+                  ) : 'Geen partijen informatie beschikbaar'}
                 </div>
               </div>
             </div>
@@ -230,9 +246,19 @@ export default function AnalysisResults({
                     <Scale className="h-4 w-4" />
                     Juridische Grondslag:
                   </h4>
-                  <p className="text-sm text-gray-700 dark:text-gray-300" data-testid="text-legal-basis">
-                    {parsedKantonCheck.basis}
-                  </p>
+                  <div className="text-sm text-gray-700 dark:text-gray-300" data-testid="text-legal-basis">
+                    <div className="space-y-1">
+                      {parsedKantonCheck.basis.grond && (
+                        <div><strong>Type:</strong> {parsedKantonCheck.basis.grond}</div>
+                      )}
+                      {parsedKantonCheck.basis.belang_eur && (
+                        <div><strong>Claimbedrag:</strong> €{parsedKantonCheck.basis.belang_eur.toLocaleString()}</div>
+                      )}
+                      {parsedKantonCheck.basis.bijzondere_regel && (
+                        <div><strong>Bijzondere regel:</strong> {parsedKantonCheck.basis.bijzondere_regel}</div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 
