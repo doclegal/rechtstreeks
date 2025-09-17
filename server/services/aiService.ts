@@ -417,14 +417,28 @@ Geef JSON response:
           appResponse = data.thread.variables.app_response;
         }
       }
-      // Look for it in the thread posts/messages
+      // Check in debugLog newState variables (newer MindStudio response format)
       else if (data.thread?.posts) {
-        // Find the last message that contains JSON with our expected structure
-        for (const post of data.thread.posts.reverse()) {
-          if (post.message?.content) {
+        console.log("🔍 Searching in thread posts for app_response...");
+        for (const post of data.thread.posts) {
+          // Look in debugLog newState variables
+          if (post.debugLog?.newState?.variables?.app_response?.value) {
+            console.log("🔍 Found app_response in debugLog.newState.variables");
+            const responseValue = post.debugLog.newState.variables.app_response.value;
+            if (typeof responseValue === 'string') {
+              appResponse = JSON.parse(responseValue);
+            } else {
+              appResponse = responseValue;
+            }
+            break;
+          }
+          // Look in regular message content as fallback
+          else if (post.message?.content || post.chatMessage?.content) {
+            const content = post.message?.content || post.chatMessage?.content;
             try {
-              const parsed = JSON.parse(post.message.content);
+              const parsed = JSON.parse(content);
               if (parsed.ok !== undefined && parsed.phase === 'kanton_check') {
+                console.log("🔍 Found app_response in message content");
                 appResponse = parsed;
                 break;
               }
