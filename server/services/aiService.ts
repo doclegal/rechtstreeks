@@ -396,13 +396,23 @@ Geef JSON response:
           appResponse = data.app_response;
         }
       } 
-      // Otherwise, look in thread variables or posts for the app_response
+      // Otherwise, look in thread variables for the app_response
+      else if (data.thread?.variables?.app_response?.value) {
+        if (typeof data.thread.variables.app_response.value === 'string') {
+          appResponse = JSON.parse(data.thread.variables.app_response.value);
+        } else {
+          appResponse = data.thread.variables.app_response.value;
+        }
+        console.log("🔍 Found app_response in thread.variables.app_response.value");
+      }
+      // Fallback: check if it's directly in thread.variables.app_response
       else if (data.thread?.variables?.app_response) {
         if (typeof data.thread.variables.app_response === 'string') {
           appResponse = JSON.parse(data.thread.variables.app_response);
         } else {
           appResponse = data.thread.variables.app_response;
         }
+        console.log("🔍 Found app_response in thread.variables.app_response");
       }
       // Look for it in the thread posts/messages
       else if (data.thread?.posts) {
