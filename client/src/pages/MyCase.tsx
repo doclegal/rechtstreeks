@@ -273,17 +273,19 @@ export default function MyCase() {
                 </Button>
               </div>
               <AnalysisResults 
-                analysis={currentCase.analysis}
+                analysis={currentCase.kantonAnalysis || currentCase.analysis}
+                fullAnalysis={currentCase.fullAnalysis}
                 kantonCheck={kantonCheckResult}
                 onAnalyze={() => analyzeMutation.mutate()}
                 isAnalyzing={analyzeMutation.isPending}
                 hasNewInfo={(() => {
-                  if (!currentCase.analysis || !currentCase.updatedAt) return false;
+                  const relevantAnalysis = currentCase.kantonAnalysis || currentCase.analysis;
+                  if (!relevantAnalysis || !currentCase.updatedAt) return false;
                   if (analyzeMutation.isPending) return false;
                   if (analyzeMutation.isSuccess) return false;
                   
                   const caseUpdated = new Date(currentCase.updatedAt);
-                  const analysisCreated = new Date(currentCase.analysis.createdAt);
+                  const analysisCreated = new Date(relevantAnalysis.createdAt);
                   const timeDiff = caseUpdated.getTime() - analysisCreated.getTime();
                   return timeDiff > 1000;
                 })()}

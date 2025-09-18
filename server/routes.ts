@@ -68,6 +68,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userCases.map(async (caseData) => {
           const documents = await storage.getDocumentsByCase(caseData.id);
           const analysis = await storage.getLatestAnalysis(caseData.id);
+          const kantonAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-kanton-check');
+          const fullAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-full-analysis');
           const letters = await storage.getLettersByCase(caseData.id);
           const summons = await storage.getSummonsByCase(caseData.id);
           const progress = storage.computeProgress(caseData);
@@ -76,6 +78,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ...caseData,
             documents,
             analysis,
+            kantonAnalysis,
+            fullAnalysis,
             letters,
             summons,
             progress,
@@ -106,6 +110,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Include related data
       const documents = await storage.getDocumentsByCase(caseData.id);
       const analysis = await storage.getLatestAnalysis(caseData.id);
+      const kantonAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-kanton-check');
+      const fullAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-full-analysis');
       const letters = await storage.getLettersByCase(caseData.id);
       const summons = await storage.getSummonsByCase(caseData.id);
       const progress = storage.computeProgress(caseData);
@@ -114,6 +120,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...caseData,
         documents,
         analysis,
+        kantonAnalysis,
+        fullAnalysis,
         letters,
         summons,
         progress,
