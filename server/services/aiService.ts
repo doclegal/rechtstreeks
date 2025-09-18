@@ -482,6 +482,119 @@ Geef JSON response:
     };
   }
 
+  // Full Analysis - second phase after successful kanton check
+  async runFullAnalysis(params: {
+    case_id: string;
+    case_text: string;
+    amount_eur?: number;
+    parties: {
+      claimant: any;
+      defendant: any;
+    };
+    is_kantonzaak: boolean;
+    contract_present: boolean;
+    forum_clause_text?: string | null;
+    uploaded_files: Array<{
+      name: string;
+      file_url: string;
+      type: 'pdf' | 'img' | 'docx' | 'txt';
+    }>;
+  }): Promise<{
+    success: boolean;
+    threadId?: string;
+    result?: any;
+    rawText?: string;
+    billingCost?: string;
+  }> {
+    console.log("🚀 Starting Full Analysis with params:", {
+      case_id: params.case_id,
+      case_text_length: params.case_text?.length || 0,
+      amount_eur: params.amount_eur,
+      parties: params.parties,
+      is_kantonzaak: params.is_kantonzaak,
+      contract_present: params.contract_present,
+      forum_clause_text: params.forum_clause_text,
+      uploaded_files_count: params.uploaded_files?.length || 0
+    });
+
+    // Prepare launch variables for MindStudio
+    const variables: any = {
+      case_id: params.case_id,
+      case_text: params.case_text,
+      amount_eur: params.amount_eur || 0,
+      parties: params.parties,
+      is_kantonzaak: params.is_kantonzaak,
+      contract_present: params.contract_present,
+      uploaded_files: params.uploaded_files || []
+    };
+
+    // Add forum clause text if present
+    if (params.forum_clause_text) {
+      variables.forum_clause_text = params.forum_clause_text;
+    } else {
+      variables.forum_clause_text = null;
+    }
+
+    console.log("📤 Full Analysis variables:", JSON.stringify(variables, null, 2));
+
+    // Debug: Log API key status
+    const hasApiKey = !!process.env.MINDSTUDIO_API_KEY;
+    const keyPrefix = process.env.MINDSTUDIO_API_KEY ? process.env.MINDSTUDIO_API_KEY.substring(0, 10) + "..." : "MISSING";
+    console.log(`🔑 API Key status: ${hasApiKey ? 'Present' : 'Missing'} (${keyPrefix})`);
+
+    const requestBody = {
+      workerId: process.env.MINDSTUDIO_WORKER_ID,
+      variables,
+      workflow: "FullAnalysis.flow", // Different workflow for full analysis
+      includeBillingCost: true
+    };
+
+    console.log("📤 Full Analysis request body:", JSON.stringify(requestBody, null, 2));
+
+    try {
+      const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error("❌ MindStudio API error:", response.status, response.statusText, errorData);
+        throw new Error(`Mindstudio API error: ${response.status} ${response.statusText} - ${errorData}`);
+      }
+
+      const data = await response.json();
+      console.log("✅ Full Analysis response received:", {
+        threadId: data.threadId,
+        hasResult: !!data.result,
+        billingCost: data.billingCost
+      });
+
+      if (!data.threadId) {
+        throw new Error("No threadId received from Mindstudio");
+      }
+
+      return {
+        success: true,
+        threadId: data.threadId,
+        result: data.result,
+        rawText: JSON.stringify(data, null, 2),
+        billingCost: data.billingCost
+      };
+
+    } catch (error) {
+      console.error("❌ Full Analysis failed:", error);
+      return {
+        success: false,
+        rawText: `Error: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
   // OLD: Synchronous version - no callback, direct result
   async runSynchronousMindstudioAnalysis(params: { input_name: string; input_case_details: string; file_url?: string }): Promise<{ 
     result: string; 
