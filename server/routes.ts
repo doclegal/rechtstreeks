@@ -445,6 +445,161 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Full Analysis route - second phase after successful kanton check
+  app.post('/api/cases/:id/full-analyze', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      // Rate limiting: 1 full analysis per case per 5 minutes
+      const rateLimitKey = `${caseId}:full-analyze`;
+      const lastAnalysis = analysisRateLimit.get(rateLimitKey) || 0;
+      const now = Date.now();
+      const fiveMinutes = 5 * 60 * 1000;
+      
+      if (now - lastAnalysis < fiveMinutes) {
+        return res.status(429).json({ 
+          message: "Te snel opnieuw geanalyseerd. Wacht 5 minuten tussen volledige analyses." 
+        });
+      }
+      
+      // Get case data and verify ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+
+      // Check if case has been analyzed (kanton check passed)
+      const latestAnalysis = await storage.getLatestAnalysis(caseId);
+      if (!latestAnalysis) {
+        return res.status(400).json({ 
+          message: "Case must be analyzed first. Please run kanton check first." 
+        });
+      }
+
+      // Verify MindStudio is available
+      if (!process.env.MINDSTUDIO_API_KEY || !process.env.MINDSTUDIO_WORKER_ID) {
+        return res.status(503).json({ 
+          message: "Sorry, de volledige analyse lukt niet. Mindstudio AI is niet beschikbaar." 
+        });
+      }
+
+      try {
+        // Get user info
+        const user = await storage.getUser(userId);
+        const userName = user?.firstName || user?.email?.split('@')[0] || 'Gebruiker';
+        
+        // Get documents for analysis - convert to file URLs
+        const documents = await storage.getDocumentsByCase(caseId);
+        console.log('📄 Found documents for full analysis:', documents.length);
+        
+        const uploaded_files = documents.map(doc => ({
+          name: doc.filename,
+          file_url: doc.storageKey ? `${process.env.REPLIT_APP_DOMAIN || 'https://app.replit.dev'}/api/documents/${doc.id}/download` : '',
+          type: doc.filename.toLowerCase().endsWith('.pdf') ? 'pdf' as const :
+                doc.filename.toLowerCase().endsWith('.docx') ? 'docx' as const :
+                doc.filename.toLowerCase().match(/\.(jpg|jpeg|png|gif)$/) ? 'img' as const : 'txt' as const
+        }));
+
+        // Extract kanton check result from latest analysis
+        let kantonCheckResult;
+        try {
+          if (latestAnalysis.rawText) {
+            const parsed = JSON.parse(latestAnalysis.rawText);
+            if (parsed.ok !== undefined) {
+              kantonCheckResult = parsed;
+            }
+          }
+        } catch (e) {
+          console.log('Could not parse kanton check from analysis rawText');
+        }
+
+        // Prepare analysis parameters
+        const fullAnalysisParams = {
+          case_id: caseId,
+          case_text: `Zaak: ${caseData.title}\n\nOmschrijving: ${caseData.description || 'Geen beschrijving'}\n\nTegenpartij: ${caseData.counterpartyName || 'Onbekend'}\n\nClaim bedrag: €${caseData.claimAmount || '0'}`,
+          amount_eur: caseData.claimAmount || 0,
+          parties: {
+            claimant: {
+              name: userName,
+              type: 'individual'
+            },
+            defendant: {
+              name: caseData.counterpartyName || 'Onbekend',
+              type: 'individual'
+            }
+          },
+          is_kantonzaak: kantonCheckResult?.ok || false,
+          contract_present: documents.some(doc => 
+            doc.filename.toLowerCase().includes('contract') || 
+            doc.filename.toLowerCase().includes('overeenkomst') ||
+            doc.filename.toLowerCase().includes('voorwaarden')
+          ),
+          forum_clause_text: null, // TODO: Extract from documents if present
+          uploaded_files
+        };
+
+        console.log('🚀 Starting full analysis with params:', {
+          case_id: fullAnalysisParams.case_id,
+          case_text_length: fullAnalysisParams.case_text.length,
+          amount_eur: fullAnalysisParams.amount_eur,
+          is_kantonzaak: fullAnalysisParams.is_kantonzaak,
+          contract_present: fullAnalysisParams.contract_present,
+          uploaded_files_count: fullAnalysisParams.uploaded_files.length
+        });
+        
+        // Run full analysis with MindStudio
+        const fullAnalysisResult = await aiService.runFullAnalysis(fullAnalysisParams);
+        
+        console.log('🔍 Full analysis result:', fullAnalysisResult);
+        
+        if (fullAnalysisResult.success) {
+          // Create a new analysis record for the full analysis
+          const analysis = await storage.createAnalysis({
+            caseId,
+            model: 'mindstudio-full-analysis',
+            rawText: fullAnalysisResult.rawText || JSON.stringify(fullAnalysisResult, null, 2),
+            factsJson: [{ label: 'Volledige Analyse', detail: 'Analyse uitgevoerd met alle documenten en context' }],
+            issuesJson: [{ issue: 'Volledige juridische analyse voltooid', risk: 'Zie gedetailleerde resultaten' }],
+            legalBasisJson: [],
+            missingDocsJson: [],
+            riskNotesJson: []
+          });
+          
+          // Update case status to indicate full analysis is complete
+          await storage.updateCase(caseId, { 
+            status: "ANALYZED" as CaseStatus,
+            nextActionLabel: "Bekijk volledige analyse resultaten",
+          });
+          
+          // Update rate limit
+          analysisRateLimit.set(rateLimitKey, now);
+          
+          return res.json({ 
+            analysis,
+            fullAnalysisResult,
+            status: 'completed',
+            message: 'Volledige analyse succesvol voltooid'
+          });
+        } else {
+          return res.status(500).json({ 
+            message: "Volledige analyse mislukt. Probeer het opnieuw.",
+            error: fullAnalysisResult.rawText
+          });
+        }
+        
+      } catch (error) {
+        console.error("Full analysis failed:", error);
+        return res.status(503).json({ 
+          message: "Sorry, de volledige analyse lukt niet. Mindstudio AI is niet beschikbaar." 
+        });
+      }
+    } catch (error) {
+      console.error("Error running full analysis:", error);
+      res.status(500).json({ message: "Volledige analyse mislukt. Probeer het opnieuw." });
+    }
+  });
+
   // Letter generation routes
   app.post('/api/cases/:id/letter', isAuthenticated, async (req: any, res) => {
     try {
