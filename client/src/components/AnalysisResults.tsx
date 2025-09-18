@@ -72,11 +72,48 @@ export default function AnalysisResults({
   if (!parsedKantonCheck && analysis?.rawText) {
     try {
       const parsed = JSON.parse(analysis.rawText);
+      
+      // New format: Direct kanton check result
       if (parsed.ok !== undefined) {
         parsedKantonCheck = parsed;
       }
+      // Old format: Full MindStudio response - extract from posts
+      else if (parsed.thread?.posts) {
+        console.log("🔍 Extracting kanton check from MindStudio posts...");
+        for (const post of parsed.thread.posts) {
+          // Look in debugLog newState variables
+          if (post.debugLog?.newState?.variables?.app_response?.value) {
+            console.log("🔍 Found app_response in debugLog.newState.variables");
+            const responseValue = post.debugLog.newState.variables.app_response.value;
+            let appResponse;
+            if (typeof responseValue === 'string') {
+              appResponse = JSON.parse(responseValue);
+            } else {
+              appResponse = responseValue;
+            }
+            if (appResponse.ok !== undefined) {
+              parsedKantonCheck = appResponse;
+              break;
+            }
+          }
+          // Look in regular message content as fallback
+          else if (post.message?.content || post.chatMessage?.content) {
+            const content = post.message?.content || post.chatMessage?.content;
+            try {
+              const contentParsed = JSON.parse(content);
+              if (contentParsed.ok !== undefined && contentParsed.phase === 'kanton_check') {
+                console.log("🔍 Found app_response in message content");
+                parsedKantonCheck = contentParsed;
+                break;
+              }
+            } catch (e) {
+              // Ignore parsing errors for message content
+            }
+          }
+        }
+      }
     } catch (error) {
-      console.log('Could not parse kanton check from rawText');
+      console.log('Could not parse kanton check from rawText:', error);
     }
   }
 
