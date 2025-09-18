@@ -55,6 +55,9 @@ interface AnalysisResultsProps {
   onAnalyze?: () => void;
   isAnalyzing?: boolean;
   hasNewInfo?: boolean;
+  caseId?: string;
+  onFullAnalyze?: () => void;
+  isFullAnalyzing?: boolean;
 }
 
 export default function AnalysisResults({ 
@@ -62,7 +65,10 @@ export default function AnalysisResults({
   kantonCheck, 
   onAnalyze, 
   isAnalyzing = false, 
-  hasNewInfo = false 
+  hasNewInfo = false,
+  caseId,
+  onFullAnalyze,
+  isFullAnalyzing = false
 }: AnalysisResultsProps) {
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({});
   const [isSubmittingAnswers, setIsSubmittingAnswers] = useState(false);
@@ -356,11 +362,15 @@ export default function AnalysisResults({
                   className="flex-1" 
                   data-testid="button-start-full-analysis"
                   onClick={() => {
-                    // TODO: Implement full analysis after kanton check approval
-                    alert('Volledige analyse functionaliteit wordt binnenkort toegevoegd');
+                    if (onFullAnalyze) {
+                      onFullAnalyze();
+                    } else {
+                      alert('Volledige analyse functionaliteit nog niet beschikbaar');
+                    }
                   }}
+                  disabled={isFullAnalyzing}
                 >
-                  Start Volledige Analyse
+                  {isFullAnalyzing ? 'Volledige analyse wordt uitgevoerd...' : 'Start Volledige Analyse'}
                 </Button>
               ) : parsedKantonCheck.reason === 'insufficient_info' ? (
                 <Button 

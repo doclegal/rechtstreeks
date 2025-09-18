@@ -514,11 +514,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log('Could not parse kanton check from analysis rawText');
         }
 
+        // Validate that kanton check passed before allowing full analysis
+        if (!kantonCheckResult || !kantonCheckResult.ok) {
+          return res.status(400).json({ 
+            message: "Kanton check vereist. Voer eerst een kanton check uit en zorg dat deze succesvol is voordat u een volledige analyse kan starten." 
+          });
+        }
+
         // Prepare analysis parameters
         const fullAnalysisParams = {
           case_id: caseId,
           case_text: `Zaak: ${caseData.title}\n\nOmschrijving: ${caseData.description || 'Geen beschrijving'}\n\nTegenpartij: ${caseData.counterpartyName || 'Onbekend'}\n\nClaim bedrag: €${caseData.claimAmount || '0'}`,
-          amount_eur: caseData.claimAmount || 0,
+          amount_eur: Number(caseData.claimAmount) || 0,
           parties: {
             claimant: {
               name: userName,

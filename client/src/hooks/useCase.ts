@@ -166,6 +166,82 @@ export function useAnalyzeCase(caseId: string) {
   });
 }
 
+export function useFullAnalyzeCase(caseId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/cases/${caseId}/full-analyze`);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId] });
+      
+      if (data.status === 'completed') {
+        toast({
+          title: "Volledige analyse voltooid",
+          description: "Alle juridische aspecten van uw zaak zijn geanalyseerd",
+        });
+      } else {
+        toast({
+          title: "Volledige analyse gestart",
+          description: "De uitgebreide analyse van uw zaak is in behandeling",
+        });
+      }
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      
+      // Handle rate limiting specifically
+      if (error.message.includes("429")) {
+        toast({
+          title: "Te snel geanalyseerd",
+          description: "Wacht 5 minuten tussen volledige analyses. Probeer straks opnieuw.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Handle service unavailable
+      if (error.message.includes("503")) {
+        toast({
+          title: "Service tijdelijk niet beschikbaar",
+          description: "De volledige analyse service is momenteel niet beschikbaar. Probeer het later opnieuw.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Handle case not ready for full analysis
+      if (error.message.includes("400")) {
+        toast({
+          title: "Kanton check vereist",
+          description: "Voer eerst een kanton check uit voordat u een volledige analyse kan starten.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Volledige analyse mislukt",
+        description: "Er is een fout opgetreden bij de volledige analyse. Probeer het opnieuw.",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 export function useGenerateLetter(caseId: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();

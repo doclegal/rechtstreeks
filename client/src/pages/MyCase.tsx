@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useCases, useAnalyzeCase, useGenerateLetter, useOrderBailiff } from "@/hooks/useCase";
+import { useCases, useAnalyzeCase, useFullAnalyzeCase, useGenerateLetter, useOrderBailiff } from "@/hooks/useCase";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ export default function MyCase() {
   const caseId = currentCase?.id;
 
   const analyzeMutation = useAnalyzeCase(caseId || "");
+  const fullAnalyzeMutation = useFullAnalyzeCase(caseId || "");
   const letterMutation = useGenerateLetter(caseId || "");
   const bailiffMutation = useOrderBailiff(caseId || "");
 
@@ -57,6 +58,16 @@ export default function MyCase() {
       }, 500);
     }
   }, [analyzeMutation.isSuccess, analyzeMutation.data, refetch]);
+
+  // Refresh case data after successful full analysis
+  useEffect(() => {
+    if (fullAnalyzeMutation.isSuccess) {
+      // Small delay to ensure DB is updated before refetch
+      setTimeout(() => {
+        refetch();
+      }, 500);
+    }
+  }, [fullAnalyzeMutation.isSuccess, refetch]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -276,6 +287,9 @@ export default function MyCase() {
                   const timeDiff = caseUpdated.getTime() - analysisCreated.getTime();
                   return timeDiff > 1000;
                 })()}
+                caseId={currentCase.id}
+                onFullAnalyze={() => fullAnalyzeMutation.mutate()}
+                isFullAnalyzing={fullAnalyzeMutation.isPending}
               />
             </div>
           </div>
