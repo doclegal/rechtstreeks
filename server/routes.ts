@@ -382,11 +382,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log('🔍 Kanton check result:', kantonResult);
           
-          // Save simplified analysis to database
+          // Save simplified analysis to database with properly structured rawText
           const analysis = await storage.createAnalysis({
             caseId,
             model: 'mindstudio-kanton-check',
-            rawText: kantonResult.rawText || JSON.stringify(kantonResult, null, 2),
+            rawText: JSON.stringify({
+              ok: kantonResult.ok,
+              phase: kantonResult.phase,
+              decision: kantonResult.decision,
+              summary: kantonResult.summary,
+              parties: kantonResult.parties,
+              basis: kantonResult.basis,
+              rationale: kantonResult.rationale,
+              questions: kantonResult.questions,
+              billingCost: kantonResult.billingCost
+            }, null, 2),
             factsJson: [{ label: 'Samenvatting', detail: kantonResult.summary || 'Geen samenvatting' }],
             issuesJson: kantonResult.ok ? 
               [{ issue: 'Zaak geschikt voor kantongerecht', risk: 'Geen' }] : 
