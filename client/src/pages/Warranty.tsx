@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Shield, Plus, Upload, FileText, Calendar, Euro, Package, ExternalLink, Trash2, Edit, Download } from "lucide-react";
+import { Shield, Plus, Upload, FileText, Calendar, Euro, Package, ExternalLink, Trash2, Edit, Download, ImageIcon, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -83,6 +83,8 @@ export default function Warranty() {
   const [products, setProducts] = useState(mockProducts);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -122,8 +124,19 @@ export default function Warranty() {
 
     const newProduct = {
       id: Math.random().toString(),
-      ...data,
-      warrantyExpiry,
+      productName: data.productName,
+      brand: data.brand || "",
+      model: data.model || "",
+      serialNumber: data.serialNumber || "",
+      purchaseDate: data.purchaseDate || "",
+      purchasePrice: data.purchasePrice || "",
+      supplier: data.supplier || "",
+      warrantyDuration: data.warrantyDuration || "",
+      warrantyExpiry: warrantyExpiry || "",
+      category: data.category || "",
+      description: data.description || "",
+      websiteUrl: data.websiteUrl || "",
+      notes: data.notes || "",
       status: "active",
       documents: []
     };
@@ -137,6 +150,124 @@ export default function Warranty() {
     
     form.reset();
     setIsAddDialogOpen(false);
+  };
+
+  // NEW: Handle receipt upload and AI extraction
+  const handleReceiptUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Ongeldig bestandstype",
+        description: "Alleen afbeeldingen zijn toegestaan (JPG, PNG, GIF, WEBP)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "Bestand te groot",
+        description: "Maximale bestandsgrootte is 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingReceipt(true);
+
+    try {
+      // Create form data for upload
+      const formData = new FormData();
+      formData.append('receipt', file);
+
+      // Call the AI extraction API
+      const response = await fetch('/api/warranty/extract-receipt', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          // Don't set Content-Type for FormData, let the browser set it
+        },
+      });
+
+      if (!response.ok) {
+        // Parse error response to get user-friendly message
+        let errorMessage = "Er is een onbekende fout opgetreden";
+        try {
+          const errorResponse = await response.json();
+          errorMessage = errorResponse.message || errorMessage;
+        } catch (e) {
+          // Fallback to status text if JSON parsing fails
+          errorMessage = `Upload failed: ${response.status} ${response.statusText}`;
+        }
+        
+        // Map specific error types to user-friendly messages
+        if (response.status === 429) {
+          errorMessage = "Te veel extracties. Wacht 10 minuten tussen bonanalyses.";
+        } else if (response.status === 422) {
+          // For unprocessable entity, use the server message or provide helpful fallback
+          if (errorMessage.includes('quota') || errorMessage.includes('insufficient_quota')) {
+            errorMessage = "OpenAI API quota bereikt. Probeer het later opnieuw of vul de gegevens handmatig in.";
+          } else if (!errorMessage || errorMessage.includes('Upload failed')) {
+            errorMessage = "Kon geen betrouwbare gegevens uit de bon extraheren. Probeer een duidelijkere foto of vul handmatig in.";
+          }
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.extractedData) {
+        const extracted = result.extractedData;
+        
+        // Auto-populate form fields with extracted data
+        form.setValue('productName', extracted.productName || '');
+        form.setValue('brand', extracted.brand || '');
+        form.setValue('model', extracted.model || '');
+        form.setValue('purchaseDate', extracted.purchaseDate || '');
+        form.setValue('purchasePrice', extracted.purchasePrice || '');
+        form.setValue('supplier', extracted.supplier || '');
+        form.setValue('warrantyDuration', extracted.warrantyDuration || '');
+        form.setValue('category', extracted.category || '');
+        form.setValue('description', extracted.description || '');
+
+        toast({
+          title: "Gegevens geëxtraheerd! 🎉",
+          description: result.message || `Aankoopgegevens automatisch ingevuld uit ${file.name}. Controleer en pas aan waar nodig.`,
+        });
+      } else {
+        throw new Error(result.message || 'Extractie mislukt');
+      }
+    } catch (error) {
+      console.error('Receipt upload error:', error);
+      
+      // Ensure loading state is cleared before showing toast
+      setIsUploadingReceipt(false);
+      
+      // Get the error message and show toast
+      const errorMessage = error instanceof Error ? error.message : "Kon geen gegevens uit de bon halen";
+      
+      console.log('Showing error toast with message:', errorMessage);
+      
+      toast({
+        title: "Extractie mislukt",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      
+      // Ensure loading state is definitely cleared
+      setIsUploadingReceipt(false);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -215,6 +346,63 @@ export default function Warranty() {
             <DialogHeader>
               <DialogTitle>Nieuw product toevoegen</DialogTitle>
             </DialogHeader>
+            
+            {/* AI Receipt Upload Section */}
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center bg-gray-50 dark:bg-gray-800">
+              <ImageIcon className="h-12 w-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                Upload aankoopbon voor automatische extractie
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Upload een foto van uw aankoopbon om automatisch de productgegevens in te vullen
+              </p>
+              
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleReceiptUpload}
+                className="hidden"
+                data-testid="input-receipt-upload"
+              />
+              
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingReceipt}
+                className="mb-2"
+                data-testid="button-upload-receipt"
+              >
+                {isUploadingReceipt ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Bezig met analyseren...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Selecteer aankoopbon
+                  </>
+                )}
+              </Button>
+              
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Ondersteunde formaten: JPG, PNG, GIF, WEBP (max. 10MB)
+              </p>
+            </div>
+            
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-gray-300 dark:border-gray-600" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white dark:bg-gray-900 px-2 text-gray-500 dark:text-gray-400">
+                  Of vul handmatig in
+                </span>
+              </div>
+            </div>
+
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

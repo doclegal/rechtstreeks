@@ -13,7 +13,7 @@ import { z } from "zod";
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
-  limits: { fileSize: 100 * 1024 * 1024 } // 100MB
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB aligned with route validation
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -317,6 +317,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting document:", error);
       res.status(500).json({ message: "Failed to delete document" });
+    }
+  });
+
+  // Receipt upload rate limiting (sliding window tracking)
+  const receiptRateLimit = new Map<string, { count: number; windowStart: number }>();
+
+  // NEW: Receipt upload and AI extraction endpoint
+  app.post('/api/warranty/extract-receipt', isAuthenticated, upload.single('receipt'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const file = req.file as Express.Multer.File;
+      
+      if (!file) {
+        return res.status(400).json({ message: "Geen bestand geüpload" });
+      }
+
+      // Rate limiting: max 5 attempts per user per 10 minutes (sliding window)
+      const rateLimitKey = `receipt:${userId}`;
+      const now = Date.now();
+      const tenMinutes = 10 * 60 * 1000;
+      const currentWindow = receiptRateLimit.get(rateLimitKey) || { count: 0, windowStart: now };
+      
+      // Reset window if 10 minutes have passed
+      if (now - currentWindow.windowStart >= tenMinutes) {
+        currentWindow.count = 0;
+        currentWindow.windowStart = now;
+      }
+      
+      // Check if limit exceeded
+      if (currentWindow.count >= 5) {
+        return res.status(429).json({ 
+          message: "Te veel extracties. Maximaal 5 pogingen per 10 minuten." 
+        });
+      }
+      
+      // Increment attempt counter immediately (before processing)
+      currentWindow.count++;
+      receiptRateLimit.set(rateLimitKey, currentWindow);
+
+      // Validate file size (10MB max for security)
+      if (file.size > 10 * 1024 * 1024) {
+        return res.status(400).json({ 
+          message: "Bestand te groot. Maximaal 10MB toegestaan." 
+        });
+      }
+      
+      // Validate file type (images only for now)
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.mimetype)) {
+        return res.status(400).json({ 
+          message: "Alleen afbeeldingen zijn toegestaan voor bonnen (JPG, PNG, GIF, WEBP)" 
+        });
+      }
+
+      console.log(`🧾 Processing receipt: ${file.originalname} (${file.size} bytes, ${file.mimetype})`);
+
+      // Handle image files directly with correct mimetype
+      const base64Image = file.buffer.toString('base64');
+      const dataUrl = `data:${file.mimetype};base64,${base64Image}`;
+      
+      // Extract purchase data using AI
+      const extractionResult = await aiService.extractReceiptData(dataUrl, file.mimetype);
+      
+      // Enforce confidence gating (minimum 60% confidence required)
+      const minConfidence = 0.6;
+      if (!extractionResult.success || (extractionResult.confidence || 0) < minConfidence) {
+        const confidenceMsg = extractionResult.confidence !== undefined ? 
+          ` (betrouwbaarheid: ${Math.round(extractionResult.confidence * 100)}%, minimaal ${Math.round(minConfidence * 100)}% vereist)` : '';
+        return res.status(422).json({ 
+          message: `Kon geen betrouwbare gegevens uit de bon extraheren${confidenceMsg}. Probeer een duidelijkere foto of vul handmatig in.`
+        });
+      }
+      
+      // Store the original receipt file for reference (optional)
+      let receiptStorageKey;
+      try {
+        receiptStorageKey = await fileService.storeFile('warranty-receipts', file);
+      } catch (error) {
+        console.warn('Failed to store receipt file:', error);
+        // Continue without storing file
+      }
+
+      // Rate limit already updated above (on every attempt)
+      
+      // Return extracted data (without rawText for security)
+      res.json({
+        success: true,
+        extractedData: {
+          productName: extractionResult.productName,
+          brand: extractionResult.brand,
+          model: extractionResult.model,
+          purchaseDate: extractionResult.purchaseDate,
+          purchasePrice: extractionResult.purchasePrice,
+          supplier: extractionResult.supplier,
+          category: extractionResult.category,
+          warrantyDuration: extractionResult.warrantyDuration,
+          description: extractionResult.description,
+          confidence: extractionResult.confidence
+        },
+        filename: file.originalname,
+        storageKey: receiptStorageKey,
+        message: `Gegevens succesvol geëxtraheerd uit ${file.originalname} (betrouwbaarheid: ${Math.round((extractionResult.confidence || 0) * 100)}%)`
+      });
+      
+    } catch (error) {
+      console.error("Error processing receipt:", error);
+      
+      // Map OpenAI errors to appropriate HTTP status codes
+      if (error && typeof error === 'object' && 'code' in error) {
+        if (error.code === 'insufficient_quota' || error.code === 'rate_limit_exceeded') {
+          return res.status(422).json({ 
+            message: "OpenAI API quota bereikt. Probeer het later opnieuw of vul de gegevens handmatig in."
+          });
+        }
+        if (error.code === 'invalid_request_error') {
+          return res.status(422).json({ 
+            message: "Kon de afbeelding niet verwerken. Probeer een andere foto of vul handmatig in."
+          });
+        }
+      }
+      
+      // Check error message for quota/rate limit indicators
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('quota') || errorMessage.includes('insufficient_quota') || errorMessage.includes('rate limit')) {
+        return res.status(422).json({ 
+          message: "OpenAI API quota bereikt. Probeer het later opnieuw of vul de gegevens handmatig in."
+        });
+      }
+      
+      res.status(500).json({ 
+        message: "Er is een fout opgetreden bij het verwerken van de bon. Probeer het opnieuw."
+      });
     }
   });
 

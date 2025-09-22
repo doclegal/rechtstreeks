@@ -1,5 +1,6 @@
 import { type Case, type Analysis, type Template, type CaseDocument } from "@shared/schema";
 import Ajv from "ajv";
+import OpenAI from "openai";
 
 // In-memory storage for thread results
 const THREAD_RESULTS = new Map<string, { 
@@ -51,15 +52,33 @@ const analysisSchema = {
 const ajv = new Ajv();
 const validateAnalysis = ajv.compile(analysisSchema);
 
+export interface ReceiptExtractResult {
+  success: boolean;
+  productName?: string;
+  brand?: string;
+  model?: string;
+  purchaseDate?: string;
+  purchasePrice?: string;
+  supplier?: string;
+  category?: string;
+  warrantyDuration?: string;
+  description?: string;
+  confidence?: number;
+  rawText?: string;
+}
+
 export class AIService {
   private apiKey: string;
   private provider: string;
   private model: string;
+  private openai: OpenAI;
 
   constructor() {
     this.apiKey = process.env.OPENAI_API_KEY || "";
     this.provider = process.env.LLM_PROVIDER || "openai";
     this.model = process.env.LLM_MODEL || "gpt-3.5-turbo";
+    // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+    this.openai = new OpenAI({ apiKey: this.apiKey });
   }
 
   async analyzeLegalCase(caseData: Case, documents: CaseDocument[]): Promise<{
@@ -251,6 +270,184 @@ Geef JSON response:
         markdown: "# Fout bij genereren dagvaarding\n\nEr is een technische fout opgetreden."
       };
     }
+  }
+
+  // NEW: Extract purchase data from receipt image using OpenAI Vision
+  async extractReceiptData(dataUrl: string, mimetype?: string): Promise<ReceiptExtractResult> {
+    try {
+      console.log("🧾 Starting receipt extraction with OpenAI Vision");
+      
+      const systemPrompt = `Je bent een expert in het analyseren van Nederlandse aankoopbonnen en facturen. 
+Extraheer de volgende informatie uit de geüploade afbeelding van een aankoopbon/factuur:
+
+- Productnaam (hoofdproduct op de bon)
+- Merk/fabrikant indien zichtbaar
+- Model indien zichtbaar  
+- Aankoopdatum (datum van aankoop in YYYY-MM-DD formaat)
+- Aankoopprijs (alleen numerieke waarde zonder €-teken)
+- Leverancier/winkel (naam van de winkel/bedrijf)
+- Productcategorie (kies uit: "electronics", "appliances", "clothing", "tools", "automotive", "home", "sports", "other")
+- Garantieduur indien vermeld op de bon
+- Extra beschrijving indien nuttig
+
+Geef de output als JSON in deze exacte structuur:
+{
+  "productName": "string of null",
+  "brand": "string of null",
+  "model": "string of null", 
+  "purchaseDate": "YYYY-MM-DD of null",
+  "purchasePrice": "numerieke string of null",
+  "supplier": "string of null",
+  "category": "electronics/appliances/clothing/tools/automotive/home/sports/other of null",
+  "warrantyDuration": "string bijv '2 jaar' of null",
+  "description": "string of null",
+  "confidence": 0.85
+}
+
+Als informatie niet duidelijk leesbaar is, gebruik null. 
+Geef een confidence score tussen 0 en 1 voor de kwaliteit van de extractie.
+Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
+
+      // Use gpt-4o-mini which supports vision and is more reliable than gpt-5
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Analyseer deze aankoopbon en extraheer de aankoopgegevens volgens het JSON schema."
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: dataUrl
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 1000,
+        response_format: { type: "json_object" }
+      });
+
+      const aiContent = response.choices[0].message.content;
+      if (!aiContent) {
+        throw new Error("No content returned from OpenAI");
+      }
+
+      const parsed = JSON.parse(aiContent);
+      
+      // Validate and normalize the response
+      const result = this.validateReceiptExtraction(parsed);
+      
+      console.log("✅ Receipt extraction result:", { success: result.success, confidence: result.confidence });
+      
+      return result;
+
+    } catch (error) {
+      console.error("❌ Receipt extraction failed:", error);
+      return {
+        success: false,
+        confidence: 0,
+        rawText: `Error: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
+  // NEW: Validate and normalize receipt extraction results
+  private validateReceiptExtraction(parsed: any): ReceiptExtractResult {
+    try {
+      // Validate confidence score
+      const confidence = typeof parsed.confidence === 'number' ? 
+        Math.max(0, Math.min(1, parsed.confidence)) : 0;
+      
+      // If confidence is too low, mark as unsuccessful
+      if (confidence < 0.5) {
+        return {
+          success: false,
+          confidence,
+          rawText: "Low confidence extraction - please try a clearer image"
+        };
+      }
+
+      // Normalize and validate fields
+      const result: ReceiptExtractResult = {
+        success: true,
+        confidence,
+        productName: this.normalizeString(parsed.productName),
+        brand: this.normalizeString(parsed.brand),
+        model: this.normalizeString(parsed.model),
+        purchaseDate: this.normalizeDateString(parsed.purchaseDate),
+        purchasePrice: this.normalizePriceString(parsed.purchasePrice),
+        supplier: this.normalizeString(parsed.supplier),
+        category: this.normalizeCategoryString(parsed.category),
+        warrantyDuration: this.normalizeString(parsed.warrantyDuration),
+        description: this.normalizeString(parsed.description)
+      };
+
+      // Check if we have at least some useful data
+      const hasUsefulData = !!(result.productName || result.supplier || result.purchasePrice);
+      if (!hasUsefulData) {
+        return {
+          success: false,
+          confidence: 0,
+          rawText: "No useful data extracted from receipt"
+        };
+      }
+
+      return result;
+
+    } catch (error) {
+      return {
+        success: false,
+        confidence: 0,
+        rawText: `Validation error: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
+  // Helper methods for normalization
+  private normalizeString(value: any): string | undefined {
+    if (typeof value === 'string' && value.trim() && value.toLowerCase() !== 'null') {
+      return value.trim();
+    }
+    return undefined;
+  }
+
+  private normalizeDateString(value: any): string | undefined {
+    if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      // Validate it's a real date
+      const date = new Date(value);
+      if (!isNaN(date.getTime()) && date.getFullYear() >= 2000 && date.getFullYear() <= new Date().getFullYear() + 1) {
+        return value;
+      }
+    }
+    return undefined;
+  }
+
+  private normalizePriceString(value: any): string | undefined {
+    if (typeof value === 'string' || typeof value === 'number') {
+      const numStr = String(value).replace(/[€,\s]/g, '');
+      const num = parseFloat(numStr);
+      if (!isNaN(num) && num >= 0 && num < 100000) { // Reasonable price range
+        return num.toFixed(2);
+      }
+    }
+    return undefined;
+  }
+
+  private normalizeCategoryString(value: any): string | undefined {
+    const validCategories = ["electronics", "appliances", "clothing", "tools", "automotive", "home", "sports", "other"];
+    if (typeof value === 'string' && validCategories.includes(value.toLowerCase())) {
+      return value.toLowerCase();
+    }
+    return undefined;
   }
 
   private async callLLMWithJSONResponse(systemPrompt: string, userContent: string): Promise<string> {
