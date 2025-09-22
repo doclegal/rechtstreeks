@@ -178,11 +178,58 @@ export const settings = pgTable("settings", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Warranty/Guarantee Management Tables
+export const warrantyProducts = pgTable("warranty_products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerUserId: varchar("owner_user_id").notNull().references(() => users.id),
+  productName: text("product_name").notNull(),
+  brand: varchar("brand"),
+  model: varchar("model"),
+  serialNumber: varchar("serial_number"),
+  purchaseDate: timestamp("purchase_date"),
+  purchasePrice: decimal("purchase_price", { precision: 10, scale: 2 }),
+  supplier: text("supplier"), // where bought
+  warrantyDuration: varchar("warranty_duration"), // e.g., "2 jaar", "6 maanden"
+  warrantyExpiry: timestamp("warranty_expiry"),
+  category: varchar("category"), // electronics, appliances, tools, etc.
+  description: text("description"),
+  status: varchar("status").default("active"), // active, claimed, expired
+  websiteUrl: text("website_url"), // link to product page or terms
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_warranty_products_owner").on(table.ownerUserId),
+  index("idx_warranty_products_created").on(table.createdAt),
+  index("idx_warranty_products_expiry").on(table.warrantyExpiry),
+]);
+
+export const warrantyDocuments = pgTable("warranty_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id").notNull().references(() => warrantyProducts.id, { onDelete: "cascade" }),
+  filename: text("filename").notNull(),
+  storageKey: text("storage_key").notNull(),
+  mimetype: varchar("mimetype").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  documentType: varchar("document_type").notNull(), // receipt, warranty, terms, delivery_note, manual, other
+  extractedText: text("extracted_text"),
+  publicUrl: text("public_url"),
+  uploadedByUserId: varchar("uploaded_by_user_id").notNull().references(() => users.id),
+  description: text("description"), // optional description by user
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_warranty_documents_product").on(table.productId),
+  index("idx_warranty_documents_type").on(table.documentType),
+  index("idx_warranty_documents_created").on(table.createdAt),
+]);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   cases: many(cases),
   uploadedDocuments: many(caseDocuments),
   events: many(events),
+  warrantyProducts: many(warrantyProducts),
+  warrantyDocuments: many(warrantyDocuments),
 }));
 
 export const casesRelations = relations(cases, ({ one, many }) => ({
@@ -241,6 +288,25 @@ export const eventsRelations = relations(events, ({ one }) => ({
   }),
 }));
 
+export const warrantyProductsRelations = relations(warrantyProducts, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [warrantyProducts.ownerUserId],
+    references: [users.id],
+  }),
+  documents: many(warrantyDocuments),
+}));
+
+export const warrantyDocumentsRelations = relations(warrantyDocuments, ({ one }) => ({
+  product: one(warrantyProducts, {
+    fields: [warrantyDocuments.productId],
+    references: [warrantyProducts.id],
+  }),
+  uploadedBy: one(users, {
+    fields: [warrantyDocuments.uploadedByUserId],
+    references: [users.id],
+  }),
+}));
+
 // Insert and select schemas
 export const insertCaseSchema = createInsertSchema(cases).omit({
   id: true,
@@ -278,6 +344,17 @@ export const insertEventSchema = createInsertSchema(events).omit({
   createdAt: true,
 });
 
+export const insertWarrantyProductSchema = createInsertSchema(warrantyProducts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertWarrantyDocumentSchema = createInsertSchema(warrantyDocuments).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -295,4 +372,8 @@ export type Template = typeof templates.$inferSelect;
 export type InsertTemplate = z.infer<typeof insertTemplateSchema>;
 export type Event = typeof events.$inferSelect;
 export type InsertEvent = z.infer<typeof insertEventSchema>;
+export type WarrantyProduct = typeof warrantyProducts.$inferSelect;
+export type InsertWarrantyProduct = z.infer<typeof insertWarrantyProductSchema>;
+export type WarrantyDocument = typeof warrantyDocuments.$inferSelect;
+export type InsertWarrantyDocument = z.infer<typeof insertWarrantyDocumentSchema>;
 export type CaseStatus = typeof cases.status.enumValues[number];

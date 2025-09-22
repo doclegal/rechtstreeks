@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
-import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle, ArrowLeft } from "lucide-react";
+import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle, ArrowLeft, Shield } from "lucide-react";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -56,6 +56,15 @@ export default function Layout({ children }: LayoutProps) {
                   data-testid="link-my-case"
                 >
                   Mijn Zaak
+                </Link>
+                <Link 
+                  href="/warranty" 
+                  className={`font-medium transition-colors ${
+                    location === '/warranty' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  data-testid="link-warranty"
+                >
+                  Aankoop en garantie
                 </Link>
                 <Link 
                   href="/help" 
