@@ -272,6 +272,83 @@ Geef JSON response:
     }
   }
 
+  // NEW: Extract purchase data from receipt text (for PDF receipts)
+  async extractReceiptDataFromText(extractedText: string): Promise<ReceiptExtractResult> {
+    try {
+      console.log("🧾 Starting receipt extraction from PDF text");
+      
+      const systemPrompt = `Je bent een expert in het analyseren van Nederlandse aankoopbonnen en facturen. 
+Extraheer de volgende informatie uit de geüploade factuur/bon tekst:
+
+- Productnaam (hoofdproduct op de bon)
+- Merk/fabrikant indien zichtbaar
+- Model indien zichtbaar  
+- Aankoopdatum (datum van aankoop in YYYY-MM-DD formaat)
+- Aankoopprijs (alleen numerieke waarde zonder €-teken)
+- Leverancier/winkel (naam van de winkel/bedrijf)
+- Productcategorie (kies uit: "electronics", "appliances", "clothing", "tools", "automotive", "home", "sports", "other")
+- Garantieduur indien vermeld op de bon
+- Extra beschrijving indien nuttig
+
+Geef de output als JSON in deze exacte structuur:
+{
+  "productName": "string of null",
+  "brand": "string of null",
+  "model": "string of null", 
+  "purchaseDate": "YYYY-MM-DD of null",
+  "purchasePrice": "numerieke string of null",
+  "supplier": "string of null",
+  "category": "electronics/appliances/clothing/tools/automotive/home/sports/other of null",
+  "warrantyDuration": "string bijv '2 jaar' of null",
+  "description": "string of null",
+  "confidence": 0.85
+}
+
+Als informatie niet duidelijk leesbaar is, gebruik null. 
+Geef een confidence score tussen 0 en 1 voor de kwaliteit van de extractie.
+Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.
+
+Tekst van de factuur/bon:
+${extractedText}`;
+
+      // Use standard GPT model for text-based extraction
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o-mini", 
+        messages: [
+          {
+            role: "user",
+            content: systemPrompt
+          }
+        ],
+        max_tokens: 1000,
+        temperature: 0.1,
+        response_format: { type: "json_object" }
+      });
+
+      const aiContent = response.choices[0].message.content;
+      if (!aiContent) {
+        throw new Error("No content returned from OpenAI");
+      }
+
+      const parsed = JSON.parse(aiContent);
+      
+      // Validate and normalize the response
+      const result = this.validateReceiptExtraction(parsed);
+      
+      console.log("✅ PDF Receipt extraction result:", { success: result.success, confidence: result.confidence });
+      
+      return result;
+
+    } catch (error) {
+      console.error("❌ PDF Receipt extraction failed:", error);
+      return {
+        success: false,
+        confidence: 0,
+        rawText: `Error: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
   // NEW: Extract purchase data from receipt image using OpenAI Vision
   async extractReceiptData(dataUrl: string, mimetype?: string): Promise<ReceiptExtractResult> {
     try {

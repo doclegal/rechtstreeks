@@ -363,22 +363,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Validate file type (images only for now)
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      // Validate file type (images and PDF)
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
       if (!allowedTypes.includes(file.mimetype)) {
         return res.status(400).json({ 
-          message: "Alleen afbeeldingen zijn toegestaan voor bonnen (JPG, PNG, GIF, WEBP)" 
+          message: "Alleen afbeeldingen en PDF bestanden zijn toegestaan voor bonnen (JPG, PNG, GIF, WEBP, PDF)" 
         });
       }
 
       console.log(`🧾 Processing receipt: ${file.originalname} (${file.size} bytes, ${file.mimetype})`);
 
-      // Handle image files directly with correct mimetype
-      const base64Image = file.buffer.toString('base64');
-      const dataUrl = `data:${file.mimetype};base64,${base64Image}`;
+      let extractionResult;
       
-      // Extract purchase data using AI
-      const extractionResult = await aiService.extractReceiptData(dataUrl, file.mimetype);
+      if (file.mimetype === 'application/pdf') {
+        // Handle PDF files - extract text first
+        console.log("📄 Processing PDF receipt");
+        const extractedText = await fileService.extractText(file);
+        
+        if (!extractedText || extractedText.trim().length < 20) {
+          return res.status(422).json({ 
+            message: "Kon geen tekst uit de PDF extraheren. Probeer een afbeelding van de bon of controleer of de PDF tekst bevat."
+          });
+        }
+        
+        // Extract purchase data from PDF text using AI
+        extractionResult = await aiService.extractReceiptDataFromText(extractedText);
+      } else {
+        // Handle image files directly with correct mimetype
+        console.log("🖼️ Processing image receipt");
+        const base64Image = file.buffer.toString('base64');
+        const dataUrl = `data:${file.mimetype};base64,${base64Image}`;
+        
+        // Extract purchase data using AI Vision
+        extractionResult = await aiService.extractReceiptData(dataUrl, file.mimetype);
+      }
       
       // Enforce confidence gating (minimum 60% confidence required)
       const minConfidence = 0.6;

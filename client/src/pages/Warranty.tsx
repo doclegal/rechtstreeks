@@ -157,12 +157,12 @@ export default function Warranty() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    // Validate file type (images and PDF)
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
     if (!allowedTypes.includes(file.type)) {
       toast({
         title: "Ongeldig bestandstype",
-        description: "Alleen afbeeldingen zijn toegestaan (JPG, PNG, GIF, WEBP)",
+        description: "Alleen afbeeldingen en PDF bestanden zijn toegestaan (JPG, PNG, GIF, WEBP, PDF)",
         variant: "destructive",
       });
       return;
@@ -360,7 +360,7 @@ export default function Warranty() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,.pdf,application/pdf"
                 onChange={handleReceiptUpload}
                 className="hidden"
                 data-testid="input-receipt-upload"
@@ -388,7 +388,7 @@ export default function Warranty() {
               </Button>
               
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Ondersteunde formaten: JPG, PNG, GIF, WEBP (max. 10MB)
+                Ondersteunde formaten: JPG, PNG, GIF, WEBP, PDF (max. 10MB)
               </p>
             </div>
             
