@@ -96,7 +96,7 @@ export default function Warranty() {
       purchaseDate: "",
       purchasePrice: "",
       supplier: "",
-      warrantyDuration: "",
+      warrantyDuration: "2 jaar",
       category: "",
       description: "",
       websiteUrl: "",

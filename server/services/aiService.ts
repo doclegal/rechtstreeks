@@ -283,15 +283,26 @@ Geef JSON response:
       const systemPrompt = `Je bent een expert in het analyseren van Nederlandse aankoopbonnen en facturen. 
 Extraheer de volgende informatie uit de geüploade factuur/bon tekst:
 
-- Productnaam (hoofdproduct op de bon)
+BELANGRIJK - NEDERLANDSE PRIJSFORMATTERING:
+- Nederlandse prijzen gebruiken komma als decimaalscheidingsteken: 35,49 = €35.49 (NIET €3549!)
+- 272,99 = €272.99, 17,79 = €17.79, etc.
+- Converteer altijd naar correcte eurobedragen met punt als decimaal voor JSON
+
+MULTI-PRODUCT HANDLING:
+- Als er MEERDERE producten zijn: selecteer het DUURSTE product als hoofdproduct
+- Andere producten vermelden in "description" met prijzen tussen haakjes
+- Bijvoorbeeld: "BlueBuilt Stofzuigerzakken (€29.99)"
+
+VELDEN:
+- Productnaam (hoofdproduct - duurste als er meerdere zijn)
 - Merk/fabrikant indien zichtbaar
 - Model indien zichtbaar  
 - Aankoopdatum (datum van aankoop in YYYY-MM-DD formaat)
-- Aankoopprijs (alleen numerieke waarde zonder €-teken)
+- Aankoopprijs (van hoofdproduct - numerieke waarde met punt als decimaal, zonder €-teken)
 - Leverancier/winkel (naam van de winkel/bedrijf)
 - Productcategorie (kies uit: "electronics", "appliances", "clothing", "tools", "automotive", "home", "sports", "other")
-- Garantieduur indien vermeld op de bon
-- Extra beschrijving indien nuttig
+- Garantieduur (standaard "2 jaar" tenzij anders vermeld)
+- Extra beschrijving (andere producten met prijzen)
 
 Geef de output als JSON in deze exacte structuur:
 {
@@ -299,17 +310,21 @@ Geef de output als JSON in deze exacte structuur:
   "brand": "string of null",
   "model": "string of null", 
   "purchaseDate": "YYYY-MM-DD of null",
-  "purchasePrice": "numerieke string of null",
+  "purchasePrice": "numerieke string met punt als decimaal of null",
   "supplier": "string of null",
   "category": "electronics/appliances/clothing/tools/automotive/home/sports/other of null",
-  "warrantyDuration": "string bijv '2 jaar' of null",
-  "description": "string of null",
+  "warrantyDuration": "2 jaar",
+  "description": "andere producten met prijzen tussen haakjes of null",
   "confidence": 0.85
 }
 
-Als informatie niet duidelijk leesbaar is, gebruik null. 
-Geef een confidence score tussen 0 en 1 voor de kwaliteit van de extractie.
-Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.
+VOORBEELD MULTI-PRODUCT:
+Als factuur heeft:
+- BlueBuilt Stofzuigerzakken €29,99
+- Bosch Serie 8 stofzuiger €243,00
+
+Dan wordt hoofdproduct: "Bosch Serie 8 stofzuiger" (€243.00)
+Beschrijving: "BlueBuilt Stofzuigerzakken (€29.99)"
 
 Tekst van de factuur/bon:
 ${extractedText}`;
@@ -391,15 +406,26 @@ ${extractedText}`;
       const systemPrompt = `Je bent een expert in het analyseren van Nederlandse aankoopbonnen en facturen. 
 Extraheer de volgende informatie uit de geüploade afbeelding van een aankoopbon/factuur:
 
-- Productnaam (hoofdproduct op de bon)
+BELANGRIJK - NEDERLANDSE PRIJSFORMATTERING:
+- Nederlandse prijzen gebruiken komma als decimaalscheidingsteken: 35,49 = €35.49 (NIET €3549!)
+- 272,99 = €272.99, 17,79 = €17.79, etc.
+- Converteer altijd naar correcte eurobedragen met punt als decimaal voor JSON
+
+MULTI-PRODUCT HANDLING:
+- Als er MEERDERE producten zijn: selecteer het DUURSTE product als hoofdproduct
+- Andere producten vermelden in "description" met prijzen tussen haakjes
+- Bijvoorbeeld: "BlueBuilt Stofzuigerzakken (€29.99)"
+
+VELDEN:
+- Productnaam (hoofdproduct - duurste als er meerdere zijn)
 - Merk/fabrikant indien zichtbaar
 - Model indien zichtbaar  
 - Aankoopdatum (datum van aankoop in YYYY-MM-DD formaat)
-- Aankoopprijs (alleen numerieke waarde zonder €-teken)
+- Aankoopprijs (van hoofdproduct - numerieke waarde met punt als decimaal, zonder €-teken)
 - Leverancier/winkel (naam van de winkel/bedrijf)
 - Productcategorie (kies uit: "electronics", "appliances", "clothing", "tools", "automotive", "home", "sports", "other")
-- Garantieduur indien vermeld op de bon
-- Extra beschrijving indien nuttig
+- Garantieduur (standaard "2 jaar" tenzij anders vermeld)
+- Extra beschrijving (andere producten met prijzen)
 
 Geef de output als JSON in deze exacte structuur:
 {
@@ -407,13 +433,21 @@ Geef de output als JSON in deze exacte structuur:
   "brand": "string of null",
   "model": "string of null", 
   "purchaseDate": "YYYY-MM-DD of null",
-  "purchasePrice": "numerieke string of null",
+  "purchasePrice": "numerieke string met punt als decimaal of null",
   "supplier": "string of null",
   "category": "electronics/appliances/clothing/tools/automotive/home/sports/other of null",
-  "warrantyDuration": "string bijv '2 jaar' of null",
-  "description": "string of null",
+  "warrantyDuration": "2 jaar",
+  "description": "andere producten met prijzen tussen haakjes of null",
   "confidence": 0.85
 }
+
+VOORBEELD MULTI-PRODUCT:
+Als factuur heeft:
+- BlueBuilt Stofzuigerzakken €29,99
+- Bosch Serie 8 stofzuiger €243,00
+
+Dan wordt hoofdproduct: "Bosch Serie 8 stofzuiger" (€243.00)
+Beschrijving: "BlueBuilt Stofzuigerzakken (€29.99)"
 
 Als informatie niet duidelijk leesbaar is, gebruik null. 
 Geef een confidence score tussen 0 en 1 voor de kwaliteit van de extractie.
@@ -575,7 +609,24 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
 
   private normalizePriceString(value: any): string | undefined {
     if (typeof value === 'string' || typeof value === 'number') {
-      const numStr = String(value).replace(/[€,\s]/g, '');
+      let numStr = String(value);
+      
+      // Handle Dutch comma decimal format: 35,49 -> 35.49
+      // But avoid replacing thousands separators like 1.234,56
+      if (numStr.includes(',')) {
+        // If there are both dots and commas, assume comma is decimal (European format)
+        if (numStr.includes('.') && numStr.includes(',')) {
+          // 1.234,56 -> remove dots (thousands), replace comma with dot
+          numStr = numStr.replace(/\./g, '').replace(',', '.');
+        } else {
+          // Just comma: 35,49 -> 35.49
+          numStr = numStr.replace(',', '.');
+        }
+      }
+      
+      // Remove currency symbols and spaces
+      numStr = numStr.replace(/[€$£¥₹\s]/g, '');
+      
       const num = parseFloat(numStr);
       if (!isNaN(num) && num >= 0 && num < 100000) { // Reasonable price range
         return num.toFixed(2);
