@@ -82,11 +82,31 @@ export default function Warranty() {
   const { toast } = useToast();
   const [products, setProducts] = useState(mockProducts);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ProductFormData>({
+    resolver: zodResolver(productSchema),
+    defaultValues: {
+      productName: "",
+      brand: "",
+      model: "",
+      serialNumber: "",
+      purchaseDate: "",
+      purchasePrice: "",
+      supplier: "",
+      warrantyDuration: "2 jaar",
+      category: "",
+      description: "",
+      websiteUrl: "",
+      notes: "",
+    },
+  });
+
+  const editForm = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
       productName: "",
@@ -150,6 +170,89 @@ export default function Warranty() {
     
     form.reset();
     setIsAddDialogOpen(false);
+  };
+
+  // Handle product editing
+  const handleEditProduct = (product: any) => {
+    setEditingProduct(product);
+    
+    // Pre-populate the edit form with existing product data
+    editForm.setValue('productName', product.productName || '');
+    editForm.setValue('brand', product.brand || '');
+    editForm.setValue('model', product.model || '');
+    editForm.setValue('serialNumber', product.serialNumber || '');
+    editForm.setValue('purchaseDate', product.purchaseDate || '');
+    editForm.setValue('purchasePrice', product.purchasePrice || '');
+    editForm.setValue('supplier', product.supplier || '');
+    editForm.setValue('warrantyDuration', product.warrantyDuration || '2 jaar');
+    editForm.setValue('category', product.category || '');
+    editForm.setValue('description', product.description || '');
+    editForm.setValue('websiteUrl', product.websiteUrl || '');
+    editForm.setValue('notes', product.notes || '');
+    
+    setIsEditDialogOpen(true);
+  };
+
+  // Handle saving edited product
+  const onEditSubmit = (data: ProductFormData) => {
+    if (!editingProduct) return;
+    
+    console.log("Updating product:", editingProduct.id, data);
+    
+    // Calculate warranty expiry if purchase date and duration are provided
+    let warrantyExpiry = editingProduct.warrantyExpiry;
+    if (data.purchaseDate && data.warrantyDuration) {
+      const purchaseDate = new Date(data.purchaseDate);
+      const duration = data.warrantyDuration;
+      if (duration.includes('jaar')) {
+        const years = parseInt(duration);
+        warrantyExpiry = new Date(purchaseDate.setFullYear(purchaseDate.getFullYear() + years)).toISOString().split('T')[0];
+      } else if (duration.includes('maand')) {
+        const months = parseInt(duration);
+        warrantyExpiry = new Date(purchaseDate.setMonth(purchaseDate.getMonth() + months)).toISOString().split('T')[0];
+      }
+    }
+
+    const updatedProduct = {
+      ...editingProduct,
+      productName: data.productName,
+      brand: data.brand || "",
+      model: data.model || "",
+      serialNumber: data.serialNumber || "",
+      purchaseDate: data.purchaseDate || "",
+      purchasePrice: data.purchasePrice || "",
+      supplier: data.supplier || "",
+      warrantyDuration: data.warrantyDuration || "",
+      warrantyExpiry: warrantyExpiry || "",
+      category: data.category || "",
+      description: data.description || "",
+      websiteUrl: data.websiteUrl || "",
+      notes: data.notes || "",
+    };
+    
+    setProducts(products.map(p => p.id === editingProduct.id ? updatedProduct : p));
+    
+    toast({
+      title: "Product bijgewerkt",
+      description: "De productgegevens zijn succesvol bijgewerkt.",
+    });
+    
+    editForm.reset();
+    setEditingProduct(null);
+    setIsEditDialogOpen(false);
+  };
+
+  // Handle product deletion
+  const handleDeleteProduct = (product: any) => {
+    if (window.confirm(`Weet je zeker dat je "${product.productName}" wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.`)) {
+      setProducts(products.filter(p => p.id !== product.id));
+      
+      toast({
+        title: "Product verwijderd",
+        description: `"${product.productName}" is verwijderd uit je garantie overzicht.`,
+        variant: "destructive",
+      });
+    }
   };
 
   // NEW: Handle receipt upload and AI extraction
@@ -623,6 +726,276 @@ export default function Warranty() {
             </Form>
           </DialogContent>
         </Dialog>
+
+        {/* Edit Product Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Product bewerken</DialogTitle>
+            </DialogHeader>
+            
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={editForm.control}
+                    name="productName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Productnaam *</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="bijv. Samsung Galaxy S24" 
+                            {...field} 
+                            data-testid="input-edit-product-name"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={editForm.control}
+                    name="brand"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Merk</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="bijv. Samsung" 
+                            {...field} 
+                            data-testid="input-edit-brand"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={editForm.control}
+                    name="model"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Model</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="bijv. Galaxy S24" 
+                            {...field} 
+                            data-testid="input-edit-model"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={editForm.control}
+                    name="serialNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Serienummer</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="bijv. SN123456789" 
+                            {...field} 
+                            data-testid="input-edit-serial-number"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={editForm.control}
+                    name="purchaseDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Aankoopdatum</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="date" 
+                            {...field} 
+                            data-testid="input-edit-purchase-date"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={editForm.control}
+                    name="purchasePrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Aankoopprijs (€)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="bijv. 899.00" 
+                            {...field} 
+                            data-testid="input-edit-purchase-price"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={editForm.control}
+                    name="supplier"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Leverancier</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="bijv. MediaMarkt" 
+                            {...field} 
+                            data-testid="input-edit-supplier"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={editForm.control}
+                    name="warrantyDuration"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Garantieduur</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-edit-warranty-duration">
+                              <SelectValue placeholder="Selecteer duur" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="1 jaar">1 jaar</SelectItem>
+                            <SelectItem value="2 jaar">2 jaar</SelectItem>
+                            <SelectItem value="3 jaar">3 jaar</SelectItem>
+                            <SelectItem value="5 jaar">5 jaar</SelectItem>
+                            <SelectItem value="levenslang">Levenslang</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={editForm.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Categorie</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-edit-category">
+                              <SelectValue placeholder="Selecteer categorie" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="electronics">Elektronica</SelectItem>
+                            <SelectItem value="appliances">Huishoudelijk apparaat</SelectItem>
+                            <SelectItem value="clothing">Kleding</SelectItem>
+                            <SelectItem value="tools">Gereedschap</SelectItem>
+                            <SelectItem value="automotive">Auto/Motor</SelectItem>
+                            <SelectItem value="home">Huis/Tuin</SelectItem>
+                            <SelectItem value="sports">Sport/Fitness</SelectItem>
+                            <SelectItem value="other">Anders</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={editForm.control}
+                    name="websiteUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Website URL</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="https://..." 
+                            {...field} 
+                            data-testid="input-edit-website-url"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={editForm.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Beschrijving</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Extra productinformatie..."
+                          {...field} 
+                          data-testid="textarea-edit-description"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notities</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Persoonlijke notities..."
+                          {...field} 
+                          data-testid="textarea-edit-notes"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setIsEditDialogOpen(false)}
+                    data-testid="button-edit-cancel"
+                  >
+                    Annuleren
+                  </Button>
+                  <Button type="submit" data-testid="button-save-edit">
+                    Wijzigingen opslaan
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Products Overview */}
@@ -687,9 +1060,19 @@ export default function Warranty() {
                     <Button 
                       variant="ghost" 
                       size="sm"
+                      onClick={() => handleEditProduct(product)}
                       data-testid={`button-edit-${product.id}`}
                     >
                       <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleDeleteProduct(product)}
+                      className="text-destructive hover:text-destructive"
+                      data-testid={`button-delete-${product.id}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
