@@ -1,6 +1,7 @@
 import { type Case, type Analysis, type Template, type CaseDocument } from "@shared/schema";
 import Ajv from "ajv";
 import OpenAI from "openai";
+import { createMindStudioService, MindStudioService } from "./mindStudioService";
 
 // In-memory storage for thread results
 const THREAD_RESULTS = new Map<string, { 
@@ -72,11 +73,13 @@ export class AIService {
   private provider: string;
   private model: string;
   private openai: OpenAI;
+  private mindStudio: MindStudioService | null;
 
   constructor() {
     this.apiKey = process.env.OPENAI_API_KEY || "";
     this.provider = process.env.LLM_PROVIDER || "openai";
     this.model = process.env.LLM_MODEL || "gpt-3.5-turbo";
+    this.mindStudio = createMindStudioService();
     // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
     this.openai = new OpenAI({ apiKey: this.apiKey });
   }
@@ -341,6 +344,37 @@ ${extractedText}`;
 
     } catch (error) {
       console.error("❌ PDF Receipt extraction failed:", error);
+      
+      // Check if this is a quota/rate limit error and try MindStudio fallback
+      if (this.isQuotaError(error) && this.mindStudio) {
+        console.log("🔄 OpenAI quota exceeded, trying MindStudio fallback for PDF...");
+        try {
+          const mindstudioResult = await this.mindStudio.extractReceiptData({
+            type: 'text',
+            content: extractedText,
+            filename: 'receipt.pdf'
+          });
+          
+          // Convert MindStudio result to our format
+          return {
+            success: mindstudioResult.confidence >= 60,
+            confidence: mindstudioResult.confidence,
+            productName: mindstudioResult.productName || undefined,
+            brand: undefined,
+            model: undefined,
+            purchaseDate: mindstudioResult.purchaseDate || undefined,
+            purchasePrice: mindstudioResult.purchasePrice?.toString() || undefined,
+            supplier: mindstudioResult.storeName || undefined,
+            category: this.mapCategoryFromMindStudio(mindstudioResult.category) || undefined,
+            warrantyDuration: undefined,
+            description: undefined,
+            rawText: `MindStudio extraction: ${JSON.stringify(mindstudioResult)}`
+          };
+        } catch (mindstudioError) {
+          console.error("❌ MindStudio fallback also failed:", mindstudioError);
+        }
+      }
+      
       return {
         success: false,
         confidence: 0,
@@ -429,6 +463,37 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
 
     } catch (error) {
       console.error("❌ Receipt extraction failed:", error);
+      
+      // Check if this is a quota/rate limit error and try MindStudio fallback
+      if (this.isQuotaError(error) && this.mindStudio) {
+        console.log("🔄 OpenAI quota exceeded, trying MindStudio fallback for image...");
+        try {
+          const mindstudioResult = await this.mindStudio.extractReceiptData({
+            type: 'image',
+            content: dataUrl,
+            filename: 'receipt-image'
+          });
+          
+          // Convert MindStudio result to our format
+          return {
+            success: mindstudioResult.confidence >= 60,
+            confidence: mindstudioResult.confidence,
+            productName: mindstudioResult.productName || undefined,
+            brand: undefined,
+            model: undefined,
+            purchaseDate: mindstudioResult.purchaseDate || undefined,
+            purchasePrice: mindstudioResult.purchasePrice?.toString() || undefined,
+            supplier: mindstudioResult.storeName || undefined,
+            category: this.mapCategoryFromMindStudio(mindstudioResult.category) || undefined,
+            warrantyDuration: undefined,
+            description: undefined,
+            rawText: `MindStudio extraction: ${JSON.stringify(mindstudioResult)}`
+          };
+        } catch (mindstudioError) {
+          console.error("❌ MindStudio fallback also failed:", mindstudioError);
+        }
+      }
+      
       return {
         success: false,
         confidence: 0,
@@ -525,6 +590,39 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       return value.toLowerCase();
     }
     return undefined;
+  }
+
+  // Helper method to detect OpenAI quota/rate limit errors
+  private isQuotaError(error: any): boolean {
+    if (!error) return false;
+    
+    // Check for OpenAI rate limit status codes
+    if (error.status === 429) return true;
+    
+    // Check for quota exceeded error messages
+    const message = error.message?.toLowerCase() || '';
+    return message.includes('quota') || 
+           message.includes('rate limit') || 
+           message.includes('insufficient_quota') ||
+           message.includes('429');
+  }
+
+  // Helper method to map MindStudio categories to our system categories
+  private mapCategoryFromMindStudio(category: string): string | undefined {
+    if (!category) return undefined;
+    
+    const categoryMap: Record<string, string> = {
+      'Elektronica': 'electronics',
+      'Huishoudelijk': 'appliances',
+      'Kleding': 'clothing',
+      'Gereedschap': 'tools',
+      'Auto': 'automotive',
+      'Huis': 'home',
+      'Sport': 'sports',
+      'Anders': 'other'
+    };
+    
+    return categoryMap[category] || 'other';
   }
 
   private async callLLMWithJSONResponse(systemPrompt: string, userContent: string): Promise<string> {
