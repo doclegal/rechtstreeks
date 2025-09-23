@@ -162,15 +162,62 @@ export class FileService {
   }
 
   private async extractPdfText(buffer: Buffer): Promise<string> {
-    try {
-      // Import pdf-parse dynamically
-      const pdfParse = (await import("pdf-parse")).default;
-      const data = await pdfParse(buffer);
-      return data.text || "[Geen tekst gevonden in PDF]";
-    } catch (error) {
-      console.error("PDF parsing error:", error);
-      return "[Fout bij PDF analyse]";
+    console.log(`🔍 Parsing PDF: ${buffer.length} bytes`);
+    
+    // Try multiple approaches to extract PDF text reliably
+    for (const approach of ['import', 'dynamic-require', 'minimal']) {
+      try {
+        console.log(`🔄 Trying PDF extraction approach: ${approach}`);
+        
+        let result: string | null = null;
+        
+        if (approach === 'import') {
+          // Standard dynamic import (can fail due to pdf-parse bug)
+          const pdfParse = (await import("pdf-parse")).default;
+          const data = await pdfParse(buffer, { max: 0 });
+          result = data?.text?.trim() || null;
+          
+        } else if (approach === 'dynamic-require') {
+          // Use createRequire for ES module compatibility
+          const { createRequire } = await import('module');
+          const require = createRequire(import.meta.url);
+          const pdfParse = require("pdf-parse");
+          const data = await pdfParse(buffer);
+          result = data?.text?.trim() || null;
+          
+        } else if (approach === 'minimal') {
+          // Minimal text extraction from PDF buffer using basic string parsing
+          // This is a very basic fallback that looks for readable text in the buffer
+          const bufferStr = buffer.toString('latin1');
+          const textMatches = bufferStr.match(/\w+[\s\w.,€$£¥₹\d\-:/()]+/g) || [];
+          result = textMatches
+            .filter(match => match.length > 3 && /[a-zA-Z]/.test(match))
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim() || null;
+        }
+        
+        if (result && result.length >= 50) {
+          console.log(`✅ PDF parsed successfully with ${approach}: ${result.length} characters`);
+          return result;
+        } else if (result) {
+          console.warn(`⚠️ ${approach} returned minimal content (${result.length} chars): "${result.substring(0, 100)}..."`);
+        } else {
+          console.warn(`⚠️ ${approach} returned no content`);
+        }
+        
+      } catch (error) {
+        console.error(`❌ PDF parsing with ${approach} failed:`, error);
+        
+        // Skip to next approach unless this is the last one
+        if (approach === 'minimal') {
+          throw error;
+        }
+      }
     }
+    
+    // If all approaches failed or returned minimal content
+    return "[Geen leesbare tekst gevonden in PDF - probeer een andere bon of vul handmatig in]";
   }
 
   private async extractDocxText(buffer: Buffer): Promise<string> {
