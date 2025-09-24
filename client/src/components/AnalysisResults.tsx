@@ -16,6 +16,7 @@ import {
   Scale,
   Send
 } from "lucide-react";
+import { MindStudioAnalysis } from "./MindStudioAnalysis";
 
 interface KantonCheckResult {
   ok: boolean;
@@ -442,83 +443,113 @@ export default function AnalysisResults({
 
       {/* Full Analysis Results - Show when available */}
       {fullAnalysis && (
-        <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
-              <CheckCircle className="h-5 w-5" />
-              Volledige Analyse Resultaten
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                Volledige analyse voltooid
-              </Badge>
-              
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">Analyse Status:</h4>
-                <p className="text-sm text-blue-700 dark:text-blue-300" data-testid="text-full-analysis-status">
-                  Alle juridische aspecten van uw zaak zijn geanalyseerd met MindStudio AI
-                </p>
+        <>
+          <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
+                <CheckCircle className="h-5 w-5" />
+                Volledige Analyse Resultaten
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                  Volledige analyse voltooid
+                </Badge>
+                
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">Analyse Status:</h4>
+                  <p className="text-sm text-blue-700 dark:text-blue-300" data-testid="text-full-analysis-status">
+                    Alle juridische aspecten van uw zaak zijn geanalyseerd met MindStudio AI
+                  </p>
+                </div>
+
+                {fullAnalysis.billingCost && (
+                  <div className="mt-2 text-xs text-blue-500">
+                    Analyse kosten: {fullAnalysis.billingCost}
+                  </div>
+                )}
               </div>
+            </CardContent>
+          </Card>
 
-              {fullAnalysis.factsJson && fullAnalysis.factsJson.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Feiten & Omstandigheden:</h4>
-                  <ul className="space-y-1">
-                    {fullAnalysis.factsJson.map((fact: any, index: number) => (
-                      <li key={index} className="text-sm text-blue-700 dark:text-blue-300 flex items-start gap-2">
-                        <span className="text-blue-500 mt-1">•</span>
-                        <span data-testid={`text-full-analysis-fact-${index}`}>
-                          {fact.label}: {fact.detail}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+          {/* Gestructureerde MindStudio Analyse */}
+          {(() => {
+            // Parse MindStudio structured output from rawText
+            let mindstudioAnalysis = null;
+            try {
+              if (fullAnalysis.rawText) {
+                const rawData = JSON.parse(fullAnalysis.rawText);
+                // Check if it's a MindStudio response with structured data
+                if (rawData.result && rawData.result.output) {
+                  mindstudioAnalysis = typeof rawData.result.output === 'string' 
+                    ? JSON.parse(rawData.result.output) 
+                    : rawData.result.output;
+                }
+              }
+            } catch (error) {
+              console.warn('Could not parse MindStudio structured output:', error);
+            }
 
-              {fullAnalysis.issuesJson && fullAnalysis.issuesJson.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Juridische Kwesties:</h4>
-                  <ul className="space-y-1">
-                    {fullAnalysis.issuesJson.map((issue: any, index: number) => (
-                      <li key={index} className="text-sm text-blue-700 dark:text-blue-300 flex items-start gap-2">
-                        <span className="text-blue-500 mt-1">•</span>
-                        <span data-testid={`text-full-analysis-issue-${index}`}>
-                          {issue.issue} {issue.risk && `(Risico: ${issue.risk})`}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+            return mindstudioAnalysis ? (
+              <MindStudioAnalysis analysis={mindstudioAnalysis} />
+            ) : (
+              // Fallback to simple display for non-MindStudio or unstructured analyses
+              <Card>
+                <CardContent className="space-y-4 pt-6">
+                  {fullAnalysis.factsJson && fullAnalysis.factsJson.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Feiten & Omstandigheden:</h4>
+                      <ul className="space-y-1">
+                        {fullAnalysis.factsJson.map((fact: any, index: number) => (
+                          <li key={index} className="text-sm text-blue-700 dark:text-blue-300 flex items-start gap-2">
+                            <span className="text-blue-500 mt-1">•</span>
+                            <span data-testid={`text-full-analysis-fact-${index}`}>
+                              {fact.label}: {fact.detail}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
-              {fullAnalysis.legalBasisJson && fullAnalysis.legalBasisJson.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Rechtsgronden:</h4>
-                  <ul className="space-y-1">
-                    {fullAnalysis.legalBasisJson.map((basis: any, index: number) => (
-                      <li key={index} className="text-sm text-blue-700 dark:text-blue-300 flex items-start gap-2">
-                        <span className="text-blue-500 mt-1">•</span>
-                        <span data-testid={`text-full-analysis-legal-${index}`}>
-                          {basis.law} {basis.article && `- ${basis.article}`}
-                          {basis.note && ` (${basis.note})`}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+                  {fullAnalysis.issuesJson && fullAnalysis.issuesJson.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Juridische Kwesties:</h4>
+                      <ul className="space-y-1">
+                        {fullAnalysis.issuesJson.map((issue: any, index: number) => (
+                          <li key={index} className="text-sm text-blue-700 dark:text-blue-300 flex items-start gap-2">
+                            <span className="text-blue-500 mt-1">•</span>
+                            <span data-testid={`text-full-analysis-issue-${index}`}>
+                              {issue.issue} {issue.risk && `(Risico: ${issue.risk})`}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
-              {fullAnalysis.billingCost && (
-                <div className="mt-2 text-xs text-blue-500">
-                  Analyse kosten: {fullAnalysis.billingCost}
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                  {fullAnalysis.legalBasisJson && fullAnalysis.legalBasisJson.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm">Rechtsgronden:</h4>
+                      <ul className="space-y-1">
+                        {fullAnalysis.legalBasisJson.map((basis: any, index: number) => (
+                          <li key={index} className="text-sm text-blue-700 dark:text-blue-300 flex items-start gap-2">
+                            <span className="text-blue-500 mt-1">•</span>
+                            <span data-testid={`text-full-analysis-legal-${index}`}>
+                              {basis.law} {basis.article && `- ${basis.article}`}
+                              {basis.note && ` (${basis.note})`}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
+        </>
       )}
     </div>
   );

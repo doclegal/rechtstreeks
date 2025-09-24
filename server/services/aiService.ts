@@ -926,6 +926,7 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     success: boolean;
     threadId?: string;
     result?: any;
+    parsedAnalysis?: any;
     rawText?: string;
     billingCost?: string;
   }> {
@@ -990,10 +991,25 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
         throw new Error("No threadId received from Mindstudio");
       }
 
+      // Parse the structured MindStudio output
+      let parsedAnalysis = null;
+      try {
+        // MindStudio returns the structured analysis in data.result.output
+        if (data.result && data.result.output) {
+          parsedAnalysis = typeof data.result.output === 'string' 
+            ? JSON.parse(data.result.output) 
+            : data.result.output;
+          console.log("📊 Parsed MindStudio analysis structure:", Object.keys(parsedAnalysis));
+        }
+      } catch (error) {
+        console.warn("⚠️ Could not parse MindStudio structured output:", error);
+      }
+
       return {
         success: true,
         threadId: data.threadId,
         result: data.result,
+        parsedAnalysis,
         rawText: JSON.stringify(data, null, 2),
         billingCost: data.billingCost
       };
@@ -1002,6 +1018,7 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       console.error("❌ Full Analysis failed:", error);
       return {
         success: false,
+        parsedAnalysis: null,
         rawText: `Error: ${error instanceof Error ? error.message : String(error)}`
       };
     }

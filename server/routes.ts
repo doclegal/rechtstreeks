@@ -726,16 +726,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('🔍 Full analysis result:', fullAnalysisResult);
         
         if (fullAnalysisResult.success) {
-          // Create a new analysis record for the full analysis
+          // Parse structured MindStudio analysis output
+          const analysisData = fullAnalysisResult.parsedAnalysis;
+          
+          // Create a new analysis record with structured data from MindStudio
           const analysis = await storage.createAnalysis({
             caseId,
             model: 'mindstudio-full-analysis',
             rawText: fullAnalysisResult.rawText || JSON.stringify(fullAnalysisResult, null, 2),
-            factsJson: [{ label: 'Volledige Analyse', detail: 'Analyse uitgevoerd met alle documenten en context' }],
-            issuesJson: [{ issue: 'Volledige juridische analyse voltooid', risk: 'Zie gedetailleerde resultaten' }],
-            legalBasisJson: [],
-            missingDocsJson: [],
-            riskNotesJson: []
+            factsJson: analysisData?.facts ? [
+              ...(analysisData.facts.known || []).map((fact: string) => ({ label: 'Vaststaande feiten', detail: fact })),
+              ...(analysisData.facts.disputed || []).map((fact: string) => ({ label: 'Betwiste feiten', detail: fact })),
+              ...(analysisData.facts.unclear || []).map((fact: string) => ({ label: 'Onduidelijke feiten', detail: fact }))
+            ] : [{ label: 'Volledige Analyse', detail: 'Analyse uitgevoerd met alle documenten en context' }],
+            issuesJson: analysisData?.legal_analysis?.legal_issues ? 
+              analysisData.legal_analysis.legal_issues.map((issue: string) => ({ issue, risk: 'Zie juridische analyse' })) :
+              [{ issue: 'Volledige juridische analyse voltooid', risk: 'Zie gedetailleerde resultaten' }],
+            legalBasisJson: analysisData?.legal_analysis ? [{
+              what_is_the_dispute: analysisData.legal_analysis.what_is_the_dispute || '',
+              preliminary_assessment: analysisData.legal_analysis.preliminary_assessment || '',
+              potential_defenses: analysisData.legal_analysis.potential_defenses || [],
+              next_actions: analysisData.legal_analysis.next_actions || []
+            }] : [],
+            missingDocsJson: analysisData?.evidence?.missing || [],
+            riskNotesJson: analysisData?.legal_analysis?.risks || []
           });
           
           // Update case status to indicate full analysis is complete
