@@ -1121,6 +1121,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Document download route by ID (for MindStudio access)
+  app.get('/api/documents/:id/download', async (req: any, res) => {
+    try {
+      const documentId = req.params.id;
+      
+      // Get document from database
+      const document = await storage.getDocument(documentId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      // Get file stream using storage key
+      const fileStream = await fileService.getFile(document.storageKey);
+      if (!fileStream) {
+        return res.status(404).json({ message: "File not found in storage" });
+      }
+      
+      // Set appropriate headers for MindStudio
+      res.setHeader('Content-Type', document.mimetype || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${document.filename}"`);
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET');
+      res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+      
+      fileStream.pipe(res);
+    } catch (error) {
+      console.error("Error downloading document:", error);
+      res.status(500).json({ message: "Failed to download document" });
+    }
+  });
+
   // Case export route
   app.get('/api/cases/:id/export', isAuthenticated, async (req: any, res) => {
     try {

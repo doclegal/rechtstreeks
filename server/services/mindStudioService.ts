@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+// Using built-in fetch instead of node-fetch for better compatibility
 
 export interface MindStudioConfig {
   agentId: string;
@@ -59,15 +59,14 @@ export class MindStudioService {
         }
       };
 
-      const response = await fetch(`${this.config.baseUrl}/run`, {
+      const response = await globalThis.fetch(`${this.config.baseUrl}/run`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${this.config.apiKey}`,
           'User-Agent': 'Rechtstreeks.ai/1.0'
         },
-        body: JSON.stringify(payload),
-        timeout: 30000 // 30 second timeout
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
@@ -218,12 +217,11 @@ export class MindStudioService {
    */
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.config.baseUrl}/health`, {
+      const response = await globalThis.fetch(`${this.config.baseUrl}/health`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${this.config.apiKey}`
-        },
-        timeout: 5000
+        }
       });
       
       return response.ok;
