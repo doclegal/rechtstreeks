@@ -36,8 +36,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      
+      // Clean numeric fields - convert empty strings to null for database compatibility
+      const requestData = { ...req.body };
+      if (requestData.claimAmount === "" || requestData.claimAmount === undefined) {
+        requestData.claimAmount = null;
+      }
+      
       const caseData = insertCaseSchema.parse({
-        ...req.body,
+        ...requestData,
         ownerUserId: userId,
       });
       

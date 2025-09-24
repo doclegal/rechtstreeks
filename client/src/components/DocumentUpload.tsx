@@ -73,6 +73,10 @@ export default function DocumentUpload({
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'image/jpeg',
         'image/png',
+        'image/gif',
+        'image/webp',
+        'text/plain',
+        'text/csv',
         'message/rfc822'
       ];
       
@@ -128,6 +132,10 @@ export default function DocumentUpload({
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'image/jpeg': ['.jpg', '.jpeg'],
       'image/png': ['.png'],
+      'image/gif': ['.gif'],
+      'image/webp': ['.webp'],
+      'text/plain': ['.txt'],
+      'text/csv': ['.csv'],
       'message/rfc822': ['.eml'],
     },
   });

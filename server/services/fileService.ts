@@ -140,24 +140,53 @@ export class FileService {
     }
   }
 
+  // Clean text to ensure UTF-8 compatibility and remove problematic characters
+  private cleanTextForDatabase(text: string): string {
+    if (!text) return text;
+    
+    // Remove null bytes and other problematic control characters
+    let cleaned = text
+      .replace(/\x00/g, '') // Remove null bytes (0x00)
+      .replace(/[\x01-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove other control chars except \t, \n, \r
+      .replace(/\uFEFF/g, '') // Remove BOM (Byte Order Mark)
+      .replace(/\uFFFF/g, '') // Remove replacement character
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ''); // Remove control characters
+    
+    // Normalize unicode and trim excess whitespace
+    cleaned = cleaned
+      .normalize('NFD') // Normalize to decomposed form
+      .replace(/[\u0300-\u036f]/g, '') // Remove combining diacritical marks if needed
+      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+      .trim();
+    
+    console.log(`🧹 Text cleaned: ${text.length} → ${cleaned.length} characters`);
+    
+    return cleaned;
+  }
+
   async extractText(file: Express.Multer.File): Promise<string> {
     try {
       const mimetype = file.mimetype.toLowerCase();
+      let extractedText = "";
       
       if (mimetype === "application/pdf") {
-        return await this.extractPdfText(file.buffer);
+        extractedText = await this.extractPdfText(file.buffer);
       } else if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-        return await this.extractDocxText(file.buffer);
+        extractedText = await this.extractDocxText(file.buffer);
       } else if (mimetype === "message/rfc822" || file.originalname.endsWith(".eml")) {
-        return await this.extractEmailText(file.buffer);
+        extractedText = await this.extractEmailText(file.buffer);
       } else if (mimetype.startsWith("image/")) {
-        return `[Afbeelding: ${file.originalname}] - OCR niet beschikbaar in MVP`;
+        extractedText = `[Afbeelding: ${file.originalname}] - OCR niet beschikbaar in MVP`;
+      } else {
+        extractedText = `[Bestand: ${file.originalname}] - Tekstextractie niet ondersteund voor ${mimetype}`;
       }
       
-      return `[Bestand: ${file.originalname}] - Tekstextractie niet ondersteund voor ${mimetype}`;
+      // Clean the extracted text to prevent UTF-8 database errors
+      return this.cleanTextForDatabase(extractedText);
+      
     } catch (error) {
       console.error("Error extracting text:", error);
-      return `[Fout bij tekstextractie van ${file.originalname}]`;
+      return this.cleanTextForDatabase(`[Fout bij tekstextractie van ${file.originalname}]`);
     }
   }
 
