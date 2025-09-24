@@ -940,23 +940,18 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       uploaded_files_count: params.uploaded_files?.length || 0
     });
 
-    // Prepare launch variables for MindStudio
+    // Prepare launch variables for MindStudio - simplified to 3 essential variables
     const variables: any = {
-      case_id: params.case_id,
-      case_text: params.case_text,
-      amount_eur: params.amount_eur || 0,
-      parties: params.parties,
-      is_kantonzaak: params.is_kantonzaak,
-      contract_present: params.contract_present,
-      uploaded_files: params.uploaded_files || []
+      case_description: params.case_text,
+      uploaded_files: params.uploaded_files || [],
+      case_metadata: {
+        case_id: params.case_id,
+        amount_eur: params.amount_eur || 0,
+        is_kantonzaak: params.is_kantonzaak,
+        contract_present: params.contract_present,
+        parties: params.parties
+      }
     };
-
-    // Add forum clause text if present
-    if (params.forum_clause_text) {
-      variables.forum_clause_text = params.forum_clause_text;
-    } else {
-      variables.forum_clause_text = null;
-    }
 
     console.log("📤 Full Analysis variables:", JSON.stringify(variables, null, 2));
 
