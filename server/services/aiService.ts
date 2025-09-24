@@ -940,17 +940,11 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       uploaded_files_count: params.uploaded_files?.length || 0
     });
 
-    // Prepare launch variables for MindStudio - simplified to 3 essential variables
+    // Prepare launch variables for MindStudio - exact 3 variables as expected
     const variables: any = {
-      case_description: params.case_text,
-      uploaded_files: params.uploaded_files || [],
-      case_metadata: {
-        case_id: params.case_id,
-        amount_eur: params.amount_eur || 0,
-        is_kantonzaak: params.is_kantonzaak,
-        contract_present: params.contract_present,
-        parties: params.parties
-      }
+      case_id: params.case_id,
+      case_text: params.case_text,
+      uploaded_files: params.uploaded_files || []
     };
 
     console.log("📤 Full Analysis variables:", JSON.stringify(variables, null, 2));
