@@ -47,6 +47,11 @@ interface MindStudioAnalysisProps {
       preliminary_assessment?: string;
       risks?: string[];
       next_actions?: string[];
+      legal_basis?: Array<{
+        law?: string;
+        article?: string;
+        note?: string;
+      }>;
     };
   };
 }
@@ -189,6 +194,24 @@ export function MindStudioAnalysis({ analysis }: MindStudioAnalysisProps) {
                     <li key={index} className="flex items-start gap-2 text-sm">
                       <AlertTriangle className="h-4 w-4 mt-0.5 text-red-500 flex-shrink-0" />
                       {risk}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {analysis.legal_analysis.legal_basis && analysis.legal_analysis.legal_basis.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-2">Rechtsgronden:</h4>
+                <ul className="space-y-1">
+                  {analysis.legal_analysis.legal_basis.map((basis, index) => (
+                    <li key={index} className="flex items-start gap-2 text-sm">
+                      <Scale className="h-4 w-4 mt-0.5 text-blue-600 flex-shrink-0" />
+                      <div>
+                        <span className="font-medium">{basis.law}</span>
+                        {basis.article && <span className="text-muted-foreground"> - {basis.article}</span>}
+                        {basis.note && <div className="text-xs text-muted-foreground mt-1">{basis.note}</div>}
+                      </div>
                     </li>
                   ))}
                 </ul>
