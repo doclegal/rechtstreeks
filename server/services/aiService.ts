@@ -941,7 +941,8 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       uploaded_files_count: params.uploaded_files?.length || 0
     });
 
-    // Prepare launch variables for MindStudio - exact 3 variables as expected
+    // Prepare launch variables for MindStudio - send uploaded_files as native array
+    // The key insight: don't double-stringify, let the HTTP JSON.stringify handle it once
     const variables: any = {
       case_id: params.case_id,
       case_text: params.case_text,
