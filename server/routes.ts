@@ -37,14 +37,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       
-      // Clean numeric fields - convert empty strings to null for database compatibility
-      const requestData = { ...req.body };
-      if (requestData.claimAmount === "" || requestData.claimAmount === undefined) {
-        requestData.claimAmount = null;
-      }
-      
       const caseData = insertCaseSchema.parse({
-        ...requestData,
+        ...req.body,
         ownerUserId: userId,
       });
       

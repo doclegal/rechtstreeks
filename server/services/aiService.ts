@@ -893,6 +893,15 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       
       console.log("✅ Parsed app_response:", appResponse);
       
+      // Normalize belang_eur to number if it came as string
+      if (appResponse?.basis?.belang_eur && typeof appResponse.basis.belang_eur === 'string') {
+        const numericAmount = parseFloat(appResponse.basis.belang_eur);
+        if (!isNaN(numericAmount)) {
+          appResponse.basis.belang_eur = numericAmount;
+          console.log("🔄 Normalized belang_eur from string to number:", numericAmount);
+        }
+      }
+      
     } catch (error) {
       console.error("Failed to parse app_response:", error, data.app_response);
       throw new Error("Invalid JSON response from kanton check");
@@ -1034,6 +1043,15 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
         
         if (parsedAnalysis) {
           console.log("📊 Parsed MindStudio analysis structure:", Object.keys(parsedAnalysis));
+          
+          // Normalize amount_eur to number if it came as string
+          if (parsedAnalysis.case_overview?.amount_eur && typeof parsedAnalysis.case_overview.amount_eur === 'string') {
+            const numericAmount = parseFloat(parsedAnalysis.case_overview.amount_eur);
+            if (!isNaN(numericAmount)) {
+              parsedAnalysis.case_overview.amount_eur = numericAmount;
+              console.log("🔄 Normalized amount_eur from string to number:", numericAmount);
+            }
+          }
         } else {
           console.warn("⚠️ No analysis_json found in MindStudio response");
         }

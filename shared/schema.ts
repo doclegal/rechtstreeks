@@ -312,6 +312,18 @@ export const insertCaseSchema = createInsertSchema(cases).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  // Allow claimAmount to be string or number and coerce to string for database
+  claimAmount: z.union([z.string(), z.number()]).optional().nullable()
+    .transform((val) => {
+      if (val === null || val === undefined || val === '') return null;
+      if (typeof val === 'number') return val.toString();
+      if (typeof val === 'string' && val.trim() !== '') {
+        const num = parseFloat(val);
+        return isNaN(num) ? val : num.toString();
+      }
+      return val;
+    })
 });
 
 export const insertDocumentSchema = createInsertSchema(caseDocuments).omit({
