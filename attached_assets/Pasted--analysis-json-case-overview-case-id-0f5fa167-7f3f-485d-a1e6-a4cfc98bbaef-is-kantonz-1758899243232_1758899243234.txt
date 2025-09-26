@@ -1,0 +1,156 @@
+
+{
+analysis_json: {
+case_overview: {
+case_id: "0f5fa167-7f3f-485d-a1e6-a4cfc98bbaef"
+is_kantonzaak: true
+amount_eur: 1200
+parties: {
+claimant: "Huurder van vakantiehuisje"
+defendant: "Ardennes-étape"
+}
+forum_clause_text: ""
+contract_present: true
+}
+questions_to_answer: [
+0: "Is de verhuurder gerechtigd om de volledige borg in te houden?"
+1: "Wat zijn de specifieke schoonmaakeisen volgens de algemene voorwaarden?"
+2: "Welke bewijzen heeft de verhuurder aangeleverd voor de staat van het huis na vertrek?"
+3: "Is er een specifieke termijn waarbinnen de borg moet worden terugbetaald?"
+]
+facts: {
+known: [
+0: "Huurder heeft een vakantiehuisje gehuurd in Stoumont (België) van 12-14 september."
+1: "De borg bedroeg €1200."
+2: "Verhuurder heeft op 24 september bericht gestuurd dat de borg niet wordt terugbetaald."
+3: "Volgens de huurder is het huis netjes achtergelaten (stofgezogen, gedweild, afwas gedaan)."
+4: "De verhuurder is Ardennes-étape."
+]
+disputed: [
+0: "Of het huis daadwerkelijk netjes is achtergelaten door de huurder."
+1: "Of de staat van het huis bij vertrek voldoet aan de eisen in de huisregels."
+2: "Of de volledige borg mag worden ingehouden voor de vermeende staat van het huis."
+]
+unclear: [
+0: "Wat de specifieke redenen zijn waarom het huis volgens verhuurder niet netjes is achtergelaten."
+1: "Of er een opnamestaat bij aankomst en vertrek is opgemaakt."
+2: "Of er foto's zijn gemaakt van de staat van het huis bij vertrek."
+3: "Of er specifieke schade is geconstateerd door de verhuurder."
+4: "Welk deel van de algemene voorwaarden specifiek is overtreden volgens verhuurder."
+]
+}
+evidence: {
+provided: [
+0: {
+source: "document"
+doc_name: "AE_ROI_nl.pdf"
+doc_url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/05b4b663-231d-4dc6-a887-cbe3442b413d/download"
+key_passages: [
+0: "Op de einddatum van het verblijf waarop de Boeking betrekking heeft, dient u de Accommodatie vóór 10.00 uur te verlaten, behalve in het weekend, dan is het toegestaan tussen 10.00 en 20.00 uur te vertrekken, tenzij anders vermeld op het vakantieticket."
+1: "De Accommodatie, het meubilair en de uitrusting in dezelfde staat terugbrengen als bij aankomst zoals beschreven in de plaatsbeschrijving en tevens in perfecte staat van orde en netheid."
+]
+}
+1: {
+source: "website"
+doc_name: "Algemene voorwaarden Ardennes-étape"
+doc_url: "https://www.ardennes-etape.nl/algemene-voorwaarden"
+key_passages: [
+]
+}
+2: {
+source: "website"
+doc_name: "Vakantiehuisje informatie"
+doc_url: "https://www.ardennes-etape.nl/vakantiehuizen-ardennen/Stoumont/Vakantiehuis-Sauna-104621-03/"
+key_passages: [
+]
+}
+]
+missing: [
+0: "Foto's van de staat van het huis bij vertrek"
+1: "Specifieke klachten van de verhuurder over de staat van het huis"
+2: "Plaatsbeschrijving bij aankomst en vertrek"
+3: "Communicatie tussen huurder en verhuurder over de ingehouden borg"
+]
+}
+missing_info_for_assessment: [
+0: "Welke specifieke redenen geeft de verhuurder voor het inhouden van de borg?"
+1: "Is er een plaatsbeschrijving opgemaakt bij aankomst en vertrek?"
+2: "Heeft u foto's gemaakt van de staat van het huis bij vertrek?"
+3: "Heeft u al contact opgenomen met Ardennes-étape om bezwaar te maken tegen het inhouden van de borg?"
+]
+per_document: [
+0: {
+name: "AE_ROI_nl.pdf"
+url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/05b4b663-231d-4dc6-a887-cbe3442b413d/download"
+type: "pdf"
+summary: "Document bevat de huisregels van Ardennes-étape voor huurders van vakantieaccommodaties. Het beschrijft de verplichtingen van de huurder, waaronder het respecteren van de maximale capaciteit, gedragsregels, en de verplichting om de accommodatie in dezelfde staat achter te laten als bij aankomst."
+extracted_points: [
+0: "Huurders moeten de accommodatie in dezelfde staat terugbrengen als bij aankomst en in perfecte staat van orde en netheid."
+1: "In het weekend mag tussen 10.00 en 20.00 uur worden vertrokken, tenzij anders vermeld op het vakantieticket."
+2: "Er geldt een rookverbod in de binnenruimtes van de accommodatie."
+3: "Huurders mogen geen handelingen verrichten die in strijd zijn met de openbare orde of goede zeden."
+4: "Huurders moeten eigen linnengoed meebrengen tenzij anders bepaald in de accommodatieregels."
+]
+}
+]
+legal_analysis: {
+what_is_the_dispute: "Geschil over het inhouden van de volledige borg van €1200 door verhuurder Ardennes-étape voor een vakantiehuisje in België, waarbij de verhuurder stelt dat het huis niet netjes is achtergelaten terwijl de huurder beweert het huis wel degelijk schoon te hebben achtergelaten."
+legal_issues: [
+0: "Is het inhouden van de volledige borg proportioneel ten opzichte van de vermeende staat van het huis?"
+1: "Welk recht is van toepassing: Nederlands of Belgisch recht?"
+2: "Heeft de verhuurder voldoende bewijs geleverd voor de staat van het huis na vertrek?"
+3: "Is er sprake van een onredelijk beding in de algemene voorwaarden?"
+4: "Is de communicatie over het inhouden van de borg tijdig en correct verlopen?"
+]
+potential_defenses: [
+0: "De huurder heeft het huis netjes achtergelaten conform de huisregels (stofgezogen, gedweild, afwas gedaan)."
+1: "Het inhouden van de volledige borg is disproportioneel zonder specificatie van schade of kosten."
+2: "De verhuurder heeft geen bewijs geleverd van de staat van het huis na vertrek."
+]
+preliminary_assessment: "Op basis van de beschikbare informatie lijkt het inhouden van de volledige borg van €1200 disproportioneel, zeker zonder specificatie van de vermeende tekortkomingen. De huurder heeft naar eigen zeggen het huis schoongemaakt, wat zou moeten voldoen aan de verplichting om het huis in nette staat achter te laten."
+risks: [
+0: "Mogelijk is Belgisch recht van toepassing, wat de procedure kan compliceren."
+1: "Zonder foto's of andere bewijzen van de staat bij vertrek kan het moeilijk zijn om aan te tonen dat het huis netjes is achtergelaten."
+2: "De kosten van een juridische procedure kunnen hoog oplopen in verhouding tot het bedrag van de borg."
+3: "De algemene voorwaarden kunnen bepalingen bevatten die de positie van de huurder verzwakken."
+]
+legal_basis: [
+0: {
+law: "Burgerlijk Wetboek"
+article: "Artikel 7:600 BW e.v."
+note: "Bepalingen over huurovereenkomsten, waaronder de verplichting om het gehuurde als een goed huurder te gebruiken."
+}
+1: {
+law: "Burgerlijk Wetboek"
+article: "Artikel 6:233 BW"
+note: "Onredelijk bezwarende bedingen in algemene voorwaarden zijn vernietigbaar."
+}
+2: {
+law: "Burgerlijk Wetboek"
+article: "Artikel 6:248 lid 2 BW"
+note: "Een tussen partijen geldende regel is niet van toepassing voor zover dit in de gegeven omstandigheden naar maatstaven van redelijkheid en billijkheid onaanvaardbaar zou zijn."
+}
+3: {
+law: "Verordening (EG) nr. 593/2008 (Rome I)"
+article: "Artikel 6"
+note: "Bepaalt het toepasselijke recht bij consumentenovereenkomsten, mogelijk Nederlands recht ondanks Belgische locatie."
+}
+]
+next_actions: [
+0: "Stuur een ingebrekestelling naar Ardennes-étape met verzoek om specificatie van de klachten en terugbetaling van de borg."
+1: "Verzamel alle bewijsmateriaal zoals foto's, berichten en de huurovereenkomst."
+2: "Controleer de algemene voorwaarden op bepalingen over de borg en schoonmaak."
+3: "Overweeg een klacht in te dienen bij een Belgische of Nederlandse consumentenorganisatie."
+4: "Bij geen reactie of onbevredigende reactie, overweeg een procedure bij de kantonrechter."
+]
+}
+}
+extracted_texts: [
+0: {
+url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/05b4b663-231d-4dc6-a887-cbe3442b413d/download"
+text: "# BIJLAGE 1: Huisregels Tijdens het verblijf in de Accommodatie zijn de specifieke huisregels die door de Eigenaar worden medegedeeld van toepassing, alsmede aan de algemene huisregels die hieronder worden uiteengezet. De Klant zal: - 1. De beperking van het aantal personen voor de maximale capaciteit van de Accommodatie respecteren, zoals meegedeeld door Ardennes-étape in functie van de samenstelling van de groep die deelneemt aan het verblijf in de Accommodatie. - 2. Geen (studenten)feesten, vrijgezellenfeesten, lockdown feesten, evenementen in strijd met de goede zeden of andere soortgelijke evenementen organiseren tijdens de gehele duur van het verblijf in de Accommodatie. - 3. De regels naleven die van toepassing zijn op de aanwezigheid van een hond, zoals meegedeeld door Ardennes-étape aan de Klant, indien Ardennes-étape de aanwezigheid van een hond in de Accommodatie toestaat. Bijvoorbeeld, zonder dat de onderstaande lijst exhaustief is, is een hond niet toegelaten in de kamers ..."
+type: "pdf"
+name: "AE_ROI_nl.pdf"
+}
+]
+}

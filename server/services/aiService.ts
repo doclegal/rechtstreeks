@@ -1033,6 +1033,14 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
           }
         }
         
+        // Tertiary: Check data.result.analysis_json (newer format)
+        if (!parsedAnalysis && data.result && data.result.analysis_json) {
+          console.log("✅ Found analysis_json in data.result.analysis_json (newer format)");
+          parsedAnalysis = typeof data.result.analysis_json === 'string' 
+            ? JSON.parse(data.result.analysis_json) 
+            : data.result.analysis_json;
+        }
+        
         // Fallback: Check data.result.output (legacy format)
         if (!parsedAnalysis && data.result && data.result.output) {
           console.log("✅ Using legacy data.result.output format");
