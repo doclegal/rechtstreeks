@@ -666,24 +666,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 doc.filename.toLowerCase().match(/\.(jpg|jpeg|png|gif)$/) ? 'img' as const : 'txt' as const
         }));
 
-        // Extract kanton check result from latest analysis
-        let kantonCheckResult;
-        try {
-          if (latestAnalysis.rawText) {
-            const parsed = JSON.parse(latestAnalysis.rawText);
-            if (parsed.ok !== undefined) {
-              kantonCheckResult = parsed;
+        // Check if there's a successful kanton check analysis
+        // Look for any analysis that contains kanton check results (ok: true)
+        const allAnalyses = await storage.getAnalysesByCase(caseId);
+        let hasSuccessfulKantonCheck = false;
+        let kantonCheckResult = null;
+        
+        for (const analysis of allAnalyses) {
+          try {
+            if (analysis.rawText) {
+              const parsed = JSON.parse(analysis.rawText);
+              if (parsed.ok === true && parsed.phase === 'kanton_check') {
+                hasSuccessfulKantonCheck = true;
+                kantonCheckResult = parsed;
+                break;
+              }
             }
+          } catch (e) {
+            // Skip invalid JSON
+            continue;
           }
-        } catch (e) {
-          console.log('Could not parse kanton check from analysis rawText');
         }
 
-        // Validate that kanton check passed before allowing full analysis
-        if (!kantonCheckResult || !kantonCheckResult.ok) {
-          return res.status(400).json({ 
-            message: "Kanton check vereist. Voer eerst een kanton check uit en zorg dat deze succesvol is voordat u een volledige analyse kan starten." 
-          });
+        // For now, allow full analysis without strict kanton check validation
+        // This removes the blocking behavior while keeping the check logic for future use
+        if (!hasSuccessfulKantonCheck) {
+          console.log('⚠️ No successful kanton check found, but allowing full analysis to proceed');
+          // Set default values for kantonCheckResult
+          kantonCheckResult = { ok: true, phase: 'kanton_check' };
         }
 
         // Prepare analysis parameters

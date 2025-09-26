@@ -225,6 +225,15 @@ export class DatabaseStorage implements IStorage {
     return analysis;
   }
 
+  async getAnalysesByCase(caseId: string): Promise<Analysis[]> {
+    const analysesData = await db
+      .select()
+      .from(analyses)
+      .where(eq(analyses.caseId, caseId))
+      .orderBy(desc(analyses.createdAt));
+    return analysesData;
+  }
+
   // Letter operations
   async createLetter(letterData: InsertLetter): Promise<Letter> {
     const [letter] = await db
