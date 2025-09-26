@@ -992,15 +992,50 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
         throw new Error("No threadId received from Mindstudio");
       }
 
-      // Parse the structured MindStudio output
+      // Parse the structured MindStudio output - look for analysis_json variable
       let parsedAnalysis = null;
       try {
-        // MindStudio returns the structured analysis in data.result.output
-        if (data.result && data.result.output) {
+        // Primary: Look for analysis_json variable in thread posts (like we do for app_response in kanton check)
+        if (data.thread?.posts) {
+          console.log("🔍 Searching in thread posts for analysis_json variable...");
+          for (const post of data.thread.posts) {
+            // Look in debugLog newState variables for analysis_json
+            if (post.debugLog?.newState?.variables?.analysis_json?.value) {
+              console.log("✅ Found analysis_json in debugLog.newState.variables");
+              const responseValue = post.debugLog.newState.variables.analysis_json.value;
+              if (typeof responseValue === 'string') {
+                parsedAnalysis = JSON.parse(responseValue);
+              } else {
+                parsedAnalysis = responseValue;
+              }
+              break;
+            }
+          }
+        }
+        
+        // Secondary: Check thread variables for analysis_json
+        if (!parsedAnalysis && data.thread?.variables?.analysis_json?.value) {
+          console.log("✅ Found analysis_json in thread.variables.analysis_json.value");
+          const responseValue = data.thread.variables.analysis_json.value;
+          if (typeof responseValue === 'string') {
+            parsedAnalysis = JSON.parse(responseValue);
+          } else {
+            parsedAnalysis = responseValue;
+          }
+        }
+        
+        // Fallback: Check data.result.output (legacy format)
+        if (!parsedAnalysis && data.result && data.result.output) {
+          console.log("✅ Using legacy data.result.output format");
           parsedAnalysis = typeof data.result.output === 'string' 
             ? JSON.parse(data.result.output) 
             : data.result.output;
+        }
+        
+        if (parsedAnalysis) {
           console.log("📊 Parsed MindStudio analysis structure:", Object.keys(parsedAnalysis));
+        } else {
+          console.warn("⚠️ No analysis_json found in MindStudio response");
         }
       } catch (error) {
         console.warn("⚠️ Could not parse MindStudio structured output:", error);
