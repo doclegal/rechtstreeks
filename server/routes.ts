@@ -660,7 +660,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const uploaded_files = documents.map(doc => ({
           name: doc.filename,
-          file_url: doc.storageKey ? `${process.env.REPLIT_APP_DOMAIN || 'https://app.replit.dev'}/api/documents/${doc.id}/download` : '',
+          file_url: doc.storageKey ? `${process.env.PUBLIC_BASE_URL || 'https://localhost:5000'}/api/documents/${doc.id}/download` : '',
           type: doc.filename.toLowerCase().endsWith('.pdf') ? 'pdf' as const :
                 doc.filename.toLowerCase().endsWith('.docx') ? 'docx' as const :
                 doc.filename.toLowerCase().match(/\.(jpg|jpeg|png|gif)$/) ? 'img' as const : 'txt' as const
