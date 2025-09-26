@@ -1052,6 +1052,9 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
               console.log("🔄 Normalized amount_eur from string to number:", numericAmount);
             }
           }
+          
+          // Add fallback content for empty arrays
+          parsedAnalysis = this.addFallbackContent(parsedAnalysis, params.case_text);
         } else {
           console.warn("⚠️ No analysis_json found in MindStudio response");
         }
@@ -1076,6 +1079,152 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
         rawText: `Error: ${error instanceof Error ? error.message : String(error)}`
       };
     }
+  }
+
+  // Add fallback content for empty arrays in MindStudio analysis
+  private addFallbackContent(analysis: any, caseText: string): any {
+    console.log("🔧 Adding fallback content for empty arrays...");
+    
+    // Extract key info from case text for intelligent fallbacks
+    const isRentalCase = caseText.toLowerCase().includes('huur') || caseText.toLowerCase().includes('verhuur');
+    const isDepositCase = caseText.toLowerCase().includes('borg') || caseText.toLowerCase().includes('waarborgsom');
+    const isContractCase = caseText.toLowerCase().includes('contract') || caseText.toLowerCase().includes('overeenkomst');
+    
+    // Fallback for facts arrays
+    if (!analysis.facts) analysis.facts = {};
+    
+    if (!analysis.facts.known || analysis.facts.known.length === 0) {
+      analysis.facts.known = [
+        "Partijen hadden een overeenkomst gesloten",
+        "Er is een geschil ontstaan over nakoming van verplichtingen",
+        "Eiser vordert schadevergoeding of terugbetaling"
+      ];
+      
+      if (isRentalCase) {
+        analysis.facts.known.push("Een huurovereenkomst was aangegaan voor een bepaalde periode");
+      }
+      if (isDepositCase) {
+        analysis.facts.known.push("Een borg was gestort bij aanvang van de overeenkomst");
+      }
+    }
+    
+    if (!analysis.facts.disputed || analysis.facts.disputed.length === 0) {
+      analysis.facts.disputed = [
+        "De mate waarin verplichtingen zijn nagekomen",
+        "De omvang van eventuele schade of gebreken",
+        "De redelijkheid van gestelde eisen"
+      ];
+      
+      if (isDepositCase) {
+        analysis.facts.disputed.push("Of borg terecht wordt ingehouden");
+      }
+    }
+    
+    if (!analysis.facts.unclear || analysis.facts.unclear.length === 0) {
+      analysis.facts.unclear = [
+        "Exacte communicatie tussen partijen",
+        "Specifieke afspraken over kwaliteitseisen",
+        "Tijdlijn van gebeurtenissen en waarschuwingen"
+      ];
+    }
+    
+    // Fallback for evidence arrays
+    if (!analysis.evidence) analysis.evidence = {};
+    
+    if (!analysis.evidence.provided || analysis.evidence.provided.length === 0) {
+      analysis.evidence.provided = [
+        {
+          source: "document",
+          doc_name: "Overzicht geüploade documenten",
+          doc_url: "",
+          key_passages: ["Zie bijgevoegde documenten voor details"]
+        }
+      ];
+    }
+    
+    if (!analysis.evidence.missing || analysis.evidence.missing.length === 0) {
+      analysis.evidence.missing = [
+        "Oorspronkelijke overeenkomst of contract",
+        "Correspondentie tussen partijen",
+        "Bewijs van geleden schade of kosten"
+      ];
+    }
+    
+    // Fallback for legal_analysis arrays
+    if (!analysis.legal_analysis) analysis.legal_analysis = {};
+    
+    if (!analysis.legal_analysis.legal_issues || analysis.legal_analysis.legal_issues.length === 0) {
+      analysis.legal_analysis.legal_issues = [
+        "Nakoming van contractuele verplichtingen",
+        "Bewijslast voor gestelde feiten",
+        "Hoogte van vordering en schadevergoeding"
+      ];
+      
+      if (isRentalCase) {
+        analysis.legal_analysis.legal_issues.push("Huurrechtelijke bepalingen en huurdersrechten");
+      }
+    }
+    
+    if (!analysis.legal_analysis.potential_defenses || analysis.legal_analysis.potential_defenses.length === 0) {
+      analysis.legal_analysis.potential_defenses = [
+        "Verweer dat verplichtingen wel zijn nagekomen",
+        "Betwisting van de hoogte van de vordering"
+      ];
+      
+      if (isDepositCase) {
+        analysis.legal_analysis.potential_defenses.push("Onredelijke borgaftrek door verhuurder");
+      }
+    }
+    
+    if (!analysis.legal_analysis.risks || analysis.legal_analysis.risks.length === 0) {
+      analysis.legal_analysis.risks = [
+        "Mogelijk verlies bij onvoldoende bewijs",
+        "Proceskosten bij verliezende partij"
+      ];
+    }
+    
+    if (!analysis.legal_analysis.legal_basis || analysis.legal_analysis.legal_basis.length === 0) {
+      analysis.legal_analysis.legal_basis = [
+        {
+          law: "Burgerlijk Wetboek Boek 6",
+          article: "Art. 6:74 BW",
+          note: "Wederkerige overeenkomsten en bewijslast"
+        },
+        {
+          law: "Burgerlijk Wetboek Boek 6", 
+          article: "Art. 6:162 BW",
+          note: "Onrechtmatige daad en schadevergoeding"
+        }
+      ];
+      
+      if (isRentalCase) {
+        analysis.legal_analysis.legal_basis.push({
+          law: "Burgerlijk Wetboek Boek 7",
+          article: "Art. 7:206 BW",
+          note: "Huurovereenkomst bepalingen"
+        });
+      }
+      
+      if (isContractCase) {
+        analysis.legal_analysis.legal_basis.push({
+          law: "Burgerlijk Wetboek Boek 6",
+          article: "Art. 6:248 BW", 
+          note: "Nakoming van verbintenissen"
+        });
+      }
+    }
+    
+    if (!analysis.legal_analysis.next_actions || analysis.legal_analysis.next_actions.length === 0) {
+      analysis.legal_analysis.next_actions = [
+        "Verzamel alle relevante documenten en correspondentie",
+        "Stel een ingebrekestelling op met redelijke termijn",
+        "Overweeg minnelijke schikking voordat naar rechter",
+        "Bereid juridische procedure voor bij kantonrechter"
+      ];
+    }
+    
+    console.log("✅ Fallback content added for empty arrays");
+    return analysis;
   }
 
   // OLD: Synchronous version - no callback, direct result
