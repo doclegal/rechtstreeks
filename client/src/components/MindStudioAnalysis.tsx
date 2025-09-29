@@ -235,11 +235,28 @@ export function MindStudioAnalysis({ analysis }: MindStudioAnalysisProps) {
         </Card>
       )}
 
+      {/* Dispute Summary */}
+      {analysis.legal_analysis?.what_is_the_dispute && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Scale className="h-5 w-5" />
+              Geschil in het kort
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm p-3 bg-blue-50 dark:bg-blue-900/20 rounded border-l-4 border-blue-500">
+              {analysis.legal_analysis.what_is_the_dispute}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Facts */}
       {analysis.facts && (
         <Card>
           <CardHeader>
-            <CardTitle>Feiten</CardTitle>
+            <CardTitle>Feiten en Omstandigheden</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {analysis.facts.known && analysis.facts.known.length > 0 && (
@@ -376,7 +393,7 @@ export function MindStudioAnalysis({ analysis }: MindStudioAnalysisProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-orange-500" />
-              Ontbrekende informatie voor beoordeling
+              Ontbrekende informatie
             </CardTitle>
           </CardHeader>
           <CardContent>
