@@ -444,35 +444,6 @@ export default function AnalysisResults({
       {/* Full Analysis Results - Show when available */}
       {fullAnalysis && (
         <>
-          <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
-                <CheckCircle className="h-5 w-5" />
-                Volledige Analyse Resultaten
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                  Volledige analyse voltooid
-                </Badge>
-                
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Analyse Status:</h4>
-                  <p className="text-sm text-blue-700 dark:text-blue-300" data-testid="text-full-analysis-status">
-                    Alle juridische aspecten van uw zaak zijn geanalyseerd met MindStudio AI
-                  </p>
-                </div>
-
-                {fullAnalysis.billingCost && (
-                  <div className="mt-2 text-xs text-blue-500">
-                    Analyse kosten: {fullAnalysis.billingCost}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Gestructureerde MindStudio Analyse */}
           {(() => {
             // Parse MindStudio structured output from rawText
