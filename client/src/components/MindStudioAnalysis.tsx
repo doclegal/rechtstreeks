@@ -101,8 +101,48 @@ const LegalTermTooltip = ({ term, explanation, children }: { term: string; expla
   </TooltipProvider>
 );
 
+const getCaseType = (caseOverview: any) => {
+  if (!caseOverview) return "Onbekend";
+  
+  // Analyze available data to determine case type
+  const hasContract = caseOverview.contract_present;
+  const amount = caseOverview.amount_eur;
+  const forumClause = caseOverview.forum_clause_text;
+  
+  // Rental/deposit cases typically have contracts and moderate amounts
+  if (hasContract && amount && amount >= 500 && amount <= 5000) {
+    if (forumClause || (caseOverview.parties?.claimant?.name && caseOverview.parties?.defendant?.name)) {
+      return "Verhuur/Borg";
+    }
+  }
+  
+  // Employment cases typically have higher amounts
+  if (amount && amount > 5000) {
+    return "Arbeidsrecht";
+  }
+  
+  // Purchase/consumer cases typically have contracts
+  if (hasContract && amount && amount <= 10000) {
+    return "Aankoop/Consument";
+  }
+  
+  // Service contracts
+  if (hasContract) {
+    return "Dienstverlening";
+  }
+  
+  // General civil cases
+  if (amount && amount <= 25000) {
+    return "Civiele Zaak";
+  }
+  
+  return "Onbekend";
+};
+
 const CaseSummaryCard = ({ analysis }: { analysis: any }) => {
   if (!analysis.case_overview) return null;
+
+  const caseType = getCaseType(analysis.case_overview);
 
   return (
     <Card className="sticky top-4 shadow-lg border-2">
@@ -152,7 +192,7 @@ const CaseSummaryCard = ({ analysis }: { analysis: any }) => {
             <Gavel className="h-4 w-4 text-purple-600" />
             <span className="font-medium text-sm">Zaaktype</span>
           </div>
-          <Badge variant="outline" className="text-xs">Verhuur/Borg</Badge>
+          <Badge variant="outline" className="text-xs">{caseType}</Badge>
         </div>
 
         {/* Court Suitability */}
