@@ -1319,7 +1319,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Fallback to existing analysis structure
+      // Try to parse raw_text for newer analysis format first
+      let parsedAnalysis = null;
+      if (analysis.rawText) {
+        try {
+          const rawData = JSON.parse(analysis.rawText);
+          if (rawData.result?.analysis_json || rawData.analysis_json) {
+            parsedAnalysis = rawData.result?.analysis_json || rawData.analysis_json;
+          }
+        } catch (error) {
+          console.log('Could not parse raw_text for newer format:', error);
+        }
+      }
+      
+      // If we have parsed analysis with new format, use it
+      if (parsedAnalysis) {
+        const result = {
+          // Include new summary structure
+          summary: parsedAnalysis.summary || undefined,
+          case_overview: parsedAnalysis.case_overview || undefined,
+          questions_to_answer: parsedAnalysis.questions_to_answer || [],
+          facts: parsedAnalysis.facts || undefined,
+          evidence: parsedAnalysis.evidence || undefined,
+          missing_info_for_assessment: parsedAnalysis.missing_info_for_assessment || [],
+          per_document: parsedAnalysis.per_document || [],
+          legal_analysis: parsedAnalysis.legal_analysis || undefined,
+          
+          // Legacy format for backward compatibility
+          factsJson: Array.isArray(analysis.factsJson) ? 
+            analysis.factsJson.map((fact: any, idx: number) => ({ 
+              label: `Feit ${idx + 1}`, 
+              detail: typeof fact === 'string' ? fact : fact.detail || fact.label || fact 
+            })) : [],
+          issuesJson: Array.isArray(analysis.issuesJson) ? 
+            analysis.issuesJson.map((issue: any) => ({ 
+              issue: typeof issue === 'string' ? issue : issue.issue || issue.label || issue,
+              risk: typeof issue === 'object' ? issue.risk : undefined
+            })) : [],
+          legalBasisJson: Array.isArray(analysis.legalBasisJson) ? 
+            analysis.legalBasisJson.map((basis: any) => ({ 
+              law: typeof basis === 'string' ? basis : basis.law || basis.label || basis,
+              article: typeof basis === 'object' ? basis.article : undefined,
+              note: typeof basis === 'object' ? basis.note : undefined
+            })) : [],
+          missingDocuments: Array.isArray(analysis.missingDocsJson) ? analysis.missingDocsJson : []
+        };
+        return res.json(result);
+      }
+      
+      // Fallback to existing analysis structure for old data
       const result = {
         factsJson: Array.isArray(analysis.factsJson) ? 
           analysis.factsJson.map((fact: any, idx: number) => ({ 
