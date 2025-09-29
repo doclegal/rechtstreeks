@@ -481,10 +481,21 @@ export default function AnalysisResults({
               if (fullAnalysis.rawText) {
                 const rawData = JSON.parse(fullAnalysis.rawText);
                 // Check if it's a MindStudio response with structured data
-                if (rawData.result && rawData.result.output) {
+                if (rawData.result && rawData.result.analysis_json) {
+                  // New format: data.result.analysis_json
+                  mindstudioAnalysis = typeof rawData.result.analysis_json === 'string' 
+                    ? JSON.parse(rawData.result.analysis_json) 
+                    : rawData.result.analysis_json;
+                } else if (rawData.result && rawData.result.output) {
+                  // Old format: data.result.output
                   mindstudioAnalysis = typeof rawData.result.output === 'string' 
                     ? JSON.parse(rawData.result.output) 
                     : rawData.result.output;
+                } else if (rawData.analysis_json) {
+                  // Direct format: data.analysis_json
+                  mindstudioAnalysis = typeof rawData.analysis_json === 'string'
+                    ? JSON.parse(rawData.analysis_json)
+                    : rawData.analysis_json;
                 }
               }
             } catch (error) {
