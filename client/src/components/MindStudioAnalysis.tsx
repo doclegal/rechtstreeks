@@ -375,7 +375,7 @@ const EvidenceChecklist = ({ evidence, caseId }: { evidence: any; caseId: string
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-orange-700">
           <CheckSquare className="h-5 w-5" />
-          Ontbrekend Bewijs Checklist
+          Aanvullende informatie
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -403,19 +403,17 @@ const EvidenceChecklist = ({ evidence, caseId }: { evidence: any; caseId: string
                     </div>
                   )}
                 </div>
-                {!completedItems[index] && (
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="text-xs" 
-                    data-testid={`button-upload-missing-${index}`}
-                    onClick={() => handleUploadClick(index)}
-                    disabled={uploadingItems[index]}
-                  >
-                    <Upload className="h-3 w-3 mr-1" />
-                    {uploadingItems[index] ? 'Uploading...' : 'Upload'}
-                  </Button>
-                )}
+                <Button 
+                  size="sm" 
+                  variant={completedItems[index] ? "secondary" : "outline"} 
+                  className="text-xs" 
+                  data-testid={`button-upload-missing-${index}`}
+                  onClick={() => handleUploadClick(index)}
+                  disabled={uploadingItems[index]}
+                >
+                  <Upload className="h-3 w-3 mr-1" />
+                  {uploadingItems[index] ? 'Uploading...' : (completedItems[index] ? 'Opnieuw' : 'Upload')}
+                </Button>
                 <input
                   ref={(el) => fileInputRefs.current[index] = el}
                   type="file"
@@ -521,7 +519,7 @@ export function MindStudioAnalysis({ analysis, caseId }: MindStudioAnalysisProps
                 </TabsTrigger>
                 <TabsTrigger value="evidence" className="text-xs">
                   <FileText className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Bewijs</span>
+                  <span className="hidden sm:inline">Documentatie</span>
                 </TabsTrigger>
                 <TabsTrigger value="risks" className="text-xs">
                   <AlertTriangle className="h-4 w-4 mr-1" />
@@ -700,52 +698,6 @@ export function MindStudioAnalysis({ analysis, caseId }: MindStudioAnalysisProps
               <TabsContent value="evidence" className="space-y-4">
                 {/* Evidence Checklist */}
                 <EvidenceChecklist evidence={analysis.evidence} caseId={caseId} />
-                
-                {analysis.evidence && (
-                  <div className="space-y-4">
-                    {/* Provided Evidence */}
-                    {analysis.evidence.provided && analysis.evidence.provided.length > 0 && (
-                      <Card className="shadow-md border-green-200">
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2 text-green-700">
-                            <CheckCircle2 className="h-5 w-5" />
-                            Aangeleverd Bewijs ({analysis.evidence.provided.length})
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-3">
-                            {analysis.evidence.provided.map((evidence, index) => (
-                              <div key={index} className="p-4 border rounded bg-green-50/50 dark:bg-green-900/10">
-                                <div className="flex items-start justify-between mb-2">
-                                  <div className="flex items-center gap-2">
-                                    <FileText className="h-4 w-4 text-green-600" />
-                                    <span className="font-medium text-sm">{evidence.doc_name}</span>
-                                  </div>
-                                  {evidence.source && (
-                                    <Badge variant="outline" className="text-xs bg-green-100">{evidence.source}</Badge>
-                                  )}
-                                </div>
-                                {evidence.key_passages && evidence.key_passages.length > 0 && (
-                                  <div className="mt-3">
-                                    <p className="text-xs font-medium mb-2 text-gray-600">Relevante passages:</p>
-                                    <div className="space-y-1">
-                                      {evidence.key_passages.map((passage, pIndex) => (
-                                        <div key={pIndex} className="text-xs p-2 bg-white dark:bg-gray-800 rounded border-l-2 border-green-400">
-                                          "{passage}"
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                  </div>
-                )}
               </TabsContent>
 
               {/* Risks Tab */}
