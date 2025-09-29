@@ -17,6 +17,12 @@ interface MindStudioAnalysisProps {
       forum_clause_text?: string | null;
       contract_present?: boolean;
     };
+    summary?: {
+      facts_brief?: string;
+      claims_brief?: string;
+      defenses_brief?: string;
+      legal_brief?: string;
+    };
     questions_to_answer?: string[];
     facts?: {
       known?: string[];
@@ -235,8 +241,57 @@ export function MindStudioAnalysis({ analysis }: MindStudioAnalysisProps) {
         </Card>
       )}
 
-      {/* Dispute Summary */}
-      {analysis.legal_analysis?.what_is_the_dispute && (
+      {/* Summary */}
+      {analysis.summary && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Scale className="h-5 w-5" />
+              Samenvatting
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {analysis.summary.facts_brief && (
+              <div>
+                <h4 className="font-medium mb-2 text-blue-600">Feiten:</h4>
+                <p className="text-sm p-3 bg-blue-50 dark:bg-blue-900/20 rounded border-l-2 border-blue-500">
+                  {analysis.summary.facts_brief}
+                </p>
+              </div>
+            )}
+            
+            {analysis.summary.claims_brief && (
+              <div>
+                <h4 className="font-medium mb-2 text-green-600">Eisers stellingen:</h4>
+                <p className="text-sm p-3 bg-green-50 dark:bg-green-900/20 rounded border-l-2 border-green-500">
+                  {analysis.summary.claims_brief}
+                </p>
+              </div>
+            )}
+            
+            {analysis.summary.defenses_brief && (
+              <div>
+                <h4 className="font-medium mb-2 text-orange-600">Verweer:</h4>
+                <p className="text-sm p-3 bg-orange-50 dark:bg-orange-900/20 rounded border-l-2 border-orange-500">
+                  {analysis.summary.defenses_brief}
+                </p>
+              </div>
+            )}
+            
+            {analysis.summary.legal_brief && (
+              <div>
+                <h4 className="font-medium mb-2 text-purple-600">Juridisch:</h4>
+                <p className="text-sm p-3 bg-purple-50 dark:bg-purple-900/20 rounded border-l-2 border-purple-500">
+                  {analysis.summary.legal_brief}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* Fallback: Dispute Summary */}
+      {!analysis.summary && analysis.legal_analysis?.what_is_the_dispute && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
