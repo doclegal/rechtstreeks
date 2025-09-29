@@ -473,8 +473,8 @@ export default function AnalysisResults({
               console.warn('Could not parse MindStudio structured output:', error);
             }
 
-            return mindstudioAnalysis ? (
-              <MindStudioAnalysis analysis={mindstudioAnalysis} />
+            return mindstudioAnalysis && caseId ? (
+              <MindStudioAnalysis analysis={mindstudioAnalysis} caseId={caseId} />
             ) : (
               // Fallback to simple display for non-MindStudio or unstructured analyses
               <Card>

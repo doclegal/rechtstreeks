@@ -26,6 +26,9 @@ import {
   CheckSquare,
   XCircle
 } from "lucide-react";
+import { useState, useRef } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 interface MindStudioAnalysisProps {
   analysis: {
@@ -83,6 +86,7 @@ interface MindStudioAnalysisProps {
       }>;
     };
   };
+  caseId: string;
 }
 
 const LegalTermTooltip = ({ term, explanation, children }: { term: string; explanation: string; children: React.ReactNode }) => (
@@ -232,7 +236,94 @@ const CaseSummaryCard = ({ analysis }: { analysis: any }) => {
   );
 };
 
-const EvidenceChecklist = ({ evidence }: { evidence: any }) => {
+const EvidenceChecklist = ({ evidence, caseId }: { evidence: any; caseId: string }) => {
+  const [uploadingItems, setUploadingItems] = useState<Record<number, boolean>>({});
+  const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const uploadMutation = useMutation({
+    mutationFn: async ({ files, index }: { files: File[]; index: number }) => {
+      const formData = new FormData();
+      files.forEach(file => formData.append('files', file));
+
+      const response = await fetch(`/api/cases/${caseId}/uploads`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      return { result: await response.json(), index };
+    },
+    onSuccess: ({ index }) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] });
+      setUploadingItems(prev => ({ ...prev, [index]: false }));
+      toast({
+        title: "Upload voltooid",
+        description: "Document is succesvol geüpload voor analyse",
+      });
+    },
+    onError: (error, { index }) => {
+      setUploadingItems(prev => ({ ...prev, [index]: false }));
+      toast({
+        title: "Upload mislukt",
+        description: "Er is een fout opgetreden bij het uploaden",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleUploadClick = (index: number) => {
+    fileInputRefs.current[index]?.click();
+  };
+
+  const handleFileSelect = (files: FileList | null, index: number) => {
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    
+    // Validate file type and size (same as DocumentUpload)
+    const validTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'text/plain',
+      'text/csv',
+      'message/rfc822'
+    ];
+    
+    const isValidType = validTypes.includes(file.type) || file.name.endsWith('.eml');
+    const isValidSize = file.size <= 100 * 1024 * 1024; // 100MB
+    
+    if (!isValidType) {
+      toast({
+        title: "Bestandstype niet ondersteund",
+        description: `${file.name} heeft een niet-ondersteund bestandstype`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!isValidSize) {
+      toast({
+        title: "Bestand te groot",
+        description: `${file.name} is groter dan 100MB`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingItems(prev => ({ ...prev, [index]: true }));
+    uploadMutation.mutate({ files: [file], index });
+  };
+
   if (!evidence || !evidence.missing || evidence.missing.length === 0) return null;
 
   return (
@@ -253,10 +344,24 @@ const EvidenceChecklist = ({ evidence }: { evidence: any }) => {
                   {item}
                 </label>
               </div>
-              <Button size="sm" variant="outline" className="text-xs" data-testid={`button-upload-missing-${index}`}>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="text-xs" 
+                data-testid={`button-upload-missing-${index}`}
+                onClick={() => handleUploadClick(index)}
+                disabled={uploadingItems[index]}
+              >
                 <Upload className="h-3 w-3 mr-1" />
-                Upload
+                {uploadingItems[index] ? 'Uploading...' : 'Upload'}
               </Button>
+              <input
+                ref={(el) => fileInputRefs.current[index] = el}
+                type="file"
+                className="hidden"
+                accept=".pdf,.docx,.jpg,.jpeg,.png,.gif,.webp,.txt,.csv,.eml"
+                onChange={(e) => handleFileSelect(e.target.files, index)}
+              />
             </div>
           ))}
         </div>
@@ -265,7 +370,7 @@ const EvidenceChecklist = ({ evidence }: { evidence: any }) => {
   );
 };
 
-export function MindStudioAnalysis({ analysis }: MindStudioAnalysisProps) {
+export function MindStudioAnalysis({ analysis, caseId }: MindStudioAnalysisProps) {
   if (!analysis) {
     return (
       <Card>
@@ -532,7 +637,7 @@ export function MindStudioAnalysis({ analysis }: MindStudioAnalysisProps) {
               {/* Evidence Tab */}
               <TabsContent value="evidence" className="space-y-4">
                 {/* Evidence Checklist */}
-                <EvidenceChecklist evidence={analysis.evidence} />
+                <EvidenceChecklist evidence={analysis.evidence} caseId={caseId} />
                 
                 {analysis.evidence && (
                   <div className="space-y-4">
@@ -577,31 +682,6 @@ export function MindStudioAnalysis({ analysis }: MindStudioAnalysisProps) {
                       </Card>
                     )}
 
-                    {/* Missing Evidence Card */}
-                    {analysis.evidence.missing && analysis.evidence.missing.length > 0 && (
-                      <Card className="shadow-md border-red-200">
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2 text-red-700">
-                            <XCircle className="h-5 w-5" />
-                            Ontbrekend Bewijs ({analysis.evidence.missing.length})
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            {analysis.evidence.missing.map((missing, index) => (
-                              <div key={index} className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded border-l-2 border-red-500">
-                                <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-                                <span className="text-sm flex-1">{missing}</span>
-                                <Button size="sm" variant="outline" className="text-xs">
-                                  <Upload className="h-3 w-3 mr-1" />
-                                  Upload
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
                   </div>
                 )}
               </TabsContent>
