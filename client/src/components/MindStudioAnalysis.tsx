@@ -264,14 +264,17 @@ const EvidenceChecklist = ({ evidence, caseId }: { evidence: any; caseId: string
         const now = new Date();
         const timeDiff = now.getTime() - uploadedAt.getTime();
         return timeDiff <= 24 * 60 * 60 * 1000; // 24 hours
-      });
+      }).sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()); // Sort by upload time
 
-      // For now, just mark the most recent document as completing the first missing evidence item
-      // This is a simple approach - in a real app you might want more sophisticated matching
-      if (recentDocuments.length > 0) {
-        const mostRecentDoc = recentDocuments[0];
-        setCompletedItems(prev => ({ ...prev, 0: mostRecentDoc.filename }));
-      }
+      // Map uploads to evidence items based on upload order
+      const newCompletedItems: Record<number, string> = {};
+      recentDocuments.forEach((doc: any, index: number) => {
+        if (index < evidence.missing.length) {
+          newCompletedItems[index] = doc.filename;
+        }
+      });
+      
+      setCompletedItems(newCompletedItems);
     }
   }, [caseDocuments, evidence?.missing]);
 
