@@ -26,8 +26,8 @@ import {
   CheckSquare,
   XCircle
 } from "lucide-react";
-import { useState, useRef } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useRef, useEffect } from "react";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
 interface MindStudioAnalysisProps {
@@ -238,9 +238,42 @@ const CaseSummaryCard = ({ analysis }: { analysis: any }) => {
 
 const EvidenceChecklist = ({ evidence, caseId }: { evidence: any; caseId: string }) => {
   const [uploadingItems, setUploadingItems] = useState<Record<number, boolean>>({});
+  const [completedItems, setCompletedItems] = useState<Record<number, string>>({});
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Query to get uploaded documents for this case
+  const { data: caseDocuments } = useQuery({
+    queryKey: ['/api/cases', caseId, 'uploads'],
+    queryFn: async () => {
+      const response = await fetch(`/api/cases/${caseId}/uploads`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch documents');
+      return response.json();
+    },
+  });
+
+  // Initialize completed items based on recent uploads
+  useEffect(() => {
+    if (caseDocuments && evidence?.missing) {
+      const recentDocuments = caseDocuments.filter((doc: any) => {
+        // Consider documents uploaded in the last 24 hours as recently uploaded
+        const uploadedAt = new Date(doc.createdAt);
+        const now = new Date();
+        const timeDiff = now.getTime() - uploadedAt.getTime();
+        return timeDiff <= 24 * 60 * 60 * 1000; // 24 hours
+      });
+
+      // For now, just mark the most recent document as completing the first missing evidence item
+      // This is a simple approach - in a real app you might want more sophisticated matching
+      if (recentDocuments.length > 0) {
+        const mostRecentDoc = recentDocuments[0];
+        setCompletedItems(prev => ({ ...prev, 0: mostRecentDoc.filename }));
+      }
+    }
+  }, [caseDocuments, evidence?.missing]);
 
   const uploadMutation = useMutation({
     mutationFn: async ({ files, index }: { files: File[]; index: number }) => {
@@ -259,9 +292,17 @@ const EvidenceChecklist = ({ evidence, caseId }: { evidence: any; caseId: string
 
       return { result: await response.json(), index };
     },
-    onSuccess: ({ index }) => {
+    onSuccess: ({ result, index }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'uploads'] });
       setUploadingItems(prev => ({ ...prev, [index]: false }));
+      
+      // Mark item as completed with the uploaded filename
+      if (result.documents && result.documents.length > 0) {
+        const uploadedDoc = result.documents[0];
+        setCompletedItems(prev => ({ ...prev, [index]: uploadedDoc.filename }));
+      }
+      
       toast({
         title: "Upload voltooid",
         description: "Document is succesvol geüpload voor analyse",
@@ -337,31 +378,49 @@ const EvidenceChecklist = ({ evidence, caseId }: { evidence: any; caseId: string
       <CardContent>
         <div className="space-y-3">
           {evidence.missing.map((item: string, index: number) => (
-            <div key={index} className="flex items-start gap-3 p-2 bg-white dark:bg-gray-800 rounded border">
-              <Checkbox id={`missing-${index}`} className="mt-1" />
-              <div className="flex-1">
-                <label htmlFor={`missing-${index}`} className="text-sm cursor-pointer">
-                  {item}
-                </label>
+            <div key={index} className="bg-white dark:bg-gray-800 rounded border p-2">
+              <div className="flex items-start gap-3">
+                <Checkbox 
+                  id={`missing-${index}`} 
+                  className="mt-1"
+                  checked={completedItems[index] !== undefined}
+                  disabled={completedItems[index] !== undefined}
+                />
+                <div className="flex-1">
+                  <label htmlFor={`missing-${index}`} className="text-sm cursor-pointer">
+                    {item}
+                  </label>
+                  {/* Show completed status with filename */}
+                  {completedItems[index] && (
+                    <div className="mt-2 flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-2 border-green-500">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
+                      <span className="text-sm text-green-700 dark:text-green-300">
+                        Geüpload: <strong>{completedItems[index]}</strong>
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {!completedItems[index] && (
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="text-xs" 
+                    data-testid={`button-upload-missing-${index}`}
+                    onClick={() => handleUploadClick(index)}
+                    disabled={uploadingItems[index]}
+                  >
+                    <Upload className="h-3 w-3 mr-1" />
+                    {uploadingItems[index] ? 'Uploading...' : 'Upload'}
+                  </Button>
+                )}
+                <input
+                  ref={(el) => fileInputRefs.current[index] = el}
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.docx,.jpg,.jpeg,.png,.gif,.webp,.txt,.csv,.eml"
+                  onChange={(e) => handleFileSelect(e.target.files, index)}
+                />
               </div>
-              <Button 
-                size="sm" 
-                variant="outline" 
-                className="text-xs" 
-                data-testid={`button-upload-missing-${index}`}
-                onClick={() => handleUploadClick(index)}
-                disabled={uploadingItems[index]}
-              >
-                <Upload className="h-3 w-3 mr-1" />
-                {uploadingItems[index] ? 'Uploading...' : 'Upload'}
-              </Button>
-              <input
-                ref={(el) => fileInputRefs.current[index] = el}
-                type="file"
-                className="hidden"
-                accept=".pdf,.docx,.jpg,.jpeg,.png,.gif,.webp,.txt,.csv,.eml"
-                onChange={(e) => handleFileSelect(e.target.files, index)}
-              />
             </div>
           ))}
         </div>
