@@ -167,13 +167,13 @@ export default function MyCase() {
           </div>
           <div className="flex gap-2">
             <Button 
-              onClick={() => letterMutation.mutate()}
-              disabled={letterMutation.isPending || !currentCase.analysis}
+              onClick={() => toggleSection('brief')}
+              disabled={!currentCase.analysis}
               size="sm"
               variant={(currentCase.letters?.length || 0) > 0 ? "outline" : "default"}
               className="flex-1"
             >
-              {letterMutation.isPending ? "Genereren..." : (currentCase.letters?.length || 0) > 0 ? "Nieuwe brief" : "Genereer brief"}
+              {(currentCase.letters?.length || 0) > 0 ? "Nieuwe brief" : "Genereer brief"}
             </Button>
             <Button 
               onClick={() => toggleSection('brief')}
@@ -315,6 +315,10 @@ export default function MyCase() {
                 letters={currentCase.letters || []}
                 summons={currentCase.summons || []}
                 caseId={currentCase.id}
+                onGenerateLetter={(briefType, tone) => {
+                  letterMutation.mutate({ briefType, tone });
+                }}
+                isGenerating={letterMutation.isPending}
               />
             </div>
           </div>

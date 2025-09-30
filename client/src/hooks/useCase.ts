@@ -247,8 +247,11 @@ export function useGenerateLetter(caseId: string) {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", `/api/cases/${caseId}/letter`);
+    mutationFn: async ({ briefType, tone }: { briefType: string; tone: string }) => {
+      const response = await apiRequest("POST", `/api/cases/${caseId}/letter`, {
+        briefType,
+        tone
+      });
       return response.json();
     },
     onSuccess: () => {

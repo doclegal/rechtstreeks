@@ -1,0 +1,82 @@
+Lex7: 
+
+Wat is het?
+
+Het is een platform dat zich concentreert op de oplossing van een probleem. Niet op een van de partijen in een geschil. Doel is te helpen bij het oplossen van het geschil, dus niet het bijstaan en behartigen van de belangen van één van de partijen.
+
+Lex7 is een online Do-It-Yourself juridische hulpdienst waarmee mensen zelf hun geschil kunnen oplossen of een procedure starten, zonder dure advocaat.
+Het platform helpt stap voor stap bij het opstellen van brieven en dagvaardingen, controleert automatisch op juridische juistheid en vult gegevens aan vanuit officiële bronnen.
+Desgewenst kan de gebruiker op specifieke momenten een jurist inschakelen voor controle of advies, maar het uitgangspunt is dat je zelf de regie houdt en kosten laag blijven.
+
+
+
+Start met 1 rechtsgebied 
+
+Het meest logische begin is één rechtsgebied + één product waarmee je in enkele weken een werkende, geteste flow hebt. Daarmee kun je gebruikerservaring, prijs en juridische validiteit direct toetsen, zonder dat je een groot platform hoeft te bouwen.
+
+Start simpel: intakeformulier + AI-output + downloadbare documenten. Later uitbreiden met geautomatiseerde invulflows en koppelingen (KvK, rechtspraak).
+
+knowledge graph
+Een knowledge graph (KG) kan bij Lex7 vanaf dag één waardevol zijn, omdat het de juridische kennis en casusinformatie gestructureerd en herbruikbaar maakt.
+In plaats van losse teksten in een AI te gooien, leg je alle relevante concepten en relaties vast, waardoor de AI sneller, consistenter en juridisch betrouwbaarder werkt.
+
+
+
+Beste startdoelgroep
+Consumenten en kleine ondernemers (zzp/MKB <10 medewerkers) met geld- of contractgeschillen tot €25.000, bijvoorbeeld:
+
+Onbetaalde facturen (incasso voor zzp/mkb).
+
+Consumentengeschillen (kapotte producten, niet-nagekomen afspraken, annuleringen).
+
+Huurgeschillen (achterstallige huur, borg terugvorderen, kleine gebreken).
+
+Kleine arbeidszaken (achterstallig loon, vakantiegeld, transitievergoeding).
+
+
+
+Waarom deze doelgroep slim is:
+
+Er is veel volume (WODC-data laat >250.000 potentiële zaken per jaar zien). De waarde per zaak is te laag om een advocaat in te schakelen, dus behoefte aan goedkopere alternatieven is groot. Procedures zijn relatief standaardiseerbaar, wat ideaal is voor een AI-gestuurd platform.
+
+Bereiken doelgroep
+
+Begin met 3–5 microsites voor veelvoorkomende en standaardiseerbare geschillen, bijv:
+
+huurachterstand-oplossen.nl
+
+onbetaaldefactuur-startprocedure.nl
+
+borg-terugvorderen.nl
+
+loon-terugvorderen.nl
+
+consumentenrecht-dagvaarding.nl
+
+
+geschil.oplossen.ai
+huurachterstand.oplossen.ai
+arbeidsprobleem.oplossen.ai
+nietbetaaldeloon.oplossen.ai
+
+voorkom.geschillen.ai
+huurachterstand.geschillen.ai
+
+zelfprocederen.ai
+
+
+
+
+Voorstellen
+
+
+Lex7 slaagt alleen als ik mij vanaf dag één hiervor volledig kan inzetten. Fulltime dus. Er moet dan ook financiering zijn voor mijn inzet. Die kan uiteraad niet direct vanuit Lex7 zelf komen. Mijn voorstel is dat jullie bijdragen in mijn salariskosten in ruil voor een substantieel aandeel in Lex7 in ruil voor mijn tijd. We spreken dan duidelijke milestones af met de bedoeling dat we binnen een paar maanden live kunnen.
+
+Binnen zes tot 12 mnd hebben jullie een nieuw winstkanaal én een strategische AI positie in de markt.
+
+
+
+ 
+
+
+

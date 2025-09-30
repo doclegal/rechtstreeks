@@ -1,0 +1,44 @@
+Update the app so that when the user clicks on the "Genereer brief" button, 
+the following happens:
+
+1. Add two new input fields to the UI (below Gegenereerde Documenten heading):
+   - **Brief type**: a select/dropdown with options like 
+     ["LAATSTE_AANMANING", "INGEBREKESTELLING", "INFORMATIEVERZOEK"].
+   - **Tone**: a select/dropdown with options like 
+     ["zakelijk-vriendelijk", "formeel", "streng"].
+   Store the selected values in state as `brief_type` and `tone`.
+
+2. Collect all necessary data from the current case in the app when the button is clicked:
+   - case_id (string)
+   - case_text (string) → summary of the case entered by the user
+   - analysis_json (json) → full legal analysis result from MindStudio
+   - brief_type (string) → from the new dropdown
+   - sender (json) → sender details { name, address, postal_code, city, email }
+   - recipient (json) → recipient details { name, address, postal_code, city }
+   - tone (string) → from the new dropdown
+
+3. Send these variables as a request to the new MindStudio flow called `DraftFirstLetter.flow`.
+
+4. MindStudio will generate a JSON response in this structure:
+   {
+     "brief": {
+       "title": "string",
+       "salutation": "string",
+       "body": "string",
+       "closing": "string",
+       "signature": "string"
+     }
+   }
+
+5. Parse the JSON response and display the generated letter in the existing field under Gegenereerde Documenten in a styled way:
+   - Show the `title` as a heading
+   - Show `salutation`, then the `body`
+   - Show `closing` and `signature` at the end
+   - Keep it styled like a professional Dutch legal letter
+
+6. Save the full JSON response in the case data so the user can download it later as PDF or DOCX.
+
+Additional requirements:
+- Add a click handler for the "Genereer brief" button that triggers this API call.
+- Display a loading state ("Brief wordt gegenereerd...") while waiting.
+- Handle errors gracefully (show "Er ging iets mis bij het genereren van de brief").

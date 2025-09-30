@@ -1,6 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { 
   FileText, 
   Scale, 
@@ -8,10 +10,12 @@ import {
   Download, 
   Clock,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Send
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
+import { useState } from "react";
 
 interface Letter {
   id: string;
@@ -35,13 +39,19 @@ interface GeneratedDocumentsProps {
   letters: Letter[];
   summons: Summons[];
   caseId: string;
+  onGenerateLetter?: (briefType: string, tone: string) => void;
+  isGenerating?: boolean;
 }
 
 export default function GeneratedDocuments({ 
   letters, 
   summons, 
-  caseId 
+  caseId,
+  onGenerateLetter,
+  isGenerating = false
 }: GeneratedDocumentsProps) {
+  const [briefType, setBriefType] = useState<string>("LAATSTE_AANMANING");
+  const [tone, setTone] = useState<string>("zakelijk-vriendelijk");
   const allDocuments = [
     ...letters.map(letter => ({
       ...letter,
@@ -113,11 +123,54 @@ export default function GeneratedDocuments({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8">
-            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">
-              Nog geen documenten gegenereerd. Start eerst de analyse van uw zaak.
-            </p>
+          <div className="space-y-6">
+            <div className="text-center py-4">
+              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground mb-6">
+                Nog geen documenten gegenereerd. Configureer onderstaande opties en genereer een brief.
+              </p>
+            </div>
+
+            {/* Brief Configuration Form */}
+            <div className="space-y-4 max-w-md mx-auto">
+              <div className="space-y-2">
+                <Label htmlFor="brief-type">Brief type</Label>
+                <Select value={briefType} onValueChange={setBriefType}>
+                  <SelectTrigger id="brief-type" data-testid="select-brief-type">
+                    <SelectValue placeholder="Selecteer brief type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="LAATSTE_AANMANING">Laatste aanmaning</SelectItem>
+                    <SelectItem value="INGEBREKESTELLING">Ingebrekestelling</SelectItem>
+                    <SelectItem value="INFORMATIEVERZOEK">Informatieverzoek</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="tone">Toon</Label>
+                <Select value={tone} onValueChange={setTone}>
+                  <SelectTrigger id="tone" data-testid="select-tone">
+                    <SelectValue placeholder="Selecteer toon" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="zakelijk-vriendelijk">Zakelijk-vriendelijk</SelectItem>
+                    <SelectItem value="formeel">Formeel</SelectItem>
+                    <SelectItem value="streng">Streng</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button 
+                onClick={() => onGenerateLetter?.(briefType, tone)}
+                disabled={isGenerating || !onGenerateLetter}
+                className="w-full"
+                data-testid="button-generate-letter"
+              >
+                <Send className="h-4 w-4 mr-2" />
+                {isGenerating ? "Brief wordt gegenereerd..." : "Genereer brief"}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -143,6 +196,52 @@ export default function GeneratedDocuments({
         </div>
       </CardHeader>
       <CardContent>
+        {/* Brief Configuration Form */}
+        <div className="mb-6 p-4 bg-muted/50 rounded-lg">
+          <h3 className="text-sm font-medium mb-4">Nieuwe brief genereren</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="brief-type-existing">Brief type</Label>
+              <Select value={briefType} onValueChange={setBriefType}>
+                <SelectTrigger id="brief-type-existing" data-testid="select-brief-type-existing">
+                  <SelectValue placeholder="Selecteer brief type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="LAATSTE_AANMANING">Laatste aanmaning</SelectItem>
+                  <SelectItem value="INGEBREKESTELLING">Ingebrekestelling</SelectItem>
+                  <SelectItem value="INFORMATIEVERZOEK">Informatieverzoek</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tone-existing">Toon</Label>
+              <Select value={tone} onValueChange={setTone}>
+                <SelectTrigger id="tone-existing" data-testid="select-tone-existing">
+                  <SelectValue placeholder="Selecteer toon" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="zakelijk-vriendelijk">Zakelijk-vriendelijk</SelectItem>
+                  <SelectItem value="formeel">Formeel</SelectItem>
+                  <SelectItem value="streng">Streng</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-end">
+              <Button 
+                onClick={() => onGenerateLetter?.(briefType, tone)}
+                disabled={isGenerating || !onGenerateLetter}
+                className="w-full"
+                data-testid="button-generate-letter-existing"
+              >
+                <Send className="h-4 w-4 mr-2" />
+                {isGenerating ? "Genereren..." : "Genereer brief"}
+              </Button>
+            </div>
+          </div>
+        </div>
+
         <div className="space-y-3">
           {allDocuments.map((document) => {
             const Icon = document.icon;
