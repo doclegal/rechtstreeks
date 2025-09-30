@@ -1584,36 +1584,73 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     // Parse the response from MindStudio thread variables
     try {
       let letterResponse;
+      const possibleVarNames = ['brief_response', 'draft_letter', 'letter_output', 'brief', 'output'];
 
       // Try to find the letter response in thread posts
       if (data.thread?.posts) {
+        console.log("🔍 Searching in thread posts for letter response...");
         for (const post of data.thread.posts) {
-          // Look in debugLog newState variables
-          if (post.debugLog?.newState?.variables?.brief_response?.value) {
-            letterResponse = JSON.parse(post.debugLog.newState.variables.brief_response.value);
-            console.log("✅ Found brief_response in debugLog.newState.variables");
-            break;
+          // Try all possible variable names
+          for (const varName of possibleVarNames) {
+            // Look in debugLog newState variables
+            if (post.debugLog?.newState?.variables?.[varName]?.value) {
+              const rawValue = post.debugLog.newState.variables[varName].value;
+              try {
+                letterResponse = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
+                console.log(`✅ Found ${varName} in debugLog.newState.variables`);
+                break;
+              } catch (e) {
+                console.log(`⚠️ Failed to parse ${varName} from debugLog.newState.variables:`, e);
+              }
+            }
+            // Fallback: Look in outputs
+            if (post.debugLog?.newState?.outputs?.[varName]) {
+              const rawValue = post.debugLog.newState.outputs[varName];
+              try {
+                letterResponse = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
+                console.log(`✅ Found ${varName} in debugLog.newState.outputs`);
+                break;
+              } catch (e) {
+                console.log(`⚠️ Failed to parse ${varName} from debugLog.newState.outputs:`, e);
+              }
+            }
           }
-          // Fallback: Look in outputs
-          if (post.debugLog?.newState?.outputs?.brief_response) {
-            letterResponse = JSON.parse(post.debugLog.newState.outputs.brief_response);
-            console.log("✅ Found brief_response in debugLog.newState.outputs");
-            break;
-          }
+          if (letterResponse) break;
         }
       }
 
       // Fallback: Check in thread.variables directly
-      if (!letterResponse && data.thread?.variables?.brief_response) {
-        letterResponse = JSON.parse(data.thread.variables.brief_response.value || data.thread.variables.brief_response);
-        console.log("✅ Found brief_response in thread.variables");
+      if (!letterResponse && data.thread?.variables) {
+        console.log("🔍 Searching in thread.variables for letter response...");
+        for (const varName of possibleVarNames) {
+          if (data.thread.variables[varName]) {
+            const rawValue = data.thread.variables[varName].value || data.thread.variables[varName];
+            try {
+              letterResponse = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
+              console.log(`✅ Found ${varName} in thread.variables`);
+              break;
+            } catch (e) {
+              console.log(`⚠️ Failed to parse ${varName} from thread.variables:`, e);
+            }
+          }
+        }
       }
 
-      if (!letterResponse || !letterResponse.brief) {
-        console.error("❌ No valid letter response found in MindStudio output");
+      if (!letterResponse) {
+        console.error("❌ No letter response found in any expected location");
+        console.log("Available thread variables:", Object.keys(data.thread?.variables || {}));
         return {
           success: false,
-          error: "No valid letter response from MindStudio"
+          error: "No valid letter response from MindStudio - check variable names"
+        };
+      }
+
+      // Check if letterResponse has the expected structure
+      if (!letterResponse.brief || !letterResponse.brief.title) {
+        console.error("❌ Letter response missing 'brief' structure:", letterResponse);
+        return {
+          success: false,
+          error: "Invalid letter structure from MindStudio"
         };
       }
 
