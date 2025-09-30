@@ -1584,7 +1584,7 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     // Parse the response from MindStudio thread variables
     try {
       let letterResponse;
-      const possibleVarNames = ['brief_response', 'draft_letter', 'letter_output', 'brief', 'output'];
+      const possibleVarNames = ['brief_response', 'draft_letter', 'daft_letter', 'letter_output', 'brief', 'output'];
 
       // Try to find the letter response in thread posts
       if (data.thread?.posts) {
