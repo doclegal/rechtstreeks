@@ -40,7 +40,7 @@ export default function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-card border-b border-border shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1600px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-8">
               <Link href="/my-case" className="flex items-center space-x-3" data-testid="link-home">
@@ -138,7 +138,7 @@ export default function Layout({ children }: LayoutProps) {
       </header>
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-[1600px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
     </div>
