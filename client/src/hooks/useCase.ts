@@ -96,6 +96,7 @@ export function useAnalyzeCase(caseId: string) {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
       
       // Update toast message based on kanton check result
       if (data.kantonCheck) {
@@ -177,6 +178,7 @@ export function useFullAnalyzeCase(caseId: string) {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
       
       if (data.status === 'completed') {
         toast({
@@ -256,6 +258,7 @@ export function useGenerateLetter(caseId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
       toast({
         title: "Brief gegenereerd",
         description: "De brief is succesvol gegenereerd",
@@ -293,6 +296,7 @@ export function useOrderBailiff(caseId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
       toast({
         title: "Deurwaarder ingeschakeld",
         description: "De deurwaarder is ingeschakeld voor betekening",
