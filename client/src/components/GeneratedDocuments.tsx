@@ -52,6 +52,8 @@ export default function GeneratedDocuments({
 }: GeneratedDocumentsProps) {
   const [briefType, setBriefType] = useState<string>("LAATSTE_AANMANING");
   const [tone, setTone] = useState<string>("zakelijk-vriendelijk");
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
+  
   const allDocuments = [
     ...letters.map(letter => ({
       ...letter,
@@ -66,6 +68,13 @@ export default function GeneratedDocuments({
       icon: Scale
     }))
   ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  // Auto-select first document if none selected
+  if (!selectedDocumentId && allDocuments.length > 0) {
+    setSelectedDocumentId(allDocuments[0].id);
+  }
+
+  const selectedDocument = allDocuments.find(doc => doc.id === selectedDocumentId);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -242,22 +251,45 @@ export default function GeneratedDocuments({
           </div>
         </div>
 
+        {/* Letter Preview - Show HTML content of selected document */}
+        {selectedDocument && (
+          <div className="mb-6">
+            <div 
+              className="bg-white border border-border rounded-lg p-8 shadow-sm"
+              style={{
+                minHeight: '400px',
+                maxHeight: '600px',
+                overflowY: 'auto'
+              }}
+              data-testid="letter-preview"
+            >
+              <div dangerouslySetInnerHTML={{ __html: selectedDocument.html }} />
+            </div>
+          </div>
+        )}
+
         <div className="space-y-3">
           {allDocuments.map((document) => {
             const Icon = document.icon;
+            const isSelected = selectedDocumentId === document.id;
             return (
               <div 
                 key={`${document.type}-${document.id}`}
-                className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
+                className={`flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer ${
+                  isSelected ? 'border-primary bg-primary/5' : 'border-border'
+                }`}
+                onClick={() => setSelectedDocumentId(document.id)}
                 data-testid={`generated-document-${document.id}`}
               >
                 <div className="flex items-center space-x-3 flex-1">
-                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <Icon className="h-5 w-5 text-primary" />
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    isSelected ? 'bg-primary/20' : 'bg-primary/10'
+                  }`}>
+                    <Icon className={`h-5 w-5 ${isSelected ? 'text-primary' : 'text-primary'}`} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2 mb-1">
-                      <p className="font-medium text-foreground">
+                      <p className={`font-medium ${isSelected ? 'text-primary' : 'text-foreground'}`}>
                         {document.title}
                       </p>
                       {getStatusIcon(document.status)}
@@ -270,7 +302,7 @@ export default function GeneratedDocuments({
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
                   {getStatusBadge(document.status)}
                   <Button
                     variant="ghost"
