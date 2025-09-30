@@ -256,12 +256,16 @@ export function useGenerateLetter(caseId: string) {
       });
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+    onSuccess: async () => {
+      // Invalidate and immediately refetch the queries
+      await queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/cases", caseId] });
+      await queryClient.refetchQueries({ queryKey: ["/api/cases"] });
+      
       toast({
         title: "Brief gegenereerd",
-        description: "De brief is succesvol gegenereerd",
+        description: "De brief is nu zichtbaar in de lijst",
       });
     },
     onError: (error: Error) => {
