@@ -1503,6 +1503,135 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     
     throw new Error(`Unsupported LLM provider: ${this.provider}`);
   }
+
+  /**
+   * Generate legal letter using MindStudio DraftFirstLetter.flow
+   * @param params - All required variables for letter generation
+   * @returns Generated letter JSON structure
+   */
+  async runDraftFirstLetter(params: {
+    case_id: string;
+    case_text: string;
+    analysis_json: any;
+    brief_type: string;
+    sender: {
+      name: string;
+      address: string;
+      postal_code: string;
+      city: string;
+      email: string;
+    };
+    recipient: {
+      name: string;
+      address: string;
+      postal_code: string;
+      city: string;
+    };
+    tone: string;
+  }): Promise<{
+    success: boolean;
+    brief?: {
+      title: string;
+      salutation: string;
+      body: string;
+      closing: string;
+      signature: string;
+    };
+    error?: string;
+  }> {
+    console.log("🔮 Calling MindStudio DraftFirstLetter.flow...");
+
+    const variables = {
+      case_id: params.case_id,
+      case_text: params.case_text,
+      analysis_json: JSON.stringify(params.analysis_json),
+      brief_type: params.brief_type,
+      sender: JSON.stringify(params.sender),
+      recipient: JSON.stringify(params.recipient),
+      tone: params.tone
+    };
+
+    console.log("📤 DraftFirstLetter variables:", variables);
+
+    const requestBody = {
+      workerId: process.env.MINDSTUDIO_WORKER_ID,
+      variables,
+      workflow: "DraftFirstLetter.flow",
+      includeBillingCost: true
+    };
+
+    const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error("❌ MindStudio DraftFirstLetter error:", errorData);
+      return {
+        success: false,
+        error: `MindStudio API error: ${response.status} ${response.statusText}`
+      };
+    }
+
+    const data = await response.json();
+    console.log("📥 DraftFirstLetter raw response:", JSON.stringify(data, null, 2));
+
+    // Parse the response from MindStudio thread variables
+    try {
+      let letterResponse;
+
+      // Try to find the letter response in thread posts
+      if (data.thread?.posts) {
+        for (const post of data.thread.posts) {
+          // Look in debugLog newState variables
+          if (post.debugLog?.newState?.variables?.brief_response?.value) {
+            letterResponse = JSON.parse(post.debugLog.newState.variables.brief_response.value);
+            console.log("✅ Found brief_response in debugLog.newState.variables");
+            break;
+          }
+          // Fallback: Look in outputs
+          if (post.debugLog?.newState?.outputs?.brief_response) {
+            letterResponse = JSON.parse(post.debugLog.newState.outputs.brief_response);
+            console.log("✅ Found brief_response in debugLog.newState.outputs");
+            break;
+          }
+        }
+      }
+
+      // Fallback: Check in thread.variables directly
+      if (!letterResponse && data.thread?.variables?.brief_response) {
+        letterResponse = JSON.parse(data.thread.variables.brief_response.value || data.thread.variables.brief_response);
+        console.log("✅ Found brief_response in thread.variables");
+      }
+
+      if (!letterResponse || !letterResponse.brief) {
+        console.error("❌ No valid letter response found in MindStudio output");
+        return {
+          success: false,
+          error: "No valid letter response from MindStudio"
+        };
+      }
+
+      console.log("✅ Successfully parsed letter response:", letterResponse);
+      
+      return {
+        success: true,
+        brief: letterResponse.brief
+      };
+
+    } catch (error) {
+      console.error("❌ Error parsing MindStudio letter response:", error);
+      return {
+        success: false,
+        error: `Failed to parse letter response: ${error}`
+      };
+    }
+  }
 }
 
 export const aiService = new AIService();
