@@ -11,7 +11,8 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  Send
+  Send,
+  Trash2
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -40,6 +41,7 @@ interface GeneratedDocumentsProps {
   summons: Summons[];
   caseId: string;
   onGenerateLetter?: (briefType: string, tone: string) => void;
+  onDeleteLetter?: (letterId: string) => void;
   isGenerating?: boolean;
 }
 
@@ -48,6 +50,7 @@ export default function GeneratedDocuments({
   summons, 
   caseId,
   onGenerateLetter,
+  onDeleteLetter,
   isGenerating = false
 }: GeneratedDocumentsProps) {
   const [briefType, setBriefType] = useState<string>("LAATSTE_AANMANING");
@@ -320,6 +323,17 @@ export default function GeneratedDocuments({
                       data-testid={`button-download-${document.id}`}
                     >
                       <Download className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {document.type === "letter" && onDeleteLetter && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onDeleteLetter(document.id)}
+                      data-testid={`button-delete-${document.id}`}
+                      className="hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
                 </div>

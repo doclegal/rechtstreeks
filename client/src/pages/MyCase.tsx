@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useCases, useAnalyzeCase, useFullAnalyzeCase, useGenerateLetter, useOrderBailiff } from "@/hooks/useCase";
+import { useCases, useAnalyzeCase, useFullAnalyzeCase, useGenerateLetter, useDeleteLetter, useOrderBailiff } from "@/hooks/useCase";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ export default function MyCase() {
   const analyzeMutation = useAnalyzeCase(caseId || "");
   const fullAnalyzeMutation = useFullAnalyzeCase(caseId || "");
   const letterMutation = useGenerateLetter(caseId || "");
+  const deleteLetterMutation = useDeleteLetter(caseId || "");
   const bailiffMutation = useOrderBailiff(caseId || "");
 
   const toggleSection = (section: string) => {
@@ -317,6 +318,9 @@ export default function MyCase() {
                 caseId={currentCase.id}
                 onGenerateLetter={(briefType, tone) => {
                   letterMutation.mutate({ briefType, tone });
+                }}
+                onDeleteLetter={(letterId) => {
+                  deleteLetterMutation.mutate(letterId);
                 }}
                 isGenerating={letterMutation.isPending}
               />
