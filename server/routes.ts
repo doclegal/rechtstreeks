@@ -873,9 +873,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             body { 
               font-family: 'Arial', 'Helvetica', sans-serif; 
               line-height: 1.6; 
-              max-width: 800px; 
-              margin: 0 auto; 
-              padding: 40px 20px;
+              max-width: 100%; 
+              margin: 0; 
+              padding: 40px;
               color: #1a1a1a;
             }
             .letter-header {
