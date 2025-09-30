@@ -2,13 +2,38 @@ import puppeteer from "puppeteer";
 import { randomUUID } from "crypto";
 import fs from "fs/promises";
 import path from "path";
+import { execSync } from "child_process";
 
 export class PDFService {
   private outputDir: string;
+  private chromiumPath: string | undefined;
 
   constructor() {
     this.outputDir = process.env.PDF_OUTPUT_DIR || "./pdfs";
     this.ensureOutputDir();
+    this.chromiumPath = this.findChromiumPath();
+  }
+
+  private findChromiumPath(): string | undefined {
+    try {
+      // Try environment variables first
+      if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+        return process.env.PUPPETEER_EXECUTABLE_PATH;
+      }
+      if (process.env.CHROME_BIN) {
+        return process.env.CHROME_BIN;
+      }
+      
+      // Try to find chromium using 'which' command
+      const chromiumPath = execSync('which chromium', { encoding: 'utf-8' }).trim();
+      if (chromiumPath) {
+        console.log(`✅ Found Chromium at: ${chromiumPath}`);
+        return chromiumPath;
+      }
+    } catch (error) {
+      console.warn("⚠️ Could not find Chromium path, Puppeteer will use default");
+    }
+    return undefined;
   }
 
   private async ensureOutputDir() {
@@ -23,10 +48,27 @@ export class PDFService {
     let browser;
     
     try {
-      browser = await puppeteer.launch({
+      // Configure Puppeteer to work in Replit environment with system Chromium
+      const launchOptions: any = {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-      });
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--disable-software-rasterizer',
+          '--disable-extensions'
+        ]
+      };
+
+      if (this.chromiumPath) {
+        launchOptions.executablePath = this.chromiumPath;
+        console.log(`🔍 Using Chromium at: ${this.chromiumPath}`);
+      } else {
+        console.log(`🔍 Using Puppeteer's bundled Chromium`);
+      }
+      
+      browser = await puppeteer.launch(launchOptions);
       
       const page = await browser.newPage();
       
