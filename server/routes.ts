@@ -1029,6 +1029,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/cases/:id/letter/:letterId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const letterId = req.params.letterId;
+      
+      const letter = await storage.getLetter(letterId);
+      
+      if (!letter) {
+        return res.status(404).json({ message: "Letter not found" });
+      }
+      
+      const caseData = await storage.getCase(letter.caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(403).json({ message: "Unauthorized access" });
+      }
+      
+      // Delete the letter from storage
+      await storage.deleteLetter(letterId);
+      
+      // Create event for audit trail
+      await storage.createEvent({
+        caseId: letter.caseId,
+        actorUserId: userId,
+        type: "letter_deleted",
+        payloadJson: { 
+          letterId,
+          briefType: letter.briefType
+        },
+      });
+      
+      res.json({ message: "Letter successfully deleted" });
+    } catch (error) {
+      console.error("Error deleting letter:", error);
+      res.status(500).json({ message: "Failed to delete letter" });
+    }
+  });
+
   // Summons generation routes
   app.post('/api/cases/:id/summons', isAuthenticated, async (req: any, res) => {
     try {

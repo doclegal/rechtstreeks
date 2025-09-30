@@ -58,6 +58,7 @@ export interface IStorage {
   createLetter(letterData: InsertLetter): Promise<Letter>;
   getLettersByCase(caseId: string): Promise<Letter[]>;
   getLetter(id: string): Promise<Letter | undefined>;
+  deleteLetter(id: string): Promise<void>;
   
   // Summons operations
   createSummons(summonsData: InsertSummons): Promise<Summons>;
@@ -257,6 +258,10 @@ export class DatabaseStorage implements IStorage {
       .from(letters)
       .where(eq(letters.id, id));
     return letter;
+  }
+
+  async deleteLetter(id: string): Promise<void> {
+    await db.delete(letters).where(eq(letters.id, id));
   }
 
   // Summons operations
