@@ -1278,13 +1278,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // File download routes
-  app.get('/api/files/:storageKey', isAuthenticated, async (req: any, res) => {
+  app.get('/api/files/*', isAuthenticated, async (req: any, res) => {
     try {
-      const storageKey = req.params.storageKey;
+      // Extract the full path after /api/files/
+      const storageKey = req.params[0];
+      
       const fileStream = await fileService.getFile(storageKey);
       
       if (!fileStream) {
         return res.status(404).json({ message: "File not found" });
+      }
+      
+      // Set proper content type for PDFs
+      if (storageKey.endsWith('.pdf')) {
+        res.setHeader('Content-Type', 'application/pdf');
       }
       
       fileStream.pipe(res);
