@@ -853,28 +853,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log("✅ Letter successfully generated from MindStudio");
 
-      // Convert letter structure to HTML
+      // Format current date in Dutch
+      const currentDate = new Date().toLocaleDateString('nl-NL', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+
+      // Convert letter structure to professional HTML with complete layout
       const html = `
         <!DOCTYPE html>
         <html>
         <head>
           <meta charset="UTF-8">
           <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }
-            h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
-            .sender, .recipient { margin-bottom: 30px; }
-            .salutation { margin-top: 30px; }
-            .body { margin: 20px 0; white-space: pre-wrap; }
-            .closing { margin-top: 30px; }
-            .signature { margin-top: 40px; font-style: italic; }
+            @page {
+              margin: 2cm;
+            }
+            body { 
+              font-family: 'Arial', 'Helvetica', sans-serif; 
+              line-height: 1.6; 
+              max-width: 800px; 
+              margin: 0 auto; 
+              padding: 40px 20px;
+              color: #1a1a1a;
+            }
+            .letter-header {
+              margin-bottom: 40px;
+            }
+            .sender-info {
+              margin-bottom: 40px;
+              font-size: 14px;
+            }
+            .sender-info .name {
+              font-weight: 600;
+              margin-bottom: 5px;
+            }
+            .sender-info .details {
+              color: #555;
+            }
+            .date {
+              text-align: right;
+              margin-bottom: 30px;
+              color: #555;
+              font-size: 14px;
+            }
+            .recipient-info {
+              margin-bottom: 40px;
+              font-size: 14px;
+            }
+            .recipient-info .name {
+              font-weight: 600;
+              margin-bottom: 5px;
+            }
+            .subject {
+              font-weight: 700;
+              margin: 30px 0 20px 0;
+              font-size: 16px;
+              color: #1a1a1a;
+            }
+            .salutation {
+              margin: 30px 0 20px 0;
+            }
+            .body {
+              margin: 20px 0;
+              white-space: pre-wrap;
+              line-height: 1.8;
+            }
+            .closing {
+              margin-top: 40px;
+            }
+            .signature {
+              margin-top: 50px;
+            }
+            .signature-name {
+              font-weight: 600;
+              margin-top: 10px;
+            }
           </style>
         </head>
         <body>
-          <h1>${letterResult.brief.title || 'Brief'}</h1>
+          <div class="letter-header">
+            <div class="sender-info">
+              <div class="name">${sender.name}</div>
+              <div class="details">${sender.address}</div>
+              ${sender.email ? `<div class="details">${sender.email}</div>` : ''}
+            </div>
+
+            <div class="date">${currentDate}</div>
+
+            <div class="recipient-info">
+              <div class="name">${recipient.name}</div>
+              <div class="details">${recipient.address}</div>
+            </div>
+
+            ${letterResult.brief.title ? `<div class="subject">Betreft: ${letterResult.brief.title}</div>` : ''}
+          </div>
+
           <div class="salutation">${letterResult.brief.salutation || ''}</div>
           <div class="body">${letterResult.brief.body || ''}</div>
           <div class="closing">${letterResult.brief.closing || ''}</div>
-          <div class="signature">${letterResult.brief.signature || ''}</div>
+          <div class="signature">
+            <div class="signature-text">${letterResult.brief.signature || ''}</div>
+            <div class="signature-name">${sender.name}</div>
+          </div>
         </body>
         </html>
       `;
