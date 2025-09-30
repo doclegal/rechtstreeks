@@ -120,12 +120,49 @@ export class FileService {
 
   async getFile(storageKey: string): Promise<NodeJS.ReadableStream | null> {
     try {
+      // First try local file system
       const filePath = path.join(this.uploadDir, storageKey);
       await fs.access(filePath);
       
       const { createReadStream } = await import("fs");
       return createReadStream(filePath);
     } catch {
+      // If not found locally, try object storage
+      try {
+        return await this.getFileFromObjectStorage(storageKey);
+      } catch (error) {
+        console.error(`Failed to get file from object storage: ${storageKey}`, error);
+        return null;
+      }
+    }
+  }
+
+  async getFileFromObjectStorage(storageKey: string): Promise<NodeJS.ReadableStream | null> {
+    try {
+      const privateObjectDir = process.env.PRIVATE_OBJECT_DIR;
+      if (!privateObjectDir) {
+        console.error("PRIVATE_OBJECT_DIR not set. Object storage not configured.");
+        return null;
+      }
+      
+      // Parse bucket and path from private object directory
+      const fullPath = `${privateObjectDir}/${storageKey}`;
+      const { bucketName, objectName } = this.parseObjectPath(fullPath);
+      
+      const bucket = objectStorageClient.bucket(bucketName);
+      const fileObject = bucket.file(objectName);
+      
+      // Check if file exists
+      const [exists] = await fileObject.exists();
+      if (!exists) {
+        console.error(`File not found in object storage: ${storageKey}`);
+        return null;
+      }
+      
+      // Create read stream from object storage
+      return fileObject.createReadStream();
+    } catch (error) {
+      console.error(`Error getting file from object storage: ${storageKey}`, error);
       return null;
     }
   }
