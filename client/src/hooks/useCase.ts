@@ -285,6 +285,44 @@ export function useGenerateLetter(caseId: string) {
   });
 }
 
+export function useDeleteLetter(caseId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (letterId: string) => {
+      const response = await apiRequest("DELETE", `/api/cases/${caseId}/letter/${letterId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+      toast({
+        title: "Brief verwijderd",
+        description: "De brief is succesvol verwijderd",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Verwijderen mislukt",
+        description: "Er is een fout opgetreden bij het verwijderen van de brief",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 export function useOrderBailiff(caseId: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
