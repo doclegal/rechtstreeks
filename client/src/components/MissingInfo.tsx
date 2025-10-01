@@ -285,20 +285,16 @@ export default function MissingInfo({
           open={true}
           onOpenChange={(open) => !open && setShowUploadForReq(null)}
           caseId={caseId}
-          onSuccess={() => {
-            // Mark as answered with document (we'll use the latest uploaded document)
-            const newAnswers = new Map(answers);
-            newAnswers.set(showUploadForReq, {
-              requirementId: showUploadForReq,
-              kind: 'document',
-              documentId: 'latest' // Backend will use the latest uploaded document
-            });
-            setAnswers(newAnswers);
+          onSuccess={(documents) => {
+            // Use the first uploaded document's ID
+            if (documents && documents.length > 0) {
+              handleDocumentUploaded(showUploadForReq, documents[0].id);
+              toast({
+                title: "Document geüpload",
+                description: "Document is toegevoegd aan uw antwoord"
+              });
+            }
             setShowUploadForReq(null);
-            toast({
-              title: "Document geüpload",
-              description: "Document is toegevoegd aan uw antwoord"
-            });
           }}
         />
       )}

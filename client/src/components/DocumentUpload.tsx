@@ -17,7 +17,7 @@ interface DocumentUploadProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   caseId: string;
-  onSuccess?: () => void;
+  onSuccess?: (documents: any[]) => void;
 }
 
 export default function DocumentUpload({ 
@@ -48,13 +48,13 @@ export default function DocumentUpload({
 
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] });
       toast({
         title: "Upload voltooid",
         description: "Documenten zijn succesvol geüpload",
       });
-      onSuccess?.();
+      onSuccess?.(data.documents || []);
     },
     onError: (error) => {
       toast({
