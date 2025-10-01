@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertTriangle, Upload, Type, CheckCircle2, Send } from "lucide-react";
 import DocumentUpload from "./DocumentUpload";
 import { useState } from "react";
@@ -191,8 +192,35 @@ export default function MissingInfo({
 
                 {!hasAnswer && (
                   <div className="space-y-3 mt-3">
-                    {/* Text input - show for 'text' or undefined inputKind */}
-                    {(req.inputKind === 'text' || !req.inputKind) && (
+                    {/* Select dropdown for options (multiple_choice) */}
+                    {req.options && req.options.length > 0 && req.inputKind === 'text' && (
+                      <Select onValueChange={(value) => handleTextAnswer(req.id, value)}>
+                        <SelectTrigger data-testid={`select-${req.id}`}>
+                          <SelectValue placeholder="Kies een optie..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {req.options.map((option, idx) => (
+                            <SelectItem key={idx} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    
+                    {/* Text input - show for 'text' when NO options */}
+                    {req.inputKind === 'text' && (!req.options || req.options.length === 0) && (
+                      <Textarea
+                        placeholder="Typ hier uw antwoord..."
+                        className="min-h-[80px]"
+                        maxLength={req.maxLength}
+                        onChange={(e) => handleTextAnswer(req.id, e.target.value)}
+                        data-testid={`textarea-${req.id}`}
+                      />
+                    )}
+                    
+                    {/* Text input - show for undefined inputKind */}
+                    {!req.inputKind && (
                       <Textarea
                         placeholder="Typ hier uw antwoord..."
                         className="min-h-[80px]"

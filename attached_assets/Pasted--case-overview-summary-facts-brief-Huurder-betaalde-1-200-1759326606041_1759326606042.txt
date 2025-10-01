@@ -1,0 +1,135 @@
+{
+  "case_overview": { "...": "..." },
+  "summary": {
+    "facts_brief": "Huurder betaalde €1.200 borg voor een weekendverblijf. Na vertrek houdt verhuurder de borg in wegens onvoldoende netheid.",
+    "claims_brief": "Terugbetaling van de volledige borg, eventueel met rente en kosten.",
+    "defenses_brief": "Stelling dat de woning niet conform regels is achtergelaten en extra schoonmaakkosten gemaakt zijn.",
+    "legal_brief": "Kantonzaak huur/consumentenverhuur. Kansrijk als verhuurder onvoldoende bewijs of disproportionele inhouding hanteert."
+  }, 
+  "questions_to_answer": [
+    "Is de borg volledig of gedeeltelijk terecht ingehouden?",
+    "Welke concrete tekortkomingen stelt verhuurder vast?",
+    "Hoe verhouden de huisregels zich tot redelijkheid en billijkheid?",
+    "Welk bewijs ondersteunt of weerlegt de gestelde vervuiling/schade?"
+  ],
+  "facts": {
+    "known": [
+      "Weekendhuur van vakantiehuis in Stoumont, Belgische Ardennen.",
+      "Borgsom van €1200 is betaald bij aanvang.",
+      "Algemene voorwaarden bevatten specifieke netheidseisen.",
+      "Verhuurder meldt na vertrek dat borg niet wordt terugbetaald.",
+      "Huurders stellen netjes te hebben schoongemaakt."
+    ],
+    "disputed": [
+      "Werkelijke netheidstoestand bij vertrek.",
+      "Omvang en aard van eventuele extra schoonmaak.",
+      "Proportionaliteit volledige borginhouding.",
+      "Tijdige en correcte klachtmelding door verhuurder."
+    ],
+    "unclear": [
+      "Aanwezigheid van check-out inspectierapport.",
+      "Fotobewijs van staat bij vertrek.",
+      "Gespecificeerde kostenposten voor schoonmaak/herstel.",
+      "Toepasselijk recht en forum bij grensoverschrijdende huur."
+    ]
+  },
+  "evidence": {
+    "provided": [
+      {
+        "source": "document",
+        "doc_name": "AE_ROI_nl.pdf",
+        "doc_url": "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/05b4b663-231d-4dc6-a887-cbe3442b413d/download",
+        "key_passages": [
+          "Accommodatie in dezelfde staat terugbrengen als bij aankomst.",
+          "In perfecte staat van orde en netheid achterlaten.",
+          "Vertrek vóór 10.00 uur, weekend uitzonderingen mogelijk."
+        ]
+      }
+    ],
+    "missing": [
+      "Fotodocumentatie van de staat bij vertrek.",
+      "Check-in/ check-out formulieren of inventarislijst.",
+      "Gespecificeerd schoonmaakrapport met kosten.",
+      "Communicatie met concrete klachten en tijdstippen."
+    ]
+  },
+  "missing_info_for_assessment": [
+  {
+    "question": "Wat is de exacte klachtomschrijving van de verhuurder, inclusief datum/tijd?",
+    "answer_type": "text",
+    "expected": "Korte tekst, maximaal 200 woorden"
+  },
+  {
+    "question": "Kunt u een kostenraming of facturen voor extra schoonmaak uploaden?",
+    "answer_type": "file_upload",
+    "expected": "Upload een factuur of kostenoverzicht (pdf/jpg)"
+  },
+  {
+    "question": "Was er een formeel huisinspectie-rapport of getuigenverklaring aanwezig?",
+    "answer_type": "multiple_choice",
+    "expected": ["Ja, schriftelijk rapport", "Ja, mondeling", "Nee"]
+  },
+  {
+    "question": "Kunt u bevestigen welk recht en welke rechtbank bevoegd is?",
+    "answer_type": "text",
+    "expected": "Bijv. Nederlands recht, kantonrechter Eindhoven"
+  }
+],
+  "per_document": [
+    {
+      "name": "AE_ROI_nl.pdf",
+      "url": "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/05b4b663-231d-4dc6-a887-cbe3442b413d/download",
+      "type": "pdf",
+      "summary": "Algemene voorwaarden en huisregels voor de vakantieverhuur met duidelijke netheidseisen en vertrektijden. Document bepaalt verplichtingen huurder bij oplevering.",
+      "extracted_points": [
+        "Netheid en staat bij vertrek moeten overeenkomen met aankomst.",
+        "Specifieke regels over huisdieren en roken.",
+        "Maximale bezetting en gedragsregels tijdens verblijf.",
+        "Tijdig vertrek en naleving huisregels verplicht."
+      ]
+    }
+  ],
+  "legal_analysis": {
+    "what_is_the_dispute": "Verhuurder houdt borg van €1200 in wegens vermeende onvoldoende netheid bij oplevering.",
+    "legal_issues": [
+      "Bewijslast voor gestelde tekortkomingen en extra kosten.",
+      "Proportionaliteit volledige borginhouding versus schade.",
+      "Uitleg en redelijkheid van netheidseisen in AV.",
+      "Toepasselijk recht en rechtsmacht bij grensoverschrijdende huur."
+    ],
+    "potential_defenses": [
+      "Ontbrekend of onvoldoende bewijs van vervuiling/schade.",
+      "Onevenredigheid volledige inhouding zonder kostenonderbouwing.",
+      "Onvoldoende of te late klachtmelding door verhuurder."
+    ],
+    "preliminary_assessment": "Kansrijk voor huurder als verhuurder geen concrete, onderbouwde schade of kosten kan aantonen.",
+    "risks": [
+      "Onzekerheid over toepasselijk recht en forum.",
+      "Bewijspositie huurder zonder foto’s of inspectierapport.",
+      "Strikte contractuele netheidseisen kunnen zwaar wegen."
+    ],
+    "legal_basis": [
+      {
+        "law": "Burgerlijk Wetboek Boek 7",
+        "article": "Art. 7:206 BW",
+        "note": "Opleveringsplicht huurder; herstel en netheid bij einde huur."
+      },
+      {
+        "law": "Burgerlijk Wetboek Boek 6",
+        "article": "Art. 6:74 BW",
+        "note": "Aansprakelijkheid bij tekortkoming; schade moet worden aangetoond."
+      },
+      {
+        "law": "Wetboek van Burgerlijke Rechtsvordering",
+        "article": "Art. 150 Rv",
+        "note": "Wie stelt, bewijst; bewijslastverdeling."
+      }
+    ],
+    "next_actions": [
+      "Formele brief: verzoek specificatie schade, bewijs en kosten.",
+      "Verzamelen eigen bewijs (foto’s, getuigen, bankafschriften borg).",
+      "Beoordeling toepasselijk recht en forumkeuze.",
+      "Eventueel schikkingsvoorstel of kantonprocedure starten."
+    ]
+  }
+}

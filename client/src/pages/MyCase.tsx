@@ -41,20 +41,47 @@ export default function MyCase() {
     
     const analysis = currentCase.analysis as any;
     
-    // Try new format first: missing_info_for_assessment
+    // Try new format first: missing_info_for_assessment (MindStudio format)
     if (analysis?.missing_info_for_assessment && Array.isArray(analysis.missing_info_for_assessment)) {
-      return analysis.missing_info_for_assessment.map((item: any, index: number) => ({
-        id: item.id || `req-${index}`,
-        key: item.key || item.id || `requirement-${index}`,
-        label: item.label || item.question || 'Vraag zonder label',
-        description: item.description || item.reason || undefined,
-        required: item.required !== false, // default to true
-        inputKind: item.input_kind || item.inputKind || (item.type === 'document' ? 'document' : 'text'),
-        acceptMimes: item.accept_mimes || item.acceptMimes || undefined,
-        maxLength: item.max_length || item.maxLength || undefined,
-        options: item.options || undefined,
-        examples: item.examples || undefined,
-      }));
+      return analysis.missing_info_for_assessment.map((item: any, index: number) => {
+        // Map answer_type to inputKind
+        let inputKind: 'text' | 'document' | 'both' = 'text';
+        if (item.answer_type === 'file_upload') {
+          inputKind = 'document';
+        } else if (item.answer_type === 'text') {
+          inputKind = 'text';
+        } else if (item.answer_type === 'multiple_choice') {
+          inputKind = 'text'; // multiple_choice uses text input with options
+        }
+        
+        // Parse expected field - can be string (description) or array (options)
+        let description: string | undefined;
+        let options: Array<{value: string, label: string}> | undefined;
+        
+        if (typeof item.expected === 'string') {
+          description = item.expected;
+        } else if (Array.isArray(item.expected)) {
+          // Convert string array to {value, label} objects
+          options = item.expected.map((opt: string) => ({
+            value: opt,
+            label: opt
+          }));
+          description = 'Kies een optie uit de lijst';
+        }
+        
+        return {
+          id: item.id || `req-${index}`,
+          key: item.key || item.id || `requirement-${index}`,
+          label: item.question || item.label || 'Vraag zonder label',
+          description: description || item.description || undefined,
+          required: item.required !== false, // default to true
+          inputKind: inputKind,
+          acceptMimes: item.accept_mimes || item.acceptMimes || undefined,
+          maxLength: item.max_length || item.maxLength || undefined,
+          options: options || item.options || undefined,
+          examples: typeof item.expected === 'string' ? [item.expected] : item.examples || undefined,
+        };
+      });
     }
     
     // Try MindStudio evidence.missing format
