@@ -790,6 +790,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Missing info responses route - allows users to provide answers/documents for missing requirements
+  app.post('/api/cases/:id/missing-info/responses', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      // Import the schema
+      const { submitMissingInfoRequestSchema } = await import("@shared/schema");
+      
+      // Validate request body
+      const { responses } = submitMissingInfoRequestSchema.parse(req.body);
+      
+      // Verify case ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      // Create event to log the missing info responses
+      await storage.createEvent({
+        caseId,
+        actorUserId: userId,
+        type: "missing_info_provided",
+        payloadJson: { responses },
+      });
+      
+      // Build supplemental context from responses
+      const supplementalContext: any = {
+        providedAnswers: [],
+        providedDocuments: []
+      };
+      
+      for (const response of responses) {
+        if (response.kind === 'document' && response.documentId) {
+          // Get document details
+          const doc = await storage.getDocument(response.documentId);
+          if (doc && doc.extractedText) {
+            supplementalContext.providedDocuments.push({
+              requirementId: response.requirementId,
+              filename: doc.filename,
+              text: doc.extractedText
+            });
+          }
+        } else if (response.value) {
+          supplementalContext.providedAnswers.push({
+            requirementId: response.requirementId,
+            kind: response.kind,
+            value: response.value
+          });
+        }
+      }
+      
+      // Store supplemental context for the next analysis
+      // We'll pass this to the analyze endpoint later
+      
+      res.json({ 
+        success: true,
+        message: "Antwoorden opgeslagen. U kunt nu een heranalyse starten.",
+        supplementalContext 
+      });
+      
+    } catch (error) {
+      console.error("Error processing missing info responses:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Ongeldige antwoorden" });
+      }
+      res.status(500).json({ message: "Fout bij verwerken van antwoorden" });
+    }
+  });
+
   // Letter generation routes
   app.post('/api/cases/:id/letter', isAuthenticated, async (req: any, res) => {
     try {
