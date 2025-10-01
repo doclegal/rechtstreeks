@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import MissingDocuments from "@/components/MissingDocuments";
+import MissingInfo from "@/components/MissingInfo";
 import DocumentList from "@/components/DocumentList";
 import AnalysisResults from "@/components/AnalysisResults";
 import GeneratedDocuments from "@/components/GeneratedDocuments";
@@ -241,12 +241,12 @@ export default function MyCase() {
               isFullWidth={true}
             />
             
-            {/* Missing Documents Section */}
+            {/* Missing Info Section */}
             {missingDocs.length > 0 && (
-              <MissingDocuments 
-                missingDocs={missingDocs}
+              <MissingInfo 
+                requirements={missingDocs}
                 caseId={currentCase.id}
-                onDocumentUploaded={() => refetch()}
+                onUpdated={() => refetch()}
               />
             )}
 
