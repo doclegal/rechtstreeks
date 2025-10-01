@@ -34,6 +34,82 @@ export default function MyCase() {
   const deleteLetterMutation = useDeleteLetter(caseId || "");
   const bailiffMutation = useOrderBailiff(caseId || "");
 
+  // Transform missing_info_for_assessment to MissingRequirement[] format
+  // Must be called before any conditional returns to maintain hook order
+  const missingRequirements = useMemo(() => {
+    if (!currentCase?.analysis) return [];
+    
+    const analysis = currentCase.analysis as any;
+    
+    // Try new format first: missing_info_for_assessment
+    if (analysis?.missing_info_for_assessment && Array.isArray(analysis.missing_info_for_assessment)) {
+      return analysis.missing_info_for_assessment.map((item: any, index: number) => ({
+        id: item.id || `req-${index}`,
+        key: item.key || item.id || `requirement-${index}`,
+        label: item.label || item.question || 'Vraag zonder label',
+        description: item.description || item.reason || undefined,
+        required: item.required !== false, // default to true
+        inputKind: item.input_kind || item.inputKind || (item.type === 'document' ? 'document' : 'text'),
+        acceptMimes: item.accept_mimes || item.acceptMimes || undefined,
+        maxLength: item.max_length || item.maxLength || undefined,
+        options: item.options || undefined,
+        examples: item.examples || undefined,
+      }));
+    }
+    
+    // Try MindStudio evidence.missing format
+    if (analysis?.evidence?.missing && Array.isArray(analysis.evidence.missing)) {
+      return analysis.evidence.missing.map((item: any, index: number) => {
+        // evidence.missing items are strings like "Bewijs van waarschuwing aan verkoper"
+        if (typeof item === 'string') {
+          return {
+            id: `evidence-${index}`,
+            key: `evidence-requirement-${index}`,
+            label: item,
+            description: 'Upload het gevraagde document om uw zaak te versterken',
+            required: false, // evidence is usually optional
+            inputKind: 'document' as const,
+            acceptMimes: undefined,
+            maxLength: undefined,
+            options: undefined,
+            examples: undefined,
+          };
+        }
+        // If it's an object, use its properties
+        return {
+          id: item.id || `evidence-${index}`,
+          key: item.key || item.id || `evidence-requirement-${index}`,
+          label: item.label || item.name || item.description || 'Ontbrekend bewijs',
+          description: item.description || item.reason || 'Upload het gevraagde document',
+          required: item.required !== false,
+          inputKind: item.input_kind || item.inputKind || 'document' as const,
+          acceptMimes: item.accept_mimes || item.acceptMimes || undefined,
+          maxLength: item.max_length || item.maxLength || undefined,
+          options: item.options || undefined,
+          examples: item.examples || undefined,
+        };
+      });
+    }
+    
+    // Fallback to legacy format: missingDocsJson (string array)
+    if (analysis?.missingDocsJson && Array.isArray(analysis.missingDocsJson)) {
+      return analysis.missingDocsJson.map((label: string, index: number) => ({
+        id: `legacy-${index}`,
+        key: `legacy-requirement-${index}`,
+        label: label,
+        description: undefined,
+        required: true,
+        inputKind: 'document' as const,
+        acceptMimes: undefined,
+        maxLength: undefined,
+        options: undefined,
+        examples: undefined,
+      }));
+    }
+    
+    return [];
+  }, [currentCase?.analysis]);
+
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
   };
@@ -114,45 +190,6 @@ export default function MyCase() {
       </div>
     );
   }
-
-  // Transform missing_info_for_assessment to MissingRequirement[] format
-  const missingRequirements = useMemo(() => {
-    const analysis = currentCase.analysis as any;
-    
-    // Try new format first: missing_info_for_assessment
-    if (analysis?.missing_info_for_assessment && Array.isArray(analysis.missing_info_for_assessment)) {
-      return analysis.missing_info_for_assessment.map((item: any, index: number) => ({
-        id: item.id || `req-${index}`,
-        key: item.key || item.id || `requirement-${index}`,
-        label: item.label || item.question || 'Vraag zonder label',
-        description: item.description || item.reason || undefined,
-        required: item.required !== false, // default to true
-        inputKind: item.input_kind || item.inputKind || (item.type === 'document' ? 'document' : 'text'),
-        acceptMimes: item.accept_mimes || item.acceptMimes || undefined,
-        maxLength: item.max_length || item.maxLength || undefined,
-        options: item.options || undefined,
-        examples: item.examples || undefined,
-      }));
-    }
-    
-    // Fallback to legacy format: missingDocsJson (string array)
-    if (analysis?.missingDocsJson && Array.isArray(analysis.missingDocsJson)) {
-      return analysis.missingDocsJson.map((label: string, index: number) => ({
-        id: `legacy-${index}`,
-        key: `legacy-requirement-${index}`,
-        label: label,
-        description: undefined,
-        required: true,
-        inputKind: 'document' as const,
-        acceptMimes: undefined,
-        maxLength: undefined,
-        options: undefined,
-        examples: undefined,
-      }));
-    }
-    
-    return [];
-  }, [currentCase.analysis]);
 
   return (
     <div className="space-y-6">
