@@ -367,6 +367,34 @@ export const insertWarrantyDocumentSchema = createInsertSchema(warrantyDocuments
   createdAt: true,
 });
 
+// Missing Info / Requirements schemas
+export const missingRequirementSchema = z.object({
+  id: z.string(),
+  key: z.string(),
+  label: z.string(),
+  description: z.string().optional(),
+  required: z.boolean().default(true),
+  inputKind: z.enum(['document', 'text', 'choice', 'date', 'number']).default('text'),
+  acceptMimes: z.array(z.string()).optional(),
+  maxLength: z.number().optional(),
+  options: z.array(z.object({
+    value: z.string(),
+    label: z.string(),
+  })).optional(),
+  examples: z.array(z.string()).optional(),
+});
+
+export const missingInfoResponseSchema = z.object({
+  requirementId: z.string(),
+  kind: z.enum(['document', 'text', 'choice', 'date', 'number']),
+  value: z.string().optional(),
+  documentId: z.string().optional(),
+});
+
+export const submitMissingInfoRequestSchema = z.object({
+  responses: z.array(missingInfoResponseSchema),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -389,3 +417,6 @@ export type InsertWarrantyProduct = z.infer<typeof insertWarrantyProductSchema>;
 export type WarrantyDocument = typeof warrantyDocuments.$inferSelect;
 export type InsertWarrantyDocument = z.infer<typeof insertWarrantyDocumentSchema>;
 export type CaseStatus = typeof cases.status.enumValues[number];
+export type MissingRequirement = z.infer<typeof missingRequirementSchema>;
+export type MissingInfoResponse = z.infer<typeof missingInfoResponseSchema>;
+export type SubmitMissingInfoRequest = z.infer<typeof submitMissingInfoRequestSchema>;
