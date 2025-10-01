@@ -385,11 +385,21 @@ export const missingRequirementSchema = z.object({
 });
 
 export const missingInfoResponseSchema = z.object({
-  requirementId: z.string(),
+  requirementId: z.string().min(1, "requirementId is required"),
   kind: z.enum(['document', 'text', 'choice', 'date', 'number']),
-  value: z.string().optional(),
-  documentId: z.string().optional(),
-});
+  value: z.string().trim().min(1).optional(),
+  documentId: z.string().min(1).optional(),
+}).refine(
+  (data) => {
+    // Exactly one of value or documentId must be provided (XOR)
+    const hasValue = !!data.value && data.value.length > 0;
+    const hasDocumentId = !!data.documentId && data.documentId.length > 0;
+    return hasValue !== hasDocumentId; // XOR: one must be true, the other false
+  },
+  {
+    message: "Either 'value' or 'documentId' must be provided, but not both",
+  }
+);
 
 export const submitMissingInfoRequestSchema = z.object({
   responses: z.array(missingInfoResponseSchema),

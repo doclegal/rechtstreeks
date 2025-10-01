@@ -36,11 +36,18 @@ export default function MissingInfo({
 
   const handleTextAnswer = (reqId: string, value: string) => {
     const newAnswers = new Map(answers);
-    newAnswers.set(reqId, {
-      requirementId: reqId,
-      kind: 'text',
-      value
-    });
+    const trimmedValue = value.trim();
+    
+    if (trimmedValue) {
+      newAnswers.set(reqId, {
+        requirementId: reqId,
+        kind: 'text',
+        value: trimmedValue
+      });
+    } else {
+      // Remove answer if value is empty/whitespace
+      newAnswers.delete(reqId);
+    }
     setAnswers(newAnswers);
   };
 
@@ -56,6 +63,20 @@ export default function MissingInfo({
   };
 
   const handleSubmit = async () => {
+    // Check if all required items are answered
+    const unansweredRequired = requirements.filter(
+      req => req.required && !answers.has(req.id)
+    );
+    
+    if (unansweredRequired.length > 0) {
+      toast({
+        title: "Verplichte velden ontbreken",
+        description: `Beantwoord eerst alle ${unansweredRequired.length} verplichte ${unansweredRequired.length === 1 ? 'vraag' : 'vragen'}`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
     if (answers.size === 0) {
       toast({
         title: "Geen antwoorden",
@@ -101,7 +122,8 @@ export default function MissingInfo({
   }
 
   const requiredCount = requirements.filter(req => req.required).length;
-  const answeredCount = answers.size;
+  const requiredAnsweredCount = requirements.filter(req => req.required && answers.has(req.id)).length;
+  const totalAnsweredCount = answers.size;
 
   return (
     <>
@@ -113,11 +135,11 @@ export default function MissingInfo({
             </CardTitle>
             <div className="flex gap-2">
               <Badge variant="secondary" className="bg-warning text-white" data-testid="badge-missing-count">
-                {requiredCount - answeredCount} ontbrekend
+                {requiredCount - requiredAnsweredCount} vereist ontbrekend
               </Badge>
-              {answeredCount > 0 && (
+              {totalAnsweredCount > 0 && (
                 <Badge variant="secondary" className="bg-success text-white" data-testid="badge-answered-count">
-                  {answeredCount} beantwoord
+                  {totalAnsweredCount} beantwoord
                 </Badge>
               )}
             </div>
@@ -169,30 +191,36 @@ export default function MissingInfo({
 
                 {!hasAnswer && (
                   <div className="space-y-3 mt-3">
-                    {req.inputKind === 'document' || req.inputKind === 'text' || !req.inputKind ? (
-                      <>
-                        <Textarea
-                          placeholder="Typ hier uw antwoord..."
-                          className="min-h-[80px]"
-                          maxLength={req.maxLength}
-                          onChange={(e) => handleTextAnswer(req.id, e.target.value)}
-                          data-testid={`textarea-${req.id}`}
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowUploadForReq(req.id)}
-                            data-testid={`button-upload-${req.id}`}
-                          >
-                            <Upload className="mr-2 h-4 w-4" />
-                            Of upload document
-                          </Button>
-                        </div>
-                      </>
-                    ) : (
+                    {/* Text input - show for 'text' or undefined inputKind */}
+                    {(req.inputKind === 'text' || !req.inputKind) && (
+                      <Textarea
+                        placeholder="Typ hier uw antwoord..."
+                        className="min-h-[80px]"
+                        maxLength={req.maxLength}
+                        onChange={(e) => handleTextAnswer(req.id, e.target.value)}
+                        data-testid={`textarea-${req.id}`}
+                      />
+                    )}
+                    
+                    {/* Document upload - show for 'document' or undefined inputKind */}
+                    {(req.inputKind === 'document' || !req.inputKind) && (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowUploadForReq(req.id)}
+                          data-testid={`button-upload-${req.id}`}
+                        >
+                          <Upload className="mr-2 h-4 w-4" />
+                          {req.inputKind === 'document' ? 'Upload document' : 'Of upload document'}
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {/* Unsupported input kind */}
+                    {req.inputKind && req.inputKind !== 'text' && req.inputKind !== 'document' && (
                       <div className="text-sm text-muted-foreground">
-                        Dit veld ondersteunt alleen {req.inputKind} input
+                        Dit veld ondersteunt alleen {req.inputKind} input (nog niet geïmplementeerd)
                       </div>
                     )}
                   </div>
@@ -236,12 +264,12 @@ export default function MissingInfo({
 
           <Button
             onClick={handleSubmit}
-            disabled={answers.size === 0 || isSubmitting}
+            disabled={requiredAnsweredCount < requiredCount || isSubmitting}
             className="w-full"
             data-testid="button-submit-missing-info"
           >
             <Send className="mr-2 h-4 w-4" />
-            {isSubmitting ? "Bezig met versturen..." : `Versturen (${answers.size} ${answers.size === 1 ? 'antwoord' : 'antwoorden'})`}
+            {isSubmitting ? "Bezig met versturen..." : requiredAnsweredCount < requiredCount ? `Vereiste velden ontbreken (${requiredAnsweredCount}/${requiredCount})` : `Versturen (${totalAnsweredCount} ${totalAnsweredCount === 1 ? 'antwoord' : 'antwoorden'})`}
           </Button>
 
           {answers.size > 0 && (
