@@ -74,6 +74,7 @@ export interface IStorage {
   // Event operations
   createEvent(eventData: InsertEvent): Promise<Event>;
   getEventsByCase(caseId: string): Promise<Event[]>;
+  getEventsByType(caseId: string, type: string): Promise<Event[]>;
   
   // Timeline and progress
   getCaseTimeline(caseId: string): Promise<Event[]>;
@@ -345,6 +346,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(events)
       .where(eq(events.caseId, caseId))
+      .orderBy(desc(events.createdAt));
+  }
+
+  async getEventsByType(caseId: string, type: string): Promise<Event[]> {
+    return await db
+      .select()
+      .from(events)
+      .where(and(eq(events.caseId, caseId), eq(events.type, type)))
       .orderBy(desc(events.createdAt));
   }
 

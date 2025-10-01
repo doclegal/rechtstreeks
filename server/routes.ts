@@ -474,6 +474,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rate limiting for analyses (simple in-memory tracking)
   const analysisRateLimit = new Map<string, number>();
 
+  // Helper function to get missing info responses from events
+  async function getMissingInfoSupplementalContext(caseId: string) {
+    const events = await storage.getEventsByType(caseId, 'missing_info_provided');
+    const supplemental: any = {
+      providedAnswers: [],
+      providedDocuments: []
+    };
+    
+    for (const event of events) {
+      const payload = event.payloadJson as any;
+      const responses = payload?.responses || [];
+      for (const response of responses) {
+        if (response.kind === 'document' && response.documentId) {
+          const doc = await storage.getDocument(response.documentId);
+          if (doc && doc.extractedText) {
+            supplemental.providedDocuments.push({
+              requirementId: response.requirementId,
+              filename: doc.filename,
+              text: doc.extractedText
+            });
+          }
+        } else if (response.value) {
+          supplemental.providedAnswers.push({
+            requirementId: response.requirementId,
+            kind: response.kind,
+            value: response.value
+          });
+        }
+      }
+    }
+    
+    return supplemental;
+  }
+
   // Kanton check route - first step to determine if case is suitable
   app.post('/api/cases/:id/analyze', isAuthenticated, async (req: any, res) => {
     try {
@@ -512,8 +546,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`  - ${doc.filename} (extractedText: ${doc.extractedText ? '✅ Available' : '❌ None'})`);
           });
           
+          // Get missing info responses if any
+          const supplemental = await getMissingInfoSupplementalContext(caseId);
+          
           // Build comprehensive case details including document content
           let caseDetails = `Zaak: ${caseData.title}\n\nOmschrijving: ${caseData.description || 'Geen beschrijving'}\n\nTegenpartij: ${caseData.counterpartyName || 'Onbekend'}\n\nClaim bedrag: €${caseData.claimAmount || '0'}`;
+          
+          // Add supplemental answers if provided
+          if (supplemental.providedAnswers.length > 0) {
+            caseDetails += '\n\n=== AANVULLENDE INFORMATIE VAN GEBRUIKER ===\n';
+            supplemental.providedAnswers.forEach((answer: any) => {
+              caseDetails += `\n${answer.requirementId}: ${answer.value}\n`;
+            });
+          }
           
           // Add document content directly to case details
           if (documents.length > 0) {
@@ -527,6 +572,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             });
             console.log('✅ Including document content directly in kanton check');
+          }
+          
+          // Add supplemental documents if provided
+          if (supplemental.providedDocuments.length > 0) {
+            caseDetails += '\n\n=== AANVULLENDE DOCUMENTEN ===\n';
+            supplemental.providedDocuments.forEach((doc: any) => {
+              caseDetails += `\n📄 ${doc.filename} (${doc.requirementId}):\n${doc.text}\n\n`;
+            });
           }
           
           // Run Kanton check with new method
