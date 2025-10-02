@@ -37,13 +37,20 @@ export default function MyCase() {
   // Transform missing_info_for_assessment to MissingRequirement[] format
   // Must be called before any conditional returns to maintain hook order
   const missingRequirements = useMemo(() => {
-    if (!currentCase?.analysis) return [];
+    // Priority 1: Check fullAnalysis.parsedAnalysis (from full analysis)
+    const fullAnalysis = currentCase?.fullAnalysis as any;
+    const parsedAnalysis = fullAnalysis?.parsedAnalysis;
     
-    const analysis = currentCase.analysis as any;
+    // Priority 2: Fall back to analysis (from kanton check)
+    const analysis = currentCase?.analysis as any;
+    
+    // Prefer parsedAnalysis from full analysis, fall back to kanton check analysis
+    const dataSource = parsedAnalysis || analysis;
+    if (!dataSource) return [];
     
     // Try new format first: missing_info_for_assessment (MindStudio format)
-    if (analysis?.missing_info_for_assessment && Array.isArray(analysis.missing_info_for_assessment)) {
-      return analysis.missing_info_for_assessment.map((item: any, index: number) => {
+    if (dataSource?.missing_info_for_assessment && Array.isArray(dataSource.missing_info_for_assessment)) {
+      return dataSource.missing_info_for_assessment.map((item: any, index: number) => {
         // Map answer_type to inputKind
         let inputKind: 'text' | 'document' | 'both' = 'text';
         if (item.answer_type === 'file_upload') {
@@ -85,8 +92,8 @@ export default function MyCase() {
     }
     
     // Try MindStudio evidence.missing format
-    if (analysis?.evidence?.missing && Array.isArray(analysis.evidence.missing)) {
-      return analysis.evidence.missing.map((item: any, index: number) => {
+    if (dataSource?.evidence?.missing && Array.isArray(dataSource.evidence.missing)) {
+      return dataSource.evidence.missing.map((item: any, index: number) => {
         // evidence.missing items are strings like "Bewijs van waarschuwing aan verkoper"
         if (typeof item === 'string') {
           return {
@@ -119,8 +126,8 @@ export default function MyCase() {
     }
     
     // Fallback to legacy format: missingDocsJson (string array)
-    if (analysis?.missingDocsJson && Array.isArray(analysis.missingDocsJson)) {
-      return analysis.missingDocsJson.map((label: string, index: number) => ({
+    if (dataSource?.missingDocsJson && Array.isArray(dataSource.missingDocsJson)) {
+      return dataSource.missingDocsJson.map((label: string, index: number) => ({
         id: `legacy-${index}`,
         key: `legacy-requirement-${index}`,
         label: label,
@@ -135,7 +142,7 @@ export default function MyCase() {
     }
     
     return [];
-  }, [currentCase?.analysis]);
+  }, [currentCase?.analysis, currentCase?.fullAnalysis]);
 
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);

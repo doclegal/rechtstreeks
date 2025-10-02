@@ -59,6 +59,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to parse fullAnalysis rawText and add parsedAnalysis
+  function enrichFullAnalysis(fullAnalysis: any) {
+    if (!fullAnalysis || !fullAnalysis.rawText) return fullAnalysis;
+    
+    try {
+      const parsed = JSON.parse(fullAnalysis.rawText);
+      // If parsedAnalysis exists in the rawText, add it to the fullAnalysis object
+      if (parsed.parsedAnalysis) {
+        return {
+          ...fullAnalysis,
+          parsedAnalysis: parsed.parsedAnalysis
+        };
+      }
+    } catch (error) {
+      console.warn("Could not parse fullAnalysis rawText:", error);
+    }
+    
+    return fullAnalysis;
+  }
+
   app.get('/api/cases', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -70,7 +90,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const documents = await storage.getDocumentsByCase(caseData.id);
           const analysis = await storage.getLatestAnalysis(caseData.id);
           const kantonAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-kanton-check');
-          const fullAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-full-analysis');
+          let fullAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-full-analysis');
+          
+          // Enrich fullAnalysis with parsedAnalysis from rawText
+          fullAnalysis = enrichFullAnalysis(fullAnalysis);
+          
           const letters = await storage.getLettersByCase(caseData.id);
           const summons = await storage.getSummonsByCase(caseData.id);
           const progress = storage.computeProgress(caseData);
@@ -112,7 +136,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const documents = await storage.getDocumentsByCase(caseData.id);
       const analysis = await storage.getLatestAnalysis(caseData.id);
       const kantonAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-kanton-check');
-      const fullAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-full-analysis');
+      let fullAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-full-analysis');
+      
+      // Enrich fullAnalysis with parsedAnalysis from rawText
+      fullAnalysis = enrichFullAnalysis(fullAnalysis);
+      
       const letters = await storage.getLettersByCase(caseData.id);
       const summons = await storage.getSummonsByCase(caseData.id);
       const progress = storage.computeProgress(caseData);
