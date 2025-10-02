@@ -59,17 +59,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Helper function to parse fullAnalysis rawText and add parsedAnalysis
+  // Helper function to parse fullAnalysis rawText and extract parsedAnalysis
   function enrichFullAnalysis(fullAnalysis: any) {
     if (!fullAnalysis || !fullAnalysis.rawText) return fullAnalysis;
     
     try {
-      const parsed = JSON.parse(fullAnalysis.rawText);
-      // If parsedAnalysis exists in the rawText, add it to the fullAnalysis object
-      if (parsed.parsedAnalysis) {
+      const data = JSON.parse(fullAnalysis.rawText);
+      let parsedAnalysis = null;
+      
+      // Try to get parsedAnalysis if it already exists (new format)
+      if (data.parsedAnalysis && typeof data.parsedAnalysis === 'object') {
+        parsedAnalysis = data.parsedAnalysis;
+      }
+      // Extract from MindStudio response structure (old format)
+      else if (data.thread?.posts) {
+        // Look for analysis_json in thread posts
+        for (const post of data.thread.posts) {
+          if (!parsedAnalysis && post.debugLog?.newState?.variables?.analysis_json?.value) {
+            const responseValue = post.debugLog.newState.variables.analysis_json.value;
+            parsedAnalysis = typeof responseValue === 'string' ? JSON.parse(responseValue) : responseValue;
+            break;
+          }
+        }
+      }
+      // Check data.result (fallback)
+      else if (data.result && data.result.analysis_json) {
+        const resultValue = data.result.analysis_json;
+        if (typeof resultValue === 'string' && !resultValue.includes('{{')) {
+          parsedAnalysis = JSON.parse(resultValue);
+        } else if (typeof resultValue === 'object') {
+          parsedAnalysis = resultValue;
+        }
+      }
+      
+      if (parsedAnalysis) {
         return {
           ...fullAnalysis,
-          parsedAnalysis: parsed.parsedAnalysis
+          parsedAnalysis
         };
       }
     } catch (error) {
