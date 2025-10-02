@@ -1001,15 +1001,17 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
         throw new Error("No threadId received from Mindstudio");
       }
 
-      // Parse the structured MindStudio output - look for analysis_json variable
+      // Parse the structured MindStudio output - look for analysis_json AND missing_info_struct variables
       let parsedAnalysis = null;
+      let missingInfoStruct = null;
+      
       try {
-        // Primary: Look for analysis_json variable in thread posts (like we do for app_response in kanton check)
+        // Primary: Look for analysis_json AND missing_info_struct in thread posts
         if (data.thread?.posts) {
-          console.log("🔍 Searching in thread posts for analysis_json variable...");
+          console.log("🔍 Searching in thread posts for analysis_json and missing_info_struct variables...");
           for (const post of data.thread.posts) {
             // Look in debugLog newState variables for analysis_json
-            if (post.debugLog?.newState?.variables?.analysis_json?.value) {
+            if (!parsedAnalysis && post.debugLog?.newState?.variables?.analysis_json?.value) {
               console.log("✅ Found analysis_json in debugLog.newState.variables");
               const responseValue = post.debugLog.newState.variables.analysis_json.value;
               if (typeof responseValue === 'string') {
@@ -1017,12 +1019,33 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
               } else {
                 parsedAnalysis = responseValue;
               }
-              break;
+            }
+            
+            // Look for missing_info_struct (contains repaired_missing from MindStudio)
+            if (!missingInfoStruct && post.debugLog?.newState?.variables?.missing_info_struct?.value) {
+              console.log("✅ Found missing_info_struct in debugLog.newState.variables");
+              const responseValue = post.debugLog.newState.variables.missing_info_struct.value;
+              if (typeof responseValue === 'string') {
+                missingInfoStruct = JSON.parse(responseValue);
+              } else {
+                missingInfoStruct = responseValue;
+              }
+            }
+            
+            // Also check for repaired_missing directly
+            if (!missingInfoStruct && post.debugLog?.newState?.variables?.repaired_missing?.value) {
+              console.log("✅ Found repaired_missing in debugLog.newState.variables");
+              const responseValue = post.debugLog.newState.variables.repaired_missing.value;
+              if (typeof responseValue === 'string') {
+                missingInfoStruct = JSON.parse(responseValue);
+              } else {
+                missingInfoStruct = responseValue;
+              }
             }
           }
         }
         
-        // Secondary: Check thread variables for analysis_json
+        // Secondary: Check thread variables for analysis_json and missing_info_struct
         if (!parsedAnalysis && data.thread?.variables?.analysis_json?.value) {
           console.log("✅ Found analysis_json in thread.variables.analysis_json.value");
           const responseValue = data.thread.variables.analysis_json.value;
@@ -1033,12 +1056,29 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
           }
         }
         
-        // Tertiary: Check data.result.analysis_json (newer format)
+        if (!missingInfoStruct && data.thread?.variables?.missing_info_struct?.value) {
+          console.log("✅ Found missing_info_struct in thread.variables");
+          const responseValue = data.thread.variables.missing_info_struct.value;
+          if (typeof responseValue === 'string') {
+            missingInfoStruct = JSON.parse(responseValue);
+          } else {
+            missingInfoStruct = responseValue;
+          }
+        }
+        
+        // Tertiary: Check data.result.analysis_json and missing_info_struct (newer format)
         if (!parsedAnalysis && data.result && data.result.analysis_json) {
           console.log("✅ Found analysis_json in data.result.analysis_json (newer format)");
           parsedAnalysis = typeof data.result.analysis_json === 'string' 
             ? JSON.parse(data.result.analysis_json) 
             : data.result.analysis_json;
+        }
+        
+        if (!missingInfoStruct && data.result && data.result.missing_info_struct) {
+          console.log("✅ Found missing_info_struct in data.result");
+          missingInfoStruct = typeof data.result.missing_info_struct === 'string' 
+            ? JSON.parse(data.result.missing_info_struct) 
+            : data.result.missing_info_struct;
         }
         
         // Fallback: Check data.result.output (legacy format)
@@ -1051,6 +1091,14 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
         
         if (parsedAnalysis) {
           console.log("📊 Parsed MindStudio analysis structure:", Object.keys(parsedAnalysis));
+          
+          // CRITICAL: If missing_info_struct was found, use it to populate missing_info_for_assessment
+          if (missingInfoStruct && Array.isArray(missingInfoStruct) && missingInfoStruct.length > 0) {
+            console.log("🔧 Using missing_info_struct to populate missing_info_for_assessment");
+            parsedAnalysis.missing_info_for_assessment = missingInfoStruct;
+          } else if (missingInfoStruct) {
+            console.log("⚠️ missing_info_struct found but not in expected format:", typeof missingInfoStruct);
+          }
           
           // Normalize amount_eur to number if it came as string
           if (parsedAnalysis.case_overview?.amount_eur && typeof parsedAnalysis.case_overview.amount_eur === 'string') {
