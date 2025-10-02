@@ -663,15 +663,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const caseId = req.params.id;
       
-      // Rate limiting: 1 full analysis per case per 5 minutes
+      // Rate limiting: 1 full analysis per case per 30 seconds (for testing)
       const rateLimitKey = `${caseId}:full-analyze`;
       const lastAnalysis = analysisRateLimit.get(rateLimitKey) || 0;
       const now = Date.now();
-      const fiveMinutes = 5 * 60 * 1000;
+      const thirtySeconds = 30 * 1000;
       
-      if (now - lastAnalysis < fiveMinutes) {
+      if (now - lastAnalysis < thirtySeconds) {
+        const waitTime = Math.ceil((thirtySeconds - (now - lastAnalysis)) / 1000);
         return res.status(429).json({ 
-          message: "Te snel opnieuw geanalyseerd. Wacht 5 minuten tussen volledige analyses." 
+          message: `Te snel opnieuw geanalyseerd. Wacht nog ${waitTime} seconden.` 
         });
       }
       
