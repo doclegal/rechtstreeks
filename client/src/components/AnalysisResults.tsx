@@ -451,22 +451,34 @@ export default function AnalysisResults({
             try {
               if (fullAnalysis.rawText) {
                 const rawData = JSON.parse(fullAnalysis.rawText);
+                
+                // Try to get parsedAnalysis directly (new format from backend)
+                if (rawData.parsedAnalysis && typeof rawData.parsedAnalysis === 'object') {
+                  mindstudioAnalysis = rawData.parsedAnalysis;
+                }
                 // Check if it's a MindStudio response with structured data
-                if (rawData.result && rawData.result.analysis_json) {
-                  // New format: data.result.analysis_json
-                  mindstudioAnalysis = typeof rawData.result.analysis_json === 'string' 
-                    ? JSON.parse(rawData.result.analysis_json) 
-                    : rawData.result.analysis_json;
+                else if (rawData.result && rawData.result.analysis_json) {
+                  const resultValue = rawData.result.analysis_json;
+                  // Skip if it's a MindStudio template string (contains {{ }})
+                  if (typeof resultValue === 'string' && !resultValue.includes('{{')) {
+                    mindstudioAnalysis = JSON.parse(resultValue);
+                  }
                 } else if (rawData.result && rawData.result.output) {
                   // Old format: data.result.output
-                  mindstudioAnalysis = typeof rawData.result.output === 'string' 
-                    ? JSON.parse(rawData.result.output) 
-                    : rawData.result.output;
+                  const resultValue = rawData.result.output;
+                  if (typeof resultValue === 'string' && !resultValue.includes('{{')) {
+                    mindstudioAnalysis = JSON.parse(resultValue);
+                  } else if (typeof resultValue === 'object') {
+                    mindstudioAnalysis = resultValue;
+                  }
                 } else if (rawData.analysis_json) {
                   // Direct format: data.analysis_json
-                  mindstudioAnalysis = typeof rawData.analysis_json === 'string'
-                    ? JSON.parse(rawData.analysis_json)
-                    : rawData.analysis_json;
+                  const resultValue = rawData.analysis_json;
+                  if (typeof resultValue === 'string' && !resultValue.includes('{{')) {
+                    mindstudioAnalysis = JSON.parse(resultValue);
+                  } else if (typeof resultValue === 'object') {
+                    mindstudioAnalysis = resultValue;
+                  }
                 }
               }
             } catch (error) {
