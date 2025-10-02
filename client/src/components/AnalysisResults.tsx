@@ -462,6 +462,7 @@ export default function AnalysisResults({
               }
               // FALLBACK: Parse from rawText if not directly available
               else if (fullAnalysis.rawText) {
+                console.log('🔍 Attempting to parse rawText, length:', fullAnalysis.rawText.length);
                 const rawData = JSON.parse(fullAnalysis.rawText);
                 
                 // Try to get parsedAnalysis from rawText (old format)
