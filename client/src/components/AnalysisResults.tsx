@@ -449,10 +449,15 @@ export default function AnalysisResults({
             // Parse MindStudio structured output from rawText
             let mindstudioAnalysis = null;
             try {
-              if (fullAnalysis.rawText) {
+              // FIRST: Check if parsedAnalysis is directly available (new enriched format from backend)
+              if ((fullAnalysis as any).parsedAnalysis && typeof (fullAnalysis as any).parsedAnalysis === 'object') {
+                mindstudioAnalysis = (fullAnalysis as any).parsedAnalysis;
+              }
+              // FALLBACK: Parse from rawText if not directly available
+              else if (fullAnalysis.rawText) {
                 const rawData = JSON.parse(fullAnalysis.rawText);
                 
-                // Try to get parsedAnalysis directly (new format from backend)
+                // Try to get parsedAnalysis from rawText (old format)
                 if (rawData.parsedAnalysis && typeof rawData.parsedAnalysis === 'object') {
                   mindstudioAnalysis = rawData.parsedAnalysis;
                 }
