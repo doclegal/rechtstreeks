@@ -1067,18 +1067,31 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
         }
         
         // Tertiary: Check data.result.analysis_json and missing_info_struct (newer format)
+        // BUT skip if they contain unresolved MindStudio template strings like '{{analysis_json | json}}'
         if (!parsedAnalysis && data.result && data.result.analysis_json) {
-          console.log("✅ Found analysis_json in data.result.analysis_json (newer format)");
-          parsedAnalysis = typeof data.result.analysis_json === 'string' 
-            ? JSON.parse(data.result.analysis_json) 
-            : data.result.analysis_json;
+          const resultValue = data.result.analysis_json;
+          // Skip if it's a MindStudio template string (contains {{ }})
+          if (typeof resultValue === 'string' && resultValue.includes('{{')) {
+            console.log("⏭️ Skipping data.result.analysis_json - contains unresolved MindStudio template");
+          } else {
+            console.log("✅ Found analysis_json in data.result.analysis_json (newer format)");
+            parsedAnalysis = typeof resultValue === 'string' 
+              ? JSON.parse(resultValue) 
+              : resultValue;
+          }
         }
         
         if (!missingInfoStruct && data.result && data.result.missing_info_struct) {
-          console.log("✅ Found missing_info_struct in data.result");
-          missingInfoStruct = typeof data.result.missing_info_struct === 'string' 
-            ? JSON.parse(data.result.missing_info_struct) 
-            : data.result.missing_info_struct;
+          const resultValue = data.result.missing_info_struct;
+          // Skip if it's a MindStudio template string (contains {{ }})
+          if (typeof resultValue === 'string' && resultValue.includes('{{')) {
+            console.log("⏭️ Skipping data.result.missing_info_struct - contains unresolved MindStudio template");
+          } else {
+            console.log("✅ Found missing_info_struct in data.result");
+            missingInfoStruct = typeof resultValue === 'string' 
+              ? JSON.parse(resultValue) 
+              : resultValue;
+          }
         }
         
         // Fallback: Check data.result.output (legacy format)
