@@ -790,7 +790,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const analysis = await storage.createAnalysis({
             caseId,
             model: 'mindstudio-full-analysis',
-            rawText: fullAnalysisResult.rawText || JSON.stringify(fullAnalysisResult, null, 2),
+            rawText: JSON.stringify(fullAnalysisResult, null, 2), // Save entire result including parsedAnalysis
             factsJson: analysisData?.facts ? [
               ...(analysisData.facts.known || []).map((fact: string) => ({ label: 'Vaststaande feiten', detail: fact })),
               ...(analysisData.facts.disputed || []).map((fact: string) => ({ label: 'Betwiste feiten', detail: fact })),
