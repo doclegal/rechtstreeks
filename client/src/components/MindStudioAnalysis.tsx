@@ -64,7 +64,14 @@ interface MindStudioAnalysisProps {
       }>;
       missing?: string[];
     };
-    missing_info_for_assessment?: string[];
+    missing_info_for_assessment?: Array<{
+      question: string;
+      answer_type?: string;
+      expected?: string;
+      ui?: string;
+      specificity?: string;
+      file_spec?: string;
+    }>;
     per_document?: Array<{
       name?: string;
       url?: string;
@@ -819,7 +826,7 @@ export function MindStudioAnalysis({ analysis, caseId }: MindStudioAnalysisProps
                         {analysis.missing_info_for_assessment.map((info, index) => (
                           <div key={index} className="flex items-start gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border-l-4 border-yellow-500">
                             <Info className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
-                            <span className="text-sm">{info}</span>
+                            <span className="text-sm">{typeof info === 'string' ? info : info.question}</span>
                           </div>
                         ))}
                       </div>

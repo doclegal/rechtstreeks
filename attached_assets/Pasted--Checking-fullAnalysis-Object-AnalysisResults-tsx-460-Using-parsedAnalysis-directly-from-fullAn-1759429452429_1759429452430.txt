@@ -1,0 +1,236 @@
+🔍 Checking fullAnalysis: Object
+AnalysisResults.tsx:460 ✅ Using parsedAnalysis directly from fullAnalysis
+AnalysisResults.tsx:452 🔍 Checking fullAnalysis: Object
+AnalysisResults.tsx:460 ✅ Using parsedAnalysis directly from fullAnalysis
+AnalysisResults.tsx:452 🔍 Checking fullAnalysis: Object
+AnalysisResults.tsx:460 ✅ Using parsedAnalysis directly from fullAnalysis
+AnalysisResults.tsx:452 🔍 Checking fullAnalysis: Object
+AnalysisResults.tsx:460 ✅ Using parsedAnalysis directly from fullAnalysis
+AnalysisResults.tsx:452 🔍 Checking fullAnalysis: Object
+AnalysisResults.tsx:460 ✅ Using parsedAnalysis directly from fullAnalysis
+chunk-RPCDYKBN.js?v=960b8cf1:9934 Uncaught Error: Objects are not valid as a React child (found: object with keys {question, answer_type, expected, ui, specificity}). If you meant to render a collection of children, use an array instead.
+    at throwOnInvalidObjectType (chunk-RPCDYKBN.js?v=960b8cf1:9934:17)
+    at reconcileChildFibers2 (chunk-RPCDYKBN.js?v=960b8cf1:10564:15)
+    at reconcileChildren (chunk-RPCDYKBN.js?v=960b8cf1:14290:37)
+    at updateHostComponent (chunk-RPCDYKBN.js?v=960b8cf1:14807:11)
+    at beginWork (chunk-RPCDYKBN.js?v=960b8cf1:15935:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=960b8cf1:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=960b8cf1:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=960b8cf1:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=960b8cf1:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=960b8cf1:19198:20)
+throwOnInvalidObjectType @ chunk-RPCDYKBN.js?v=960b8cf1:9934
+reconcileChildFibers2 @ chunk-RPCDYKBN.js?v=960b8cf1:10564
+reconcileChildren @ chunk-RPCDYKBN.js?v=960b8cf1:14290
+updateHostComponent @ chunk-RPCDYKBN.js?v=960b8cf1:14807
+beginWork @ chunk-RPCDYKBN.js?v=960b8cf1:15935
+callCallback2 @ chunk-RPCDYKBN.js?v=960b8cf1:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=960b8cf1:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=960b8cf1:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=960b8cf1:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=960b8cf1:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=960b8cf1:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=960b8cf1:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=960b8cf1:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=960b8cf1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=960b8cf1:18627Understand this error
+chunk-RPCDYKBN.js?v=960b8cf1:9934 Uncaught Error: Objects are not valid as a React child (found: object with keys {question, answer_type, expected, ui, specificity, file_spec}). If you meant to render a collection of children, use an array instead.
+    at throwOnInvalidObjectType (chunk-RPCDYKBN.js?v=960b8cf1:9934:17)
+    at reconcileChildFibers2 (chunk-RPCDYKBN.js?v=960b8cf1:10564:15)
+    at reconcileChildren (chunk-RPCDYKBN.js?v=960b8cf1:14290:37)
+    at updateHostComponent (chunk-RPCDYKBN.js?v=960b8cf1:14807:11)
+    at beginWork (chunk-RPCDYKBN.js?v=960b8cf1:15935:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=960b8cf1:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=960b8cf1:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=960b8cf1:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=960b8cf1:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=960b8cf1:19198:20)
+throwOnInvalidObjectType @ chunk-RPCDYKBN.js?v=960b8cf1:9934
+reconcileChildFibers2 @ chunk-RPCDYKBN.js?v=960b8cf1:10564
+reconcileChildren @ chunk-RPCDYKBN.js?v=960b8cf1:14290
+updateHostComponent @ chunk-RPCDYKBN.js?v=960b8cf1:14807
+beginWork @ chunk-RPCDYKBN.js?v=960b8cf1:15935
+callCallback2 @ chunk-RPCDYKBN.js?v=960b8cf1:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=960b8cf1:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=960b8cf1:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=960b8cf1:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=960b8cf1:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=960b8cf1:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=960b8cf1:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=960b8cf1:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=960b8cf1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=960b8cf1:18627Understand this error
+chunk-RPCDYKBN.js?v=960b8cf1:9934 Uncaught Error: Objects are not valid as a React child (found: object with keys {question, answer_type, expected, ui, specificity}). If you meant to render a collection of children, use an array instead.
+    at throwOnInvalidObjectType (chunk-RPCDYKBN.js?v=960b8cf1:9934:17)
+    at reconcileChildFibers2 (chunk-RPCDYKBN.js?v=960b8cf1:10564:15)
+    at reconcileChildren (chunk-RPCDYKBN.js?v=960b8cf1:14290:37)
+    at updateHostComponent (chunk-RPCDYKBN.js?v=960b8cf1:14807:11)
+    at beginWork (chunk-RPCDYKBN.js?v=960b8cf1:15935:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=960b8cf1:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=960b8cf1:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=960b8cf1:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=960b8cf1:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=960b8cf1:19198:20)
+throwOnInvalidObjectType @ chunk-RPCDYKBN.js?v=960b8cf1:9934
+reconcileChildFibers2 @ chunk-RPCDYKBN.js?v=960b8cf1:10564
+reconcileChildren @ chunk-RPCDYKBN.js?v=960b8cf1:14290
+updateHostComponent @ chunk-RPCDYKBN.js?v=960b8cf1:14807
+beginWork @ chunk-RPCDYKBN.js?v=960b8cf1:15935
+callCallback2 @ chunk-RPCDYKBN.js?v=960b8cf1:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=960b8cf1:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=960b8cf1:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=960b8cf1:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=960b8cf1:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=960b8cf1:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=960b8cf1:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=960b8cf1:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=960b8cf1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=960b8cf1:18627Understand this error
+chunk-RPCDYKBN.js?v=960b8cf1:9934 Uncaught Error: Objects are not valid as a React child (found: object with keys {question, answer_type, expected, ui, specificity}). If you meant to render a collection of children, use an array instead.
+    at throwOnInvalidObjectType (chunk-RPCDYKBN.js?v=960b8cf1:9934:17)
+    at reconcileChildFibers2 (chunk-RPCDYKBN.js?v=960b8cf1:10564:15)
+    at reconcileChildren (chunk-RPCDYKBN.js?v=960b8cf1:14290:37)
+    at updateHostComponent (chunk-RPCDYKBN.js?v=960b8cf1:14807:11)
+    at beginWork (chunk-RPCDYKBN.js?v=960b8cf1:15935:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=960b8cf1:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=960b8cf1:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=960b8cf1:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=960b8cf1:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=960b8cf1:19198:20)
+throwOnInvalidObjectType @ chunk-RPCDYKBN.js?v=960b8cf1:9934
+reconcileChildFibers2 @ chunk-RPCDYKBN.js?v=960b8cf1:10564
+reconcileChildren @ chunk-RPCDYKBN.js?v=960b8cf1:14290
+updateHostComponent @ chunk-RPCDYKBN.js?v=960b8cf1:14807
+beginWork @ chunk-RPCDYKBN.js?v=960b8cf1:15935
+callCallback2 @ chunk-RPCDYKBN.js?v=960b8cf1:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=960b8cf1:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=960b8cf1:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=960b8cf1:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=960b8cf1:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=960b8cf1:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=960b8cf1:19116
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=960b8cf1:18736
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=960b8cf1:18879
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=960b8cf1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=960b8cf1:18627Understand this error
+chunk-RPCDYKBN.js?v=960b8cf1:9934 Uncaught Error: Objects are not valid as a React child (found: object with keys {question, answer_type, expected, ui, specificity, file_spec}). If you meant to render a collection of children, use an array instead.
+    at throwOnInvalidObjectType (chunk-RPCDYKBN.js?v=960b8cf1:9934:17)
+    at reconcileChildFibers2 (chunk-RPCDYKBN.js?v=960b8cf1:10564:15)
+    at reconcileChildren (chunk-RPCDYKBN.js?v=960b8cf1:14290:37)
+    at updateHostComponent (chunk-RPCDYKBN.js?v=960b8cf1:14807:11)
+    at beginWork (chunk-RPCDYKBN.js?v=960b8cf1:15935:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=960b8cf1:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=960b8cf1:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=960b8cf1:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=960b8cf1:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=960b8cf1:19198:20)
+throwOnInvalidObjectType @ chunk-RPCDYKBN.js?v=960b8cf1:9934
+reconcileChildFibers2 @ chunk-RPCDYKBN.js?v=960b8cf1:10564
+reconcileChildren @ chunk-RPCDYKBN.js?v=960b8cf1:14290
+updateHostComponent @ chunk-RPCDYKBN.js?v=960b8cf1:14807
+beginWork @ chunk-RPCDYKBN.js?v=960b8cf1:15935
+callCallback2 @ chunk-RPCDYKBN.js?v=960b8cf1:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=960b8cf1:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=960b8cf1:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=960b8cf1:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=960b8cf1:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=960b8cf1:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=960b8cf1:19116
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=960b8cf1:18736
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=960b8cf1:18879
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=960b8cf1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=960b8cf1:18627Understand this error
+chunk-RPCDYKBN.js?v=960b8cf1:9934 Uncaught Error: Objects are not valid as a React child (found: object with keys {question, answer_type, expected, ui, specificity}). If you meant to render a collection of children, use an array instead.
+    at throwOnInvalidObjectType (chunk-RPCDYKBN.js?v=960b8cf1:9934:17)
+    at reconcileChildFibers2 (chunk-RPCDYKBN.js?v=960b8cf1:10564:15)
+    at reconcileChildren (chunk-RPCDYKBN.js?v=960b8cf1:14290:37)
+    at updateHostComponent (chunk-RPCDYKBN.js?v=960b8cf1:14807:11)
+    at beginWork (chunk-RPCDYKBN.js?v=960b8cf1:15935:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=960b8cf1:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=960b8cf1:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=960b8cf1:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=960b8cf1:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=960b8cf1:19198:20)
+throwOnInvalidObjectType @ chunk-RPCDYKBN.js?v=960b8cf1:9934
+reconcileChildFibers2 @ chunk-RPCDYKBN.js?v=960b8cf1:10564
+reconcileChildren @ chunk-RPCDYKBN.js?v=960b8cf1:14290
+updateHostComponent @ chunk-RPCDYKBN.js?v=960b8cf1:14807
+beginWork @ chunk-RPCDYKBN.js?v=960b8cf1:15935
+callCallback2 @ chunk-RPCDYKBN.js?v=960b8cf1:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=960b8cf1:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=960b8cf1:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=960b8cf1:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=960b8cf1:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=960b8cf1:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=960b8cf1:19116
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=960b8cf1:18736
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=960b8cf1:18879
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=960b8cf1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=960b8cf1:18627Understand this error
+3chunk-RPCDYKBN.js?v=960b8cf1:14032 The above error occurred in the <span> component:
+
+    at span
+    at div
+    at div
+    at div
+    at _c9 (https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/src/components/ui/card.tsx:114:12)
+    at div
+    at _c (https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/src/components/ui/card.tsx:20:11)
+    at div
+    at https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-AXMZZQ2X.js?v=960b8cf1:42:13
+    at Presence (https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-E4UC4BFD.js?v=960b8cf1:24:11)
+    at https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=960b8cf1:174:13
+    at _c5 (https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/src/components/ui/tabs.tsx:72:12)
+    at div
+    at https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-AXMZZQ2X.js?v=960b8cf1:42:13
+    at Provider (https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=960b8cf1:38:15)
+    at https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=960b8cf1:52:7
+    at div
+    at div
+    at div
+    at div
+    at MindStudioAnalysis (https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/src/components/MindStudioAnalysis.tsx:606:38)
+    at div
+    at AnalysisResults (https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/src/components/AnalysisResults.tsx?t=1759429150120:37:3)
+    at div
+    at div
+    at div
+    at div
+    at MyCase (https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/src/pages/MyCase.tsx?t=1759429150120:34:44)
+    at Route (https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=960b8cf1:323:16)
+    at main
+    at div
+    at Layout (https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/src/components/Layout.tsx:29:34)
+    at Switch (https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=960b8cf1:379:17)
+    at Router (https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/src/App.tsx?t=1759429150120&v=EMhGbHXG6p5n_sr3JpzzA:36:42)
+    at Provider (https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=960b8cf1:38:15)
+    at TooltipProvider (https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=960b8cf1:62:5)
+    at QueryClientProvider (https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=960b8cf1:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-RPCDYKBN.js?v=960b8cf1:14032
+update.callback @ chunk-RPCDYKBN.js?v=960b8cf1:14052
+callCallback @ chunk-RPCDYKBN.js?v=960b8cf1:11248
+commitUpdateQueue @ chunk-RPCDYKBN.js?v=960b8cf1:11265
+commitLayoutEffectOnFiber @ chunk-RPCDYKBN.js?v=960b8cf1:17093
+commitLayoutMountEffects_complete @ chunk-RPCDYKBN.js?v=960b8cf1:17980
+commitLayoutEffects_begin @ chunk-RPCDYKBN.js?v=960b8cf1:17969
+commitLayoutEffects @ chunk-RPCDYKBN.js?v=960b8cf1:17920
+commitRootImpl @ chunk-RPCDYKBN.js?v=960b8cf1:19353
+commitRoot @ chunk-RPCDYKBN.js?v=960b8cf1:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=960b8cf1:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=960b8cf1:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=960b8cf1:18627Understand this error
+chunk-RPCDYKBN.js?v=960b8cf1:9934 Uncaught Error: Objects are not valid as a React child (found: object with keys {question, answer_type, expected, ui, specificity}). If you meant to render a collection of children, use an array instead.
+    at throwOnInvalidObjectType (chunk-RPCDYKBN.js?v=960b8cf1:9934:17)
+    at reconcileChildFibers2 (chunk-RPCDYKBN.js?v=960b8cf1:10564:15)
+    at reconcileChildren (chunk-RPCDYKBN.js?v=960b8cf1:14290:37)
+    at updateHostComponent (chunk-RPCDYKBN.js?v=960b8cf1:14807:11)
+    at beginWork (chunk-RPCDYKBN.js?v=960b8cf1:15935:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=960b8cf1:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=960b8cf1:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=960b8cf1:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js?v=960b8cf1:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js?v=960b8cf1:18736:28)
