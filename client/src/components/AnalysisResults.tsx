@@ -449,8 +449,15 @@ export default function AnalysisResults({
             // Parse MindStudio structured output from rawText
             let mindstudioAnalysis = null;
             try {
+              console.log('🔍 Checking fullAnalysis:', {
+                hasParsedAnalysis: !!(fullAnalysis as any).parsedAnalysis,
+                fullAnalysisKeys: Object.keys(fullAnalysis),
+                parsedAnalysisType: typeof (fullAnalysis as any).parsedAnalysis
+              });
+              
               // FIRST: Check if parsedAnalysis is directly available (new enriched format from backend)
               if ((fullAnalysis as any).parsedAnalysis && typeof (fullAnalysis as any).parsedAnalysis === 'object') {
+                console.log('✅ Using parsedAnalysis directly from fullAnalysis');
                 mindstudioAnalysis = (fullAnalysis as any).parsedAnalysis;
               }
               // FALLBACK: Parse from rawText if not directly available
