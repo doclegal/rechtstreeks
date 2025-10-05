@@ -225,6 +225,16 @@ export function useFullAnalyzeCase(caseId: string) {
         return;
       }
 
+      // Handle MindStudio flow execution errors
+      if (error.message.includes("flow execution error") || error.message.includes("no analysis_json produced")) {
+        toast({
+          title: "AI Flow Error",
+          description: "De MindStudio flow heeft een fout gegenereerd en kon geen analyse produceren. Controleer de flow configuratie in MindStudio.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Handle timeout errors (504, 524, or any timeout message)
       if (error.message.includes("504") || error.message.includes("524") || error.message.includes("timeout") || error.message.includes("timed out") || error.message.includes("duurt te lang")) {
         toast({

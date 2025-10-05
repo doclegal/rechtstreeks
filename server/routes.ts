@@ -847,7 +847,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         console.log('🔍 Full analysis result:', fullAnalysisResult);
         
-        if (fullAnalysisResult.success) {
+        // Check if we actually got analysis data, not just a successful API call
+        const hasValidAnalysis = fullAnalysisResult.success && fullAnalysisResult.parsedAnalysis !== null;
+        
+        if (hasValidAnalysis) {
           // Parse structured MindStudio analysis output
           const analysisData = fullAnalysisResult.parsedAnalysis;
           
@@ -890,6 +893,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: 'Volledige analyse succesvol voltooid'
           });
         } else {
+          // Check if MindStudio flow succeeded but produced no analysis (execution error)
+          if (fullAnalysisResult.success && !fullAnalysisResult.parsedAnalysis) {
+            console.error("❌ MindStudio flow execution error - no analysis data produced");
+            return res.status(500).json({ 
+              message: "De AI analyse kon niet worden voltooid. De MindStudio flow heeft een fout gegenereerd. Controleer de flow configuratie.",
+              error: "MindStudio flow execution error - no analysis_json produced"
+            });
+          }
+          
           // Check if it's a timeout error
           const isTimeout = fullAnalysisResult.rawText?.includes('524') || 
                            fullAnalysisResult.rawText?.includes('timeout') ||
