@@ -225,6 +225,16 @@ export function useFullAnalyzeCase(caseId: string) {
         return;
       }
 
+      // Handle timeout errors (504, 524, or any timeout message)
+      if (error.message.includes("504") || error.message.includes("524") || error.message.includes("timeout") || error.message.includes("timed out") || error.message.includes("duurt te lang")) {
+        toast({
+          title: "Analyse duurt te lang",
+          description: "De AI analyse heeft langer dan 2 minuten geduurd. Dit kan gebeuren bij veel documenten. De analyse is afgebroken.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Handle case not ready for full analysis
       if (error.message.includes("400")) {
         toast({

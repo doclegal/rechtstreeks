@@ -874,6 +874,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: 'Volledige analyse succesvol voltooid'
           });
         } else {
+          // Check if it's a timeout error
+          const isTimeout = fullAnalysisResult.rawText?.includes('524') || 
+                           fullAnalysisResult.rawText?.includes('timeout') ||
+                           fullAnalysisResult.rawText?.includes('timed out');
+          
+          if (isTimeout) {
+            return res.status(504).json({ 
+              message: "De AI analyse duurt te lang (timeout na 2 minuten). Dit kan gebeuren bij veel of grote documenten.",
+              error: "MindStudio API timeout"
+            });
+          }
+          
           return res.status(500).json({ 
             message: "Volledige analyse mislukt. Probeer het opnieuw.",
             error: fullAnalysisResult.rawText
@@ -882,6 +894,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
       } catch (error) {
         console.error("Full analysis failed:", error);
+        
+        // Check if it's a timeout error
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        if (errorMsg.includes('524') || errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
+          return res.status(504).json({ 
+            message: "De AI analyse duurt te lang (timeout na 2 minuten). Dit kan gebeuren bij veel of grote documenten." 
+          });
+        }
+        
         return res.status(503).json({ 
           message: "Sorry, de volledige analyse lukt niet. Mindstudio AI is niet beschikbaar." 
         });
