@@ -976,12 +976,13 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     const variables: any = {
       case_id: params.case_id,
       case_text: params.case_text,
-      amount_eur: params.amount_eur || 0,
+      amount_eur: typeof params.amount_eur === 'number' ? params.amount_eur : 0,  // Ensure number type
       parties: params.parties || [],
       uploaded_files: params.uploaded_files || [],
-      prev_analysis_json: params.prev_analysis_json || null,
-      missing_info_answers: params.missing_info_answers || null,
-      new_uploads: params.new_uploads || null
+      // Use ?? instead of || to preserve explicit null values (null ?? default only uses default if null/undefined)
+      prev_analysis_json: params.prev_analysis_json ?? null,
+      missing_info_answers: params.missing_info_answers ?? null,
+      new_uploads: params.new_uploads ?? null
     };
 
     console.log("📤 Full Analysis variables:", JSON.stringify(variables, null, 2));

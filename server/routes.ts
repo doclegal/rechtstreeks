@@ -760,13 +760,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const documents = await storage.getDocumentsByCase(caseId);
         console.log('📄 Found documents for full analysis:', documents.length);
         
-        const uploaded_files = documents.map(doc => ({
-          name: doc.filename,
-          file_url: doc.storageKey ? `${process.env.PUBLIC_BASE_URL || 'https://localhost:5000'}/api/documents/${doc.id}/download` : '',
-          type: doc.filename.toLowerCase().endsWith('.pdf') ? 'pdf' as const :
-                doc.filename.toLowerCase().endsWith('.docx') ? 'docx' as const :
-                doc.filename.toLowerCase().match(/\.(jpg|jpeg|png|gif)$/) ? 'img' as const : 'txt' as const
-        }));
+        const uploaded_files = documents.map(doc => {
+          // Map to proper MIME types as expected by MindStudio
+          const filename = doc.filename.toLowerCase();
+          let type: "application/pdf" | "image/jpeg" | "image/png" = "application/pdf";
+          
+          if (filename.endsWith('.pdf')) {
+            type = 'application/pdf';
+          } else if (filename.match(/\.(jpg|jpeg)$/)) {
+            type = 'image/jpeg';
+          } else if (filename.endsWith('.png')) {
+            type = 'image/png';
+          }
+          // Note: DOCX, TXT, GIF are not in the contract, default to PDF for now
+          
+          return {
+            name: doc.filename,
+            type,
+            file_url: doc.storageKey ? `${process.env.PUBLIC_BASE_URL || 'https://localhost:5000'}/api/documents/${doc.id}/download` : ''
+          };
+        });
 
         // Check if there's a successful kanton check analysis
         // Look for any analysis that contains kanton check results (ok: true)
@@ -802,7 +815,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const fullAnalysisParams = {
           case_id: caseId,
           case_text: `Zaak: ${caseData.title}\n\nOmschrijving: ${caseData.description || 'Geen beschrijving'}\n\nTegenpartij: ${caseData.counterpartyName || 'Onbekend'}\n\nClaim bedrag: €${caseData.claimAmount || '0'}`,
-          amount_eur: Number(caseData.claimAmount) || 0,
+          amount_eur: Number(caseData.claimAmount) || 0,  // Ensure number type
           parties: [
             { name: userName, role: 'claimant' as const, type: 'individual' },
             { name: caseData.counterpartyName || 'Onbekend', role: 'respondent' as const, type: caseData.counterpartyType || 'individual' }
@@ -813,8 +826,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             doc.filename.toLowerCase().includes('overeenkomst') ||
             doc.filename.toLowerCase().includes('voorwaarden')
           ),
-          forum_clause_text: null, // TODO: Extract from documents if present
-          uploaded_files
+          forum_clause_text: null as null, // Explicit null type
+          uploaded_files,
+          prev_analysis_json: null as null,  // Explicit null for first run
+          missing_info_answers: null as null,  // Explicit null for first run
+          new_uploads: null as null  // Explicit null for first run
         };
 
         console.log('🚀 Starting full analysis with params:', {
@@ -991,12 +1007,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const secondRunResult = await aiService.runFullAnalysis({
         case_id: caseId,
         case_text,
-        amount_eur: parseFloat(caseData.claimAmount || '0'),
+        amount_eur: Number(caseData.claimAmount) || 0,  // Ensure number type
         parties,
         uploaded_files,
-        prev_analysis_json,
-        missing_info_answers: missing_info_answers || null,
-        new_uploads: new_uploads || null
+        prev_analysis_json: prev_analysis_json ?? null,  // Explicit null if not available
+        missing_info_answers: missing_info_answers ?? null,  // Preserve array or null
+        new_uploads: new_uploads ?? null  // Preserve array or null
       });
 
       if (secondRunResult.success) {
@@ -1380,8 +1396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         actorUserId: userId,
         type: "letter_deleted",
         payloadJson: { 
-          letterId,
-          briefType: letter.briefType
+          letterId
         },
       });
       
