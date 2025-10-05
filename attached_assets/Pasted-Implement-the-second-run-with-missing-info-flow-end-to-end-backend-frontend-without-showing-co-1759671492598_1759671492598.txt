@@ -1,0 +1,79 @@
+Implement the “second run with missing info” flow end-to-end (backend + frontend) without showing code, using the exact data contracts below.
+
+MindStudio – FullAnalysis.flow (launch variables)
+
+Send these keys (types must match):
+
+case_id: string
+
+case_text: string
+
+amount_eur: number
+
+parties: Array<{ name:string; role:"claimant"|"respondent"|"third_party"|"unknown"; type?:string }>
+
+uploaded_files: Array<{ name:string; type:"application/pdf"|"image/jpeg"|"image/png"; file_url:string }>
+
+prev_analysis_json: object | null // first run: null; second run: full JSON from run 1
+
+missing_info_answers: Array<{ question_id:string; answer_type:"text"|"multiple_choice"|"file_upload"; answer_text?:string; answer_choice?:string; answer_files?: Array<{ name:string; type:"application/pdf"|"image/jpeg"|"image/png"; file_url:string }> }> | null
+
+new_uploads: Array<{ name:string; type:"application/pdf"|"image/jpeg"|"image/png"; file_url:string }> | null
+
+MindStudio – expected response (return data)
+
+Capture the FULL response as-is:
+
+analysis_json: object // main structured legal analysis
+
+extracted_texts: array // documents with extracted text
+
+missing_info_struct: array // validated, UI-ready missing-info items
+
+all_files?: array // consolidated file list (if returned)
+
+Backend tasks
+
+Add POST /api/analysis/second-run:
+
+Validates types.
+
+Sends the exact launch variables above.
+
+Returns the entire MindStudio result unmodified.
+
+Proper error messages for type mismatches / invalid JSON.
+
+Frontend tasks
+
+Form for answering missing_info_struct items (text, multiple_choice, file_upload), producing missing_info_answers in the exact shape above (+ optional new_uploads).
+
+Button “Refine analysis” triggers the second run with:
+
+case data + files from state,
+
+prev_analysis_json = analysisJsonV1,
+
+missing_info_answers,
+
+new_uploads (if any).
+
+Store response as analysisJsonV2, extractedTextsV2, missingInfoStructV2, allFilesV2 (if present).
+
+UI/UX outcome (what it should look like)
+
+Side-by-side comparison: show V1 (left) vs V2 (right) with visual highlights for:
+
+changed fields, added/removed list items (legal_issues, evidence.provided, next_actions, etc.).
+
+Change summary bar on top: “X fields changed, Y new evidence, Z new legal issues.”
+
+Readiness banner:
+
+Green: no remaining missing_info_for_assessment → enable “Draft letter” and “Draft summons”.
+
+Amber/Red: remaining items → keep actions disabled, offer “Proceed anyway” with warning.
+
+Persist both analyses and user answers in case state; allow user to revisit the diff view.
+
+Honor these contracts strictly (numbers as numbers, arrays as arrays, file objects as {name,type,file_url}).

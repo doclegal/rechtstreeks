@@ -94,16 +94,31 @@ export const caseDocuments = pgTable("case_documents", {
 export const analyses = pgTable("analyses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   caseId: varchar("case_id").notNull().references(() => cases.id, { onDelete: "cascade" }),
+  version: integer("version").notNull().default(1), // v1, v2, v3, etc.
   model: varchar("model").notNull(),
-  rawText: text("raw_text"), // Add raw analysis text
+  rawText: text("raw_text"),
+  
+  // MindStudio structured response
+  analysisJson: jsonb("analysis_json"), // Main structured legal analysis
+  extractedTexts: jsonb("extracted_texts"), // Documents with extracted text
+  missingInfoStruct: jsonb("missing_info_struct"), // UI-ready missing-info items
+  allFiles: jsonb("all_files"), // Consolidated file list
+  
+  // Legacy fields (kept for backwards compatibility)
   factsJson: jsonb("facts_json"),
   issuesJson: jsonb("issues_json"),
   missingDocsJson: jsonb("missing_docs_json"),
   legalBasisJson: jsonb("legal_basis_json"),
   riskNotesJson: jsonb("risk_notes_json"),
+  
+  // Second run support
+  prevAnalysisId: varchar("prev_analysis_id"), // Link to previous version (self-reference)
+  missingInfoAnswers: jsonb("missing_info_answers"), // User answers to missing info questions
+  
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("idx_analyses_case").on(table.caseId),
+  index("idx_analyses_version").on(table.caseId, table.version),
 ]);
 
 export const letters = pgTable("letters", {
