@@ -801,21 +801,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           kantonCheckResult = { ok: true, phase: 'kanton_check' };
         }
 
-        // Prepare analysis parameters
+        // Prepare analysis parameters - parties as array per contract
         const fullAnalysisParams = {
           case_id: caseId,
           case_text: `Zaak: ${caseData.title}\n\nOmschrijving: ${caseData.description || 'Geen beschrijving'}\n\nTegenpartij: ${caseData.counterpartyName || 'Onbekend'}\n\nClaim bedrag: €${caseData.claimAmount || '0'}`,
           amount_eur: Number(caseData.claimAmount) || 0,
-          parties: {
-            claimant: {
-              name: userName,
-              type: 'individual'
-            },
-            defendant: {
-              name: caseData.counterpartyName || 'Onbekend',
-              type: 'individual'
-            }
-          },
+          parties: [
+            { name: userName, role: 'claimant' as const, type: 'individual' },
+            { name: caseData.counterpartyName || 'Onbekend', role: 'respondent' as const, type: caseData.counterpartyType || 'individual' }
+          ],
           is_kantonzaak: kantonCheckResult?.ok || false,
           contract_present: documents.some(doc => 
             doc.filename.toLowerCase().includes('contract') || 
@@ -898,6 +892,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error running full analysis:", error);
       res.status(500).json({ message: "Volledige analyse mislukt. Probeer het opnieuw." });
+    }
+  });
+
+  // Second Run Analysis - refine analysis with missing info answers
+  app.post('/api/cases/:id/second-run', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      // Get case data and verify ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+
+      // Get the previous analysis (v1)
+      const prevAnalysis = await storage.getLatestAnalysis(caseId);
+      if (!prevAnalysis) {
+        return res.status(400).json({ 
+          message: "No previous analysis found. Please run full analysis first." 
+        });
+      }
+
+      // Validate request body types according to contract
+      const { 
+        missing_info_answers, 
+        new_uploads 
+      } = req.body;
+
+      // Type validation for missing_info_answers
+      if (missing_info_answers && !Array.isArray(missing_info_answers)) {
+        return res.status(400).json({ message: "missing_info_answers must be an array" });
+      }
+      
+      if (missing_info_answers) {
+        for (const answer of missing_info_answers) {
+          if (!answer.question_id || typeof answer.question_id !== 'string') {
+            return res.status(400).json({ message: "Each answer must have a question_id string" });
+          }
+          if (!['text', 'multiple_choice', 'file_upload'].includes(answer.answer_type)) {
+            return res.status(400).json({ message: "answer_type must be 'text', 'multiple_choice', or 'file_upload'" });
+          }
+        }
+      }
+
+      // Type validation for new_uploads
+      if (new_uploads && !Array.isArray(new_uploads)) {
+        return res.status(400).json({ message: "new_uploads must be an array" });
+      }
+
+      // Get documents for analysis
+      const documents = await storage.getDocumentsByCase(caseId);
+      const uploaded_files = documents.map(doc => ({
+        name: doc.filename,
+        type: doc.mimetype as "application/pdf" | "image/jpeg" | "image/png",
+        file_url: `${process.env.PUBLIC_BASE_URL || 'https://localhost:5000'}/api/documents/${doc.id}/download`
+      }));
+
+      // Extract prev_analysis_json from previous analysis
+      let prev_analysis_json = null;
+      try {
+        if (prevAnalysis.rawText) {
+          const rawData = JSON.parse(prevAnalysis.rawText);
+          prev_analysis_json = rawData.parsedAnalysis || rawData;
+        }
+      } catch (error) {
+        console.error("Could not parse previous analysis:", error);
+      }
+
+      // Build case_text from case data
+      const case_text = `Zaak: ${caseData.title}\n\nOmschrijving: ${caseData.description || 'Geen beschrijving'}\n\nTegenpartij: ${caseData.counterpartyName || 'Onbekend'}\n\nClaim bedrag: €${caseData.claimAmount || '0'}`;
+
+      // Prepare parties array according to contract
+      const parties = [
+        { name: caseData.counterpartyName || 'Onbekend', role: 'respondent' as const, type: caseData.counterpartyType || undefined }
+      ];
+
+      // Run second analysis with MindStudio
+      const secondRunResult = await aiService.runFullAnalysis({
+        case_id: caseId,
+        case_text,
+        amount_eur: parseFloat(caseData.claimAmount || '0'),
+        parties,
+        uploaded_files,
+        prev_analysis_json,
+        missing_info_answers: missing_info_answers || null,
+        new_uploads: new_uploads || null
+      });
+
+      if (secondRunResult.success) {
+        // Store as version 2 analysis
+        const analysis = await storage.createAnalysis({
+          caseId,
+          version: 2,
+          model: 'mindstudio-full-analysis-v2',
+          rawText: secondRunResult.rawText || '',
+          analysisJson: secondRunResult.parsedAnalysis,
+          extractedTexts: secondRunResult.extractedTexts,
+          missingInfoStruct: secondRunResult.missingInfoStruct,
+          allFiles: secondRunResult.allFiles,
+          prevAnalysisId: prevAnalysis.id,
+          missingInfoAnswers: missing_info_answers,
+          // Legacy fields for backwards compatibility
+          factsJson: secondRunResult.parsedAnalysis?.facts ? [
+            ...(secondRunResult.parsedAnalysis.facts.known || []).map((fact: string) => ({ label: 'Vaststaande feiten', detail: fact })),
+            ...(secondRunResult.parsedAnalysis.facts.disputed || []).map((fact: string) => ({ label: 'Betwiste feiten', detail: fact }))
+          ] : [],
+          issuesJson: secondRunResult.parsedAnalysis?.legal_analysis?.legal_issues?.map((issue: string) => ({ issue, risk: 'Zie juridische analyse' })) || [],
+          legalBasisJson: [],
+          missingDocsJson: [],
+          riskNotesJson: secondRunResult.parsedAnalysis?.legal_analysis?.risks || []
+        });
+
+        return res.json({
+          success: true,
+          version: 2,
+          analysis_json: secondRunResult.parsedAnalysis,
+          extracted_texts: secondRunResult.extractedTexts,
+          missing_info_struct: secondRunResult.missingInfoStruct,
+          all_files: secondRunResult.allFiles,
+          analysisId: analysis.id,
+          message: 'Second run analysis completed successfully'
+        });
+      } else {
+        return res.status(500).json({
+          message: "Second run analysis failed",
+          error: secondRunResult.rawText
+        });
+      }
+
+    } catch (error) {
+      console.error("Error in second run analysis:", error);
+      res.status(500).json({ message: "Second run analysis failed. Please try again." });
     }
   });
 
