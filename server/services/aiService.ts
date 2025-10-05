@@ -919,23 +919,45 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     case_id: string;
     case_text: string;
     amount_eur?: number;
-    parties: {
-      claimant: any;
-      defendant: any;
-    };
-    is_kantonzaak: boolean;
-    contract_present: boolean;
+    parties: Array<{ 
+      name: string; 
+      role: "claimant" | "respondent" | "third_party" | "unknown"; 
+      type?: string 
+    }>;
+    is_kantonzaak?: boolean;
+    contract_present?: boolean;
     forum_clause_text?: string | null;
     uploaded_files: Array<{
       name: string;
+      type: "application/pdf" | "image/jpeg" | "image/png";
       file_url: string;
-      type: 'pdf' | 'img' | 'docx' | 'txt';
     }>;
+    // Second run parameters
+    prev_analysis_json?: object | null;
+    missing_info_answers?: Array<{
+      question_id: string;
+      answer_type: "text" | "multiple_choice" | "file_upload";
+      answer_text?: string;
+      answer_choice?: string;
+      answer_files?: Array<{
+        name: string;
+        type: "application/pdf" | "image/jpeg" | "image/png";
+        file_url: string;
+      }>;
+    }> | null;
+    new_uploads?: Array<{
+      name: string;
+      type: "application/pdf" | "image/jpeg" | "image/png";
+      file_url: string;
+    }> | null;
   }): Promise<{
     success: boolean;
     threadId?: string;
     result?: any;
-    parsedAnalysis?: any;
+    parsedAnalysis?: any;  // analysis_json
+    extractedTexts?: any;  // extracted_texts
+    missingInfoStruct?: any;  // missing_info_struct  
+    allFiles?: any;  // all_files
     rawText?: string;
     billingCost?: string;
   }> {
@@ -950,12 +972,16 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       uploaded_files_count: params.uploaded_files?.length || 0
     });
 
-    // Prepare launch variables for MindStudio - send uploaded_files as native array
-    // The key insight: don't double-stringify, let the HTTP JSON.stringify handle it once
+    // Prepare launch variables for MindStudio - strict types per contract
     const variables: any = {
       case_id: params.case_id,
       case_text: params.case_text,
-      uploaded_files: params.uploaded_files || []
+      amount_eur: params.amount_eur || 0,
+      parties: params.parties || [],
+      uploaded_files: params.uploaded_files || [],
+      prev_analysis_json: params.prev_analysis_json || null,
+      missing_info_answers: params.missing_info_answers || null,
+      new_uploads: params.new_uploads || null
     };
 
     console.log("📤 Full Analysis variables:", JSON.stringify(variables, null, 2));
@@ -1001,9 +1027,11 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
         throw new Error("No threadId received from Mindstudio");
       }
 
-      // Parse the structured MindStudio output - look for analysis_json AND missing_info_struct variables
-      let parsedAnalysis = null;
-      let missingInfoStruct = null;
+      // Parse the structured MindStudio output - per contract specification
+      let parsedAnalysis = null;  // analysis_json
+      let missingInfoStruct = null;  // missing_info_struct
+      let extractedTexts = null;  // extracted_texts
+      let allFiles = null;  // all_files
       
       try {
         // Primary: Look for analysis_json AND missing_info_struct in thread posts
@@ -1041,6 +1069,20 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
               } else {
                 missingInfoStruct = responseValue;
               }
+            }
+            
+            // Look for extracted_texts
+            if (!extractedTexts && post.debugLog?.newState?.variables?.extracted_texts?.value) {
+              console.log("✅ Found extracted_texts in debugLog.newState.variables");
+              const responseValue = post.debugLog.newState.variables.extracted_texts.value;
+              extractedTexts = typeof responseValue === 'string' ? JSON.parse(responseValue) : responseValue;
+            }
+            
+            // Look for all_files
+            if (!allFiles && post.debugLog?.newState?.variables?.all_files?.value) {
+              console.log("✅ Found all_files in debugLog.newState.variables");
+              const responseValue = post.debugLog.newState.variables.all_files.value;
+              allFiles = typeof responseValue === 'string' ? JSON.parse(responseValue) : responseValue;
             }
           }
         }
@@ -1135,7 +1177,10 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
         success: true,
         threadId: data.threadId,
         result: data.result,
-        parsedAnalysis,
+        parsedAnalysis,  // analysis_json
+        extractedTexts,  // extracted_texts  
+        missingInfoStruct,  // missing_info_struct
+        allFiles,  // all_files
         rawText: JSON.stringify(data, null, 2),
         billingCost: data.billingCost
       };
