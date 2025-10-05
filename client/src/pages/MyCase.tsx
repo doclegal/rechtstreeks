@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MissingInfo from "@/components/MissingInfo";
+import MissingInfoRefineForm from "@/components/MissingInfoRefineForm";
 import DocumentList from "@/components/DocumentList";
 import AnalysisResults from "@/components/AnalysisResults";
 import GeneratedDocuments from "@/components/GeneratedDocuments";
@@ -23,6 +24,7 @@ export default function MyCase() {
   const [location, setLocation] = useLocation();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [kantonCheckResult, setKantonCheckResult] = useState<any>(null);
+  const [v2Analysis, setV2Analysis] = useState<any>(null); // Second run analysis results
   
   // For MVP, we'll use the first case as the main case
   const currentCase = Array.isArray(cases) && cases.length > 0 ? cases[0] : undefined;
@@ -402,6 +404,51 @@ export default function MyCase() {
                 onFullAnalyze={() => fullAnalyzeMutation.mutate()}
                 isFullAnalyzing={fullAnalyzeMutation.isPending}
               />
+              
+              {/* Second Run: Refine Analysis Form */}
+              {(() => {
+                const fullAnalysis = currentCase.fullAnalysis as any;
+                const parsedAnalysis = fullAnalysis?.parsedAnalysis;
+                const missingInfoStruct = parsedAnalysis?.missing_info_for_assessment;
+                const hasMissingInfo = missingInfoStruct && Array.isArray(missingInfoStruct) && missingInfoStruct.length > 0;
+                
+                // Show refine form only if there's missing info and no V2 analysis yet
+                if (hasMissingInfo && !v2Analysis) {
+                  return (
+                    <div className="mt-6">
+                      <MissingInfoRefineForm
+                        missingInfoStruct={missingInfoStruct}
+                        caseId={currentCase.id}
+                        onSecondRunComplete={(result) => {
+                          console.log('Second run completed:', result);
+                          setV2Analysis(result);
+                          refetch();
+                          toast({
+                            title: "Analyse verfijnd",
+                            description: "Je antwoorden zijn verwerkt en de analyse is verfijnd"
+                          });
+                        }}
+                      />
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+              
+              {/* Display V2 Analysis Results */}
+              {v2Analysis && (
+                <div className="mt-6 p-4 border-2 border-green-200 rounded-lg bg-green-50 dark:bg-green-900/20">
+                  <h3 className="text-lg font-semibold text-green-700 dark:text-green-300 mb-4">
+                    ✅ Verfijnde Analyse (Versie 2)
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    De analyse is verfijnd met jouw antwoorden. Hieronder zie je de bijgewerkte resultaten.
+                  </p>
+                  <pre className="text-xs bg-white dark:bg-gray-800 p-4 rounded overflow-auto max-h-96">
+                    {JSON.stringify(v2Analysis, null, 2)}
+                  </pre>
+                </div>
+              )}
             </div>
           </div>
         )}
