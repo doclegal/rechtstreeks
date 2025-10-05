@@ -93,16 +93,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (parsedAnalysis) {
-        console.log("✅ Enriched fullAnalysis with parsedAnalysis, keys:", Object.keys(parsedAnalysis));
         return {
           ...fullAnalysis,
           parsedAnalysis
         };
-      } else {
-        console.warn("⚠️ Could not extract parsedAnalysis from fullAnalysis rawText");
       }
     } catch (error) {
-      console.warn("❌ Error parsing fullAnalysis rawText:", error);
+      // Silently fail - frontend will handle parsing
     }
     
     return fullAnalysis;

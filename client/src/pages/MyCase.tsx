@@ -420,7 +420,6 @@ export default function MyCase() {
                         missingInfoStruct={missingInfoStruct}
                         caseId={currentCase.id}
                         onSecondRunComplete={(result) => {
-                          console.log('Second run completed:', result);
                           setV2Analysis(result);
                           refetch();
                           toast({

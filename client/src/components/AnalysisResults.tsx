@@ -97,11 +97,9 @@ export default function AnalysisResults({
       }
       // Old format: Full MindStudio response - extract from posts
       else if (parsed.thread?.posts) {
-        console.log("🔍 Extracting kanton check from MindStudio posts...");
         for (const post of parsed.thread.posts) {
           // Look in debugLog newState variables
           if (post.debugLog?.newState?.variables?.app_response?.value) {
-            console.log("🔍 Found app_response in debugLog.newState.variables");
             const responseValue = post.debugLog.newState.variables.app_response.value;
             let appResponse;
             if (typeof responseValue === 'string') {
@@ -120,7 +118,6 @@ export default function AnalysisResults({
             try {
               const contentParsed = JSON.parse(content);
               if (contentParsed.ok !== undefined && contentParsed.phase === 'kanton_check') {
-                console.log("🔍 Found app_response in message content");
                 parsedKantonCheck = contentParsed;
                 break;
               }
@@ -142,7 +139,6 @@ export default function AnalysisResults({
   const handleSubmitAnswers = async () => {
     setIsSubmittingAnswers(true);
     // TODO: Submit answers back to analysis
-    console.log('Submitting answers:', questionAnswers);
     setTimeout(() => {
       setIsSubmittingAnswers(false);
       alert('Antwoorden opgeslagen. Voer opnieuw een analyse uit.');
@@ -449,20 +445,12 @@ export default function AnalysisResults({
             // Parse MindStudio structured output from rawText
             let mindstudioAnalysis = null;
             try {
-              console.log('🔍 Checking fullAnalysis:', {
-                hasParsedAnalysis: !!(fullAnalysis as any).parsedAnalysis,
-                fullAnalysisKeys: Object.keys(fullAnalysis),
-                parsedAnalysisType: typeof (fullAnalysis as any).parsedAnalysis
-              });
-              
               // FIRST: Check if parsedAnalysis is directly available (new enriched format from backend)
               if ((fullAnalysis as any).parsedAnalysis && typeof (fullAnalysis as any).parsedAnalysis === 'object') {
-                console.log('✅ Using parsedAnalysis directly from fullAnalysis');
                 mindstudioAnalysis = (fullAnalysis as any).parsedAnalysis;
               }
               // FALLBACK: Parse from rawText if not directly available
               else if (fullAnalysis.rawText) {
-                console.log('🔍 Attempting to parse rawText, length:', fullAnalysis.rawText.length);
                 const rawData = JSON.parse(fullAnalysis.rawText);
                 
                 // Try to get parsedAnalysis from rawText (old format)
