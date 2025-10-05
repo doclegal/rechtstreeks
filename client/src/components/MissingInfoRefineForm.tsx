@@ -11,6 +11,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 interface MissingInfoItem {
+  id?: string; // Actual ID from MindStudio missing_info_for_assessment
   question: string;
   answer_type?: string;
   expected?: string;
@@ -126,7 +127,8 @@ export default function MissingInfoRefineForm({
   }
 
   const getQuestionId = (item: MissingInfoItem, index: number) => {
-    return `q-${index}-${item.question.substring(0, 20).replace(/\s/g, '-')}`;
+    // Use actual ID from MindStudio if available, otherwise generate fallback
+    return item.id || `q-${index}-${item.question.substring(0, 20).replace(/\s/g, '-')}`;
   };
 
   return (
