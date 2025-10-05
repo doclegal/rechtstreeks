@@ -185,7 +185,10 @@ export default function MissingInfoRefineForm({
                     <SelectValue placeholder="Maak een keuze..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {item.expected.split('|').map((option) => (
+                    {(Array.isArray(item.expected) 
+                      ? item.expected 
+                      : item.expected.split('|')
+                    ).map((option: string) => (
                       <SelectItem key={option.trim()} value={option.trim()}>
                         {option.trim()}
                       </SelectItem>
