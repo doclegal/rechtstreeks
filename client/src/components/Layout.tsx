@@ -43,7 +43,7 @@ export default function Layout({ children }: LayoutProps) {
         <div className="max-w-[1600px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-8">
-              <Link href="/my-case" className="flex items-center space-x-3" data-testid="link-home">
+              <Link href="/" className="flex items-center space-x-3" data-testid="link-home">
                 <Scale className="text-primary text-2xl" />
                 <span className="text-xl font-bold text-foreground">Rechtstreeks.ai</span>
               </Link>

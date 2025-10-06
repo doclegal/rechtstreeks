@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
+import Dashboard from "@/pages/Dashboard";
 import MyCase from "@/pages/MyCase";
 import Analysis from "@/pages/Analysis";
 import Letters from "@/pages/Letters";
@@ -38,7 +39,7 @@ function Router() {
         <Route path="/" component={Landing} />
       ) : (
         <Layout>
-          <Route path="/" component={MyCase} />
+          <Route path="/" component={Dashboard} />
           <Route path="/my-case" component={MyCase} />
           <Route path="/analysis" component={Analysis} />
           <Route path="/letters" component={Letters} />
