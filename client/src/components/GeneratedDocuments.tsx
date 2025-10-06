@@ -256,17 +256,18 @@ export default function GeneratedDocuments({
 
         {/* Letter Preview - Show HTML content of selected document */}
         {selectedDocument && (
-          <div className="mb-6">
+          <div className="mb-6 w-full">
             <div 
-              className="bg-card border border-border rounded-lg p-8 shadow-sm"
+              className="bg-card border border-border rounded-lg p-8 shadow-sm w-full"
               style={{
                 minHeight: '400px',
                 maxHeight: '600px',
-                overflowY: 'auto'
+                overflowY: 'auto',
+                width: '100%'
               }}
               data-testid="letter-preview"
             >
-              <div dangerouslySetInnerHTML={{ __html: selectedDocument.html }} />
+              <div className="w-full" dangerouslySetInnerHTML={{ __html: selectedDocument.html }} />
             </div>
           </div>
         )}
