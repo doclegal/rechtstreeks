@@ -58,22 +58,31 @@ export default function Layout({ children }: LayoutProps) {
                   Mijn Zaak
                 </Link>
                 <Link 
-                  href="/warranty" 
+                  href="/analysis" 
                   className={`font-medium transition-colors ${
-                    location === '/warranty' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                    location === '/analysis' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                   }`}
-                  data-testid="link-warranty"
+                  data-testid="link-analysis"
                 >
-                  Aankoop en garantie
+                  Analyse
                 </Link>
                 <Link 
-                  href="/help" 
+                  href="/letters" 
                   className={`font-medium transition-colors ${
-                    location === '/help' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                    location === '/letters' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                   }`}
-                  data-testid="link-help"
+                  data-testid="link-letters"
                 >
-                  Help
+                  Brieven
+                </Link>
+                <Link 
+                  href="/summons" 
+                  className={`font-medium transition-colors ${
+                    location === '/summons' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  data-testid="link-summons"
+                >
+                  Dagvaarding
                 </Link>
               </nav>
             </div>
