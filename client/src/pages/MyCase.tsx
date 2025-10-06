@@ -231,258 +231,33 @@ export default function MyCase() {
     <div className="space-y-6">
       <DeadlineWarning caseId={currentCase.id} />
       
-      {/* Services Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Service 1: Analyse */}
-        <div className="border rounded-lg p-4 bg-white dark:bg-gray-900">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <h3 className="font-medium text-sm">Juridische Analyse</h3>
-              <p className="text-xs text-muted-foreground">AI-analyse van je geschil</p>
-            </div>
-            <Badge variant={currentCase.analysis ? "default" : "secondary"} className="text-xs">
-              {currentCase.analysis ? "Voltooid" : "Beschikbaar"}
-            </Badge>
-          </div>
-          <Button 
-            onClick={() => analyzeMutation.mutate()}
-            disabled={analyzeMutation.isPending}
-            size="sm"
-            variant={currentCase.analysis ? "outline" : "default"}
-            className="w-full"
-            data-testid="button-start-kanton-check"
-          >
-            {analyzeMutation.isPending ? "Analyseren..." : currentCase.analysis ? "Heranalyseren" : "Start Kantonzaak Controle"}
-          </Button>
-        </div>
+      {/* Main Content - Case Information */}
+      <CaseInfo 
+        caseData={currentCase}
+        onExport={() => {
+          window.open(`/api/cases/${currentCase.id}/export`, '_blank');
+        }}
+        onEdit={() => {
+          setLocation(`/edit-case/${currentCase.id}`);
+        }}
+        isFullWidth={true}
+      />
+      
+      {/* Missing Info Section */}
+      {missingRequirements.length > 0 && (
+        <MissingInfo 
+          requirements={missingRequirements}
+          caseId={currentCase.id}
+          onUpdated={() => refetch()}
+        />
+      )}
 
-        {/* Service 2: Brief */}
-        <div className="border rounded-lg p-4 bg-white dark:bg-gray-900">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <h3 className="font-medium text-sm">Ingebrekestelling</h3>
-              <p className="text-xs text-muted-foreground">Brief naar wederpartij</p>
-            </div>
-            <Badge variant={(currentCase.letters?.length || 0) > 0 ? "default" : "secondary"} className="text-xs">
-              {(currentCase.letters?.length || 0) > 0 ? "Voltooid" : "Beschikbaar"}
-            </Badge>
-          </div>
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => toggleSection('brief')}
-              disabled={!currentCase.analysis}
-              size="sm"
-              variant={(currentCase.letters?.length || 0) > 0 ? "outline" : "default"}
-              className="flex-1"
-            >
-              {(currentCase.letters?.length || 0) > 0 ? "Nieuwe brief" : "Genereer brief"}
-            </Button>
-            <Button 
-              onClick={() => toggleSection('brief')}
-              size="sm"
-              variant={expandedSection === 'brief' ? "outline" : "default"}
-              className="px-3"
-            >
-              Open
-            </Button>
-          </div>
-        </div>
-
-        {/* Service 3: Dagvaarding */}
-        <div className="border rounded-lg p-4 bg-white dark:bg-gray-900">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <h3 className="font-medium text-sm">Dagvaarding</h3>
-              <p className="text-xs text-muted-foreground">Rechtbank procedure (optioneel)</p>
-            </div>
-            <Badge variant={(currentCase.summons?.length || 0) > 0 ? "default" : "secondary"} className="text-xs">
-              {(currentCase.summons?.length || 0) > 0 ? "Voltooid" : "Beschikbaar"}
-            </Badge>
-          </div>
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => {
-                toast({
-                  title: "Dagvaarding opstellen",
-                  description: "Deze functie wordt binnenkort beschikbaar gesteld",
-                });
-              }}
-              disabled={!currentCase.analysis}
-              size="sm"
-              variant={(currentCase.summons?.length || 0) > 0 ? "outline" : "default"}
-              className="flex-1"
-            >
-              {(currentCase.summons?.length || 0) > 0 ? "Nieuwe dagvaarding" : "Opstellen dagvaarding"}
-            </Button>
-            <Button 
-              onClick={() => toggleSection('dagvaarding')}
-              size="sm"
-              variant={expandedSection === 'dagvaarding' ? "outline" : "default"}
-              className="px-3"
-            >
-              Open
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="space-y-6">
-        {/* Show Mijn zaak content when no brief/dagvaarding section is expanded */}
-        {!expandedSection && (
-          <>
-            <CaseInfo 
-              caseData={currentCase}
-              onExport={() => {
-                window.open(`/api/cases/${currentCase.id}/export`, '_blank');
-              }}
-              onEdit={() => {
-                setLocation(`/edit-case/${currentCase.id}`);
-              }}
-              isFullWidth={true}
-            />
-            
-            {/* Analysis Results - Always visible with collapsible sections */}
-            {currentCase.analysis && (
-              <AnalysisResults 
-                analysis={currentCase.kantonAnalysis || currentCase.analysis}
-                fullAnalysis={currentCase.fullAnalysis}
-                kantonCheck={kantonCheckResult}
-                onAnalyze={() => analyzeMutation.mutate()}
-                isAnalyzing={analyzeMutation.isPending}
-                hasNewInfo={(() => {
-                  const relevantAnalysis = currentCase.kantonAnalysis || currentCase.analysis;
-                  if (!relevantAnalysis || !currentCase.updatedAt) return false;
-                  if (analyzeMutation.isPending) return false;
-                  if (analyzeMutation.isSuccess) return false;
-                  
-                  const caseUpdated = new Date(currentCase.updatedAt);
-                  const analysisCreated = new Date(relevantAnalysis.createdAt);
-                  const timeDiff = caseUpdated.getTime() - analysisCreated.getTime();
-                  return timeDiff > 1000;
-                })()}
-                caseId={currentCase.id}
-                onFullAnalyze={() => fullAnalyzeMutation.mutate()}
-                isFullAnalyzing={fullAnalyzeMutation.isPending}
-              />
-            )}
-
-            {/* Second Run: Refine Analysis Form */}
-            {(() => {
-              const fullAnalysis = currentCase.fullAnalysis as any;
-              const parsedAnalysis = fullAnalysis?.parsedAnalysis;
-              const missingInfoStruct = parsedAnalysis?.missing_info_for_assessment;
-              const hasMissingInfo = missingInfoStruct && Array.isArray(missingInfoStruct) && missingInfoStruct.length > 0;
-              
-              // Show refine form only if there's missing info and no V2 analysis yet
-              if (hasMissingInfo && !v2Analysis) {
-                return (
-                  <div className="mt-6">
-                    <MissingInfoRefineForm
-                      missingInfoStruct={missingInfoStruct}
-                      caseId={currentCase.id}
-                      onSecondRunComplete={(result) => {
-                        setV2Analysis(result);
-                        refetch();
-                        toast({
-                          title: "Analyse verfijnd",
-                          description: "Je antwoorden zijn verwerkt en de analyse is verfijnd"
-                        });
-                      }}
-                    />
-                  </div>
-                );
-              }
-              return null;
-            })()}
-            
-            {/* Display V2 Analysis Results */}
-            {v2Analysis && (
-              <div className="mt-6 p-4 border-2 border-green-200 rounded-lg bg-green-50 dark:bg-green-900/20">
-                <h3 className="text-lg font-semibold text-green-700 dark:text-green-300 mb-4">
-                  ✅ Verfijnde Analyse (Versie 2)
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  De analyse is verfijnd met jouw antwoorden. Hieronder zie je de bijgewerkte resultaten.
-                </p>
-                <pre className="text-xs bg-white dark:bg-gray-800 p-4 rounded overflow-auto max-h-96">
-                  {JSON.stringify(v2Analysis, null, 2)}
-                </pre>
-              </div>
-            )}
-            
-            {/* Missing Info Section */}
-            {missingRequirements.length > 0 && (
-              <MissingInfo 
-                requirements={missingRequirements}
-                caseId={currentCase.id}
-                onUpdated={() => refetch()}
-              />
-            )}
-
-            {/* Documents Section */}
-            <DocumentList 
-              documents={currentCase.documents || []}
-              caseId={currentCase.id}
-              onDocumentUploaded={() => refetch()}
-            />
-          </>
-        )}
-
-        {/* Expandable Section: Gegenereerde Documenten */}
-        {expandedSection === 'brief' && (
-          <div className="space-y-6">
-            <div className="border rounded-lg p-6 bg-white dark:bg-gray-900">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">Gegenereerde Documenten</h2>
-                <Button 
-                  onClick={() => setExpandedSection(null)}
-                  size="sm"
-                  variant="outline"
-                >
-                  Terug naar Mijn zaak
-                </Button>
-              </div>
-              <GeneratedDocuments 
-                letters={currentCase.letters || []}
-                summons={currentCase.summons || []}
-                caseId={currentCase.id}
-                onGenerateLetter={(briefType, tone) => {
-                  letterMutation.mutate({ briefType, tone });
-                }}
-                onDeleteLetter={(letterId) => {
-                  deleteLetterMutation.mutate(letterId);
-                }}
-                isGenerating={letterMutation.isPending}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Expandable Section: Dagvaarding */}
-        {expandedSection === 'dagvaarding' && (
-          <div className="space-y-6">
-            <div className="border rounded-lg p-6 bg-white dark:bg-gray-900">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">Dagvaarding</h2>
-                <Button 
-                  onClick={() => setExpandedSection(null)}
-                  size="sm"
-                  variant="outline"
-                >
-                  Terug naar Mijn zaak
-                </Button>
-              </div>
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  Dagvaarding functionaliteit komt binnenkort beschikbaar. 
-                  Hier kun je straks je dagvaarding opstellen en indienen bij de rechtbank.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Documents Section */}
+      <DocumentList 
+        documents={currentCase.documents || []}
+        caseId={currentCase.id}
+        onDocumentUploaded={() => refetch()}
+      />
 
       {/* Secondary Actions */}
       <div className="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 pt-8 border-t border-border">
