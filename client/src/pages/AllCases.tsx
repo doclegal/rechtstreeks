@@ -99,12 +99,12 @@ export default function AllCases() {
           {cases.map((caseItem) => (
             <Card key={caseItem.id} className="hover:shadow-md transition-shadow">
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="flex-1">
                     <CardTitle className="text-lg mb-2" data-testid={`text-case-title-${caseItem.id}`}>
                       {caseItem.title}
                     </CardTitle>
-                    <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                    <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                       <div className="flex items-center space-x-1">
                         <Calendar className="h-4 w-4" />
                         <span>
@@ -121,7 +121,7 @@ export default function AllCases() {
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center gap-3">
                     <Badge 
                       variant={getStatusBadgeVariant(caseItem.status)}
                       data-testid={`badge-status-${caseItem.id}`}
@@ -132,6 +132,7 @@ export default function AllCases() {
                       size="sm" 
                       data-testid={`button-view-case-${caseItem.id}`}
                       onClick={() => handleCaseSelect(caseItem.id)}
+                      className="shrink-0"
                     >
                       Selecteren
                     </Button>
