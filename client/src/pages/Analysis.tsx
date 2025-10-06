@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Link, useLocation } from "wouter";
 import { PlusCircle, FileSearch, Scale, CheckCircle, XCircle, ArrowRight } from "lucide-react";
+import { RIcon } from "@/components/RIcon";
 
 export default function Analysis() {
   const { user, isLoading: authLoading } = useAuth();
@@ -154,13 +155,14 @@ export default function Analysis() {
         <Dialog open={kantonDialogOpen} onOpenChange={setKantonDialogOpen}>
           <DialogTrigger asChild>
             <Card 
-              className={`cursor-pointer hover:shadow-lg transition-all ${
+              className={`cursor-pointer hover:shadow-lg transition-all relative ${
                 kantonSuitable ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' : 
                 kantonNotSuitable ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800' : 
                 ''
               }`}
               data-testid="card-kanton-check"
             >
+              <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
               <CardHeader>
                 <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
                   kantonSuitable ? 'bg-green-100 dark:bg-green-900/30' : 
@@ -320,10 +322,11 @@ export default function Analysis() {
         </Dialog>
 
         <Card 
-          className="cursor-pointer hover:shadow-lg transition-shadow"
+          className="cursor-pointer hover:shadow-lg transition-shadow relative"
           onClick={() => setLocation(`/analysis/${currentCase.id}/full`)}
           data-testid="card-juridische-analyse"
         >
+          <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
           <CardHeader>
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <FileSearch className="h-8 w-8 text-primary" />
