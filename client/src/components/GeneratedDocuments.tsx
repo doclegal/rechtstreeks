@@ -258,7 +258,7 @@ export default function GeneratedDocuments({
         {selectedDocument && (
           <div className="mb-6">
             <div 
-              className="bg-white border border-border rounded-lg p-8 shadow-sm"
+              className="bg-card border border-border rounded-lg p-8 shadow-sm"
               style={{
                 minHeight: '400px',
                 maxHeight: '600px',
