@@ -185,19 +185,18 @@
   .bold-bright-theme .btn-primary,
   .bold-bright-theme button[class*="bg-primary"] {
     @apply rounded-2xl px-6 py-3 font-semibold transition-all duration-200;
-    @apply hover:scale-[1.02] focus:ring-2 focus:ring-primary/40;
+    @apply hover:scale-[1.02] focus:ring-2;
   }
   
   .bold-bright-theme .btn-secondary {
     @apply rounded-2xl border-2 border-secondary text-secondary bg-transparent;
     @apply px-6 py-3 font-semibold transition-all duration-200;
-    @apply hover:bg-secondary/10 focus:ring-2 focus:ring-secondary/40;
   }
   
   /* Bold & Bright Theme - Card styling */
   .bold-bright-theme [class*="Card"],
   .bold-bright-theme .card {
-    @apply rounded-2xl shadow-md border border-border/60;
+    @apply rounded-2xl shadow-md;
     @apply transition-shadow duration-200 hover:shadow-lg;
   }
   
@@ -205,24 +204,24 @@
   .bold-bright-theme input,
   .bold-bright-theme textarea,
   .bold-bright-theme select {
-    @apply rounded-xl border-border focus:ring-2 focus:ring-primary/30;
+    @apply rounded-xl border-border focus:ring-2;
   }
   
   /* Bold & Bright Theme - Status chips */
   .bold-bright-theme .status-default {
-    @apply bg-neutral-100 text-foreground/80 rounded-full px-3 py-1 text-sm;
+    @apply bg-neutral-100 rounded-full px-3 py-1 text-sm;
   }
   
   .bold-bright-theme .status-success {
-    @apply bg-secondary/15 text-secondary rounded-full px-3 py-1 text-sm;
+    @apply text-secondary rounded-full px-3 py-1 text-sm;
   }
   
   .bold-bright-theme .status-warning {
-    @apply bg-warning/40 text-foreground rounded-full px-3 py-1 text-sm;
+    @apply rounded-full px-3 py-1 text-sm;
   }
   
   .bold-bright-theme .status-error {
-    @apply bg-destructive/15 text-destructive rounded-full px-3 py-1 text-sm;
+    @apply text-destructive rounded-full px-3 py-1 text-sm;
   }
 }
 

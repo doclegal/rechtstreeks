@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { RIcon } from "@/components/RIcon";
 import {
@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
-import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle, ArrowLeft, Shield, FileText, FileSearch, Mail } from "lucide-react";
+import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle, ArrowLeft, Shield, FileText, FileSearch, Mail, Palette } from "lucide-react";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -19,6 +19,20 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const { user } = useAuth();
   const [location] = useLocation();
+  const [boldBrightTheme, setBoldBrightTheme] = useState(() => {
+    const saved = localStorage.getItem('bold-bright-theme');
+    return saved === 'true';
+  });
+
+  useEffect(() => {
+    if (boldBrightTheme) {
+      document.documentElement.classList.add('bold-bright-theme');
+      localStorage.setItem('bold-bright-theme', 'true');
+    } else {
+      document.documentElement.classList.remove('bold-bright-theme');
+      localStorage.setItem('bold-bright-theme', 'false');
+    }
+  }, [boldBrightTheme]);
 
   const getUserInitials = (user: any) => {
     if (user?.firstName && user?.lastName) {
@@ -89,6 +103,17 @@ export default function Layout({ children }: LayoutProps) {
             </div>
             
             <div className="flex items-center space-x-4">
+              {/* Theme Toggle Button */}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setBoldBrightTheme(!boldBrightTheme)}
+                data-testid="button-theme-toggle"
+                title={boldBrightTheme ? "Schakel over naar standaard theme" : "Schakel over naar Bold & Bright theme"}
+              >
+                <Palette className={`h-4 w-4 ${boldBrightTheme ? 'text-primary' : 'text-muted-foreground'}`} />
+              </Button>
+              
               {/* Overflow menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
