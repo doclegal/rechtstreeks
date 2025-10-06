@@ -39,61 +39,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Features */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-muted/30">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-foreground mb-12">
-            Hoe het werkt
-          </h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            <Card>
-              <CardHeader>
-                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-                  <FileText className="h-6 w-6 text-primary" />
-                </div>
-                <CardTitle>Upload documenten</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  U uploadt uw contracten, correspondentie en andere relevante documenten. 
-                  Onze AI helpt u met de analyse.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-                  <Clock className="h-6 w-6 text-primary" />
-                </div>
-                <CardTitle>AI-ondersteunde analyse</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Onze AI helpt u de juridische grondslag, risico's en benodigde documenten 
-                  te identificeren terwijl u zelf de regie houdt.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-                  <Users className="h-6 w-6 text-primary" />
-                </div>
-                <CardTitle>Stap-voor-stap begeleiding</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Van ingebrekestelling tot dagvaarding: u voert zelf de procedure uit 
-                  met onze hulp en toegang tot deurwaarder en rechtbankprocessen.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
       {/* Process Steps */}
       <section className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
