@@ -11,6 +11,7 @@ import DocumentList from "@/components/DocumentList";
 import DeadlineWarning from "@/components/DeadlineWarning";
 import { Link, useLocation } from "wouter";
 import { PlusCircle, Headset, MessageSquare, FileText, CheckCircle, Files } from "lucide-react";
+import { RIcon } from "@/components/RIcon";
 
 export default function MyCase() {
   const { user, isLoading: authLoading } = useAuth();
@@ -216,7 +217,8 @@ export default function MyCase() {
         
         <Dialog open={zaakgegevensOpen} onOpenChange={setZaakgegevensOpen}>
           <DialogTrigger asChild>
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow" data-testid="card-zaakgegevens">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow relative" data-testid="card-zaakgegevens">
+              <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
               <CardHeader>
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <FileText className="h-8 w-8 text-primary" />
@@ -325,7 +327,8 @@ export default function MyCase() {
 
         <Dialog open={documentenOpen} onOpenChange={setDocumentenOpen}>
           <DialogTrigger asChild>
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow" data-testid="card-documenten">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow relative" data-testid="card-documenten">
+              <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
               <CardHeader>
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Files className="h-8 w-8 text-primary" />
@@ -356,7 +359,8 @@ export default function MyCase() {
 
         <Dialog open={nogAanTeLeverenOpen} onOpenChange={setNogAanTeLeverenOpen}>
           <DialogTrigger asChild>
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow" data-testid="card-nog-aan-te-leveren">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow relative" data-testid="card-nog-aan-te-leveren">
+              <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
               <CardHeader>
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="h-8 w-8 text-primary" />
