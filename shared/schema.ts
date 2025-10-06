@@ -125,6 +125,8 @@ export const letters = pgTable("letters", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   caseId: varchar("case_id").notNull().references(() => cases.id, { onDelete: "cascade" }),
   templateId: varchar("template_id"),
+  briefType: varchar("brief_type"), // LAATSTE_AANMANING, INGEBREKESTELLING, INFORMATIEVERZOEK
+  tone: varchar("tone"), // zakelijk-vriendelijk, formeel, streng
   html: text("html"),
   markdown: text("markdown"),
   pdfStorageKey: text("pdf_storage_key"),
