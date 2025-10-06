@@ -2,13 +2,22 @@ import { useCases } from "@/hooks/useCase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Link } from "wouter";
-import { PlusCircle, ArrowLeft, FileText, Calendar } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Link, useLocation } from "wouter";
+import { PlusCircle, FileText, Calendar } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
+import { useCaseContext } from "@/contexts/CaseContext";
 
 export default function AllCases() {
   const { data: cases, isLoading } = useCases();
+  const { setSelectedCaseId } = useCaseContext();
+  const [, setLocation] = useLocation();
+
+  const handleCaseSelect = (caseId: string) => {
+    setSelectedCaseId(caseId);
+    setLocation('/');
+  };
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -55,17 +64,9 @@ export default function AllCases() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Link href="/">
-            <Button variant="ghost" size="sm" data-testid="button-back-to-main">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Terug naar hoofdzaak
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Alle zaken</h1>
-            <p className="text-muted-foreground">Overzicht van al uw juridische zaken</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Alle zaken</h1>
+          <p className="text-muted-foreground">Selecteer een zaak om mee te werken</p>
         </div>
         
         <Link href="/new-case">
@@ -127,11 +128,13 @@ export default function AllCases() {
                     >
                       {getStatusDisplayName(caseItem.status)}
                     </Badge>
-                    <Link href="/my-case">
-                      <Button size="sm" data-testid={`button-view-case-${caseItem.id}`}>
-                        Bekijken
-                      </Button>
-                    </Link>
+                    <Button 
+                      size="sm" 
+                      data-testid={`button-view-case-${caseItem.id}`}
+                      onClick={() => handleCaseSelect(caseItem.id)}
+                    >
+                      Selecteren
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
