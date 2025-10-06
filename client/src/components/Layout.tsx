@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import logoImage from "@assets/ChatGPT Image 6 okt 2025, 17_25_21_1759764379350.png";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,7 +46,7 @@ export default function Layout({ children }: LayoutProps) {
             <div className="flex items-center space-x-8">
               <Link href="/" className="flex items-center space-x-3" data-testid="link-home">
                 <img 
-                  src="/attached_assets/ChatGPT Image 6 okt 2025, 17_25_21_1759764379350.png" 
+                  src={logoImage} 
                   alt="Rechtstreeks AI" 
                   className="h-8"
                 />
