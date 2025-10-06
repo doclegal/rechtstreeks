@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import logoImage from "@assets/ChatGPT Image 6 okt 2025, 17_25_21_1759764379350.png";
+import { RIcon } from "@/components/RIcon";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,12 +44,9 @@ export default function Layout({ children }: LayoutProps) {
         <div className="max-w-[1600px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-8">
-              <Link href="/" className="flex items-center space-x-3" data-testid="link-home">
-                <img 
-                  src={logoImage} 
-                  alt="Rechtstreeks AI" 
-                  className="h-8"
-                />
+              <Link href="/" className="flex items-center gap-2" data-testid="link-home">
+                <RIcon size="md" />
+                <span className="text-xl font-semibold text-foreground">Rechtstreeks.ai</span>
               </Link>
               <nav className="hidden md:flex items-center space-x-6">
                 <Link 
