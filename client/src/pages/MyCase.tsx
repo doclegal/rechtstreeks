@@ -248,7 +248,7 @@ export default function MyCase() {
       </div>
 
       {/* Three Tiles Layout - Similar to Landing Page */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         
         {/* Tile 1: Zaakgegevens (Case Info + Counterparty Info) */}
         <Card className="text-center hover:shadow-lg transition-shadow" data-testid="card-zaakgegevens">
