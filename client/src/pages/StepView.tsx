@@ -15,16 +15,17 @@ import ProcessTimeline from "@/components/ProcessTimeline";
 import { ArrowLeft, ArrowRight, Home, Brain, CheckCircle, AlertCircle, FileText } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useActiveCase } from "@/contexts/CaseContext";
 
 export default function StepView() {
   const [match, params] = useRoute("/step/:stepId");
   const { user, isLoading: authLoading } = useAuth();
-  const { data: cases, isLoading: casesLoading } = useCases();
+  const { isLoading: casesLoading } = useCases();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
   const stepId = parseInt(params?.stepId || "1");
-  const currentCase = Array.isArray(cases) && cases.length > 0 ? cases[0] : undefined;
+  const currentCase = useActiveCase();
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);

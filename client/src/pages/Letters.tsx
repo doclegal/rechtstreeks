@@ -12,13 +12,14 @@ import { FileText, PlusCircle, Download, Mail } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
+import { useActiveCase } from "@/contexts/CaseContext";
 
 export default function Letters() {
   const { user, isLoading: authLoading } = useAuth();
-  const { data: cases, isLoading: casesLoading, refetch } = useCases();
+  const { isLoading: casesLoading, refetch } = useCases();
   const { toast } = useToast();
   
-  const currentCase = Array.isArray(cases) && cases.length > 0 ? cases[0] : undefined;
+  const currentCase = useActiveCase();
   const caseId = currentCase?.id;
 
   const letterMutation = useGenerateLetter(caseId || "");

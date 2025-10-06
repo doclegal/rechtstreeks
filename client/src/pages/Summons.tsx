@@ -7,13 +7,14 @@ import { Button } from "@/components/ui/button";
 import GeneratedDocuments from "@/components/GeneratedDocuments";
 import { Link } from "wouter";
 import { Scale, FileText } from "lucide-react";
+import { useActiveCase } from "@/contexts/CaseContext";
 
 export default function Summons() {
   const { user, isLoading: authLoading } = useAuth();
-  const { data: cases, isLoading: casesLoading, refetch } = useCases();
+  const { isLoading: casesLoading, refetch } = useCases();
   const { toast } = useToast();
   
-  const currentCase = Array.isArray(cases) && cases.length > 0 ? cases[0] : undefined;
+  const currentCase = useActiveCase();
   const caseId = currentCase?.id;
 
   useEffect(() => {

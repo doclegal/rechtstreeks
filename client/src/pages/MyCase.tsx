@@ -12,10 +12,11 @@ import DeadlineWarning from "@/components/DeadlineWarning";
 import { Link, useLocation } from "wouter";
 import { PlusCircle, Headset, MessageSquare, FileText, CheckCircle, Files } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
+import { useActiveCase } from "@/contexts/CaseContext";
 
 export default function MyCase() {
   const { user, isLoading: authLoading } = useAuth();
-  const { data: cases, isLoading: casesLoading, refetch } = useCases();
+  const { isLoading: casesLoading, refetch } = useCases();
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
   const [kantonCheckResult, setKantonCheckResult] = useState<any>(null);
@@ -25,7 +26,7 @@ export default function MyCase() {
   const [documentenOpen, setDocumentenOpen] = useState(false);
   const [nogAanTeLeverenOpen, setNogAanTeLeverenOpen] = useState(false);
   
-  const currentCase = Array.isArray(cases) && cases.length > 0 ? cases[0] : undefined;
+  const currentCase = useActiveCase();
   const caseId = currentCase?.id;
 
   const analyzeMutation = useAnalyzeCase(caseId || "");

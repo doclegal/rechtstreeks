@@ -10,16 +10,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useLocation } from "wouter";
 import { PlusCircle, FileSearch, Scale, CheckCircle, XCircle, ArrowRight, FileText, Users, AlertTriangle } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
+import { useActiveCase } from "@/contexts/CaseContext";
 
 export default function Analysis() {
   const { user, isLoading: authLoading } = useAuth();
-  const { data: cases, isLoading: casesLoading, refetch } = useCases();
+  const { isLoading: casesLoading, refetch } = useCases();
   const { toast } = useToast();
   const [kantonCheckResult, setKantonCheckResult] = useState<any>(null);
   const [kantonDialogOpen, setKantonDialogOpen] = useState(false);
   const [location, setLocation] = useLocation();
   
-  const currentCase = Array.isArray(cases) && cases.length > 0 ? cases[0] : undefined;
+  const currentCase = useActiveCase();
   const caseId = currentCase?.id;
 
   const analyzeMutation = useAnalyzeCase(caseId || "");

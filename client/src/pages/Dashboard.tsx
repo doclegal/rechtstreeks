@@ -16,13 +16,13 @@ import { useEffect } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { RIcon } from "@/components/RIcon";
+import { useActiveCase } from "@/contexts/CaseContext";
 
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
-  const { data: cases, isLoading: casesLoading } = useCases();
+  const { isLoading: casesLoading } = useCases();
   const { toast } = useToast();
-  
-  const currentCase = Array.isArray(cases) && cases.length > 0 ? cases[0] : undefined;
+  const currentCase = useActiveCase();
 
   useEffect(() => {
     if (!authLoading && !user) {
