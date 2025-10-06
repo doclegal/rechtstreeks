@@ -188,7 +188,7 @@ export default function Dashboard() {
       </Card>
 
       {/* Menu Tiles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Mijn Zaak */}
         <Link href="/my-case" data-testid="tile-mijn-zaak">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
