@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Scale, CheckCircle, Clock, FileText, Users } from "lucide-react";
+import { RIcon } from "@/components/RIcon";
 
 export default function Landing() {
   return (
@@ -9,8 +10,8 @@ export default function Landing() {
       <header className="bg-card border-b border-border shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <Scale className="text-primary text-2xl" />
+            <div className="flex items-center gap-2">
+              <RIcon size="md" />
               <span className="text-xl font-bold text-foreground">Rechtstreeks.ai</span>
             </div>
             <Button asChild data-testid="button-login">
@@ -70,8 +71,8 @@ export default function Landing() {
       <footer className="bg-card border-t border-border py-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center space-x-3 mb-4 md:mb-0">
-              <Scale className="text-primary text-xl" />
+            <div className="flex items-center gap-2 mb-4 md:mb-0">
+              <RIcon size="sm" />
               <span className="font-bold text-foreground">Rechtstreeks.ai</span>
             </div>
             <p className="text-sm text-muted-foreground">
