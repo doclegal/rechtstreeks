@@ -8,6 +8,9 @@ import Layout from "@/components/Layout";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
 import MyCase from "@/pages/MyCase";
+import Analysis from "@/pages/Analysis";
+import Letters from "@/pages/Letters";
+import Summons from "@/pages/Summons";
 import Help from "@/pages/Help";
 import NewCase from "@/pages/NewCase";
 import EditCase from "@/pages/EditCase";
@@ -37,6 +40,9 @@ function Router() {
         <Layout>
           <Route path="/" component={MyCase} />
           <Route path="/my-case" component={MyCase} />
+          <Route path="/analysis" component={Analysis} />
+          <Route path="/letters" component={Letters} />
+          <Route path="/summons" component={Summons} />
           <Route path="/edit-case/:id" component={EditCase} />
           <Route path="/step/:stepId" component={StepView} />
           <Route path="/warranty" component={Warranty} />
