@@ -5,28 +5,25 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import MissingInfo from "@/components/MissingInfo";
-import MissingInfoRefineForm from "@/components/MissingInfoRefineForm";
 import DocumentList from "@/components/DocumentList";
-import AnalysisResults from "@/components/AnalysisResults";
-import GeneratedDocuments from "@/components/GeneratedDocuments";
-import ProcessTimeline from "@/components/ProcessTimeline";
-import CaseInfo from "@/components/CaseInfo";
 import DeadlineWarning from "@/components/DeadlineWarning";
 import { Link, useLocation } from "wouter";
-import { PlusCircle, Headset, MessageSquare, ArrowLeft, FileText, CheckCircle } from "lucide-react";
+import { PlusCircle, Headset, MessageSquare, FileText, CheckCircle, Files } from "lucide-react";
 
 export default function MyCase() {
   const { user, isLoading: authLoading } = useAuth();
   const { data: cases, isLoading: casesLoading, refetch } = useCases();
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
-  const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [kantonCheckResult, setKantonCheckResult] = useState<any>(null);
-  const [v2Analysis, setV2Analysis] = useState<any>(null); // Second run analysis results
+  const [v2Analysis, setV2Analysis] = useState<any>(null);
   
-  // For MVP, we'll use the first case as the main case
+  const [zaakgegevensOpen, setZaakgegevensOpen] = useState(false);
+  const [documentenOpen, setDocumentenOpen] = useState(false);
+  const [nogAanTeLeverenOpen, setNogAanTeLeverenOpen] = useState(false);
+  
   const currentCase = Array.isArray(cases) && cases.length > 0 ? cases[0] : undefined;
   const caseId = currentCase?.id;
 
@@ -36,41 +33,30 @@ export default function MyCase() {
   const deleteLetterMutation = useDeleteLetter(caseId || "");
   const bailiffMutation = useOrderBailiff(caseId || "");
 
-  // Transform missing_info_for_assessment to MissingRequirement[] format
-  // Must be called before any conditional returns to maintain hook order
   const missingRequirements = useMemo(() => {
-    // Priority 1: Check fullAnalysis.parsedAnalysis (from full analysis)
     const fullAnalysis = currentCase?.fullAnalysis as any;
     const parsedAnalysis = fullAnalysis?.parsedAnalysis;
-    
-    // Priority 2: Fall back to analysis (from kanton check)
     const analysis = currentCase?.analysis as any;
-    
-    // Prefer parsedAnalysis from full analysis, fall back to kanton check analysis
     const dataSource = parsedAnalysis || analysis;
     if (!dataSource) return [];
     
-    // Try new format first: missing_info_for_assessment (MindStudio format)
     if (dataSource?.missing_info_for_assessment && Array.isArray(dataSource.missing_info_for_assessment)) {
       return dataSource.missing_info_for_assessment.map((item: any, index: number) => {
-        // Map answer_type to inputKind
         let inputKind: 'text' | 'document' | 'both' = 'text';
         if (item.answer_type === 'file_upload') {
           inputKind = 'document';
         } else if (item.answer_type === 'text') {
           inputKind = 'text';
         } else if (item.answer_type === 'multiple_choice') {
-          inputKind = 'text'; // multiple_choice uses text input with options
+          inputKind = 'text';
         }
         
-        // Parse expected field - can be string (description) or array (options)
         let description: string | undefined;
         let options: Array<{value: string, label: string}> | undefined;
         
         if (typeof item.expected === 'string') {
           description = item.expected;
         } else if (Array.isArray(item.expected)) {
-          // Convert string array to {value, label} objects
           options = item.expected.map((opt: string) => ({
             value: opt,
             label: opt
@@ -83,7 +69,7 @@ export default function MyCase() {
           key: item.key || item.id || `requirement-${index}`,
           label: item.question || item.label || 'Vraag zonder label',
           description: description || item.description || undefined,
-          required: item.required !== false, // default to true
+          required: item.required !== false,
           inputKind: inputKind,
           acceptMimes: item.accept_mimes || item.acceptMimes || undefined,
           maxLength: item.max_length || item.maxLength || undefined,
@@ -93,17 +79,15 @@ export default function MyCase() {
       });
     }
     
-    // Try MindStudio evidence.missing format
     if (dataSource?.evidence?.missing && Array.isArray(dataSource.evidence.missing)) {
       return dataSource.evidence.missing.map((item: any, index: number) => {
-        // evidence.missing items are strings like "Bewijs van waarschuwing aan verkoper"
         if (typeof item === 'string') {
           return {
             id: `evidence-${index}`,
             key: `evidence-requirement-${index}`,
             label: item,
             description: 'Upload het gevraagde document om uw zaak te versterken',
-            required: false, // evidence is usually optional
+            required: false,
             inputKind: 'document' as const,
             acceptMimes: undefined,
             maxLength: undefined,
@@ -111,7 +95,6 @@ export default function MyCase() {
             examples: undefined,
           };
         }
-        // If it's an object, use its properties
         return {
           id: item.id || `evidence-${index}`,
           key: item.key || item.id || `evidence-requirement-${index}`,
@@ -127,7 +110,6 @@ export default function MyCase() {
       });
     }
     
-    // Fallback to legacy format: missingDocsJson (string array)
     if (dataSource?.missingDocsJson && Array.isArray(dataSource.missingDocsJson)) {
       return dataSource.missingDocsJson.map((label: string, index: number) => ({
         id: `legacy-${index}`,
@@ -146,36 +128,19 @@ export default function MyCase() {
     return [];
   }, [currentCase?.analysis, currentCase?.fullAnalysis]);
 
-  const toggleSection = (section: string) => {
-    setExpandedSection(expandedSection === section ? null : section);
-  };
-
-  // Reset expanded section when navigating back to /my-case
-  useEffect(() => {
-    if (location === '/my-case' || location === '/') {
-      setExpandedSection(null);
-    }
-  }, [location]);
-
-  // Store kanton check result and refresh case data after successful analysis
   useEffect(() => {
     if (analyzeMutation.isSuccess && analyzeMutation.data) {
-      // Store the kanton check result
       if (analyzeMutation.data.kantonCheck) {
         setKantonCheckResult(analyzeMutation.data.kantonCheck);
       }
-      
-      // Small delay to ensure DB is updated before refetch
       setTimeout(() => {
         refetch();
       }, 500);
     }
   }, [analyzeMutation.isSuccess, analyzeMutation.data, refetch]);
 
-  // Refresh case data after successful full analysis
   useEffect(() => {
     if (fullAnalyzeMutation.isSuccess) {
-      // Small delay to ensure DB is updated before refetch
       setTimeout(() => {
         refetch();
       }, 500);
@@ -194,8 +159,6 @@ export default function MyCase() {
       }, 500);
     }
   }, [user, authLoading, toast]);
-
-
 
   if (authLoading || casesLoading) {
     return (
@@ -235,11 +198,13 @@ export default function MyCase() {
     }).format(parseFloat(amount));
   };
 
+  const docCount = currentCase.documents?.length || 0;
+  const requiredCount = missingRequirements.filter((r: any) => r.required).length;
+
   return (
     <div className="space-y-6">
       <DeadlineWarning caseId={currentCase.id} />
       
-      {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Mijn zaak</h2>
@@ -247,154 +212,203 @@ export default function MyCase() {
         </div>
       </div>
 
-      {/* Three Tiles Layout - Similar to Landing Page */}
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        {/* Tile 1: Zaakgegevens (Case Info + Counterparty Info) */}
-        <Card className="text-center hover:shadow-lg transition-shadow" data-testid="card-zaakgegevens">
-          <CardHeader>
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FileText className="h-8 w-8 text-primary" />
-            </div>
-            <CardTitle className="font-semibold text-foreground mb-2">Zaakgegevens</CardTitle>
-            <p className="text-sm text-muted-foreground">Gegevens van uw zaak en wederpartij</p>
-          </CardHeader>
-          <CardContent className="space-y-4 text-left">
-            {/* Case Information */}
-            <div className="space-y-3">
-              <h3 className="font-semibold text-sm text-foreground border-b pb-2">Zaak informatie</h3>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Titel</label>
-                <p className="text-sm text-foreground" data-testid="text-case-title">
+        <Dialog open={zaakgegevensOpen} onOpenChange={setZaakgegevensOpen}>
+          <DialogTrigger asChild>
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow" data-testid="card-zaakgegevens">
+              <CardHeader>
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FileText className="h-8 w-8 text-primary" />
+                </div>
+                <CardTitle className="text-center">Zaakgegevens</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="text-sm text-muted-foreground mb-2">
                   {currentCase.title || "Geen titel"}
                 </p>
-              </div>
-              
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Beschrijving</label>
-                <p className="text-sm text-foreground line-clamp-3" data-testid="text-case-description">
-                  {currentCase.description || "Geen beschrijving"}
-                </p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-2">
+                <Badge variant="outline" className="mt-2">
+                  {currentCase.category || "Algemeen"}
+                </Badge>
+              </CardContent>
+            </Card>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Zaakgegevens</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6 mt-4">
+              <div className="space-y-3">
+                <h3 className="font-semibold text-sm text-foreground border-b pb-2">Zaak informatie</h3>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Categorie</label>
-                  <p className="text-sm text-foreground" data-testid="text-category">
-                    {currentCase.category || "Algemeen"}
+                  <label className="text-xs font-medium text-muted-foreground">Titel</label>
+                  <p className="text-sm text-foreground" data-testid="text-case-title">
+                    {currentCase.title || "Geen titel"}
                   </p>
                 </div>
+                
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Claim bedrag</label>
-                  <p className="text-sm text-foreground" data-testid="text-claim-amount">
-                    {formatCurrency(currentCase.claimAmount)}
+                  <label className="text-xs font-medium text-muted-foreground">Beschrijving</label>
+                  <p className="text-sm text-foreground" data-testid="text-case-description">
+                    {currentCase.description || "Geen beschrijving"}
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Categorie</label>
+                    <p className="text-sm text-foreground" data-testid="text-category">
+                      {currentCase.category || "Algemeen"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Claim bedrag</label>
+                    <p className="text-sm text-foreground" data-testid="text-claim-amount">
+                      {formatCurrency(currentCase.claimAmount)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-3 border-t">
+                <h3 className="font-semibold text-sm text-foreground border-b pb-2">Wederpartij gegevens</h3>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Type</label>
+                  <p className="text-sm text-foreground" data-testid="text-counterparty-type">
+                    {currentCase.counterpartyType === "company" ? "Bedrijf" : "Particulier"}
+                  </p>
+                </div>
+                
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Naam</label>
+                  <p className="text-sm text-foreground" data-testid="text-counterparty-name">
+                    {currentCase.counterpartyName || "Niet opgegeven"}
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">E-mail</label>
+                    <p className="text-sm text-foreground truncate" data-testid="text-counterparty-email">
+                      {currentCase.counterpartyEmail || "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Telefoon</label>
+                    <p className="text-sm text-foreground" data-testid="text-counterparty-phone">
+                      {currentCase.counterpartyPhone || "-"}
+                    </p>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Adres</label>
+                  <p className="text-sm text-foreground" data-testid="text-counterparty-address">
+                    {currentCase.counterpartyAddress || "Niet opgegeven"}
                   </p>
                 </div>
               </div>
-            </div>
 
-            {/* Counterparty Information */}
-            <div className="space-y-3 pt-3 border-t">
-              <h3 className="font-semibold text-sm text-foreground border-b pb-2">Wederpartij gegevens</h3>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Type</label>
-                <p className="text-sm text-foreground" data-testid="text-counterparty-type">
-                  {currentCase.counterpartyType === "company" ? "Bedrijf" : "Particulier"}
-                </p>
-              </div>
-              
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Naam</label>
-                <p className="text-sm text-foreground" data-testid="text-counterparty-name">
-                  {currentCase.counterpartyName || "Niet opgegeven"}
-                </p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">E-mail</label>
-                  <p className="text-sm text-foreground truncate" data-testid="text-counterparty-email">
-                    {currentCase.counterpartyEmail || "-"}
-                  </p>
+              <Button
+                className="w-full"
+                onClick={() => {
+                  setZaakgegevensOpen(false);
+                  setLocation(`/edit-case/${currentCase.id}`);
+                }}
+                data-testid="button-edit-case"
+              >
+                Bewerken
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={documentenOpen} onOpenChange={setDocumentenOpen}>
+          <DialogTrigger asChild>
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow" data-testid="card-documenten">
+              <CardHeader>
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Files className="h-8 w-8 text-primary" />
                 </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Telefoon</label>
-                  <p className="text-sm text-foreground" data-testid="text-counterparty-phone">
-                    {currentCase.counterpartyPhone || "-"}
-                  </p>
-                </div>
-              </div>
-              
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Adres</label>
-                <p className="text-sm text-foreground line-clamp-2" data-testid="text-counterparty-address">
-                  {currentCase.counterpartyAddress || "Niet opgegeven"}
-                </p>
-              </div>
-            </div>
-
-            <Button
-              className="w-full mt-4"
-              onClick={() => setLocation(`/edit-case/${currentCase.id}`)}
-              data-testid="button-edit-case"
-            >
-              Bewerken
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Tile 2: Documenten */}
-        <div className="space-y-4" data-testid="section-documenten">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FileText className="h-8 w-8 text-primary" />
-            </div>
-            <h3 className="font-semibold text-foreground mb-2">Documenten</h3>
-            <p className="text-sm text-muted-foreground">
-              {currentCase.documents?.length || 0} {(currentCase.documents?.length || 0) === 1 ? 'document' : 'documenten'} geüpload
-            </p>
-          </div>
-          <DocumentList 
-            documents={currentCase.documents || []}
-            caseId={currentCase.id}
-            onDocumentUploaded={() => refetch()}
-          />
-        </div>
-
-        {/* Tile 3: Nog aan te leveren */}
-        <div className="space-y-4" data-testid="section-nog-aan-te-leveren">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="h-8 w-8 text-primary" />
-            </div>
-            <h3 className="font-semibold text-foreground mb-2">Nog aan te leveren</h3>
-            <p className="text-sm text-muted-foreground">
-              {missingRequirements.length > 0 
-                ? `${missingRequirements.filter((r: any) => r.required).length} vereiste ${missingRequirements.filter((r: any) => r.required).length === 1 ? 'vraag' : 'vragen'}`
-                : 'Alles is compleet'
-              }
-            </p>
-          </div>
-          {missingRequirements.length > 0 ? (
-            <MissingInfo 
-              requirements={missingRequirements}
-              caseId={currentCase.id}
-              onUpdated={() => refetch()}
-            />
-          ) : (
-            <Card>
-              <CardContent className="text-center py-8">
-                <CheckCircle className="h-12 w-12 text-success mx-auto mb-3" />
+                <CardTitle className="text-center">Documenten</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="text-2xl font-bold text-foreground">{docCount}</p>
                 <p className="text-sm text-muted-foreground">
-                  Er zijn momenteel geen openstaande vragen of documenten vereist.
+                  {docCount === 1 ? 'document' : 'documenten'} geüpload
                 </p>
               </CardContent>
             </Card>
-          )}
-        </div>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Geüploade documenten</DialogTitle>
+            </DialogHeader>
+            <div className="mt-4">
+              <DocumentList 
+                documents={currentCase.documents || []}
+                caseId={currentCase.id}
+                onDocumentUploaded={() => refetch()}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={nogAanTeLeverenOpen} onOpenChange={setNogAanTeLeverenOpen}>
+          <DialogTrigger asChild>
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow" data-testid="card-nog-aan-te-leveren">
+              <CardHeader>
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="h-8 w-8 text-primary" />
+                </div>
+                <CardTitle className="text-center">Nog aan te leveren</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                {missingRequirements.length > 0 ? (
+                  <>
+                    <p className="text-2xl font-bold text-foreground">{requiredCount}</p>
+                    <p className="text-sm text-muted-foreground">
+                      vereiste {requiredCount === 1 ? 'vraag' : 'vragen'}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-12 w-12 text-success mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Alles is compleet</p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Wat we nog nodig hebben</DialogTitle>
+            </DialogHeader>
+            <div className="mt-4">
+              {missingRequirements.length > 0 ? (
+                <MissingInfo 
+                  requirements={missingRequirements}
+                  caseId={currentCase.id}
+                  onUpdated={() => {
+                    refetch();
+                    setNogAanTeLeverenOpen(false);
+                  }}
+                />
+              ) : (
+                <Card>
+                  <CardContent className="text-center py-8">
+                    <CheckCircle className="h-12 w-12 text-success mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      Er zijn momenteel geen openstaande vragen of documenten vereist.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* Secondary Actions */}
       <div className="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 pt-8 border-t border-border">
         <Link href="/new-case" className="text-muted-foreground hover:text-foreground text-sm font-medium" data-testid="link-new-case-secondary">
           <PlusCircle className="inline mr-2 h-4 w-4" />
