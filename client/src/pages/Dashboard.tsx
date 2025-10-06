@@ -16,6 +16,7 @@ import {
 import { useEffect } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
+import { RIcon } from "@/components/RIcon";
 
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
@@ -191,7 +192,8 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Mijn Zaak */}
         <Link href="/my-case" data-testid="tile-mijn-zaak">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full relative">
+            <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
                 <Scale className="h-6 w-6 text-primary" />
@@ -223,7 +225,8 @@ export default function Dashboard() {
 
         {/* Analyse */}
         <Link href="/analysis" data-testid="tile-analyse">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full relative">
+            <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
                 <FileSearch className="h-6 w-6 text-primary" />
@@ -256,7 +259,8 @@ export default function Dashboard() {
 
         {/* Brieven */}
         <Link href="/letters" data-testid="tile-brieven">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full relative">
+            <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
                 <Mail className="h-6 w-6 text-primary" />
@@ -289,7 +293,8 @@ export default function Dashboard() {
 
         {/* Dagvaarding */}
         <Link href="/summons" data-testid="tile-dagvaarding">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full relative">
+            <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
                 <FileText className="h-6 w-6 text-primary" />
