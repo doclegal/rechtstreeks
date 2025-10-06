@@ -16,7 +16,7 @@ export default function AllCases() {
 
   const handleCaseSelect = (caseId: string) => {
     setSelectedCaseId(caseId);
-    setLocation('/');
+    setLocation('/dashboard');
   };
 
   const getStatusBadgeVariant = (status: string) => {

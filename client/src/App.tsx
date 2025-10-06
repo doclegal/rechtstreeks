@@ -41,7 +41,8 @@ function Router() {
         <Route path="/" component={Landing} />
       ) : (
         <Layout>
-          <Route path="/" component={Dashboard} />
+          <Route path="/" component={AllCases} />
+          <Route path="/dashboard" component={Dashboard} />
           <Route path="/my-case" component={MyCase} />
           <Route path="/analysis" component={Analysis} />
           <Route path="/analysis/:id/full" component={FullAnalysis} />
@@ -52,7 +53,6 @@ function Router() {
           <Route path="/warranty" component={Warranty} />
           <Route path="/help" component={Help} />
           <Route path="/new-case" component={NewCase} />
-          <Route path="/all-cases" component={AllCases} />
         </Layout>
       )}
       <Route component={NotFound} />
