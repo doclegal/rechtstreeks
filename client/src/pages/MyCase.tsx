@@ -244,25 +244,16 @@ export default function MyCase() {
               {currentCase.analysis ? "Voltooid" : "Beschikbaar"}
             </Badge>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => analyzeMutation.mutate()}
-              disabled={analyzeMutation.isPending}
-              size="sm"
-              variant={currentCase.analysis ? "outline" : "default"}
-              className="flex-1"
-            >
-              {analyzeMutation.isPending ? "Analyseren..." : currentCase.analysis ? "Heranalyseren" : "Start analyse"}
-            </Button>
-            <Button 
-              onClick={() => toggleSection('analyse')}
-              size="sm"
-              variant={expandedSection === 'analyse' ? "outline" : "default"}
-              className="px-3"
-            >
-              Open
-            </Button>
-          </div>
+          <Button 
+            onClick={() => analyzeMutation.mutate()}
+            disabled={analyzeMutation.isPending}
+            size="sm"
+            variant={currentCase.analysis ? "outline" : "default"}
+            className="w-full"
+            data-testid="button-start-kanton-check"
+          >
+            {analyzeMutation.isPending ? "Analyseren..." : currentCase.analysis ? "Heranalyseren" : "Start Kantonzaak Controle"}
+          </Button>
         </div>
 
         {/* Service 2: Brief */}
@@ -337,7 +328,7 @@ export default function MyCase() {
 
       {/* Main Content */}
       <div className="space-y-6">
-        {/* Show Mijn zaak content when no section is expanded */}
+        {/* Show Mijn zaak content when no brief/dagvaarding section is expanded */}
         {!expandedSection && (
           <>
             <CaseInfo 
@@ -351,38 +342,8 @@ export default function MyCase() {
               isFullWidth={true}
             />
             
-            {/* Missing Info Section */}
-            {missingRequirements.length > 0 && (
-              <MissingInfo 
-                requirements={missingRequirements}
-                caseId={currentCase.id}
-                onUpdated={() => refetch()}
-              />
-            )}
-
-            {/* Documents Section */}
-            <DocumentList 
-              documents={currentCase.documents || []}
-              caseId={currentCase.id}
-              onDocumentUploaded={() => refetch()}
-            />
-          </>
-        )}
-
-        {/* Expandable Section: Juridische Analyse */}
-        {expandedSection === 'analyse' && (
-          <div className="space-y-6">
-            <div className="border rounded-lg p-6 bg-white dark:bg-gray-900">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">Juridische Analyse Resultaten</h2>
-                <Button 
-                  onClick={() => setExpandedSection(null)}
-                  size="sm"
-                  variant="outline"
-                >
-                  Terug naar Mijn zaak
-                </Button>
-              </div>
+            {/* Analysis Results - Always visible with collapsible sections */}
+            {currentCase.analysis && (
               <AnalysisResults 
                 analysis={currentCase.kantonAnalysis || currentCase.analysis}
                 fullAnalysis={currentCase.fullAnalysis}
@@ -404,52 +365,68 @@ export default function MyCase() {
                 onFullAnalyze={() => fullAnalyzeMutation.mutate()}
                 isFullAnalyzing={fullAnalyzeMutation.isPending}
               />
+            )}
+
+            {/* Second Run: Refine Analysis Form */}
+            {(() => {
+              const fullAnalysis = currentCase.fullAnalysis as any;
+              const parsedAnalysis = fullAnalysis?.parsedAnalysis;
+              const missingInfoStruct = parsedAnalysis?.missing_info_for_assessment;
+              const hasMissingInfo = missingInfoStruct && Array.isArray(missingInfoStruct) && missingInfoStruct.length > 0;
               
-              {/* Second Run: Refine Analysis Form */}
-              {(() => {
-                const fullAnalysis = currentCase.fullAnalysis as any;
-                const parsedAnalysis = fullAnalysis?.parsedAnalysis;
-                const missingInfoStruct = parsedAnalysis?.missing_info_for_assessment;
-                const hasMissingInfo = missingInfoStruct && Array.isArray(missingInfoStruct) && missingInfoStruct.length > 0;
-                
-                // Show refine form only if there's missing info and no V2 analysis yet
-                if (hasMissingInfo && !v2Analysis) {
-                  return (
-                    <div className="mt-6">
-                      <MissingInfoRefineForm
-                        missingInfoStruct={missingInfoStruct}
-                        caseId={currentCase.id}
-                        onSecondRunComplete={(result) => {
-                          setV2Analysis(result);
-                          refetch();
-                          toast({
-                            title: "Analyse verfijnd",
-                            description: "Je antwoorden zijn verwerkt en de analyse is verfijnd"
-                          });
-                        }}
-                      />
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-              
-              {/* Display V2 Analysis Results */}
-              {v2Analysis && (
-                <div className="mt-6 p-4 border-2 border-green-200 rounded-lg bg-green-50 dark:bg-green-900/20">
-                  <h3 className="text-lg font-semibold text-green-700 dark:text-green-300 mb-4">
-                    ✅ Verfijnde Analyse (Versie 2)
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    De analyse is verfijnd met jouw antwoorden. Hieronder zie je de bijgewerkte resultaten.
-                  </p>
-                  <pre className="text-xs bg-white dark:bg-gray-800 p-4 rounded overflow-auto max-h-96">
-                    {JSON.stringify(v2Analysis, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </div>
-          </div>
+              // Show refine form only if there's missing info and no V2 analysis yet
+              if (hasMissingInfo && !v2Analysis) {
+                return (
+                  <div className="mt-6">
+                    <MissingInfoRefineForm
+                      missingInfoStruct={missingInfoStruct}
+                      caseId={currentCase.id}
+                      onSecondRunComplete={(result) => {
+                        setV2Analysis(result);
+                        refetch();
+                        toast({
+                          title: "Analyse verfijnd",
+                          description: "Je antwoorden zijn verwerkt en de analyse is verfijnd"
+                        });
+                      }}
+                    />
+                  </div>
+                );
+              }
+              return null;
+            })()}
+            
+            {/* Display V2 Analysis Results */}
+            {v2Analysis && (
+              <div className="mt-6 p-4 border-2 border-green-200 rounded-lg bg-green-50 dark:bg-green-900/20">
+                <h3 className="text-lg font-semibold text-green-700 dark:text-green-300 mb-4">
+                  ✅ Verfijnde Analyse (Versie 2)
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  De analyse is verfijnd met jouw antwoorden. Hieronder zie je de bijgewerkte resultaten.
+                </p>
+                <pre className="text-xs bg-white dark:bg-gray-800 p-4 rounded overflow-auto max-h-96">
+                  {JSON.stringify(v2Analysis, null, 2)}
+                </pre>
+              </div>
+            )}
+            
+            {/* Missing Info Section */}
+            {missingRequirements.length > 0 && (
+              <MissingInfo 
+                requirements={missingRequirements}
+                caseId={currentCase.id}
+                onUpdated={() => refetch()}
+              />
+            )}
+
+            {/* Documents Section */}
+            <DocumentList 
+              documents={currentCase.documents || []}
+              caseId={currentCase.id}
+              onDocumentUploaded={() => refetch()}
+            />
+          </>
         )}
 
         {/* Expandable Section: Gegenereerde Documenten */}
