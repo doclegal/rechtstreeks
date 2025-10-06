@@ -94,22 +94,30 @@ export default function Analysis() {
       fullAnalysis = (currentCase.fullAnalysis as any).parsedAnalysis;
     } else if (currentCase?.fullAnalysis?.rawText) {
       const rawData = JSON.parse(currentCase.fullAnalysis.rawText);
-      if (rawData.thread?.posts) {
+      
+      // Check if parsedAnalysis exists at top level
+      if (rawData.parsedAnalysis && typeof rawData.parsedAnalysis === 'object') {
+        fullAnalysis = rawData.parsedAnalysis;
+      }
+      // Check in result.analysis_json
+      else if (rawData.result?.analysis_json) {
+        const analysisJson = rawData.result.analysis_json;
+        fullAnalysis = typeof analysisJson === 'string' ? JSON.parse(analysisJson) : analysisJson;
+      }
+      // Check in thread posts (MindStudio format)
+      else if (rawData.thread?.posts) {
         for (const post of rawData.thread.posts) {
-          if (post.debugLog?.newState?.variables?.parsed_analysis?.value) {
-            const parsedValue = post.debugLog.newState.variables.parsed_analysis.value;
-            if (typeof parsedValue === 'string') {
-              fullAnalysis = JSON.parse(parsedValue);
-            } else {
-              fullAnalysis = parsedValue;
-            }
+          // Look for analysis_json variable (correct name)
+          if (post.debugLog?.newState?.variables?.analysis_json?.value) {
+            const parsedValue = post.debugLog.newState.variables.analysis_json.value;
+            fullAnalysis = typeof parsedValue === 'string' ? JSON.parse(parsedValue) : parsedValue;
             break;
           }
         }
       }
     }
   } catch (error) {
-    console.log('Could not parse full analysis:', error);
+    console.error('Error parsing full analysis:', error);
   }
 
   if (authLoading || casesLoading) {
@@ -382,27 +390,64 @@ export default function Analysis() {
               </TabsList>
 
               <TabsContent value="samenvatting" className="space-y-4">
-                {fullAnalysis.case_summary && (
-                  <div>
+                {fullAnalysis.summary && (
+                  <div className="space-y-4">
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                       <FileText className="h-5 w-5 text-primary" />
                       Zaak Samenvatting
                     </h3>
-                    <p className="text-sm text-foreground leading-relaxed" data-testid="text-case-summary">
-                      {fullAnalysis.case_summary}
-                    </p>
+                    {fullAnalysis.summary.facts_brief && (
+                      <Card>
+                        <CardContent className="pt-6">
+                          <h4 className="font-semibold text-sm mb-2">Feiten</h4>
+                          <p className="text-sm text-foreground leading-relaxed">
+                            {fullAnalysis.summary.facts_brief}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
+                    {fullAnalysis.summary.claims_brief && (
+                      <Card>
+                        <CardContent className="pt-6">
+                          <h4 className="font-semibold text-sm mb-2">Vordering</h4>
+                          <p className="text-sm text-foreground leading-relaxed">
+                            {fullAnalysis.summary.claims_brief}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
+                    {fullAnalysis.summary.defenses_brief && (
+                      <Card>
+                        <CardContent className="pt-6">
+                          <h4 className="font-semibold text-sm mb-2">Verweer</h4>
+                          <p className="text-sm text-foreground leading-relaxed">
+                            {fullAnalysis.summary.defenses_brief}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
+                    {fullAnalysis.summary.legal_brief && (
+                      <Card>
+                        <CardContent className="pt-6">
+                          <h4 className="font-semibold text-sm mb-2">Juridisch Perspectief</h4>
+                          <p className="text-sm text-foreground leading-relaxed">
+                            {fullAnalysis.summary.legal_brief}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
                 )}
               </TabsContent>
 
               <TabsContent value="partijen" className="space-y-4">
-                {fullAnalysis.parties && fullAnalysis.parties.length > 0 ? (
+                {fullAnalysis.case_overview?.parties && fullAnalysis.case_overview.parties.length > 0 ? (
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                       <Users className="h-5 w-5 text-primary" />
                       Betrokken Partijen
                     </h3>
-                    {fullAnalysis.parties.map((party: any, index: number) => (
+                    {fullAnalysis.case_overview.parties.map((party: any, index: number) => (
                       <Card key={index} className="border-l-4 border-primary">
                         <CardContent className="pt-6">
                           <div className="flex items-center gap-2 mb-2">
@@ -416,9 +461,9 @@ export default function Analysis() {
                               {party.description}
                             </p>
                           )}
-                          {party.legal_position && (
+                          {party.type && (
                             <p className="text-sm text-muted-foreground mt-1">
-                              <span className="font-medium">Positie:</span> {party.legal_position}
+                              <span className="font-medium">Type:</span> {party.type}
                             </p>
                           )}
                         </CardContent>
@@ -434,29 +479,60 @@ export default function Analysis() {
               </TabsContent>
 
               <TabsContent value="feiten" className="space-y-4">
-                {fullAnalysis.facts && fullAnalysis.facts.length > 0 ? (
-                  <div>
+                {fullAnalysis.facts ? (
+                  <div className="space-y-6">
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                       <FileText className="h-5 w-5 text-primary" />
                       Relevante Feiten
                     </h3>
-                    <ul className="space-y-3">
-                      {fullAnalysis.facts.map((fact: any, index: number) => (
-                        <li key={index} className="flex gap-3" data-testid={`fact-item-${index}`}>
-                          <span className="text-primary font-bold mt-0.5">&bull;</span>
-                          <div className="flex-1">
-                            <p className="text-sm text-foreground">
-                              {typeof fact === 'string' ? fact : fact.description || fact.fact}
-                            </p>
-                            {typeof fact === 'object' && fact.source && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Bron: {fact.source}
-                              </p>
-                            )}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
+                    
+                    {fullAnalysis.facts.known && fullAnalysis.facts.known.length > 0 && (
+                      <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30">
+                        <CardContent className="pt-6">
+                          <h4 className="font-semibold text-sm mb-3 text-green-800 dark:text-green-200">Vaststaande Feiten</h4>
+                          <ul className="space-y-2">
+                            {fullAnalysis.facts.known.map((fact: string, index: number) => (
+                              <li key={index} className="flex gap-3" data-testid={`fact-known-${index}`}>
+                                <span className="text-green-600 dark:text-green-400 font-bold mt-0.5">&bull;</span>
+                                <p className="text-sm text-green-900 dark:text-green-100">{fact}</p>
+                              </li>
+                            ))}
+                          </ul>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {fullAnalysis.facts.disputed && fullAnalysis.facts.disputed.length > 0 && (
+                      <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30">
+                        <CardContent className="pt-6">
+                          <h4 className="font-semibold text-sm mb-3 text-orange-800 dark:text-orange-200">Betwiste Feiten</h4>
+                          <ul className="space-y-2">
+                            {fullAnalysis.facts.disputed.map((fact: string, index: number) => (
+                              <li key={index} className="flex gap-3" data-testid={`fact-disputed-${index}`}>
+                                <span className="text-orange-600 dark:text-orange-400 font-bold mt-0.5">&bull;</span>
+                                <p className="text-sm text-orange-900 dark:text-orange-100">{fact}</p>
+                              </li>
+                            ))}
+                          </ul>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {fullAnalysis.facts.unclear && fullAnalysis.facts.unclear.length > 0 && (
+                      <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950/30">
+                        <CardContent className="pt-6">
+                          <h4 className="font-semibold text-sm mb-3 text-yellow-800 dark:text-yellow-200">Onduidelijke Feiten</h4>
+                          <ul className="space-y-2">
+                            {fullAnalysis.facts.unclear.map((fact: string, index: number) => (
+                              <li key={index} className="flex gap-3" data-testid={`fact-unclear-${index}`}>
+                                <span className="text-yellow-600 dark:text-yellow-400 font-bold mt-0.5">&bull;</span>
+                                <p className="text-sm text-yellow-900 dark:text-yellow-100">{fact}</p>
+                              </li>
+                            ))}
+                          </ul>
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
@@ -466,31 +542,29 @@ export default function Analysis() {
                 )}
               </TabsContent>
 
-              <TabsContent value="juridisch" className="space-y-4">
-                {fullAnalysis.legal_issues && fullAnalysis.legal_issues.length > 0 && (
+              <TabsContent value="juridisch" className="space-y-6">
+                {fullAnalysis.legal_analysis?.what_is_the_dispute && (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <h4 className="font-semibold text-sm mb-2">Kern van het geschil</h4>
+                      <p className="text-sm text-foreground">
+                        {fullAnalysis.legal_analysis.what_is_the_dispute}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {fullAnalysis.legal_analysis?.legal_issues && fullAnalysis.legal_analysis.legal_issues.length > 0 && (
                   <div>
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                       <Scale className="h-5 w-5 text-primary" />
                       Juridische Kwesties
                     </h3>
                     <div className="space-y-4">
-                      {fullAnalysis.legal_issues.map((issue: any, index: number) => (
+                      {fullAnalysis.legal_analysis.legal_issues.map((issue: string, index: number) => (
                         <Card key={index} data-testid={`legal-issue-${index}`}>
                           <CardContent className="pt-6">
-                            <h4 className="font-semibold text-sm mb-2">
-                              {typeof issue === 'string' ? issue : issue.issue || issue.title}
-                            </h4>
-                            {typeof issue === 'object' && issue.description && (
-                              <p className="text-sm text-muted-foreground mb-2">
-                                {issue.description}
-                              </p>
-                            )}
-                            {typeof issue === 'object' && issue.legal_basis && (
-                              <div className="mt-2 pt-2 border-t">
-                                <p className="text-xs font-medium text-muted-foreground mb-1">Juridische grondslag:</p>
-                                <p className="text-sm">{issue.legal_basis}</p>
-                              </div>
-                            )}
+                            <p className="text-sm text-foreground">{issue}</p>
                           </CardContent>
                         </Card>
                       ))}
@@ -498,23 +572,40 @@ export default function Analysis() {
                   </div>
                 )}
 
-                {fullAnalysis.legal_assessment && (
-                  <div className="mt-6">
+                {fullAnalysis.legal_analysis?.preliminary_assessment && (
+                  <div>
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                       <Scale className="h-5 w-5 text-primary" />
-                      Juridische Beoordeling
+                      Voorlopige Beoordeling
                     </h3>
                     <Card>
                       <CardContent className="pt-6">
                         <p className="text-sm text-foreground whitespace-pre-line" data-testid="text-legal-assessment">
-                          {fullAnalysis.legal_assessment}
+                          {fullAnalysis.legal_analysis.preliminary_assessment}
                         </p>
                       </CardContent>
                     </Card>
                   </div>
                 )}
 
-                {!fullAnalysis.legal_issues && !fullAnalysis.legal_assessment && (
+                {fullAnalysis.legal_analysis?.potential_defenses && fullAnalysis.legal_analysis.potential_defenses.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                      <Scale className="h-5 w-5 text-primary" />
+                      Mogelijke Verweren
+                    </h3>
+                    <ul className="space-y-2">
+                      {fullAnalysis.legal_analysis.potential_defenses.map((defense: string, index: number) => (
+                        <li key={index} className="flex gap-3">
+                          <span className="text-primary font-bold mt-0.5">&bull;</span>
+                          <p className="text-sm text-foreground">{defense}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {!fullAnalysis.legal_analysis && (
                   <div className="text-center py-8 text-muted-foreground">
                     <Scale className="h-12 w-12 mx-auto mb-3 opacity-30" />
                     <p>Geen juridische informatie beschikbaar</p>
@@ -523,7 +614,7 @@ export default function Analysis() {
               </TabsContent>
 
               <TabsContent value="risico" className="space-y-4">
-                {fullAnalysis.risk_assessment ? (
+                {fullAnalysis.legal_analysis?.risks && fullAnalysis.legal_analysis.risks.length > 0 ? (
                   <div>
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                       <AlertTriangle className="h-5 w-5 text-orange-600" />
@@ -531,9 +622,14 @@ export default function Analysis() {
                     </h3>
                     <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30">
                       <CardContent className="pt-6">
-                        <p className="text-sm text-orange-900 dark:text-orange-100 whitespace-pre-line" data-testid="text-risk-assessment">
-                          {fullAnalysis.risk_assessment}
-                        </p>
+                        <ul className="space-y-3">
+                          {fullAnalysis.legal_analysis.risks.map((risk: string, index: number) => (
+                            <li key={index} className="flex gap-3" data-testid={`risk-item-${index}`}>
+                              <span className="text-orange-600 dark:text-orange-400 font-bold mt-0.5">&bull;</span>
+                              <p className="text-sm text-orange-900 dark:text-orange-100">{risk}</p>
+                            </li>
+                          ))}
+                        </ul>
                       </CardContent>
                     </Card>
                   </div>
@@ -567,7 +663,7 @@ export default function Analysis() {
               </TabsContent>
 
               <TabsContent value="aanbevelingen" className="space-y-4">
-                {fullAnalysis.recommendations && fullAnalysis.recommendations.length > 0 ? (
+                {fullAnalysis.legal_analysis?.next_actions && fullAnalysis.legal_analysis.next_actions.length > 0 ? (
                   <div>
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-blue-800 dark:text-blue-200">
                       <CheckCircle className="h-5 w-5" />
@@ -576,12 +672,10 @@ export default function Analysis() {
                     <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
                       <CardContent className="pt-6">
                         <ul className="space-y-3">
-                          {fullAnalysis.recommendations.map((rec: any, index: number) => (
+                          {fullAnalysis.legal_analysis.next_actions.map((action: string, index: number) => (
                             <li key={index} className="flex gap-3" data-testid={`recommendation-${index}`}>
                               <span className="text-blue-600 dark:text-blue-400 font-bold">{index + 1}.</span>
-                              <p className="text-sm text-blue-900 dark:text-blue-100">
-                                {typeof rec === 'string' ? rec : rec.recommendation || rec.action}
-                              </p>
+                              <p className="text-sm text-blue-900 dark:text-blue-100">{action}</p>
                             </li>
                           ))}
                         </ul>
