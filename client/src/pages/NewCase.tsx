@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useCreateCase } from "@/hooks/useCase";
 import { useLocation } from "wouter";
 import { ArrowLeft, PlusCircle } from "lucide-react";
+import { useCaseContext } from "@/contexts/CaseContext";
 
 const newCaseSchema = z.object({
   title: z.string().min(1, "Titel is verplicht"),
@@ -29,6 +30,7 @@ type NewCaseFormData = z.infer<typeof newCaseSchema>;
 export default function NewCase() {
   const [, setLocation] = useLocation();
   const createCaseMutation = useCreateCase();
+  const { setSelectedCaseId } = useCaseContext();
   
   const form = useForm<NewCaseFormData>({
     resolver: zodResolver(newCaseSchema),
@@ -47,8 +49,11 @@ export default function NewCase() {
 
   const onSubmit = (data: NewCaseFormData) => {
     createCaseMutation.mutate(data, {
-      onSuccess: () => {
-        setLocation("/my-case");
+      onSuccess: (newCase) => {
+        if (newCase?.id) {
+          setSelectedCaseId(newCase.id);
+        }
+        setLocation("/dashboard");
       },
     });
   };

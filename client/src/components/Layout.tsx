@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
-import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle, ArrowLeft, Shield, FileText, FileSearch, Mail, Palette } from "lucide-react";
+import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle, ArrowLeft, Shield, FileText, FileSearch, Mail, Palette, Briefcase } from "lucide-react";
+import { useActiveCase } from "@/contexts/CaseContext";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -19,6 +20,7 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const { user } = useAuth();
   const [location] = useLocation();
+  const currentCase = useActiveCase();
   const [boldBrightTheme, setBoldBrightTheme] = useState(() => {
     const saved = localStorage.getItem('bold-bright-theme');
     return saved === 'true';
@@ -62,6 +64,16 @@ export default function Layout({ children }: LayoutProps) {
                 <RIcon size="md" />
                 <span className="text-xl font-semibold text-foreground">Rechtstreeks.ai</span>
               </Link>
+              
+              {currentCase && (
+                <div className="hidden lg:flex items-center gap-3 px-3 py-1.5 rounded-md bg-muted border border-border">
+                  <Briefcase className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-foreground max-w-[200px] truncate" data-testid="text-selected-case">
+                    {currentCase.title}
+                  </span>
+                </div>
+              )}
+              
               <nav className="hidden md:flex items-center space-x-6">
                 <Link 
                   href="/my-case" 
@@ -122,6 +134,12 @@ export default function Layout({ children }: LayoutProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link href="/" data-testid="link-all-cases-mobile">
+                      <Briefcase className="mr-2 h-4 w-4" />
+                      Alle zaken
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/my-case" data-testid="link-my-case-mobile">
                       <Scale className="mr-2 h-4 w-4" />
