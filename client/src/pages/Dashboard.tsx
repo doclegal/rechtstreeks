@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { 
   CheckCircle, 
-  Circle, 
   FileText, 
   FileSearch, 
   Mail, 
@@ -171,7 +170,7 @@ export default function Dashboard() {
                   {stage.completed ? (
                     <CheckCircle className="h-8 w-8 text-primary" data-testid={`icon-completed-${index}`} />
                   ) : (
-                    <Circle className="h-8 w-8 text-muted-foreground" data-testid={`icon-pending-${index}`} />
+                    <RIcon size="md" className="opacity-30" data-testid={`icon-pending-${index}`} />
                   )}
                 </div>
                 <p className="text-xs font-medium text-foreground mb-1" data-testid={`label-${index}`}>
