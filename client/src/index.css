@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -55,6 +56,56 @@
   --spacing: 0.25rem;
 }
 
+/* BOLD & BRIGHT THEME (LEMONADE-STYLE) */
+.bold-bright-theme {
+  /* Brand colors */
+  --primary: hsl(358, 100%, 68%);           /* #FF5A5F coral */
+  --primary-foreground: hsl(0, 0%, 100%);   /* white text on coral */
+  --secondary: hsl(172, 100%, 27%);         /* #00897B deep teal */
+  --secondary-foreground: hsl(0, 0%, 100%); /* white text on teal */
+  
+  /* Base colors */
+  --background: hsl(0, 0%, 98%);            /* #FAFAFA light bg */
+  --foreground: hsl(220, 26%, 17%);         /* #1F2937 charcoal text */
+  --card: hsl(0, 0%, 100%);                 /* #FFFFFF white cards */
+  --card-foreground: hsl(220, 26%, 17%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(220, 26%, 17%);
+  
+  /* Borders and inputs */
+  --border: hsl(220, 13%, 91%);             /* #E5E7EB subtle dividers */
+  --input: hsl(220, 13%, 91%);
+  --ring: hsl(358, 100%, 68%, 0.4);         /* primary with opacity for focus */
+  
+  /* States */
+  --muted: hsl(0, 0%, 96%);                 /* neutral gray */
+  --muted-foreground: hsl(220, 26%, 17%, 0.8);
+  --accent: hsl(0, 0%, 96%);
+  --accent-foreground: hsl(220, 26%, 17%);
+  
+  /* Status colors */
+  --success: hsl(172, 100%, 27%);           /* using secondary for success */
+  --warning: hsl(44, 100%, 70%);            /* #FFD166 gentle attention */
+  --destructive: hsl(0, 65%, 48%);          /* #C53030 error */
+  --destructive-foreground: hsl(0, 0%, 100%);
+  
+  /* Typography */
+  --font-heading: 'Poppins', 'Inter', sans-serif;
+  --font-sans: 'Inter', sans-serif;
+  
+  /* Border radius - larger, friendlier */
+  --radius: 1rem;                           /* rounded-2xl equivalent */
+  
+  /* Shadows - soft and elevated */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+/* Dark theme - keep existing */
 .dark {
   --background: hsl(0, 0%, 0%);
   --foreground: hsl(200, 6.6667%, 91.1765%);
@@ -94,6 +145,84 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+  }
+  
+  /* Bold & Bright Theme - Typography enhancements */
+  .bold-bright-theme h1,
+  .bold-bright-theme h2,
+  .bold-bright-theme h3,
+  .bold-bright-theme h4,
+  .bold-bright-theme h5,
+  .bold-bright-theme h6 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+  }
+  
+  .bold-bright-theme body {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  
+  /* Larger base font sizes */
+  .bold-bright-theme h1 {
+    font-size: 2rem;        /* 32px */
+    font-weight: 700;
+  }
+  
+  .bold-bright-theme h2 {
+    font-size: 1.5rem;      /* 24px */
+    font-weight: 600;
+  }
+  
+  .bold-bright-theme h3 {
+    font-size: 1.25rem;     /* 20px */
+    font-weight: 600;
+  }
+}
+
+@layer components {
+  /* Bold & Bright Theme - Button styling */
+  .bold-bright-theme .btn-primary,
+  .bold-bright-theme button[class*="bg-primary"] {
+    @apply rounded-2xl px-6 py-3 font-semibold transition-all duration-200;
+    @apply hover:scale-[1.02] focus:ring-2 focus:ring-primary/40;
+  }
+  
+  .bold-bright-theme .btn-secondary {
+    @apply rounded-2xl border-2 border-secondary text-secondary bg-transparent;
+    @apply px-6 py-3 font-semibold transition-all duration-200;
+    @apply hover:bg-secondary/10 focus:ring-2 focus:ring-secondary/40;
+  }
+  
+  /* Bold & Bright Theme - Card styling */
+  .bold-bright-theme [class*="Card"],
+  .bold-bright-theme .card {
+    @apply rounded-2xl shadow-md border border-border/60;
+    @apply transition-shadow duration-200 hover:shadow-lg;
+  }
+  
+  /* Bold & Bright Theme - Input styling */
+  .bold-bright-theme input,
+  .bold-bright-theme textarea,
+  .bold-bright-theme select {
+    @apply rounded-xl border-border focus:ring-2 focus:ring-primary/30;
+  }
+  
+  /* Bold & Bright Theme - Status chips */
+  .bold-bright-theme .status-default {
+    @apply bg-neutral-100 text-foreground/80 rounded-full px-3 py-1 text-sm;
+  }
+  
+  .bold-bright-theme .status-success {
+    @apply bg-secondary/15 text-secondary rounded-full px-3 py-1 text-sm;
+  }
+  
+  .bold-bright-theme .status-warning {
+    @apply bg-warning/40 text-foreground rounded-full px-3 py-1 text-sm;
+  }
+  
+  .bold-bright-theme .status-error {
+    @apply bg-destructive/15 text-destructive rounded-full px-3 py-1 text-sm;
   }
 }
 

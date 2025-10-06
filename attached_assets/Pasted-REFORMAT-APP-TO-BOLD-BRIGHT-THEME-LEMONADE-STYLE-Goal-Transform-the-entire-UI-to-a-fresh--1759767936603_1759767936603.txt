@@ -1,0 +1,86 @@
+REFORMAT APP TO "BOLD & BRIGHT" THEME (LEMONADE-STYLE)
+
+Goal:
+Transform the entire UI to a fresh, bold consumer look: calm base + strong accents. Remove corporate legal vibes. Friendly, confident, playful-but-smart.
+
+Brand tokens (Tailwind/custom CSS variables):
+- --color-primary: #FF5A5F;      // coral (main brand, CTAs)
+- --color-secondary: #00897B;    // deep teal (secondary actions, status chips)
+- --color-bg: #FAFAFA;           // light background
+- --color-surface: #FFFFFF;      // cards, panels
+- --color-border: #E5E7EB;       // subtle dividers
+- --color-text: #1F2937;         // charcoal text
+- --color-warn: #FFD166;         // gentle attention/deadlines
+- --color-error: #C53030;        // errors
+
+Typography:
+- Headings: Poppins or Inter, semibold/bold.
+- Body: Inter/Source Sans, 16–18px base, line-height 1.6.
+- Tight, clear hierarchy: h1 30–36px, h2 22–24px, h3 18–20px.
+
+Layout & spacing:
+- Plenty of white space. Container max-w-screen-lg on desktop.
+- Use 8px spacing scale (Tailwind: 2,4,6,8,10…); default gap-6 on sections.
+- Cards: bg-surface, rounded-2xl, shadow-md, border border-border/60.
+
+Radii & shadows:
+- Buttons/cards/inputs: rounded-2xl (or 1rem–1.25rem).
+- Shadows: soft (shadow-md), on hover elevate to shadow-lg.
+
+Buttons:
+- Primary button:
+  - bg-primary, text-white, rounded-2xl, px-6 py-3, font-semibold.
+  - Hover: slightly darker (#E54F54), focus:ring-2 ring-primary/40.
+  - Disabled: bg-primary/50 cursor-not-allowed.
+- Secondary button:
+  - border-2 border-secondary text-secondary bg-transparent.
+  - Hover: bg-secondary/10.
+- Text links: underline-offset-2, decoration-primary/50, hover: decoration-primary.
+
+Status chips (use small rounded pills):
+- default/open: bg-neutral-100 text-text/80.
+- success/done: bg-secondary/15 text-secondary.
+- attention: bg-warn/40 text-text.
+- error: bg-error/15 text-error.
+
+Forms:
+- One question per screen (wizard flow). Avoid dense long forms.
+- Inputs: rounded-xl, border border-border, focus:ring-2 ring-primary/30.
+- Help text beneath inputs in text-text/70.
+- Validation errors inline: text-error; field border-error.
+
+Wizard pattern (global):
+- Steps: Intake → Analyse → Ontbrekende info → Brief → Dagvaarding → Betekenen → Checklist.
+- Sticky footer with Prev / Next / Save. Progress indicator (percentage or step count).
+- Each screen: single primary CTA; keep secondary actions minimal.
+
+Dashboard (case overview):
+- Two-column on desktop. Left: “Volgende stap” card with big primary CTA.
+- Right: “Analyse & Bewijs” card list with collapsible sections.
+- Status chips on each card. Use icons only if clear and minimal.
+- No legal stock photos, no gavels/scales.
+
+Document viewer:
+- Clean toolbar (primary: “Genereer brief”, secondary: “Toon bronnen”).
+- Side panel with checklist (deadlines use warn color).
+- Download/Share actions as secondary buttons.
+
+Micro-animations (subtle):
+- Buttons: scale 1.00 → 1.02 on hover; transitions 150–200ms.
+- Chips/tags: fade-in on state change.
+- No bouncy/overshoot animations.
+
+Accessibility:
+- Ensure contrast AA (text on primary is white; check secondary-on-white).
+- Focus states visible with ring offsets.
+- Support prefers-reduced-motion.
+
+Empty states:
+- Friendly illustration (flat, colorful) + one clear action.
+- Example text: “Laten we beginnen met je zaak. Dit duurt 5 minuten.”
+
+Do & Don’t:
+- DO: one dominant accent color per screen. Use primary for all main CTAs.
+- DO: lots of white space; large tap targets; clear next step.
+- DON’T: multiple bright backgrounds, busy gradients, or multiple competing accents.
+- DON’T: legal clichés (weegschaal/toga/hamer), lawyer headshots, carousels.
