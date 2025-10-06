@@ -4,7 +4,7 @@
 
 Rechtstreeks.ai is a Dutch legal assistance platform that provides low-threshold legal help through AI-powered document analysis and automated legal document generation. The system guides users through the complete legal process from case intake to court proceedings, using a clear step-by-step approach with AI analysis of legal documents and automated generation of legal letters and summons.
 
-The platform operates as a single-case focused application where users upload their legal documents, receive AI analysis, and proceed through various stages including demand letters, bailiff services, and court proceedings. The system is designed to make legal assistance accessible to Dutch users with minimal legal knowledge.
+The platform supports multiple concurrent legal cases per user. Users start at a cases overview where they can view all their cases, select one to work with, or create a new case. Once a case is selected, they can proceed through various stages including document upload, AI analysis, demand letters, bailiff services, and court proceedings. The system is designed to make legal assistance accessible to Dutch users with minimal legal knowledge.
 
 ## User Preferences
 
@@ -19,8 +19,14 @@ Preferred communication style: Simple, everyday language.
 - **State Management**: TanStack React Query for server state management
 - **Routing**: Wouter for client-side routing
 - **Forms**: React Hook Form with Zod schema validation
+- **Case Management**: React Context for selected case state with localStorage persistence
 
-The frontend follows a single-page application architecture with a single-case-first UX approach. Users see their primary case immediately upon login with clear progress tracking through 9 distinct steps.
+The frontend follows a single-page application architecture with a multi-case UX approach. After login, users land on the cases overview page where they can:
+- View all their legal cases as tiles with key information
+- Select a case to work with (selection persists via localStorage)
+- Create new cases
+
+Once a case is selected, users can work through the case lifecycle with clear progress tracking through 9 distinct steps. The selected case is displayed in the header and all menu items (Mijn Zaak, Analyse, Brieven, Dagvaarding) operate on the active case. If no case is explicitly selected, the system automatically uses the most recently created case.
 
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js server
