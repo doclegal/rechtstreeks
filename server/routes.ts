@@ -760,6 +760,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const documents = await storage.getDocumentsByCase(caseId);
         console.log('📄 Found documents for full analysis:', documents.length);
         
+        // Construct public base URL for document downloads
+        // MindStudio needs a publicly accessible URL
+        const publicBaseUrl = process.env.PUBLIC_BASE_URL || 
+          (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000');
+        
+        console.log('🌐 Using public base URL for MindStudio:', publicBaseUrl);
+        
         const uploaded_files = documents.map(doc => {
           // Map to proper MIME types as expected by MindStudio
           const filename = doc.filename.toLowerCase();
@@ -777,7 +784,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return {
             name: doc.filename,
             type,
-            file_url: doc.storageKey ? `${process.env.PUBLIC_BASE_URL || 'https://localhost:5000'}/api/documents/${doc.id}/download` : ''
+            file_url: doc.storageKey ? `${publicBaseUrl}/api/documents/${doc.id}/download` : ''
           };
         });
 
@@ -990,10 +997,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get documents for analysis
       const documents = await storage.getDocumentsByCase(caseId);
+      
+      // Construct public base URL for document downloads (MindStudio needs publicly accessible URLs)
+      const publicBaseUrl = process.env.PUBLIC_BASE_URL || 
+        (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000');
+      
       const uploaded_files = documents.map(doc => ({
         name: doc.filename,
         type: doc.mimetype as "application/pdf" | "image/jpeg" | "image/png",
-        file_url: `${process.env.PUBLIC_BASE_URL || 'https://localhost:5000'}/api/documents/${doc.id}/download`
+        file_url: `${publicBaseUrl}/api/documents/${doc.id}/download`
       }));
 
       // Extract prev_analysis_json from previous analysis
