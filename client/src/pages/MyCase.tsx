@@ -15,7 +15,7 @@ import ProcessTimeline from "@/components/ProcessTimeline";
 import CaseInfo from "@/components/CaseInfo";
 import DeadlineWarning from "@/components/DeadlineWarning";
 import { Link, useLocation } from "wouter";
-import { PlusCircle, Headset, MessageSquare, ArrowLeft } from "lucide-react";
+import { PlusCircle, Headset, MessageSquare, ArrowLeft, FileText, CheckCircle } from "lucide-react";
 
 export default function MyCase() {
   const { user, isLoading: authLoading } = useAuth();
@@ -227,37 +227,172 @@ export default function MyCase() {
     );
   }
 
+  const formatCurrency = (amount: string | null) => {
+    if (!amount) return "Niet opgegeven";
+    return new Intl.NumberFormat('nl-NL', {
+      style: 'currency',
+      currency: 'EUR'
+    }).format(parseFloat(amount));
+  };
+
   return (
     <div className="space-y-6">
       <DeadlineWarning caseId={currentCase.id} />
       
-      {/* Main Content - Case Information */}
-      <CaseInfo 
-        caseData={currentCase}
-        onExport={() => {
-          window.open(`/api/cases/${currentCase.id}/export`, '_blank');
-        }}
-        onEdit={() => {
-          setLocation(`/edit-case/${currentCase.id}`);
-        }}
-        isFullWidth={true}
-      />
-      
-      {/* Missing Info Section */}
-      {missingRequirements.length > 0 && (
-        <MissingInfo 
-          requirements={missingRequirements}
-          caseId={currentCase.id}
-          onUpdated={() => refetch()}
-        />
-      )}
+      {/* Page Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Mijn zaak</h2>
+          <p className="text-muted-foreground">Overzicht van uw zaakgegevens</p>
+        </div>
+      </div>
 
-      {/* Documents Section */}
-      <DocumentList 
-        documents={currentCase.documents || []}
-        caseId={currentCase.id}
-        onDocumentUploaded={() => refetch()}
-      />
+      {/* Three Tiles Layout - Similar to Landing Page */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        {/* Tile 1: Zaakgegevens (Case Info + Counterparty Info) */}
+        <Card className="text-center hover:shadow-lg transition-shadow" data-testid="card-zaakgegevens">
+          <CardHeader>
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FileText className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="font-semibold text-foreground mb-2">Zaakgegevens</CardTitle>
+            <p className="text-sm text-muted-foreground">Gegevens van uw zaak en wederpartij</p>
+          </CardHeader>
+          <CardContent className="space-y-4 text-left">
+            {/* Case Information */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-sm text-foreground border-b pb-2">Zaak informatie</h3>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Titel</label>
+                <p className="text-sm text-foreground" data-testid="text-case-title">
+                  {currentCase.title || "Geen titel"}
+                </p>
+              </div>
+              
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Beschrijving</label>
+                <p className="text-sm text-foreground line-clamp-3" data-testid="text-case-description">
+                  {currentCase.description || "Geen beschrijving"}
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Categorie</label>
+                  <p className="text-sm text-foreground" data-testid="text-category">
+                    {currentCase.category || "Algemeen"}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Claim bedrag</label>
+                  <p className="text-sm text-foreground" data-testid="text-claim-amount">
+                    {formatCurrency(currentCase.claimAmount)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Counterparty Information */}
+            <div className="space-y-3 pt-3 border-t">
+              <h3 className="font-semibold text-sm text-foreground border-b pb-2">Wederpartij gegevens</h3>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Type</label>
+                <p className="text-sm text-foreground" data-testid="text-counterparty-type">
+                  {currentCase.counterpartyType === "company" ? "Bedrijf" : "Particulier"}
+                </p>
+              </div>
+              
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Naam</label>
+                <p className="text-sm text-foreground" data-testid="text-counterparty-name">
+                  {currentCase.counterpartyName || "Niet opgegeven"}
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">E-mail</label>
+                  <p className="text-sm text-foreground truncate" data-testid="text-counterparty-email">
+                    {currentCase.counterpartyEmail || "-"}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Telefoon</label>
+                  <p className="text-sm text-foreground" data-testid="text-counterparty-phone">
+                    {currentCase.counterpartyPhone || "-"}
+                  </p>
+                </div>
+              </div>
+              
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Adres</label>
+                <p className="text-sm text-foreground line-clamp-2" data-testid="text-counterparty-address">
+                  {currentCase.counterpartyAddress || "Niet opgegeven"}
+                </p>
+              </div>
+            </div>
+
+            <Button
+              className="w-full mt-4"
+              onClick={() => setLocation(`/edit-case/${currentCase.id}`)}
+              data-testid="button-edit-case"
+            >
+              Bewerken
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Tile 2: Documenten */}
+        <div className="space-y-4" data-testid="section-documenten">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FileText className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="font-semibold text-foreground mb-2">Documenten</h3>
+            <p className="text-sm text-muted-foreground">
+              {currentCase.documents?.length || 0} {(currentCase.documents?.length || 0) === 1 ? 'document' : 'documenten'} geüpload
+            </p>
+          </div>
+          <DocumentList 
+            documents={currentCase.documents || []}
+            caseId={currentCase.id}
+            onDocumentUploaded={() => refetch()}
+          />
+        </div>
+
+        {/* Tile 3: Nog aan te leveren */}
+        <div className="space-y-4" data-testid="section-nog-aan-te-leveren">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="font-semibold text-foreground mb-2">Nog aan te leveren</h3>
+            <p className="text-sm text-muted-foreground">
+              {missingRequirements.length > 0 
+                ? `${missingRequirements.filter((r: any) => r.required).length} vereiste ${missingRequirements.filter((r: any) => r.required).length === 1 ? 'vraag' : 'vragen'}`
+                : 'Alles is compleet'
+              }
+            </p>
+          </div>
+          {missingRequirements.length > 0 ? (
+            <MissingInfo 
+              requirements={missingRequirements}
+              caseId={currentCase.id}
+              onUpdated={() => refetch()}
+            />
+          ) : (
+            <Card>
+              <CardContent className="text-center py-8">
+                <CheckCircle className="h-12 w-12 text-success mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  Er zijn momenteel geen openstaande vragen of documenten vereist.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
 
       {/* Secondary Actions */}
       <div className="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 pt-8 border-t border-border">
