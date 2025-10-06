@@ -44,8 +44,11 @@ export default function Layout({ children }: LayoutProps) {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-8">
               <Link href="/" className="flex items-center space-x-3" data-testid="link-home">
-                <Scale className="text-primary text-2xl" />
-                <span className="text-xl font-bold text-foreground">Rechtstreeks.ai</span>
+                <img 
+                  src="/attached_assets/ChatGPT Image 6 okt 2025, 17_25_21_1759764379350.png" 
+                  alt="Rechtstreeks AI" 
+                  className="h-8"
+                />
               </Link>
               <nav className="hidden md:flex items-center space-x-6">
                 <Link 
