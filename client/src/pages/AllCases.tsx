@@ -139,10 +139,6 @@ export default function AllCases() {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground text-sm mb-4" data-testid={`text-case-description-${caseItem.id}`}>
-                  {caseItem.description}
-                </p>
-                
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <Label className="text-muted-foreground">Categorie</Label>
