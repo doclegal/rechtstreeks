@@ -10,6 +10,7 @@ import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
 import MyCase from "@/pages/MyCase";
 import Analysis from "@/pages/Analysis";
+import FullAnalysis from "@/pages/FullAnalysis";
 import Letters from "@/pages/Letters";
 import Summons from "@/pages/Summons";
 import Help from "@/pages/Help";
@@ -42,6 +43,7 @@ function Router() {
           <Route path="/" component={Dashboard} />
           <Route path="/my-case" component={MyCase} />
           <Route path="/analysis" component={Analysis} />
+          <Route path="/analysis/:id/full" component={FullAnalysis} />
           <Route path="/letters" component={Letters} />
           <Route path="/summons" component={Summons} />
           <Route path="/edit-case/:id" component={EditCase} />
