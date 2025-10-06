@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
-import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle, ArrowLeft, Shield } from "lucide-react";
+import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle, ArrowLeft, Shield, FileText, FileSearch, Mail } from "lucide-react";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -98,14 +98,39 @@ export default function Layout({ children }: LayoutProps) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem asChild>
-                    <Link href="/all-cases" data-testid="link-all-cases">
-                      Alle zaken
+                    <Link href="/my-case" data-testid="link-my-case-mobile">
+                      <Scale className="mr-2 h-4 w-4" />
+                      Mijn Zaak
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/analysis" data-testid="link-analysis-mobile">
+                      <FileSearch className="mr-2 h-4 w-4" />
+                      Analyse
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/letters" data-testid="link-letters-mobile">
+                      <Mail className="mr-2 h-4 w-4" />
+                      Brieven
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/summons" data-testid="link-summons-mobile">
+                      <FileText className="mr-2 h-4 w-4" />
+                      Dagvaarding
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" data-testid="link-profile-mobile">
+                      <User className="mr-2 h-4 w-4" />
+                      Mijn Profiel
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/new-case" data-testid="link-new-case">
                       <PlusCircle className="mr-2 h-4 w-4" />
-                      Nieuwe zaak
+                      Nieuwe zaak aanmaken
                     </Link>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
