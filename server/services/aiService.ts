@@ -724,9 +724,9 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       variables.file_url = params.file_url;
     }
 
-    // Set timeout to 5 minutes for long-running MindStudio analyses
+    // Set timeout to 10 minutes for long-running MindStudio analyses
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes
+    const timeoutId = setTimeout(() => controller.abort(), 10 * 60 * 1000); // 10 minutes
 
     const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
       method: "POST",
@@ -794,9 +794,9 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
 
     console.log("📤 Request body:", JSON.stringify(requestBody, null, 2));
 
-    // Set timeout to 5 minutes for long-running MindStudio analyses
+    // Set timeout to 10 minutes for long-running MindStudio analyses
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes
+    const timeoutId = setTimeout(() => controller.abort(), 10 * 60 * 1000); // 10 minutes
 
     const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
       method: "POST",
@@ -1016,9 +1016,9 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     console.log("📤 Full Analysis request body:", JSON.stringify(requestBody, null, 2));
 
     try {
-      // Set timeout to 5 minutes for long-running MindStudio analyses
+      // Set timeout to 10 minutes for long-running MindStudio analyses
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes
+      const timeoutId = setTimeout(() => controller.abort(), 10 * 60 * 1000); // 10 minutes
       
       const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
         method: "POST",
@@ -1381,9 +1381,9 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
 
     console.log("Starting SYNCHRONOUS Mindstudio analysis:", variables);
 
-    // Set timeout to 5 minutes for long-running MindStudio analyses
+    // Set timeout to 10 minutes for long-running MindStudio analyses
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes
+    const timeoutId = setTimeout(() => controller.abort(), 10 * 60 * 1000); // 10 minutes
 
     const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
       method: "POST",
@@ -1695,9 +1695,9 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       includeBillingCost: true
     };
 
-    // Set timeout to 5 minutes for long-running MindStudio analyses
+    // Set timeout to 10 minutes for long-running MindStudio analyses
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes
+    const timeoutId = setTimeout(() => controller.abort(), 10 * 60 * 1000); // 10 minutes
 
     const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
       method: "POST",
