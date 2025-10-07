@@ -1,0 +1,773 @@
+all_files: [
+0: {
+name: "Bewijs woning eindhoven.txt"
+type: "application/pdf"
+file_url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/b70afd01-e433-433a-880e-56245bc84d35/download"
+}
+1: {
+name: "Vraag woning eindhoven.txt"
+type: "application/pdf"
+file_url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/b202617d-e617-4891-a7ab-77bf71eab1e5/download"
+}
+2: {
+name: "Mailwisseling woning eindhoven.txt"
+type: "application/pdf"
+file_url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/69af635b-8fce-4be2-872f-767301dd4acc/download"
+}
+3: {
+name: "Contract woning eindhoven.txt"
+type: "application/pdf"
+file_url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/388a64fc-2746-4c0d-abf1-764ed103351a/download"
+}
+]
+analysis_json: {
+summary: {
+facts_brief: "Pieter kocht op 10 juni 2024 een vrijstaande villa in Eindhoven voor €425.000, nog in verbouwing. Transport vond plaats op 15 juli 2024. Drie maanden na levering ontdekte hij ernstige structurele lekkage in de kelder met vochtplekken, schimmel en muffe geur. Bouwkundig rapport van 1 november 2024 wijst op jarenlange lekkage. Bij bezichtiging was dit niet zichtbaar door verbouwing. Buren melden dat vorige bewoners al jaren last hadden van water in de kelder."
+claims_brief: "Pieter vordert €19.000 schadevergoeding van verkoper Kaja Jansen wegens verborgen gebrek. Hij stelt dat de structurele lekkage in de kelder al jarenlang aanwezig was, niet gemeld werd bij verkoop, en niet zichtbaar was bij bezichtiging. Hij baseert zich op artikel 6.1 koopcontract waarin verkoper verklaart geen gebreken te kennen die normaal gebruik belemmeren, en op getuigenverklaringen van buren over eerdere waterproblemen."
+defenses_brief: "Verkoper Kaja Jansen ontkent aansprakelijkheid en stelt zelf nooit lekkage te hebben gehad. Zij suggereert dat het gebrek door gebruik of onderhoud van koper is ontstaan. Mogelijk beroept zij zich op artikel 5.4 koopcontract dat verkoper niet instaat voor andere eigenschappen dan nodig voor normaal gebruik, en op het feit dat het huis uit 1982 dateert. Ook kan zij aanvoeren dat lekkage niet zichtbaar was door verbouwing en dus niet verwijtbaar verzwegen."
+legal_brief: "Dit is een kantonzaak (€19.000) over verborgen gebreken bij woningkoop tussen particulieren. Juridisch gaat het om non-conformiteit (art. 7:17 BW) en mededelingsplicht verkoper (art. 7:15 lid 1 sub c BW). Kernvraag is of verkoper wist of behoorde te weten van de lekkage en of het gebrek normaal gebruik belemmert. Bewijslast rust bij koper om aan te tonen dat gebrek bij levering aanwezig was en verkoper dit kende of moest kennen."
+}
+case_overview: {
+case_id: "3addcc01-8d9a-4708-9130-b0da2c1f674b"
+is_kantonzaak: true
+amount_eur: 19000
+parties: [
+0: {
+name: "pieter"
+role: "claimant"
+type: "individual"
+}
+1: {
+name: "Kaja jansen"
+role: "respondent"
+type: "individual"
+}
+]
+forum_clause_text: ""
+contract_present: true
+}
+questions_to_answer: [
+0: "Wist verkoper Kaja Jansen van de structurele lekkage in de kelder ten tijde van de verkoop, of had zij dit redelijkerwijs moeten weten?"
+1: "Was de lekkage bij levering op 15 juli 2024 al aanwezig en belemmert deze het normaal gebruik van de woning als bedoeld in artikel 5.3 koopcontract?"
+2: "Heeft Pieter tijdig (binnen redelijke termijn na ontdekking) geklaagd bij verkoper conform art. 7:23 BW?"
+3: "Zijn de herstelkosten van €19.000 redelijk en proportioneel voor het verhelpen van de lekkage in de kelder?"
+]
+facts: {
+known: [
+0: "Koopovereenkomst gesloten op 10 juni 2024 voor €425.000"
+1: "Juridische levering bij notaris op 15 juli 2024"
+2: "Woning was bij aankoop nog in verbouwing, koper zou verbouwing afmaken"
+3: "Lekkage in kelder ontdekt circa drie maanden na levering (oktober 2024)"
+4: "Bouwkundig rapport van 1 november 2024 stelt dat lekkage jarenlang aanwezig moet zijn geweest"
+]
+disputed: [
+0: "Of verkoper Kaja Jansen wist of behoorde te weten van de lekkage ten tijde van verkoop"
+1: "Of de lekkage al aanwezig was bij levering of daarna is ontstaan door gebruik/onderhoud koper"
+2: "Of verkoper in vragenlijst bij koop waarheidsgetrouw heeft geantwoord dat geen lekkages bekend waren"
+3: "Of de lekkage het normaal gebruik van de woning als woonhuis belemmert"
+]
+unclear: [
+0: "Exacte datum waarop Pieter de lekkage voor het eerst ontdekte"
+1: "Of er een bouwkundige keuring heeft plaatsgevonden vóór de koop en wat daaruit bleek"
+2: "Precieze aard en omvang van de verbouwingswerkzaamheden die nog moesten plaatsvinden"
+3: "Of verkoper zelf in de woning heeft gewoond en zo ja, hoe lang"
+4: "Betrouwbaarheid en specificiteit van de verklaringen van buren over eerdere waterproblemen"
+]
+}
+evidence: {
+provided: [
+0: {
+source: "document"
+doc_name: "Bewijs woning eindhoven.txt"
+doc_url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/b70afd01-e433-433a-880e-56245bc84d35/download"
+key_passages: [
+0: "Bouwkundig rapport 1 november 2024"
+1: "Foto's van vochtplekken en schimmel"
+2: "Vragenlijst bij koop → 'geen lekkages bekend'"
+3: "App-gesprek met buren die melden dat vorige bewoners al jaren last hadden van water in de kelder"
+]
+}
+1: {
+source: "document"
+doc_name: "Mailwisseling woning eindhoven.txt"
+doc_url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/69af635b-8fce-4be2-872f-767301dd4acc/download"
+key_passages: [
+0: "Mail koper aan verkoper 20 oktober 2024: ernstige lekkage ontdekt na hevige regenval, verzoek om oplossing voor 30 oktober"
+1: "Reactie verkoper 25 oktober 2024: wij hebben nooit lekkage gehad, kan door uw gebruik/onderhoud komen, voelen ons niet aansprakelijk"
+]
+}
+2: {
+source: "document"
+doc_name: "Contract woning eindhoven.txt"
+doc_url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/388a64fc-2746-4c0d-abf1-764ed103351a/download"
+key_passages: [
+0: "Artikel 5.3: onroerende zaak zal feitelijke eigenschappen bezitten nodig voor normaal gebruik als woonhuis"
+1: "Artikel 5.4: verkoper staat niet in voor andere eigenschappen dan nodig voor normaal gebruik"
+2: "Artikel 6.1: verkoper verklaart dat hem geen gebreken bekend zijn die aan normaal gebruik in de weg staan"
+]
+}
+3: {
+source: "document"
+doc_name: "Vraag woning eindhoven.txt"
+doc_url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/b202617d-e617-4891-a7ab-77bf71eab1e5/download"
+key_passages: [
+0: "Vraag: kan ik verkoper aansprakelijk stellen voor verborgen gebrek en herstelkosten verhalen"
+]
+}
+]
+missing: [
+0: "Volledig getekend koopcontract met alle bijlagen en algemene voorwaarden"
+1: "Originele vragenlijst bij koop met antwoorden verkoper over bekende gebreken"
+2: "Volledig bouwkundig rapport van 1 november 2024 met technische specificaties en kostenraming"
+3: "Schriftelijke verklaringen of getuigenverklaringen van buren over eerdere waterproblemen"
+4: "Eventueel bouwkundig rapport of keuringsrapport van vóór de koop"
+5: "Bewijs van datum eerste ontdekking lekkage en omstandigheden (regenval, inspectie)"
+6: "Offerte(s) voor herstel van de lekkage ter onderbouwing van €19.000 schade"
+7: "Notariële akte van levering 15 juli 2024"
+]
+}
+missing_info_for_assessment: [
+0: {
+question: "Upload het volledige getekende koopcontract inclusief alle bijlagen en algemene voorwaarden tussen Pieter en Kaja Jansen, gesloten op 10 juni 2024 voor de woning in Eindhoven."
+answer_type: "file_upload"
+expected: "Volledig koopcontract met handtekeningen beide partijen"
+ui: {
+label: "Volledig koopcontract woning Eindhoven (10 juni 2024)"
+placeholder: "Upload het getekende koopcontract inclusief bijlagen"
+help: "We hebben het volledige contract nodig om alle clausules over gebreken, garanties en aansprakelijkheid te beoordelen. Zorg dat handtekeningen en datum zichtbaar zijn."
+}
+specificity: {
+doc_kind: "Getekend koopcontract onroerend goed"
+parties_involved: [
+0: {
+name: "pieter"
+role: "claimant"
+}
+1: {
+name: "Kaja jansen"
+role: "respondent"
+}
+]
+anchors: {
+date_range: {
+from: "2024-06-10"
+to: "2024-06-10"
+}
+amount_eur: 425000
+subject: "Koopovereenkomst vrijstaande villa Eindhoven"
+location: "Eindhoven"
+}
+}
+file_spec: {
+accept: [
+0: "application/pdf"
+1: "image/jpeg"
+2: "image/png"
+]
+max_files: 3
+max_total_mb: 15
+acceptance_criteria: [
+0: "Handtekeningen beide partijen zichtbaar"
+1: "Datum 10 juni 2024 vermeld"
+2: "Koopsom €425.000 vermeld"
+3: "Alle artikelen over gebreken en garanties leesbaar"
+4: "Eventuele bijlagen over staat woning bijgevoegd"
+]
+redactions_allowed: true
+}
+}
+1: {
+question: "Upload het volledige bouwkundige rapport van 1 november 2024 over de lekkage in de kelder, inclusief technische bevindingen, conclusies over ouderdom lekkage en kostenraming herstel."
+answer_type: "file_upload"
+expected: "Volledig bouwkundig expertrapport met datum 1 november 2024"
+ui: {
+label: "Bouwkundig rapport lekkage kelder (1 november 2024)"
+placeholder: "Upload het volledige rapport van de bouwkundig expert"
+help: "Het rapport moet duidelijk maken dat de lekkage al jarenlang aanwezig was en een inschatting geven van herstelkosten. Zorg dat naam expert, datum en conclusies volledig leesbaar zijn."
+}
+specificity: {
+doc_kind: "Bouwkundig expertrapport"
+parties_involved: [
+0: {
+name: "pieter"
+role: "claimant"
+}
+]
+anchors: {
+date_range: {
+from: "2024-11-01"
+to: "2024-11-01"
+}
+amount_eur: 19000
+subject: "Structurele lekkage kelder villa Eindhoven"
+location: "Eindhoven"
+}
+}
+file_spec: {
+accept: [
+0: "application/pdf"
+1: "image/jpeg"
+2: "image/png"
+]
+max_files: 2
+max_total_mb: 20
+acceptance_criteria: [
+0: "Datum rapport 1 november 2024 vermeld"
+1: "Naam en kwalificaties bouwkundig expert vermeld"
+2: "Technische analyse ouderdom en oorzaak lekkage"
+3: "Conclusie dat lekkage jarenlang aanwezig moet zijn geweest"
+4: "Kostenraming voor herstel of verwijzing naar offerte"
+]
+redactions_allowed: true
+}
+}
+2: {
+question: "Upload de ingevulde vragenlijst die bij de koop is gebruikt, waarin verkoper Kaja Jansen heeft verklaard dat geen lekkages bekend waren."
+answer_type: "file_upload"
+expected: "Vragenlijst verkoper met antwoord over bekende gebreken/lekkages"
+ui: {
+label: "Vragenlijst verkoper over bekende gebreken (juni 2024)"
+placeholder: "Upload de vragenlijst met antwoorden verkoper"
+help: "Deze vragenlijst is cruciaal om aan te tonen dat verkoper heeft verklaard geen lekkages te kennen. Upload de versie met antwoorden van verkoper Kaja Jansen, bij voorkeur ondertekend."
+}
+specificity: {
+doc_kind: "Vragenlijst verkoper onroerend goed"
+parties_involved: [
+0: {
+name: "Kaja jansen"
+role: "respondent"
+}
+1: {
+name: "pieter"
+role: "claimant"
+}
+]
+anchors: {
+date_range: {
+from: "2024-06-01"
+to: "2024-07-15"
+}
+amount_eur: 0
+subject: "Bekende gebreken en lekkages woning Eindhoven"
+location: "Eindhoven"
+}
+}
+file_spec: {
+accept: [
+0: "application/pdf"
+1: "image/jpeg"
+2: "image/png"
+]
+max_files: 2
+max_total_mb: 10
+acceptance_criteria: [
+0: "Antwoord op vraag over bekende lekkages zichtbaar"
+1: "Bij voorkeur ondertekend door verkoper Kaja Jansen"
+2: "Datum invulling tussen juni en juli 2024"
+3: "Alle relevante vragen over staat woning leesbaar"
+]
+redactions_allowed: true
+}
+}
+3: {
+question: "Heeft er vóór de koop een bouwkundige keuring of inspectie plaatsgevonden van de woning?"
+answer_type: "multiple_choice"
+expected: [
+0: "Ja, er heeft een bouwkundige keuring plaatsgevonden"
+1: "Nee, er heeft geen keuring plaatsgevonden"
+2: "Keuring was niet mogelijk vanwege verbouwing"
+3: "Weet ik niet zeker"
+]
+ui: {
+label: "Bouwkundige keuring vóór aankoop"
+placeholder: "Selecteer wat van toepassing is"
+help: "Het is belangrijk te weten of er een keuring heeft plaatsgevonden en wat daaruit bleek over de staat van de kelder. Als er een rapport is, upload dit als aanvullend document."
+}
+specificity: {
+doc_kind: "Bouwkundig keuringsrapport pre-aankoop"
+parties_involved: [
+0: {
+name: "pieter"
+role: "claimant"
+}
+]
+anchors: {
+date_range: {
+from: "2024-05-01"
+to: "2024-07-15"
+}
+amount_eur: 0
+subject: "Bouwkundige staat woning voor aankoop"
+location: "Eindhoven"
+}
+}
+file_spec: {
+accept: [
+0: "application/pdf"
+]
+max_files: 1
+max_total_mb: 10
+acceptance_criteria: [
+0: "Rapport gedateerd vóór levering 15 juli 2024"
+1: "Bevindingen over kelder en vochtproblemen"
+]
+redactions_allowed: true
+}
+}
+4: {
+question: "Upload schriftelijke verklaringen of app-gesprekken met buren waarin zij bevestigen dat vorige bewoners al jaren last hadden van water in de kelder."
+answer_type: "file_upload"
+expected: "Schriftelijke getuigenverklaringen of screenshots app-gesprekken met buren"
+ui: {
+label: "Verklaringen buren over eerdere waterproblemen kelder"
+placeholder: "Upload verklaringen of screenshots gesprekken met buren"
+help: "Deze verklaringen zijn belangrijk om aan te tonen dat de lekkage al bestond tijdens bewoning door verkoper. Upload complete gesprekken, geen knipsels, met datum en naam/adres buren indien mogelijk."
+}
+specificity: {
+doc_kind: "Getuigenverklaringen buren over waterproblemen"
+parties_involved: [
+0: {
+name: "Kaja jansen"
+role: "respondent"
+}
+1: {
+name: "buren vorige bewoners"
+role: "third_party"
+}
+]
+anchors: {
+date_range: {
+from: "2024-10-01"
+to: "2024-12-31"
+}
+amount_eur: 0
+subject: "Waterproblemen kelder tijdens bewoning verkoper"
+location: "Eindhoven"
+}
+}
+file_spec: {
+accept: [
+0: "application/pdf"
+1: "image/jpeg"
+2: "image/png"
+]
+max_files: 5
+max_total_mb: 15
+acceptance_criteria: [
+0: "Volledige app-gesprekken, geen knipsels"
+1: "Datum gesprekken zichtbaar"
+2: "Naam of adres buren bij voorkeur vermeld"
+3: "Duidelijke vermelding dat vorige bewoners waterproblemen hadden"
+4: "Bij schriftelijke verklaringen: ondertekend en gedateerd"
+]
+redactions_allowed: true
+}
+}
+5: {
+question: "Upload offerte(s) of kostenraming van erkende aannemers voor het herstel van de lekkage in de kelder, ter onderbouwing van de claim van €19.000."
+answer_type: "file_upload"
+expected: "Offerte(s) herstelwerkzaamheden lekkage kelder"
+ui: {
+label: "Offerte(s) herstel lekkage kelder (€19.000)"
+placeholder: "Upload offerte(s) van aannemers voor herstelwerkzaamheden"
+help: "Om de schade van €19.000 te onderbouwen hebben we concrete offertes nodig van erkende bedrijven. Upload minimaal één offerte met specificatie van werkzaamheden en kosten."
+}
+specificity: {
+doc_kind: "Offerte herstelwerkzaamheden lekkage"
+parties_involved: [
+0: {
+name: "pieter"
+role: "claimant"
+}
+]
+anchors: {
+date_range: {
+from: "2024-10-20"
+to: "2025-01-31"
+}
+amount_eur: 19000
+subject: "Herstel structurele lekkage kelder"
+location: "Eindhoven"
+}
+}
+file_spec: {
+accept: [
+0: "application/pdf"
+1: "image/jpeg"
+2: "image/png"
+]
+max_files: 3
+max_total_mb: 10
+acceptance_criteria: [
+0: "Offerte van erkend bedrijf met KvK-nummer"
+1: "Datum offerte na ontdekking lekkage (na 20 oktober 2024)"
+2: "Specificatie werkzaamheden en materialen"
+3: "Totaalbedrag rond €19.000 of onderbouwing van dit bedrag"
+4: "Adres woning Eindhoven vermeld"
+]
+redactions_allowed: true
+}
+}
+]
+per_document: [
+0: {
+name: "Bewijs woning eindhoven.txt"
+url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/b70afd01-e433-433a-880e-56245bc84d35/download"
+type: "application/pdf"
+summary: "Dit document bevat een opsomming van beschikbaar bewijsmateriaal. Het vermeldt een bouwkundig rapport van 1 november 2024, foto's van vochtplekken en schimmel, e-mailcorrespondentie met verkoper, de vragenlijst bij koop waarin verkoper verklaarde geen lekkages te kennen, en app-gesprekken met buren die bevestigen dat vorige bewoners al jaren waterproblemen hadden."
+extracted_points: [
+0: "Bouwkundig rapport gedateerd 1 november 2024 over de lekkage"
+1: "Fotomateriaal van vochtplekken en schimmel in kelder"
+2: "E-mailwisseling met verkoper over klachten na levering"
+3: "Vragenlijst bij koop waarin verkoper 'geen lekkages bekend' heeft aangekruist"
+4: "App-gesprekken met buren over waterproblemen bij vorige bewoners"
+]
+}
+1: {
+name: "Vraag woning eindhoven.txt"
+url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/b202617d-e617-4891-a7ab-77bf71eab1e5/download"
+type: "application/pdf"
+summary: "Dit document bevat de juridische vraagstelling van Pieter. Hij vraagt of hij verkoper aansprakelijk kan stellen voor het verborgen gebrek en (een deel van) de herstelkosten kan verhalen. Ook vraagt hij naar de kans van slagen en de eerste stappen die hij moet ondernemen."
+extracted_points: [
+0: "Vraag of verkoper aansprakelijk gesteld kan worden voor verborgen gebrek"
+1: "Vraag of herstelkosten verhaald kunnen worden"
+2: "Verzoek om inschatting kans van slagen"
+3: "Verzoek om advies over eerste te nemen stappen"
+]
+}
+2: {
+name: "Mailwisseling woning eindhoven.txt"
+url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/69af635b-8fce-4be2-872f-767301dd4acc/download"
+type: "application/pdf"
+summary: "Dit document bevat de e-mailcorrespondentie tussen koper en verkoper. Op 20 oktober 2024 meldt Pieter de ernstige lekkage na regenval en verzoekt om oplossing voor 30 oktober. Verkoper Kaja Jansen reageert op 25 oktober dat zij nooit lekkage hebben gehad en suggereert dat het door gebruik of onderhoud van koper komt. Zij voelt zich niet aansprakelijk."
+extracted_points: [
+0: "Pieter meldt lekkage op 20 oktober 2024 na hevige regenval"
+1: "Lekkage was niet zichtbaar bij bezichtiging en niet gemeld"
+2: "Pieter verzoekt om oplossing uiterlijk 30 oktober 2024"
+3: "Verkoper ontkent op 25 oktober ooit lekkage te hebben gehad"
+4: "Verkoper suggereert dat lekkage door gebruik/onderhoud koper komt en wijst aansprakelijkheid af"
+]
+}
+3: {
+name: "Contract woning eindhoven.txt"
+url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/388a64fc-2746-4c0d-abf1-764ed103351a/download"
+type: "application/pdf"
+summary: "Dit document bevat relevante artikelen uit het koopcontract. Artikel 5.3 bepaalt dat de woning bij levering eigenschappen moet bezitten voor normaal gebruik als woonhuis. Artikel 5.4 beperkt de garantie van verkoper tot eigenschappen nodig voor normaal gebruik. Artikel 6.1 bevat de verklaring van verkoper dat hem geen gebreken bekend zijn die normaal gebruik belemmeren."
+extracted_points: [
+0: "Art. 5.3: woning moet bij levering eigenschappen hebben voor normaal gebruik als woonhuis"
+1: "Art. 5.4: verkoper staat niet in voor andere eigenschappen dan nodig voor normaal gebruik"
+2: "Art. 5.4: koper is bekend met bouwjaar 1982"
+3: "Art. 6.1: verkoper verklaart geen gebreken te kennen die normaal gebruik belemmeren"
+4: "Contractuele garantiebeperking tot normaal gebruik"
+]
+}
+]
+legal_analysis: {
+what_is_the_dispute: "Pieter vordert €19.000 schadevergoeding van verkoper Kaja Jansen wegens een verborgen gebrek (structurele lekkage in kelder) dat drie maanden na levering werd ontdekt. Kernvraag is of verkoper wist of behoorde te weten van dit gebrek en of het normaal gebruik belemmert."
+legal_issues: [
+0: "Non-conformiteit: voldoet de geleverde woning aan art. 7:17 BW en art. 5.3 koopcontract (eigenschappen voor normaal gebruik)?"
+1: "Mededelingsplicht verkoper: heeft verkoper art. 7:15 lid 1 sub c BW geschonden door lekkage niet te melden die zij kende of behoorde te kennen?"
+2: "Bewijslast: kan koper aantonen dat gebrek bij levering aanwezig was en verkoper dit kende of redelijkerwijs moest kennen?"
+3: "Klachttermijn: heeft koper tijdig geklaagd conform art. 7:23 BW (binnen redelijke termijn na ontdekking)?"
+4: "Causaal verband: is de schade veroorzaakt door het gebrek dat bij levering aanwezig was, of door latere omstandigheden (gebruik, onderhoud, verbouwing)?"
+]
+potential_defenses: [
+0: "Verkoper ontkent wetenschap van lekkage en stelt zelf nooit problemen te hebben gehad; beroep op art. 5.4 koopcontract (geen garantie voor andere eigenschappen dan normaal gebruik)"
+1: "Lekkage was niet zichtbaar bij bezichtiging door verbouwing, dus geen verwijtbaar verzwijgen; ouderdom woning (1982) was bekend bij koper"
+2: "Lekkage is mogelijk ontstaan na levering door gebruik, onderhoud of verbouwingswerkzaamheden van koper zelf"
+]
+preliminary_assessment: "Koper heeft redelijke kans van slagen als hij kan bewijzen dat lekkage bij levering aanwezig was en verkoper dit wist of behoorde te weten. Bouwkundig rapport en burenverklaringen zijn daarbij cruciaal. Verkoper heeft verweer dat zij niet wist van lekkage en dat deze door koper is veroorzaakt. Bewijslast rust bij koper."
+risks: [
+0: "Bewijslast ligt bij koper: moeilijk om aan te tonen dat verkoper wist of behoorde te weten van lekkage, vooral als verkoper ontkent"
+1: "Verbouwing compliceert bewijs: lekkage was niet zichtbaar bij bezichtiging, verkoper kan stellen dat dit niet verwijtbaar is"
+2: "Causaal verband onduidelijk: verkoper kan aanvoeren dat lekkage door verbouwingswerkzaamheden of gebruik van koper is ontstaan"
+3: "Burenverklaringen mogelijk onvoldoende: app-gesprekken zijn geen formele getuigenverklaringen en betrouwbaarheid kan worden betwist"
+]
+legal_basis: [
+0: {
+law: "Burgerlijk Wetboek Boek 7"
+article: "art. 7:17 lid 1 en 2 BW"
+note: "Non-conformiteit: zaak moet aan overeenkomst beantwoorden; afwijking is gebrek"
+}
+1: {
+law: "Burgerlijk Wetboek Boek 7"
+article: "art. 7:15 lid 1 sub c BW"
+note: "Mededelingsplicht verkoper: moet eigenschappen en gebreken meedelen die hij kent of behoort te kennen"
+}
+2: {
+law: "Burgerlijk Wetboek Boek 7"
+article: "art. 7:23 lid 1 BW"
+note: "Klachtplicht koper: moet binnen bekwame tijd na ontdekking klagen, op straffe van verval van rechten"
+}
+3: {
+law: "Burgerlijk Wetboek Boek 6"
+article: "art. 6:74 e.v. BW"
+note: "Schadevergoeding: bij tekortkoming recht op vergoeding van geleden en gederfde winst"
+}
+]
+next_actions: [
+0: "Verzamel volledig bewijsmateriaal: compleet bouwkundig rapport, offerte(s) herstelkosten, volledige vragenlijst verkoper, schriftelijke burenverklaringen"
+1: "Stuur formele ingebrekestelling aan Kaja Jansen per aangetekende post met redelijke termijn (14 dagen) voor herstel of schadevergoeding"
+2: "Overweeg bemiddeling of mediation alvorens procedure te starten, gezien bewijsrisico's en kosten"
+3: "Bij weigering verkoper: dagvaarding indienen bij kantonrechter Eindhoven (bevoegd op grond van art. 99 Rv, ligging onroerend goed)"
+4: "Laat formele schriftelijke getuigenverklaringen opstellen door buren conform art. 164 e.v. Rv voor gebruik in procedure"
+]
+}
+}
+extracted_texts: [
+0: {
+url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/b70afd01-e433-433a-880e-56245bc84d35/download"
+text: "Bewijs Bouwkundig rapport 1 november 2024. Foto’s van vochtplekken en schimmel. E-mails met verkoper over klachten na levering. Vragenlijst bij koop → “geen lekkages bekend”. App-gesprek met buren die melden dat vorige bewoners al jaren last hadden van water in de kelder."
+type: "application/pdf"
+name: "Bewijs woning eindhoven.txt"
+}
+1: {
+url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/b202617d-e617-4891-a7ab-77bf71eab1e5/download"
+text: "Vraag aan jurist Kan ik de verkoper aansprakelijk stellen voor dit verborgen gebrek en (een deel van) de herstelkosten verhalen? Hoe groot acht u de kans van slagen en wat zijn de eerste stappen die ik moet ondernemen?"
+type: "application/pdf"
+name: "Vraag woning eindhoven.txt"
+}
+2: {
+url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/69af635b-8fce-4be2-872f-767301dd4acc/download"
+text: "Correspondentie Mail koper aan verkoper (20 oktober 2024): “Na de hevige regenval van vorige week heb ik ernstige lekkage in de kelder ontdekt. Dit was bij bezichtiging niet zichtbaar en ook niet gemeld. Ik verzoek u mij uiterlijk 30 oktober te laten weten hoe u dit wilt oplossen.” Reactie verkoper (25 oktober 2024): “Wij hebben in onze tijd nooit lekkage gehad. Het kan ook door uw eigen gebruik of onderhoud komen. Wij voelen ons niet aansprakelijk.”"
+type: "application/pdf"
+name: "Mailwisseling woning eindhoven.txt"
+}
+3: {
+url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/388a64fc-2746-4c0d-abf1-764ed103351a/download"
+text: "Documenten Koopcontract (relevant artikel) Artikel 5.3: De onroerende zaak zal bij de eigendomsoverdracht de feitelijke eigenschappen bezitten die nodig zijn voor een normaal gebruik als woonhuis. Artikel 5.4: Verkoper staat niet in voor andere eigenschappen dan die voor normaal gebruik nodig zijn. Koper is bekend met het feit dat het huis in 1982 is gebouwd. Artikel 6.1: Verkoper verklaart dat hem geen gebreken bekend zijn die aan normaal gebruik in de weg staan."
+type: "application/pdf"
+name: "Contract woning eindhoven.txt"
+}
+]
+missing_info_struct: [
+0: {
+question: "Upload het volledige getekende koopcontract inclusief alle bijlagen en artikelen over gebreken"
+answer_type: "file_upload"
+expected: "Volledig koopcontract met handtekeningen beide partijen"
+ui: {
+label: "Koopcontract woning Eindhoven"
+placeholder: "Upload getekend contract"
+help: "Volledig contract nodig met artikelen over gebreken en garanties"
+}
+specificity: {
+doc_kind: "Koopovereenkomst onroerend goed"
+parties_involved: [
+0: {
+name: "pieter"
+role: "claimant"
+}
+1: {
+name: "Kaja jansen"
+role: "respondent"
+}
+]
+anchors: {
+date_range: {
+from: "2024-06-10"
+to: "2024-06-10"
+}
+amount_eur: 425000
+subject: "Koopovereenkomst vrijstaande villa"
+location: "Eindhoven"
+}
+}
+file_spec: {
+accept: [
+0: "application/pdf"
+1: "image/jpeg"
+2: "image/png"
+]
+max_files: 3
+max_total_mb: 15
+acceptance_criteria: [
+0: "Handtekeningen beide partijen zichtbaar"
+1: "Datum 10 juni 2024 vermeld"
+2: "Koopsom €425.000 vermeld"
+3: "Artikelen over gebreken leesbaar"
+]
+redactions_allowed: true
+}
+}
+1: {
+question: "Heeft er voor aankoop een bouwkundige keuring plaatsgevonden?"
+answer_type: "multiple_choice"
+expected: [
+0: "Ja, volledige keuring uitgevoerd"
+1: "Nee, geen keuring gedaan"
+2: "Gedeeltelijke keuring uitgevoerd"
+3: "Keuring niet mogelijk vanwege verbouwing"
+]
+ui: {
+label: "Bouwkundige keuring voor aankoop"
+placeholder: "Selecteer wat van toepassing is"
+help: "Geef aan of er een bouwkundige inspectie heeft plaatsgevonden"
+}
+specificity: {
+doc_kind: "Bouwkundig keuringsrapport"
+parties_involved: [
+0: {
+name: "pieter"
+role: "claimant"
+}
+]
+anchors: {
+date_range: {
+from: "2024-05-01"
+to: "2024-07-15"
+}
+amount_eur: 0
+subject: "Bouwkundige staat woning voor aankoop"
+location: "Eindhoven"
+}
+}
+file_spec: {
+accept: [
+0: "application/pdf"
+]
+max_files: 1
+max_total_mb: 10
+acceptance_criteria: [
+0: "Rapport gedateerd voor levering"
+1: "Bevindingen over staat woning"
+]
+redactions_allowed: true
+}
+}
+2: {
+question: "Upload het volledige bouwkundige rapport over de lekkage in de kelder"
+answer_type: "file_upload"
+expected: "Volledig bouwkundig expertrapport met datum 1 november 2024"
+ui: {
+label: "Bouwkundig rapport lekkage kelder"
+placeholder: "Upload het volledige rapport"
+help: "Rapport moet ouderdom en ernst van lekkage aantonen"
+}
+specificity: {
+doc_kind: "Bouwkundig expertrapport"
+parties_involved: [
+0: {
+name: "pieter"
+role: "claimant"
+}
+]
+anchors: {
+date_range: {
+from: "2024-11-01"
+to: "2024-11-01"
+}
+amount_eur: 19000
+subject: "Lekkage kelder villa Eindhoven"
+location: "Eindhoven"
+}
+}
+file_spec: {
+accept: [
+0: "application/pdf"
+1: "image/jpeg"
+2: "image/png"
+]
+max_files: 2
+max_total_mb: 20
+acceptance_criteria: [
+0: "Datum rapport 1 november 2024"
+1: "Naam bouwkundig expert vermeld"
+2: "Technische analyse lekkage"
+3: "Conclusie over ouderdom lekkage"
+]
+redactions_allowed: true
+}
+}
+3: {
+question: "Upload de vragenlijst die verkoper heeft ingevuld bij de verkoop"
+answer_type: "file_upload"
+expected: "Vragenlijst met antwoorden van verkoper over bekende gebreken"
+ui: {
+label: "Vragenlijst verkoper bij woningverkoop"
+placeholder: "Upload ingevulde vragenlijst"
+help: "Volledige vragenlijst met antwoorden van Kaja Jansen"
+}
+specificity: {
+doc_kind: "Vragenlijst verkoper onroerend goed"
+parties_involved: [
+0: {
+name: "Kaja jansen"
+role: "respondent"
+}
+1: {
+name: "pieter"
+role: "claimant"
+}
+]
+anchors: {
+date_range: {
+from: "2024-06-01"
+to: "2024-07-15"
+}
+amount_eur: 0
+subject: "Bekende gebreken woning"
+location: "Eindhoven"
+}
+}
+file_spec: {
+accept: [
+0: "application/pdf"
+1: "image/jpeg"
+2: "image/png"
+]
+max_files: 2
+max_total_mb: 10
+acceptance_criteria: [
+0: "Antwoord op vraag over lekkages"
+1: "Ondertekend door Kaja Jansen"
+2: "Datum tussen juni-juli 2024"
+]
+redactions_allowed: true
+}
+}
+4: {
+question: "Upload offertes voor herstel van de lekkage in de kelder"
+answer_type: "file_upload"
+expected: "Offerte(s) van erkende aannemers voor herstelwerkzaamheden"
+ui: {
+label: "Offertes herstel kelderlekkage"
+placeholder: "Upload offertes voor herstelkosten"
+help: "Minimaal één offerte met gedetailleerde kostenraming"
+}
+specificity: {
+doc_kind: "Herstelofferte waterschade"
+parties_involved: [
+0: {
+name: "pieter"
+role: "claimant"
+}
+]
+anchors: {
+date_range: {
+from: "2024-10-20"
+to: "2025-01-31"
+}
+amount_eur: 19000
+subject: "Herstel structurele lekkage kelder"
+location: "Eindhoven"
+}
+}
+file_spec: {
+accept: [
+0: "application/pdf"
+1: "image/jpeg"
+2: "image/png"
+]
+max_files: 3
+max_total_mb: 10
+acceptance_criteria: [
+0: "Offerte van erkend bedrijf"
+1: "Datum na ontdekking lekkage"
+2: "Specificatie werkzaamheden"
+3: "Totaalbedrag rond €19.000"
+]
+redactions_allowed: true
+}
+}
+]
+}
