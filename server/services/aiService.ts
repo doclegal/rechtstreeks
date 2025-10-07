@@ -724,6 +724,10 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       variables.file_url = params.file_url;
     }
 
+    // Set timeout to 5 minutes for long-running MindStudio analyses
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes
+
     const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
       method: "POST",
       headers: {
@@ -736,8 +740,11 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
         workflow: process.env.MINDSTUDIO_WORKFLOW || "Main.flow",
         callbackUrl: `${process.env.PUBLIC_BASE_URL}/api/mindstudio/callback`,
         includeBillingCost: true
-      })
+      }),
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorData = await response.text();
@@ -787,14 +794,21 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
 
     console.log("📤 Request body:", JSON.stringify(requestBody, null, 2));
 
+    // Set timeout to 5 minutes for long-running MindStudio analyses
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes
+
     const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorData = await response.text();
@@ -1002,14 +1016,21 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     console.log("📤 Full Analysis request body:", JSON.stringify(requestBody, null, 2));
 
     try {
+      // Set timeout to 5 minutes for long-running MindStudio analyses
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes
+      
       const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.text();
@@ -1360,6 +1381,10 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
 
     console.log("Starting SYNCHRONOUS Mindstudio analysis:", variables);
 
+    // Set timeout to 5 minutes for long-running MindStudio analyses
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes
+
     const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
       method: "POST",
       headers: {
@@ -1372,8 +1397,11 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
         workflow: process.env.MINDSTUDIO_WORKFLOW || "Main.flow",
         // NO callbackUrl = synchronous response
         includeBillingCost: true
-      })
+      }),
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorData = await response.text();
@@ -1667,14 +1695,21 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       includeBillingCost: true
     };
 
+    // Set timeout to 5 minutes for long-running MindStudio analyses
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes
+
     const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorData = await response.text();
