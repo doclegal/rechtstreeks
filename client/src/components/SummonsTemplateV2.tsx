@@ -376,12 +376,12 @@ export function SummonsTemplateV2({ userFields, aiFields, onUserFieldChange, edi
         <h2>3. Waar is de eis op gebaseerd<sup>3</sup>?</h2>
         
         <h3>Inleiding</h3>
-        <p>1. <AIField value={a.inleiding} fieldKey="inleiding" multiline placeholder="Deze zaak gaat om een rekening die [naam eiser] heeft gestuurd aan [naam gedaagde] voor [omschrijving]..." /></p>
+        <div><strong>1.</strong> <AIField value={a.inleiding} fieldKey="inleiding" multiline placeholder="Deze zaak gaat om een rekening die [naam eiser] heeft gestuurd aan [naam gedaagde] voor [omschrijving]..." /></div>
 
         <h3>De opdracht en het werk</h3>
         <p>2. <UserField value={u.eiser_naam} fieldKey="eiser_naam" editable={editable} onChange={onUserFieldChange} /> en <UserField value={u.gedaagde_naam} fieldKey="gedaagde_naam" editable={editable} onChange={onUserFieldChange} /> hebben een overeenkomst gesloten op <AIField value={a.overeenkomst_datum} fieldKey="overeenkomst_datum" placeholder="[datum]" /> (bewijsstuk R1).</p>
 
-        <p>3. <AIField value={a.overeenkomst_omschrijving} fieldKey="overeenkomst_omschrijving" multiline placeholder="[Omschrijving van de totstandkoming en uitvoering van de overeenkomst, waarbij ook de informatie wordt gegeven voor de toets in consumentenzaken]" /></p>
+        <div><strong>3.</strong> <AIField value={a.overeenkomst_omschrijving} fieldKey="overeenkomst_omschrijving" multiline placeholder="[Omschrijving van de totstandkoming en uitvoering van de overeenkomst, waarbij ook de informatie wordt gegeven voor de toets in consumentenzaken]" /></div>
 
         <div style={{ textAlign: "right", marginTop: "2em" }}>3</div>
       </div>
@@ -408,7 +408,7 @@ export function SummonsTemplateV2({ userFields, aiFields, onUserFieldChange, edi
         <p>9. In de brief van <AIField value={a.veertiendagenbrief_datum} fieldKey="veertiendagenbrief_datum" placeholder="[datum veertiendagenbrief]" /> heeft <UserField value={u.eiser_naam} fieldKey="eiser_naam" editable={editable} onChange={onUserFieldChange} /> aan <UserField value={u.gedaagde_naam} fieldKey="gedaagde_naam" editable={editable} onChange={onUserFieldChange} /> een termijn van 14 dagen gegeven om alsnog te betalen (bewijsstuk R4). In deze brief is ook vermeld wat de gevolgen zijn van het uitblijven van betaling. <UserField value={u.gedaagde_naam} fieldKey="gedaagde_naam" editable={editable} onChange={onUserFieldChange} /> heeft niet betaald en is daardoor in verzuim geraakt.</p>
 
         <h4>Rente</h4>
-        <p>10. <AIField value={a.rente_berekening_uitleg} fieldKey="rente_berekening_uitleg" multiline placeholder="[Naam eiser] heeft recht op de overeengekomen rente over het onbetaalde bedrag van de rekening vanaf 14 dagen na rekeningdatum. Tot [datum] is deze rente € [bedrag]." /></p>
+        <div><strong>10.</strong> <AIField value={a.rente_berekening_uitleg} fieldKey="rente_berekening_uitleg" multiline placeholder="[Naam eiser] heeft recht op de overeengekomen rente over het onbetaalde bedrag van de rekening vanaf 14 dagen na rekeningdatum. Tot [datum] is deze rente € [bedrag]." /></div>
 
         <h4>Buitengerechtelijke incassokosten</h4>
         <p>11. <UserField value={u.eiser_naam} fieldKey="eiser_naam" editable={editable} onChange={onUserFieldChange} /> heeft opdracht gegeven de door <UserField value={u.gedaagde_naam} fieldKey="gedaagde_naam" editable={editable} onChange={onUserFieldChange} /> verschuldigde bedragen voor haar te incasseren.</p>
