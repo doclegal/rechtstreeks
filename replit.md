@@ -67,14 +67,27 @@ The database schema supports a complete legal case lifecycle with document versi
 ### Summons Generation (Dagvaarding)
 - **Template System**: Professional Dutch legal summons following official "Model dagvaarding" structure
 - **Data Structure**: Strict SummonsV1 JSON schema with Zod validation
-- **MindStudio Integration**: AI-powered summons generation via MindStudio flow
+- **MindStudio Integration**: AI-powered summons generation via CreateDagvaarding.flow
+- **Complete Context Payload**: NO summarization - sends entire case context including:
+  - Full party information (claimant/defendant with all details)
+  - Complete court information and session details
+  - All claims with full descriptions and amounts
+  - Complete user-entered fields (no filtering)
+  - Full facts array (known/disputed/unclear with labels)
+  - Complete legal basis with all articles and notes
+  - Full evidence registry with metadata
+  - **Document Chunking**: Large documents split into 6000-8000 char chunks with sequential indexing
+  - Complete analysis JSON (no filtering or compression)
+  - All communications and timeline data
+  - Control flags (no_summarize, allow_long_context, dont_invent)
+- **Backward Compatibility**: Supports both complete payload and legacy summarized format
 - **Mock Fallback**: Environment-gated mock responses for development (USE_MINDSTUDIO_SUMMONS_MOCK=true)
 - **PDF Generation**: HTML-to-PDF conversion using Puppeteer with print-ready styling
 - **Frontend**: React-based preview with download functionality
 - **Validation**: Server-side JSON schema validation with comprehensive error handling
 - **Error Handling**: Returns 503 with clear configuration messages for MindStudio setup issues
 
-The summons feature requires an existing analysis (kanton check or full analysis) before generation. In development mode, mock data provides realistic Dutch legal documents (€6,548 total, Rechtbank Amsterdam) for testing without MindStudio configuration.
+The summons feature requires an existing analysis (kanton check or full analysis) before generation. The complete context payload ensures MindStudio receives all available case data without any summarization or truncation, enabling rich, case-specific legal text generation.
 
 ## External Dependencies
 
