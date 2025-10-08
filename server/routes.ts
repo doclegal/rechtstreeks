@@ -1738,19 +1738,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Failed to parse analysis:", e);
       }
 
-      // Prepare input variables for CreateDagvaarding.flow with correct types
-      const facts_known: string[] = parsedAnalysis?.facts?.known || [];
-      const defenses_expected: string[] = parsedAnalysis?.legal_analysis?.potential_defenses || [];
+      // Prepare input variables for CreateDagvaarding.flow with complete analysis data
       
-      // legal_basis_refs as array of objects {law, article, note}
-      const legal_basis_refs: Array<{law: string, article: string, note: string}> = 
-        (parsedAnalysis?.legal_analysis?.legal_basis || []).map((b: any) => ({
+      // FACTS: Combine all fact types with clear labels
+      const facts_known: string[] = [];
+      
+      // Add known facts
+      if (parsedAnalysis?.facts?.known) {
+        facts_known.push(...parsedAnalysis.facts.known.map((f: string) => `[Vaststaand] ${f}`));
+      }
+      
+      // Add disputed facts (important for legal context)
+      if (parsedAnalysis?.facts?.disputed) {
+        facts_known.push(...parsedAnalysis.facts.disputed.map((f: string) => `[Betwist] ${f}`));
+      }
+      
+      // Add unclear facts
+      if (parsedAnalysis?.facts?.unclear) {
+        facts_known.push(...parsedAnalysis.facts.unclear.map((f: string) => `[Onduidelijk] ${f}`));
+      }
+      
+      // Add case summary if available
+      if (parsedAnalysis?.summary) {
+        facts_known.unshift(`[Samenvatting] ${parsedAnalysis.summary}`);
+      }
+      
+      // DEFENSES: Include all defense-related analysis
+      const defenses_expected: string[] = [];
+      
+      if (parsedAnalysis?.legal_analysis?.potential_defenses) {
+        defenses_expected.push(...parsedAnalysis.legal_analysis.potential_defenses);
+      }
+      
+      // Add legal issues as context for defenses
+      if (parsedAnalysis?.legal_analysis?.legal_issues) {
+        defenses_expected.push(...parsedAnalysis.legal_analysis.legal_issues.map((i: string) => `[Geschilpunt] ${i}`));
+      }
+      
+      // LEGAL BASIS: Include comprehensive legal analysis
+      const legal_basis_refs: Array<{law: string, article: string, note: string}> = [];
+      
+      // Add structured legal basis
+      if (parsedAnalysis?.legal_analysis?.legal_basis) {
+        legal_basis_refs.push(...parsedAnalysis.legal_analysis.legal_basis.map((b: any) => ({
           law: b.law || '',
           article: b.article || '',
           note: b.note || ''
-        }));
+        })));
+      }
       
-      const evidence_names: string[] = (parsedAnalysis?.evidence?.provided || []).map((e: any) => e.doc_name || e.source || '');
+      // Add dispute context as first legal basis entry
+      if (parsedAnalysis?.legal_analysis?.what_is_the_dispute) {
+        legal_basis_refs.unshift({
+          law: 'Context',
+          article: 'Kern geschil',
+          note: parsedAnalysis.legal_analysis.what_is_the_dispute
+        });
+      }
+      
+      // Add preliminary assessment
+      if (parsedAnalysis?.legal_analysis?.preliminary_assessment) {
+        legal_basis_refs.push({
+          law: 'Beoordeling',
+          article: 'Voorlopig',
+          note: parsedAnalysis.legal_analysis.preliminary_assessment
+        });
+      }
+      
+      // Add risks as legal considerations
+      if (parsedAnalysis?.legal_analysis?.risks) {
+        parsedAnalysis.legal_analysis.risks.forEach((risk: string, idx: number) => {
+          legal_basis_refs.push({
+            law: 'Risico',
+            article: `${idx + 1}`,
+            note: risk
+          });
+        });
+      }
+      
+      // EVIDENCE: Include both provided and missing evidence
+      const evidence_names: string[] = [];
+      
+      if (parsedAnalysis?.evidence?.provided) {
+        evidence_names.push(...parsedAnalysis.evidence.provided.map((e: any) => 
+          e.doc_name || e.source || ''
+        ));
+      }
+      
+      // Add missing evidence with clear marker
+      if (parsedAnalysis?.evidence?.missing) {
+        evidence_names.push(...parsedAnalysis.evidence.missing.map((m: string) => 
+          `[ONTBREEKT] ${m}`
+        ));
+      }
       
       // docs_extracts as array of objects {filename, content}
       const docs_extracts: Array<{filename: string, content: string}> = documents
@@ -1759,6 +1839,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           filename: doc.filename,
           content: doc.extractedText?.substring(0, 500) || ''
         }));
+
+      // Log comprehensive analysis data being sent
+      console.log("📊 Analysis data being sent to MindStudio:");
+      console.log(`  - Facts: ${facts_known.length} items (known/disputed/unclear)`);
+      console.log(`  - Defenses/Issues: ${defenses_expected.length} items`);
+      console.log(`  - Legal basis: ${legal_basis_refs.length} items (including risks/assessment)`);
+      console.log(`  - Evidence: ${evidence_names.length} items (provided + missing)`);
+      console.log(`  - Document extracts: ${docs_extracts.length} files`);
 
       // Call MindStudio CreateDagvaarding.flow
       const result = await aiService.runCreateDagvaarding({
