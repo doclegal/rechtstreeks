@@ -140,12 +140,17 @@ export const summons = pgTable("summons", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   caseId: varchar("case_id").notNull().references(() => cases.id, { onDelete: "cascade" }),
   templateId: varchar("template_id"),
-  dataJson: jsonb("data_json"), // Complete SummonsV1 structure from MindStudio
+  templateVersion: varchar("template_version").default("v1"),
+  userFieldsJson: jsonb("user_fields_json"), // User-filled fields (names, dates, amounts, etc.)
+  aiFieldsJson: jsonb("ai_fields_json"), // AI-generated narrative sections
+  dataJson: jsonb("data_json"), // Legacy: Complete SummonsV1 structure from MindStudio
   html: text("html"),
   markdown: text("markdown"),
   pdfStorageKey: text("pdf_storage_key"),
-  status: varchar("status").default("draft"), // draft, reviewed, filed
+  status: varchar("status").default("draft"), // draft, generating, ready, reviewed, filed
+  generationError: text("generation_error"),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("idx_summons_case").on(table.caseId),
 ]);

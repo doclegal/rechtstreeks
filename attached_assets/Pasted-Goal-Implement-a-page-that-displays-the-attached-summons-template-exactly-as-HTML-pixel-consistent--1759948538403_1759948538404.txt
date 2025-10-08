@@ -1,0 +1,110 @@
+Goal
+Implement a page that displays the attached summons template exactly as HTML (pixel-consistent, print-ready). All fixed wording from the template must remain byte-identical and immutable. Only designated placeholders are fillable (by the user) or auto-filled (by the AI via MindStudio). The user should see the full document as it will appear, with clear inline fields.
+
+Template & immutability requirements
+
+Use the attached HTML template as the single source of truth for headings, section order, and fixed sentences.
+
+Treat all non-placeholder content as read-only. Do not let the editor or AI rewrite, reflow, or reformat this text.
+
+Keep the DOM for static text protected (e.g., non-editable nodes, integrity checks).
+
+Preserve all spacing, numbering, and line breaks from the template.
+
+Ensure print styles (A4, margins, running header/footer) and pagination remain consistent.
+
+Field model (two categories)
+
+User fields (editable): Inputs the user must provide (e.g., amounts, interest type, dates, party details). These should be visually distinct and keyboard-focusable.
+
+AI fields (read-only placeholders): Pre-insert “to be generated” placeholders styled differently (e.g., a neutral badge or shaded box). The user cannot type here. These fields will be filled programmatically after the AI run completes.
+
+Both field types must be explicitly mapped to stable keys (e.g., user.rechtbank_hearing_date, ai.sections.grounds.intro[0]).
+
+Provide unobtrusive inline validation for User fields (required, formats), with a summary panel for errors.
+
+UI flow
+
+Render the complete HTML template with:
+
+Immutable static text.
+
+Inline User fields (editable).
+
+Inline AI fields (read-only “will be generated” placeholders).
+
+Show a “Generate summons” button.
+
+On click:
+
+Collect current User field values into a normalized object.
+
+Build a minimal MindStudio launch payload that includes only what the AI needs to draft the text sections (do not send fixed text or values that the template itself will render as static).
+
+Start the MindStudio flow (webhook preferred; fall back to polling with exponential backoff).
+
+Display run state (pending/success/failure).
+
+When the flow returns:
+
+Validate the returned JSON against the expected AI schema (only the AI text sections, no fixed wording).
+
+Insert the AI text into the corresponding AI fields in the template (replace the read-only placeholders).
+
+Keep all other template content 100% unchanged.
+
+Provide actions: Save draft, Download PDF (using print CSS / headless export), and Copy JSON (AI payload and result) for auditing.
+
+MindStudio integration (contract)
+
+Expect a strict JSON result with arrays of paragraphs for each AI section (e.g., ai.sections.grounds.intro: string[], ai.sections.evidence.list: string[], etc.).
+
+No HTML from the AI; plain text only.
+
+Unknowns must be empty strings, not null.
+
+Do not include fixed headings or labels in AI output; the template already contains those.
+
+Validation & error handling
+
+Before triggering the AI call, require all mandatory User fields to pass validation (formats for dates, emails, numeric amounts).
+
+If the MindStudio response fails schema validation, show field-level errors mapped to AI fields and keep placeholders intact until corrected/regenerated.
+
+Escape/normalize AI text before insertion; never allow runtime HTML injection.
+
+Log run IDs, payload, and response for audit (redact personal data where appropriate).
+
+Accessibility & UX
+
+All interactive fields must be accessible (labels, aria-descriptions).
+
+Provide a legend explaining the two field types (User editable vs. AI generated).
+
+Show a “Last generated at” timestamp and the template version.
+
+Security & integrity
+
+Keep API keys in the environment/secrets system.
+
+Enforce a lightweight integrity check for immutable sections (e.g., hash of static blocks) to catch accidental edits.
+
+Prevent copy/paste or drag/drop from altering read-only blocks.
+
+Configuration
+
+The list of User fields and AI fields is configurable from a single mapping file/object (key → selector/path in the HTML).
+
+The MindStudio flow ID and launch variable mapping are configurable.
+
+Acceptance criteria
+
+The page renders the attached HTML template with unchanged fixed text and inline placeholders.
+
+User can edit only User fields; AI fields are clearly read-only until generation.
+
+Clicking “Generate summons” sends only the minimal required context to MindStudio, receives structured JSON, and fills AI fields in place without changing any other text or layout.
+
+The document prints to A4 with the same wording, order, and formatting as the template.
+
+No example code should be output while building; implement the functionality directly.
