@@ -1,0 +1,133 @@
+Nu gaan we zorgen dat de gebruiker ook een dagvaarding kan opstellen. Dat doen we door een template in te vullen. Hier is de opdracht:
+
+Goal
+Create a production-ready HTML/CSS template and minimal JS logic for generating a Dutch small-claims summons that strictly follows the official “Model dagvaarding” structure and wording. The template must render a pixel-consistent, printable A4 document and be populated only with structured JSON returned by a MindStudio flow. The AI must never rewrite fixed text; it only fills designated fields/sections.
+
+Authoritative template
+Use the attached official model as the single source of truth for headings, order, and fixed wording (keep text exactly as in the model; do not paraphrase or reflow). Static sections include (non-exhaustive, see model): front page with court and party details; “Wat betekent deze dagvaarding voor u?”, “Wat is de volledige eis?”, “Waar is de eis op gebaseerd?” (with subparts such as Inleiding, De opdracht en het werk, Algemene voorwaarden, De rekening, Rente en incassokosten, Reactie van gedaagde, Bewijsmiddelen), “U bent het eens…/niet eens…”, “Wat gebeurt er als u niets doet?”, “Waar vindt u meer informatie?”, and “Officiële uitreiking door de gerechtsdeurwaarder”. Keep headings and fixed sentences immutable. 
+
+Functional requirements
+
+1. UI & actions
+
+* Provide a single page with:
+
+  * A preview area for the summons document (HTML).
+  * A “Generate summons” button.
+  * A status area for run state (idle / running / succeeded / failed) and validation errors.
+* On click of “Generate summons”:
+  a) Gather all necessary user/case inputs from the app state (assume we have a `currentCase` object, including parties, court selection, amounts, dates, evidence refs, and user profile for contact details).
+  b) Start the configured MindStudio flow with those inputs as launch variables.
+  c) Await the flow result (prefer webhook callback if available; otherwise implement polling with exponential backoff).
+  d) Validate the returned JSON against our schema (see below).
+  e) If valid, render into the HTML template; if invalid, show field-level errors and do not render a final document.
+  f) Provide a “Download PDF” action (use headless browser or print stylesheet); ensure proper page breaks and footers.
+
+2. Data contract (strict)
+   Expect the MindStudio flow to return **only** a strict JSON object `SummonsV1` with these top-level keys (strings unless noted):
+
+```
+{
+  "meta": { "template_version": "1.x", "language": "nl" },
+  "court": { "name": "", "visit_address": "", "postal_address": "", "hearing_day": "", "hearing_date": "", "hearing_time": "" },
+  "parties": {
+    "claimant": { "name": "", "place": "", "rep_name": "", "rep_address": "", "phone": "", "email": "", "iban": "", "dossier": "" },
+    "defendant": { "name": "", "address": "", "birthdate": "", "is_consumer": true }
+  },
+  "case": {
+    "subject": "", "amount_eur": 0,
+    "interest": { "type": "wettelijk|contractueel", "from_date": "" },
+    "interim_sum_eur": 0,
+    "costs": { "salaris_gemachtigde_eur": 0, "dagvaarding_eur": 0 },
+    "total_to_date_eur": 0
+  },
+  "sections": {
+    "full_claim_items": [
+      { "label": "Openstaande rekeningen, rente en incassokosten", "amount_eur": 0 }
+    ],
+    "orders_requested": [
+      "Veroordeling tot betaling …",
+      "Wettelijke rente …",
+      "Proceskosten na dit stuk …",
+      "Uitvoerbaar bij voorraad …"
+    ],
+    "grounds": {
+      "intro": [ "paragraph...", "paragraph..." ],
+      "assignment_and_work": [ "paragraph...", "paragraph..." ],
+      "terms_and_conditions": [ "paragraph..." ],
+      "invoice": [ "paragraph..." ],
+      "interest_and_collection_costs": [ "paragraph..." ],
+      "defendant_response": [ "paragraph..." ],
+      "evidence": {
+        "list": [ "R1: …", "R2: …", "R3: …" ],
+        "offer_of_proof": "…",
+        "witnesses": [ "name + role", "…" ]
+      }
+    }
+  },
+  "service_block": {
+    "bailiff_name": "", "bailiff_city": "", "bailiff_address": "",
+    "served_to": "hemzelf|envelop",
+    "extra_costs": [
+      { "label": "adresinformatie", "amount_eur": 0 },
+      { "label": "bevraging beslagregister", "amount_eur": 0 }
+    ],
+    "base_service_fee_eur": 0,
+    "total_service_costs_eur": 0
+  },
+  "signoff": { "place": "", "date": "", "representative": "" }
+}
+```
+
+Rules for the flow output:
+
+* Arrays are arrays of paragraphs (strings). No embedded HTML.
+* Use empty string for unknowns; never invent addresses or dates.
+* Monetary values are numbers (EUR, period as decimal separator).
+* Return valid UTF-8 JSON only.
+
+3. Template rendering
+
+* Implement an HTML/CSS template that locks all fixed wording from the official model; variable fields are inserted via data bindings.
+* Map each placeholder visible in the model to a JSON path from `SummonsV1`. For multi-paragraph sections (e.g., “Inleiding”, “De opdracht en het werk”, “Rente en incassokosten”, “Reactie van gedaagde”, “Bewijsmiddelen”), render list items or paragraphs in the exact order provided.
+* Numbered lists and headings must follow the model’s order and numbering.
+* Do not allow the AI to change headers, labels, or section order.
+* Default text wrapping and page breaks must respect A4 printing. Provide print styles with page margins and running header/footer; keep crucial headings together with their first paragraph (avoid page-break-after headings).
+
+4. Validation & error handling
+
+* Validate the MindStudio response against the schema above. If any required field is missing or has a wrong type:
+
+  * Show a human-readable error list per field.
+  * Keep previous valid preview visible.
+  * Offer a “Regenerate” option (re-run the flow).
+* Escape all dynamic text by default. Only render plain text; no HTML from the AI.
+* Log the raw JSON and a normalized snapshot for audit.
+
+5. MindStudio integration
+
+* Provide a small integration module with two functions:
+
+  * `startSummonsFlow(launchVars)` → starts the MindStudio flow with the current user/case data (include case ID, user ID/email, locale, and any missing-info answers collected earlier in the app).
+  * `awaitSummonsResult(runId)` → resolves when the flow completes, using webhook-first (if enabled) and fallback polling with exponential backoff and a sensible timeout; surface intermediate states to the UI.
+* Make the launch variable names and flow identifier configurable.
+
+6. Accessibility & UX
+
+* Use semantic HTML for headings and lists as per the model; ensure readable print output.
+* Show a “Last generated at” timestamp and the `template_version` from `meta`.
+* Provide a “Download PDF” action (print stylesheet or headless export) and a “Copy JSON” action for debugging.
+
+7. Non-goals / constraints
+
+* Do not generate or modify fixed legal text via AI.
+* No example code in this task output; build the functionality directly.
+* Keep the template portable (no framework lock-in).
+
+Acceptance criteria
+
+* Clicking “Generate summons” triggers the MindStudio flow with the correct launch variables, validates the returned `SummonsV1`, and renders a summons whose fixed wording and structure match the official model exactly.
+* Empty/unknown fields are rendered as blanks where appropriate without altering static phrasing.
+* The final document prints to A4 with correct pagination and section order.
+
+---

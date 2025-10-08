@@ -140,6 +140,7 @@ export const summons = pgTable("summons", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   caseId: varchar("case_id").notNull().references(() => cases.id, { onDelete: "cascade" }),
   templateId: varchar("template_id"),
+  dataJson: jsonb("data_json"), // Complete SummonsV1 structure from MindStudio
   html: text("html"),
   markdown: text("markdown"),
   pdfStorageKey: text("pdf_storage_key"),
