@@ -64,6 +64,18 @@ The database schema supports a complete legal case lifecycle with document versi
 - **Role System**: Three-tier access control (user, reviewer, admin)
 - **Security**: HTTP-only cookies with CSRF protection
 
+### Summons Generation (Dagvaarding)
+- **Template System**: Professional Dutch legal summons following official "Model dagvaarding" structure
+- **Data Structure**: Strict SummonsV1 JSON schema with Zod validation
+- **MindStudio Integration**: AI-powered summons generation via MindStudio flow
+- **Mock Fallback**: Environment-gated mock responses for development (USE_MINDSTUDIO_SUMMONS_MOCK=true)
+- **PDF Generation**: HTML-to-PDF conversion using Puppeteer with print-ready styling
+- **Frontend**: React-based preview with download functionality
+- **Validation**: Server-side JSON schema validation with comprehensive error handling
+- **Error Handling**: Returns 503 with clear configuration messages for MindStudio setup issues
+
+The summons feature requires an existing analysis (kanton check or full analysis) before generation. In development mode, mock data provides realistic Dutch legal documents (€6,548 total, Rechtbank Amsterdam) for testing without MindStudio configuration.
+
 ## External Dependencies
 
 ### Cloud Services
@@ -91,6 +103,7 @@ The database schema supports a complete legal case lifecycle with document versi
 - **Type Checking**: TypeScript with strict configuration
 - **Code Quality**: ESBuild for server-side bundling
 - **Development**: Replit-specific plugins for development experience
+- **Environment**: dotenv for environment variable management (loaded via dotenv/config in server/index.ts)
 
 ### Mock Services (MVP)
 - **Bailiff Services**: Simulated deurwaarder (bailiff) integration with callback system
