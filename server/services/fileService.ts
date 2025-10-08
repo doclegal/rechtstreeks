@@ -212,6 +212,10 @@ export class FileService {
         extractedText = await this.extractDocxText(file.buffer);
       } else if (mimetype === "message/rfc822" || file.originalname.endsWith(".eml")) {
         extractedText = await this.extractEmailText(file.buffer);
+      } else if (mimetype === "text/plain" || file.originalname.endsWith(".txt")) {
+        // Extract plain text files directly
+        extractedText = file.buffer.toString('utf-8');
+        console.log(`📄 Plain text file extracted: ${extractedText.length} characters`);
       } else if (mimetype.startsWith("image/")) {
         extractedText = `[Afbeelding: ${file.originalname}] - OCR niet beschikbaar in MVP`;
       } else {
