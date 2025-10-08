@@ -1935,11 +1935,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reference_law_style: "article_number"
       };
       
-      // 17. EXPLICIT ANTI-PLACEHOLDER INSTRUCTION
+      // 17. WRITING RULES - Anti-placeholder instruction
       const writing_rules = {
-        strict_instruction: "GEBRUIK NOOIT placeholder tekst zoals [datum], [bedrag], [Shop in te vullen], [Naam], etc. Als specifieke data ontbreekt, schrijf dan algemene, niet-specifieke tekst OF laat het veld volledig leeg. Gebruik ALLEEN concrete informatie uit facts_known_full, docs_full, en analysis_full. Bij twijfel: schrijf algemeen of laat leeg.",
-        forbidden_patterns: ["[datum]", "[bedrag]", "[Shop in te vullen]", "[Naam]", "[adres]", "[beschrijving", "[nummer]"],
-        required_behavior: "Write generic legal text OR leave blank when specific data is missing. Never use bracket placeholders."
+        required_behavior: "Always produce substantive, case-specific legal prose based on the provided data.",
+        forbidden_patterns: ["[datum]", "[bedrag]", "[Shop in te vullen]", "[Naam]", "[adres]", "[beschrijving]", "[nummer]", "string"],
+        strict_instruction: "Never output literal placeholders or empty arrays. If a concrete detail is missing, write a neutral but detailed paragraph explaining the evidentiary gap, expected documents, and legal relevance."
       };
       
       // Assemble complete payload
