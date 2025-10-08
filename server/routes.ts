@@ -1725,7 +1725,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("🤖 Generating dagvaarding with CreateDagvaarding.flow...");
       
-      // Parse analysis data
+      // Parse analysis data (support both new and old kanton check formats)
       let parsedAnalysis: any = {};
       try {
         if (analysis.analysisJson) {
@@ -1733,6 +1733,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else if (analysis.rawText) {
           const rawData = JSON.parse(analysis.rawText);
           parsedAnalysis = rawData.parsedAnalysis || rawData;
+        } else if (analysis.factsJson || analysis.legalBasisJson) {
+          // OLD KANTON CHECK FORMAT - convert to new format
+          console.log("⚠️ Converting old kanton check format to new format");
+          parsedAnalysis = {
+            facts: { known: [] },
+            legal_analysis: { legal_basis: [] }
+          };
+          
+          // Extract facts from old format: [{label, detail}] -> [detail]
+          if (analysis.factsJson) {
+            const oldFacts = Array.isArray(analysis.factsJson) ? analysis.factsJson : [analysis.factsJson];
+            parsedAnalysis.facts.known = oldFacts
+              .map((f: any) => f.detail || f.label || '')
+              .filter(Boolean);
+          }
+          
+          // Extract legal basis from old format: [{law: {grond, belang_eur}}]
+          if (analysis.legalBasisJson) {
+            const oldLegalBasis = Array.isArray(analysis.legalBasisJson) ? analysis.legalBasisJson : [analysis.legalBasisJson];
+            oldLegalBasis.forEach((lb: any) => {
+              if (lb.law) {
+                parsedAnalysis.legal_analysis.legal_basis.push({
+                  law: lb.law.grond || 'Consumentenkoop',
+                  article: lb.law.belang_eur ? `Belang: € ${lb.law.belang_eur.toLocaleString('nl-NL')}` : '',
+                  note: lb.law.bijzondere_regel || ''
+                });
+              }
+            });
+          }
         }
       } catch (e) {
         console.error("Failed to parse analysis:", e);
