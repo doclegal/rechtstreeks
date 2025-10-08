@@ -2013,7 +2013,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allow_long_context: true,
         strict_no_placeholders: true,  // NEVER use [datum], [bedrag], [Shop in te vullen] etc.
         use_only_case_data: true,      // Only use facts and data from the case files
-        leave_blank_if_unknown: true   // If data is missing, leave field blank or use generic text
+        leave_blank_if_unknown: false  // Write detailed paragraph about evidentiary gap instead of leaving blank
       };
       
       // 16. STYLE - Writing style preferences  
@@ -2040,6 +2040,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Control flags
         no_summarize: true,
         allow_long_context: true,
+        
+        // Top-level party names (for quick access)
+        eiser_naam: parties.claimant.name,
+        gedaagde_naam: parties.defendant.name,
         
         // Complete data (no summarization)
         parties,
