@@ -1741,12 +1741,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             legal_analysis: { legal_basis: [] }
           };
           
-          // Extract facts from old format: [{label, detail}] -> [detail]
+          // Extract facts from old format and split long sentences into short facts
           if (analysis.factsJson) {
             const oldFacts = Array.isArray(analysis.factsJson) ? analysis.factsJson : [analysis.factsJson];
-            parsedAnalysis.facts.known = oldFacts
-              .map((f: any) => f.detail || f.label || '')
-              .filter(Boolean);
+            const factText = oldFacts.map((f: any) => f.detail || f.label || '').join(' ');
+            
+            // Split on sentence boundaries and clean up
+            const sentences = factText.split(/\.\s+/).filter((s: string) => s.trim().length > 10);
+            parsedAnalysis.facts.known = sentences.map((s: string) => s.trim().endsWith('.') ? s.trim() : s.trim() + '.');
           }
           
           // Extract legal basis from old format: [{law: {grond, belang_eur}}]
@@ -1874,13 +1876,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ));
       }
       
-      // docs_extracts as array of objects {filename, content}
+      // docs_extracts: Remove duplicates and limit to 2-4 sentences per document
+      const seen = new Set<string>();
       const docs_extracts: Array<{filename: string, content: string}> = documents
-        .filter(doc => doc.extractedText)
-        .map(doc => ({
-          filename: doc.filename,
-          content: doc.extractedText?.substring(0, 500) || ''
-        }));
+        .filter(doc => {
+          if (!doc.extractedText || seen.has(doc.filename)) return false;
+          seen.add(doc.filename);
+          return true;
+        })
+        .map(doc => {
+          // Extract first 2-4 sentences (max 300 chars)
+          const text = doc.extractedText || '';
+          const sentences = text.split(/\.\s+/).slice(0, 4).join('. ');
+          const content = sentences.length > 300 ? sentences.substring(0, 300) + '...' : sentences;
+          
+          return {
+            filename: doc.filename,
+            content: content.endsWith('.') ? content : content + '.'
+          };
+        });
 
       // Log comprehensive analysis data being sent
       console.log("📊 Analysis data being sent to MindStudio:");
