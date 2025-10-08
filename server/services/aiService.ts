@@ -1822,9 +1822,9 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     gedaagde_naam: string;
     facts_known: string[];
     defenses_expected: string[];
-    legal_basis_refs: string[];
+    legal_basis_refs: Array<{law: string, article: string, note: string}>;
     evidence_names: string[];
-    docs_extracts: string[];
+    docs_extracts: Array<{filename: string, content: string}>;
     tone: string;
     no_html: boolean;
     paragraph_max_words: number;
@@ -1916,27 +1916,60 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       const data = await response.json();
       console.log("📥 CreateDagvaarding raw response:", JSON.stringify(data, null, 2));
 
-      // Parse the response - look for 'result' variable
+      // Parse the response - look for result in various possible locations
       let resultData;
       
+      // Try multiple variable names that MindStudio might use
+      const possibleVarNames = ['result', 'generate_result', 'output', 'response'];
+      
       // Check output.results first
-      if (data.output?.results?.result) {
-        const rawValue = data.output.results.result.value || data.output.results.result;
-        resultData = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
-        console.log("✅ Found result in output.results");
+      for (const varName of possibleVarNames) {
+        if (data.output?.results?.[varName]) {
+          const rawValue = data.output.results[varName].value || data.output.results[varName];
+          try {
+            resultData = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
+            console.log(`✅ Found ${varName} in output.results`);
+            break;
+          } catch (e) {
+            console.log(`⚠️ Failed to parse ${varName} from output.results`);
+          }
+        }
       }
-      // Check thread.variables
-      else if (data.thread?.variables?.result) {
-        const rawValue = data.thread.variables.result.value || data.thread.variables.result;
-        resultData = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
-        console.log("✅ Found result in thread.variables");
+      
+      // Check thread.variables if not found
+      if (!resultData) {
+        for (const varName of possibleVarNames) {
+          if (data.thread?.variables?.[varName]) {
+            const rawValue = data.thread.variables[varName].value || data.thread.variables[varName];
+            try {
+              resultData = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
+              console.log(`✅ Found ${varName} in thread.variables`);
+              break;
+            } catch (e) {
+              console.log(`⚠️ Failed to parse ${varName} from thread.variables`);
+            }
+          }
+        }
+      }
+      
+      // Also check data.result directly (new MindStudio format)
+      if (!resultData && data.result) {
+        try {
+          const rawValue = data.result.result || data.result;
+          resultData = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
+          console.log("✅ Found result in data.result");
+        } catch (e) {
+          console.log("⚠️ Failed to parse data.result");
+        }
       }
 
       if (!resultData || !resultData.sections) {
         console.error("❌ No valid result found in CreateDagvaarding response");
+        console.log("Available in output.results:", Object.keys(data.output?.results || {}));
+        console.log("Available in thread.variables:", Object.keys(data.thread?.variables || {}));
         return {
           success: false,
-          error: "MindStudio CreateDagvaarding.flow returned no valid result. Check workflow output variable 'result'."
+          error: "MindStudio CreateDagvaarding.flow returned no valid result. Check workflow output variable."
         };
       }
 

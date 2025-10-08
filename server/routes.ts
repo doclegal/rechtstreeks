@@ -1738,16 +1738,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Failed to parse analysis:", e);
       }
 
-      // Prepare input variables for CreateDagvaarding.flow
-      const facts_known = parsedAnalysis?.facts?.known || [];
-      const defenses_expected = parsedAnalysis?.legal_analysis?.potential_defenses || [];
-      const legal_basis_refs = (parsedAnalysis?.legal_analysis?.legal_basis || []).map((b: any) => 
-        `${b.law || ''} ${b.article || ''}: ${b.note || ''}`.trim()
-      );
-      const evidence_names = (parsedAnalysis?.evidence?.provided || []).map((e: any) => e.doc_name || e.source || '');
-      const docs_extracts = documents
+      // Prepare input variables for CreateDagvaarding.flow with correct types
+      const facts_known: string[] = parsedAnalysis?.facts?.known || [];
+      const defenses_expected: string[] = parsedAnalysis?.legal_analysis?.potential_defenses || [];
+      
+      // legal_basis_refs as array of objects {law, article, note}
+      const legal_basis_refs: Array<{law: string, article: string, note: string}> = 
+        (parsedAnalysis?.legal_analysis?.legal_basis || []).map((b: any) => ({
+          law: b.law || '',
+          article: b.article || '',
+          note: b.note || ''
+        }));
+      
+      const evidence_names: string[] = (parsedAnalysis?.evidence?.provided || []).map((e: any) => e.doc_name || e.source || '');
+      
+      // docs_extracts as array of objects {filename, content}
+      const docs_extracts: Array<{filename: string, content: string}> = documents
         .filter(doc => doc.extractedText)
-        .map(doc => `[${doc.filename}]: ${doc.extractedText?.substring(0, 500)}...`);
+        .map(doc => ({
+          filename: doc.filename,
+          content: doc.extractedText?.substring(0, 500) || ''
+        }));
 
       // Call MindStudio CreateDagvaarding.flow
       const result = await aiService.runCreateDagvaarding({
