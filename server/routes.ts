@@ -1703,7 +1703,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Generate summons V2 with AI
+  // Generate summons V2 with AI - using CreateDagvaarding.flow
   app.post('/api/cases/:id/summons-v2/generate', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -1719,62 +1719,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!analysis) {
         return res.status(400).json({ message: "Case must be analyzed first" });
       }
+
+      // Get case documents for extracts
+      const documents = await storage.getDocumentsByCase(caseId);
       
-      console.log("🤖 Generating AI fields for summons V2...");
+      console.log("🤖 Generating dagvaarding with CreateDagvaarding.flow...");
       
-      // Mock AI fields for development (USE_MINDSTUDIO_SUMMONS_MOCK=true)
-      const useMock = process.env.USE_MINDSTUDIO_SUMMONS_MOCK === 'true';
-      
-      let aiFields;
-      
-      if (useMock) {
-        console.log("🧪 Using mock AI fields (USE_MINDSTUDIO_SUMMONS_MOCK=true)");
-        
-        // Generate realistic mock AI fields based on case data
-        aiFields = {
-          inleiding: `Deze zaak gaat om een rekening die ${userFields.eiser_naam || "eiser"} heeft gestuurd aan ${userFields.gedaagde_naam || "gedaagde"} voor ${userFields.onderwerp || "geleverde diensten"}. ${userFields.gedaagde_naam || "Gedaagde"} heeft de rekening niet betaald. ${userFields.eiser_naam || "Eiser"} vindt dat ${userFields.gedaagde_naam || "gedaagde"} wel moet betalen.`,
-          
-          overeenkomst_datum: "15 maart 2024",
-          overeenkomst_omschrijving: "Partijen hebben een overeenkomst gesloten voor het leveren van professionele diensten. De dienstverlening is conform afspraak uitgevoerd en opgeleverd. De werkzaamheden zijn uitgevoerd volgens de overeengekomen specificaties en binnen de afgesproken termijn.",
-          
-          algemene_voorwaarden_document: "offerte d.d. 15 maart 2024",
-          algemene_voorwaarden_artikelnummer_betaling: "5.1",
-          algemene_voorwaarden_betalingstermijn_dagen: "14",
-          algemene_voorwaarden_rente_percentage: "2%",
-          algemene_voorwaarden_artikelnummer_incasso: "8.3",
-          
-          onbetaald_bedrag: userFields.hoofdsom?.toString() || "0",
-          
-          veertiendagenbrief_datum: "1 mei 2024",
-          
-          rente_berekening_uitleg: `${userFields.eiser_naam || "Eiser"} heeft recht op de overeengekomen rente van 2% per maand over het onbetaalde bedrag van de rekening vanaf 14 dagen na rekeningdatum. Tot ${userFields.rente_datum_tot || "heden"} is deze rente € ${userFields.rente_bedrag || "0"}.`,
-          
-          aanmaning_datum: "10 mei 2024",
-          aanmaning_verzendwijze: "e-mailadres",
-          aanmaning_ontvangst_datum: "11 mei 2024",
-          
-          reactie_gedaagde: `${userFields.gedaagde_naam || "Gedaagde"} heeft geen reactie gegeven op de aanmaningen. ${userFields.eiser_naam || "Eiser"} heeft meerdere keren geprobeerd contact op te nemen, maar zonder resultaat.`,
-          
-          bewijsmiddel_r1: `offerte van ${userFields.eiser_naam || "eiser"} d.d. 15 maart 2024`,
-          bewijsmiddel_r2: `algemene voorwaarden ${userFields.eiser_naam || "eiser"}`,
-          bewijsmiddel_r3: `rekening van ${userFields.eiser_naam || "eiser"} met nr. ${userFields.rekening_nummer || "INV-2024-001"} van ${userFields.rekening_datum || "1 april 2024"}`,
-          bewijsmiddel_r4: `de brief van ${userFields.eiser_naam || "eiser"} aan ${userFields.gedaagde_naam || "gedaagde"} van 1 mei 2024`,
-          bewijsmiddel_r5: `de aanmaning van ${userFields.eiser_naam || "eiser"} aan ${userFields.gedaagde_naam || "gedaagde"} van 10 mei 2024`,
-          bewijsmiddel_overig: `${userFields.eiser_naam || "Eiser"} biedt aan te bewijzen dat de diensten conform overeenkomst zijn geleverd en dat betaling is uitgebleven ondanks herhaalde aanmaningen.`,
-          getuigen: "Geen getuigen",
-        };
-      } else {
-        // TODO: Real MindStudio integration
-        // Send only userFields + analysis summary to MindStudio
-        // Receive AI-generated narrative sections
-        throw new Error("MindStudio integration not yet implemented. Set USE_MINDSTUDIO_SUMMONS_MOCK=true for development.");
+      // Parse analysis data
+      let parsedAnalysis: any = {};
+      try {
+        if (analysis.analysisJson) {
+          parsedAnalysis = analysis.analysisJson;
+        } else if (analysis.rawText) {
+          const rawData = JSON.parse(analysis.rawText);
+          parsedAnalysis = rawData.parsedAnalysis || rawData;
+        }
+      } catch (e) {
+        console.error("Failed to parse analysis:", e);
       }
+
+      // Prepare input variables for CreateDagvaarding.flow
+      const facts_known = parsedAnalysis?.facts?.known || [];
+      const defenses_expected = parsedAnalysis?.legal_analysis?.potential_defenses || [];
+      const legal_basis_refs = (parsedAnalysis?.legal_analysis?.legal_basis || []).map((b: any) => 
+        `${b.law || ''} ${b.article || ''}: ${b.note || ''}`.trim()
+      );
+      const evidence_names = (parsedAnalysis?.evidence?.provided || []).map((e: any) => e.doc_name || e.source || '');
+      const docs_extracts = documents
+        .filter(doc => doc.extractedText)
+        .map(doc => `[${doc.filename}]: ${doc.extractedText?.substring(0, 500)}...`);
+
+      // Call MindStudio CreateDagvaarding.flow
+      const result = await aiService.runCreateDagvaarding({
+        case_id: caseId,
+        locale: "nl",
+        template_version: "1.3",
+        inhoud_subject: userFields.onderwerp || caseData.title || "Betaling openstaande vordering",
+        flag_is_consumer_case: caseData.counterpartyType === "individual",
+        eiser_naam: userFields.eiser_naam || "Niet opgegeven",
+        gedaagde_naam: userFields.gedaagde_naam || caseData.counterpartyName || "Niet opgegeven",
+        facts_known,
+        defenses_expected,
+        legal_basis_refs,
+        evidence_names,
+        docs_extracts,
+        tone: "formal",
+        no_html: true,
+        paragraph_max_words: 150,
+        dont_invent: true,
+        avoid_numbers: false,
+        reference_law_style: "article_number"
+      });
+
+      if (!result.success || !result.sections) {
+        throw new Error(result.error || "Failed to generate dagvaarding from MindStudio");
+      }
+
+      // Map CreateDagvaarding.flow sections to AI fields
+      const aiFields = {
+        // Map grounds.intro to inleiding
+        inleiding: result.sections.grounds.intro.join('\n\n'),
+        
+        // Map grounds sections to corresponding fields
+        overeenkomst_datum: "", // Will be filled by AI in grounds.assignment_and_work
+        overeenkomst_omschrijving: result.sections.grounds.assignment_and_work.join('\n\n'),
+        
+        algemene_voorwaarden_document: "", // From grounds.terms_and_conditions
+        algemene_voorwaarden_artikelnummer_betaling: "",
+        algemene_voorwaarden_betalingstermijn_dagen: "",
+        algemene_voorwaarden_rente_percentage: "",
+        algemene_voorwaarden_artikelnummer_incasso: "",
+        
+        onbetaald_bedrag: result.sections.grounds.invoice.join('\n\n'),
+        
+        veertiendagenbrief_datum: "",
+        rente_berekening_uitleg: result.sections.grounds.interest_and_collection_costs.join('\n\n'),
+        
+        aanmaning_datum: "",
+        aanmaning_verzendwijze: "",
+        aanmaning_ontvangst_datum: "",
+        
+        reactie_gedaagde: result.sections.grounds.defendant_response.join('\n\n'),
+        
+        // Map evidence to bewijsmiddelen
+        bewijsmiddel_r1: result.sections.evidence.list[0] || "",
+        bewijsmiddel_r2: result.sections.evidence.list[1] || "",
+        bewijsmiddel_r3: result.sections.evidence.list[2] || "",
+        bewijsmiddel_r4: result.sections.evidence.list[3] || "",
+        bewijsmiddel_r5: result.sections.evidence.list[4] || "",
+        bewijsmiddel_overig: result.sections.evidence.offer_of_proof || "",
+        getuigen: result.sections.evidence.witnesses.join(', ') || "Geen getuigen"
+      };
       
       // Save generated summons
       const summons = await storage.createSummons({
         caseId,
         templateId: "official_model_dagvaarding",
-        templateVersion: "v1",
+        templateVersion: result.meta?.template_version || "v1",
         userFieldsJson: userFields,
         aiFieldsJson: aiFields,
         status: "ready"
@@ -1784,10 +1825,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         caseId,
         actorUserId: userId,
         type: "summons_generated",
-        payloadJson: { summonsId: summons.id },
+        payloadJson: { 
+          summonsId: summons.id,
+          mindstudioMeta: result.meta
+        },
       });
       
-      console.log("✅ Summons V2 generated successfully");
+      console.log("✅ Dagvaarding generated successfully with CreateDagvaarding.flow");
       
       res.json({ aiFields, summonsId: summons.id });
     } catch (error) {

@@ -1812,6 +1812,150 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     }
   }
 
+  async runCreateDagvaarding(params: {
+    case_id: string;
+    locale: string;
+    template_version: string;
+    inhoud_subject: string;
+    flag_is_consumer_case: boolean;
+    eiser_naam: string;
+    gedaagde_naam: string;
+    facts_known: string[];
+    defenses_expected: string[];
+    legal_basis_refs: string[];
+    evidence_names: string[];
+    docs_extracts: string[];
+    tone: string;
+    no_html: boolean;
+    paragraph_max_words: number;
+    dont_invent: boolean;
+    avoid_numbers: boolean;
+    reference_law_style: string;
+  }): Promise<{
+    success: boolean;
+    sections?: {
+      grounds: {
+        intro: string[];
+        assignment_and_work: string[];
+        terms_and_conditions: string[];
+        invoice: string[];
+        interest_and_collection_costs: string[];
+        defendant_response: string[];
+      };
+      evidence: {
+        list: string[];
+        offer_of_proof: string;
+        witnesses: string[];
+      };
+      orders_requested_text: string[];
+    };
+    meta?: {
+      template_version: string;
+      language: string;
+    };
+    error?: string;
+  }> {
+    console.log("⚖️ Calling MindStudio CreateDagvaarding.flow...");
+
+    const variables = {
+      case_id: params.case_id,
+      locale: params.locale,
+      template_version: params.template_version,
+      inhoud_subject: params.inhoud_subject,
+      flag_is_consumer_case: params.flag_is_consumer_case,
+      eiser_naam: params.eiser_naam,
+      gedaagde_naam: params.gedaagde_naam,
+      facts_known: params.facts_known,
+      defenses_expected: params.defenses_expected,
+      legal_basis_refs: params.legal_basis_refs,
+      evidence_names: params.evidence_names,
+      docs_extracts: params.docs_extracts,
+      tone: params.tone,
+      no_html: params.no_html,
+      paragraph_max_words: params.paragraph_max_words,
+      dont_invent: params.dont_invent,
+      avoid_numbers: params.avoid_numbers,
+      reference_law_style: params.reference_law_style
+    };
+
+    console.log("📤 CreateDagvaarding variables:", JSON.stringify(variables, null, 2));
+
+    const requestBody = {
+      workerId: process.env.MINDSTUDIO_WORKER_ID,
+      variables,
+      workflow: "CreateDagvaarding.flow",
+      includeBillingCost: true
+    };
+
+    // Set timeout to 10 minutes for long-running MindStudio generation
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10 * 60 * 1000);
+
+    try {
+      const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error("❌ MindStudio CreateDagvaarding error:", errorData);
+        return {
+          success: false,
+          error: `MindStudio API error: ${response.status} ${response.statusText}`
+        };
+      }
+
+      const data = await response.json();
+      console.log("📥 CreateDagvaarding raw response:", JSON.stringify(data, null, 2));
+
+      // Parse the response - look for 'result' variable
+      let resultData;
+      
+      // Check output.results first
+      if (data.output?.results?.result) {
+        const rawValue = data.output.results.result.value || data.output.results.result;
+        resultData = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
+        console.log("✅ Found result in output.results");
+      }
+      // Check thread.variables
+      else if (data.thread?.variables?.result) {
+        const rawValue = data.thread.variables.result.value || data.thread.variables.result;
+        resultData = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
+        console.log("✅ Found result in thread.variables");
+      }
+
+      if (!resultData || !resultData.sections) {
+        console.error("❌ No valid result found in CreateDagvaarding response");
+        return {
+          success: false,
+          error: "MindStudio CreateDagvaarding.flow returned no valid result. Check workflow output variable 'result'."
+        };
+      }
+
+      return {
+        success: true,
+        sections: resultData.sections,
+        meta: resultData.meta
+      };
+
+    } catch (error) {
+      clearTimeout(timeoutId);
+      console.error("❌ CreateDagvaarding error:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error"
+      };
+    }
+  }
+
   async runGenerateSummons(params: {
     case_id: string;
     case_details: any;
