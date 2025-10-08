@@ -50,6 +50,8 @@ export default function DocumentUpload({
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'uploads'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
       toast({
         title: "Upload voltooid",
         description: "Documenten zijn succesvol geüpload",
