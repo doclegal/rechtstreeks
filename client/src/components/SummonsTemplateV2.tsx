@@ -11,7 +11,7 @@ interface SummonsTemplateV2Props {
 function UserField({ 
   value, 
   fieldKey, 
-  placeholder = "",
+  placeholder = "[Nog in te vullen]",
   type = "text",
   editable = false,
   onChange
@@ -23,8 +23,17 @@ function UserField({
   editable: boolean;
   onChange?: (key: keyof UserFields, value: string | number) => void;
 }) {
+  const isEmpty = !value || value === "" || (type === "number" && value === 0);
+  
   if (!editable) {
-    return <span className="user-field-display" data-field={fieldKey}>{value || placeholder}</span>;
+    return (
+      <span 
+        className={`user-field-display ${isEmpty ? 'bg-yellow-100 border border-yellow-400 px-1 rounded text-yellow-700 italic' : ''}`}
+        data-field={fieldKey}
+      >
+        {isEmpty ? placeholder : value}
+      </span>
+    );
   }
 
   return (
@@ -33,7 +42,11 @@ function UserField({
       value={value || ""}
       onChange={(e) => onChange?.(fieldKey, type === "number" ? parseFloat(e.target.value) || 0 : e.target.value)}
       placeholder={placeholder}
-      className="user-field-input inline-block border-b border-blue-400 bg-blue-50 px-1 min-w-[100px] focus:outline-none focus:border-blue-600"
+      className={`user-field-input inline-block border-b px-1 min-w-[100px] focus:outline-none ${
+        isEmpty 
+          ? 'border-yellow-400 bg-yellow-50 text-yellow-700 placeholder-yellow-500 focus:border-yellow-600' 
+          : 'border-blue-400 bg-blue-50 focus:border-blue-600'
+      }`}
       data-field={fieldKey}
       data-testid={`input-${fieldKey}`}
     />
