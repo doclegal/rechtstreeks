@@ -60,7 +60,12 @@ export default function SummonsEditor() {
   }, [currentCase]);
 
   const handleUserFieldChange = (key: keyof UserFields, value: string | number) => {
-    setUserFields(prev => ({ ...prev, [key]: value }));
+    // Convert to number if field expects a number
+    const numericFields = ['hoofdsom', 'rente_bedrag', 'incassokosten', 'salaris_gemachtigde', 'kosten_dagvaarding'];
+    const finalValue = numericFields.includes(key) && typeof value === 'string' 
+      ? (value === '' ? 0 : parseFloat(value) || 0)
+      : value;
+    setUserFields(prev => ({ ...prev, [key]: finalValue }));
   };
 
   const handleSaveDraft = async () => {
@@ -334,7 +339,7 @@ export default function SummonsEditor() {
                               value={userFields[field.key as keyof UserFields] || ""}
                               onChange={(e) => handleUserFieldChange(
                                 field.key as keyof UserFields,
-                                field.type === "number" ? parseFloat(e.target.value) || 0 : e.target.value
+                                e.target.value
                               )}
                               className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                               data-testid={`input-${field.key}`}
