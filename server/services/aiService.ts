@@ -1811,6 +1811,164 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       };
     }
   }
+
+  async runGenerateSummons(params: {
+    case_id: string;
+    case_details: any;
+    analysis_json: any;
+    claimant: {
+      name: string;
+      place: string;
+      rep_name?: string;
+      rep_address?: string;
+      phone?: string;
+      email?: string;
+      iban?: string;
+    };
+    defendant: {
+      name: string;
+      address: string;
+      birthdate?: string;
+      is_consumer: boolean;
+    };
+    court?: {
+      name?: string;
+      location?: string;
+    };
+  }): Promise<{
+    success: boolean;
+    summonsData?: any;
+    error?: string;
+  }> {
+    console.log("⚖️ Calling MindStudio GenerateSummons.flow...");
+
+    const variables = {
+      case_id: params.case_id,
+      case_details: JSON.stringify(params.case_details),
+      analysis_json: JSON.stringify(params.analysis_json),
+      claimant: JSON.stringify(params.claimant),
+      defendant: JSON.stringify(params.defendant),
+      court: JSON.stringify(params.court || {}),
+    };
+
+    console.log("📤 GenerateSummons variables:", variables);
+
+    const requestBody = {
+      workerId: process.env.MINDSTUDIO_WORKER_ID,
+      variables,
+      workflow: "GenerateSummons.flow",
+      includeBillingCost: true
+    };
+
+    // Set timeout to 10 minutes for long-running MindStudio summons generation
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10 * 60 * 1000); // 10 minutes
+
+    const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error("❌ MindStudio GenerateSummons error:", errorData);
+      return {
+        success: false,
+        error: `MindStudio API error: ${response.status} ${response.statusText}`
+      };
+    }
+
+    const data = await response.json();
+    console.log("📥 GenerateSummons raw response:", JSON.stringify(data, null, 2));
+
+    // Parse the response from MindStudio thread variables
+    try {
+      let summonsResponse;
+      
+      // Try to find the summons data in various possible locations
+      const possibleVarNames = [
+        'summons_data',
+        'summonsData', 
+        'summons',
+        'output',
+        'result'
+      ];
+
+      // First try output/results (preferred location)
+      if (data.output?.results) {
+        console.log("🔍 Checking output.results for summons response...");
+        for (const varName of possibleVarNames) {
+          if (data.output.results[varName]) {
+            const rawValue = data.output.results[varName].value || data.output.results[varName];
+            try {
+              summonsResponse = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
+              console.log(`✅ Found ${varName} in output.results`);
+              break;
+            } catch (e) {
+              console.log(`⚠️ Failed to parse ${varName} from output.results:`, e);
+            }
+          }
+        }
+      }
+
+      // If not in output.results, try thread.variables
+      if (!summonsResponse && data.thread?.variables) {
+        console.log("🔍 Searching in thread.variables for summons response...");
+        for (const varName of possibleVarNames) {
+          if (data.thread.variables[varName]) {
+            const rawValue = data.thread.variables[varName].value || data.thread.variables[varName];
+            try {
+              summonsResponse = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
+              console.log(`✅ Found ${varName} in thread.variables`);
+              break;
+            } catch (e) {
+              console.log(`⚠️ Failed to parse ${varName} from thread.variables:`, e);
+            }
+          }
+        }
+      }
+
+      if (!summonsResponse) {
+        console.error("❌ No summons response found in any expected location");
+        console.log("Available output.results:", Object.keys(data.output?.results || {}));
+        console.log("Available thread variables:", Object.keys(data.thread?.variables || {}));
+        return {
+          success: false,
+          error: "No valid summons response from MindStudio - check variable names"
+        };
+      }
+
+      // Validate that summonsResponse has expected SummonsV1 structure
+      if (!summonsResponse.meta || !summonsResponse.court || !summonsResponse.parties) {
+        console.error("❌ Summons response missing required SummonsV1 structure:", summonsResponse);
+        return {
+          success: false,
+          error: "Invalid summons structure from MindStudio - missing required fields (meta, court, parties)"
+        };
+      }
+
+      console.log("✅ Successfully parsed summons response:", summonsResponse);
+      
+      return {
+        success: true,
+        summonsData: summonsResponse
+      };
+
+    } catch (error) {
+      console.error("❌ Error parsing MindStudio summons response:", error);
+      return {
+        success: false,
+        error: `Failed to parse summons response: ${error}`
+      };
+    }
+  }
 }
 
 export const aiService = new AIService();
