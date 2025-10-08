@@ -1922,14 +1922,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dont_invent: true,
         no_html: true,
         no_summarize: true,
-        allow_long_context: true
+        allow_long_context: true,
+        strict_no_placeholders: true,  // NEVER use [datum], [bedrag], [Shop in te vullen] etc.
+        use_only_case_data: true,      // Only use facts and data from the case files
+        leave_blank_if_unknown: true   // If data is missing, leave field blank or use generic text
       };
       
-      // 16. STYLE - Writing style preferences
+      // 16. STYLE - Writing style preferences  
       const style = {
         tone: "formal",
         paragraph_max_words: 150,
         reference_law_style: "article_number"
+      };
+      
+      // 17. EXPLICIT ANTI-PLACEHOLDER INSTRUCTION
+      const writing_rules = {
+        strict_instruction: "GEBRUIK NOOIT placeholder tekst zoals [datum], [bedrag], [Shop in te vullen], [Naam], etc. Als specifieke data ontbreekt, schrijf dan algemene, niet-specifieke tekst OF laat het veld volledig leeg. Gebruik ALLEEN concrete informatie uit facts_known_full, docs_full, en analysis_full. Bij twijfel: schrijf algemeen of laat leeg.",
+        forbidden_patterns: ["[datum]", "[bedrag]", "[Shop in te vullen]", "[Naam]", "[adres]", "[beschrijving", "[nummer]"],
+        required_behavior: "Write generic legal text OR leave blank when specific data is missing. Never use bracket placeholders."
       };
       
       // Assemble complete payload
@@ -1959,7 +1969,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         docs_full,
         attachments_meta,
         flags,
-        style
+        style,
+        writing_rules  // Anti-placeholder instructions
       };
       
       // Log payload stats
