@@ -1,0 +1,373 @@
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useCases } from "@/hooks/useCase";
+import { useToast } from "@/hooks/use-toast";
+import { useActiveCase } from "@/contexts/CaseContext";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Link } from "wouter";
+import { Scale, PlusCircle, FileText, AlertCircle, Loader2, Download } from "lucide-react";
+import { SummonsTemplateV2 } from "@/components/SummonsTemplateV2";
+import { UserFields, AIFields, userFieldsSchema } from "@shared/summonsFields";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useQuery, useMutation } from "@tanstack/react-query";
+
+export default function SummonsEditor() {
+  const { user, isLoading: authLoading } = useAuth();
+  const { isLoading: casesLoading } = useCases();
+  const { toast } = useToast();
+  const currentCase = useActiveCase();
+  const caseId = currentCase?.id;
+
+  const [userFields, setUserFields] = useState<Partial<UserFields>>({});
+  const [aiFields, setAIFields] = useState<Partial<AIFields>>({});
+  const [activeTab, setActiveTab] = useState<"template" | "form">("form");
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // Fetch existing summons for this case
+  const { data: existingSummons } = useQuery<any[]>({
+    queryKey: ["/api/cases", caseId, "summons-v2"],
+    enabled: !!caseId,
+    retry: false,
+  });
+
+  // Load existing data if available
+  useEffect(() => {
+    if (existingSummons && Array.isArray(existingSummons) && existingSummons.length > 0) {
+      const latest = existingSummons[0];
+      if (latest.userFieldsJson) {
+        setUserFields(latest.userFieldsJson);
+      }
+      if (latest.aiFieldsJson) {
+        setAIFields(latest.aiFieldsJson);
+      }
+    }
+  }, [existingSummons]);
+
+  // Pre-fill user fields from case data
+  useEffect(() => {
+    if (currentCase && Object.keys(userFields).length === 0) {
+      setUserFields({
+        eiser_naam: "Rechtstreeks.ai B.V.",
+        eiser_plaats: "Amsterdam",
+        gedaagde_naam: currentCase.defendantName || "",
+        gedaagde_adres: currentCase.defendantAddress || "",
+        onderwerp: currentCase.title || "",
+        ...userFields
+      });
+    }
+  }, [currentCase]);
+
+  const handleUserFieldChange = (key: keyof UserFields, value: string | number) => {
+    setUserFields(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleSaveDraft = async () => {
+    try {
+      const response = await apiRequest("POST", `/api/cases/${caseId}/summons-v2/draft`, {
+        userFields,
+        aiFields
+      });
+      
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId, "summons-v2"] });
+        toast({
+          title: "Concept opgeslagen",
+          description: "Uw wijzigingen zijn opgeslagen",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Opslaan mislukt",
+        description: "Er is een fout opgetreden bij het opslaan",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleGenerate = async () => {
+    // Validate user fields
+    const validation = userFieldsSchema.safeParse(userFields);
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast({
+        title: "Velden niet compleet",
+        description: `${firstError.path[0]}: ${firstError.message}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      // Send only user fields to MindStudio
+      const response = await apiRequest("POST", `/api/cases/${caseId}/summons-v2/generate`, {
+        userFields
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        // Update AI fields with MindStudio response
+        setAIFields(data.aiFields);
+        
+        queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId, "summons-v2"] });
+        
+        toast({
+          title: "Dagvaarding gegenereerd",
+          description: "AI heeft de ontbrekende secties ingevuld",
+        });
+        
+        // Switch to template view
+        setActiveTab("template");
+      } else {
+        throw new Error(data.message || "Generatie mislukt");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Generatie mislukt",
+        description: error.message || "Er is een fout opgetreden bij het genereren",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleDownloadPDF = () => {
+    window.print();
+  };
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+    }
+  }, [user, authLoading, toast]);
+
+  if (authLoading || casesLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Laden...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentCase) {
+    return (
+      <div className="text-center py-12">
+        <div className="max-w-md mx-auto">
+          <h2 className="text-2xl font-bold text-foreground mb-4">Geen actieve zaak</h2>
+          <p className="text-muted-foreground mb-6">
+            U heeft nog geen zaak aangemaakt. Begin met het opstarten van uw eerste juridische zaak.
+          </p>
+          <Button asChild size="lg" data-testid="button-create-first-case">
+            <Link href="/new-case">
+              <PlusCircle className="mr-2 h-5 w-5" />
+              Eerste zaak starten
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const hasAnalysis = !!(currentCase as any).analysis || !!(currentCase as any).fullAnalysis;
+
+  if (!hasAnalysis) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
+            <Scale className="h-8 w-8 text-primary" />
+            Dagvaarding
+          </h1>
+          <p className="text-muted-foreground">
+            Genereer de officiële dagvaarding voor uw juridische procedure
+          </p>
+        </div>
+
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center">
+              <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-foreground mb-2">
+                Nog geen analyse beschikbaar
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                Upload eerst documenten en voer een analyse uit voordat u een dagvaarding kunt genereren.
+              </p>
+              <Button asChild data-testid="button-go-to-case">
+                <Link href="/my-case">
+                  Naar Mijn Zaak
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
+            <Scale className="h-8 w-8 text-primary" />
+            Dagvaarding Editor
+          </h1>
+          <p className="text-muted-foreground">
+            Vul de gegevens in en genereer een officiële dagvaarding
+          </p>
+        </div>
+        
+        <div className="flex gap-3">
+          <Button onClick={handleSaveDraft} variant="outline" data-testid="button-save-draft">
+            <FileText className="h-4 w-4 mr-2" />
+            Concept opslaan
+          </Button>
+          <Button onClick={handleGenerate} disabled={isGenerating} data-testid="button-generate">
+            {isGenerating ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Genereren...
+              </>
+            ) : (
+              <>
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Genereer dagvaarding
+              </>
+            )}
+          </Button>
+          <Button onClick={handleDownloadPDF} variant="outline" data-testid="button-download-pdf">
+            <Download className="h-4 w-4 mr-2" />
+            Download PDF
+          </Button>
+        </div>
+      </div>
+
+      {/* Info box */}
+      <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950">
+        <CardContent className="py-4">
+          <div className="flex gap-3">
+            <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                Hoe werkt het?
+              </h4>
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                Vul de <strong>blauwe velden</strong> (uw gegevens) in. De <strong>gele velden</strong> worden automatisch door AI gegenereerd op basis van uw zaakanalyse. Alle vaste tekst blijft ongewijzigd volgens het officiële Model dagvaarding.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "template" | "form")}>
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="form" data-testid="tab-form">Formulier</TabsTrigger>
+          <TabsTrigger value="template" data-testid="tab-template">Preview Template</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="form" className="mt-6">
+          <Card>
+            <CardContent className="py-6">
+              <div className="space-y-6">
+                {/* Group fields by section */}
+                {["Eiser", "Gedaagde", "Rechtbank", "Zitting", "Financieel"].map(section => {
+                  const sectionFields = [
+                    { key: "eiser_naam", label: "Naam eiser", type: "text", section: "Eiser" },
+                    { key: "eiser_plaats", label: "Plaats eiser", type: "text", section: "Eiser" },
+                    { key: "eiser_vertegenwoordiger_naam", label: "Naam vertegenwoordiger", type: "text", section: "Eiser" },
+                    { key: "eiser_vertegenwoordiger_adres", label: "Adres vertegenwoordiger", type: "text", section: "Eiser" },
+                    { key: "eiser_vertegenwoordiger_telefoon", label: "Telefoonnummer", type: "text", section: "Eiser" },
+                    { key: "eiser_vertegenwoordiger_email", label: "E-mailadres", type: "email", section: "Eiser" },
+                    { key: "eiser_bankrekening", label: "Bankrekeningnummer", type: "text", section: "Eiser" },
+                    { key: "eiser_dossiernummer", label: "Dossiernummer", type: "text", section: "Eiser" },
+                    { key: "gedaagde_naam", label: "Naam gedaagde", type: "text", section: "Gedaagde" },
+                    { key: "gedaagde_adres", label: "Adres gedaagde", type: "text", section: "Gedaagde" },
+                    { key: "gedaagde_geboortedatum", label: "Geboortedatum", type: "date", section: "Gedaagde" },
+                    { key: "rechtbank_naam", label: "Naam rechtbank", type: "text", section: "Rechtbank" },
+                    { key: "rechtbank_postadres", label: "Postadres", type: "text", section: "Rechtbank" },
+                    { key: "rechtbank_bezoekadres", label: "Bezoekadres", type: "text", section: "Rechtbank" },
+                    { key: "zitting_datum", label: "Datum zitting", type: "date", section: "Zitting" },
+                    { key: "zitting_dag", label: "Dag van de week", type: "text", section: "Zitting" },
+                    { key: "zitting_tijd", label: "Tijdstip", type: "text", section: "Zitting" },
+                    { key: "reactie_deadline", label: "Deadline reactie", type: "date", section: "Zitting" },
+                    { key: "betaal_deadline", label: "Deadline betaling", type: "date", section: "Zitting" },
+                    { key: "onderwerp", label: "Onderwerp rekening", type: "text", section: "Financieel" },
+                    { key: "rekening_nummer", label: "Rekeningnummer", type: "text", section: "Financieel" },
+                    { key: "rekening_datum", label: "Rekeningdatum", type: "date", section: "Financieel" },
+                    { key: "hoofdsom", label: "Hoofdsom (€)", type: "number", section: "Financieel" },
+                    { key: "rente_datum_tot", label: "Rente tot", type: "date", section: "Financieel" },
+                    { key: "rente_bedrag", label: "Rentebedrag (€)", type: "number", section: "Financieel" },
+                    { key: "incassokosten", label: "Incassokosten (€)", type: "number", section: "Financieel" },
+                    { key: "salaris_gemachtigde", label: "Salaris gemachtigde (€)", type: "number", section: "Financieel" },
+                    { key: "kosten_dagvaarding", label: "Kosten dagvaarding (€)", type: "number", section: "Financieel" },
+                    { key: "rente_vanaf_datum", label: "Rente vanaf", type: "date", section: "Financieel" },
+                  ].filter(f => f.section === section);
+
+                  return (
+                    <div key={section}>
+                      <h3 className="text-lg font-semibold mb-3 text-foreground">{section}</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {sectionFields.map(field => (
+                          <div key={field.key}>
+                            <label className="block text-sm font-medium text-foreground mb-1">
+                              {field.label}
+                            </label>
+                            <input
+                              type={field.type}
+                              value={userFields[field.key as keyof UserFields] || ""}
+                              onChange={(e) => handleUserFieldChange(
+                                field.key as keyof UserFields,
+                                field.type === "number" ? parseFloat(e.target.value) || 0 : e.target.value
+                              )}
+                              className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                              data-testid={`input-${field.key}`}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="template" className="mt-6">
+          <Card>
+            <CardContent className="py-6">
+              <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 rounded-lg">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  <strong>Gele velden</strong> worden automatisch gegenereerd door AI wanneer u op "Genereer dagvaarding" klikt.
+                </p>
+              </div>
+              <SummonsTemplateV2
+                userFields={userFields}
+                aiFields={aiFields}
+                onUserFieldChange={handleUserFieldChange}
+                editable={false}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

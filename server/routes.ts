@@ -1638,6 +1638,164 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Summons V2 Template-based routes
+  // Get all summons V2 for a case
+  app.get('/api/cases/:id/summons-v2', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      const summonsList = await storage.getSummonsByCase(caseId);
+      res.json(summonsList);
+    } catch (error) {
+      console.error("Error fetching summons v2:", error);
+      res.status(500).json({ message: "Failed to fetch summons" });
+    }
+  });
+
+  // Save summons V2 draft
+  app.post('/api/cases/:id/summons-v2/draft', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      const { userFields, aiFields } = req.body;
+      
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      // Check if draft already exists
+      const existingSummons = await storage.getSummonsByCase(caseId);
+      const existingDraft = existingSummons.find(s => s.status === 'draft' && s.templateVersion === 'v1');
+      
+      if (existingDraft) {
+        // Update existing draft (not implemented yet, would need updateSummons method)
+        return res.status(200).json({ message: "Draft updated", id: existingDraft.id });
+      } else {
+        // Create new draft
+        const summons = await storage.createSummons({
+          caseId,
+          templateId: "official_model_dagvaarding",
+          templateVersion: "v1",
+          userFieldsJson: userFields,
+          aiFieldsJson: aiFields,
+          status: "draft"
+        });
+        
+        await storage.createEvent({
+          caseId,
+          actorUserId: userId,
+          type: "summons_draft_saved",
+          payloadJson: { summonsId: summons.id },
+        });
+        
+        res.json({ message: "Draft saved", id: summons.id });
+      }
+    } catch (error) {
+      console.error("Error saving summons draft:", error);
+      res.status(500).json({ message: "Failed to save draft" });
+    }
+  });
+
+  // Generate summons V2 with AI
+  app.post('/api/cases/:id/summons-v2/generate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      const { userFields } = req.body;
+      
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      const analysis = await storage.getLatestAnalysis(caseId);
+      if (!analysis) {
+        return res.status(400).json({ message: "Case must be analyzed first" });
+      }
+      
+      console.log("🤖 Generating AI fields for summons V2...");
+      
+      // Mock AI fields for development (USE_MINDSTUDIO_SUMMONS_MOCK=true)
+      const useMock = process.env.USE_MINDSTUDIO_SUMMONS_MOCK === 'true';
+      
+      let aiFields;
+      
+      if (useMock) {
+        console.log("🧪 Using mock AI fields (USE_MINDSTUDIO_SUMMONS_MOCK=true)");
+        
+        // Generate realistic mock AI fields based on case data
+        aiFields = {
+          inleiding: `Deze zaak gaat om een rekening die ${userFields.eiser_naam || "eiser"} heeft gestuurd aan ${userFields.gedaagde_naam || "gedaagde"} voor ${userFields.onderwerp || "geleverde diensten"}. ${userFields.gedaagde_naam || "Gedaagde"} heeft de rekening niet betaald. ${userFields.eiser_naam || "Eiser"} vindt dat ${userFields.gedaagde_naam || "gedaagde"} wel moet betalen.`,
+          
+          overeenkomst_datum: "15 maart 2024",
+          overeenkomst_omschrijving: "Partijen hebben een overeenkomst gesloten voor het leveren van professionele diensten. De dienstverlening is conform afspraak uitgevoerd en opgeleverd. De werkzaamheden zijn uitgevoerd volgens de overeengekomen specificaties en binnen de afgesproken termijn.",
+          
+          algemene_voorwaarden_document: "offerte d.d. 15 maart 2024",
+          algemene_voorwaarden_artikelnummer_betaling: "5.1",
+          algemene_voorwaarden_betalingstermijn_dagen: "14",
+          algemene_voorwaarden_rente_percentage: "2%",
+          algemene_voorwaarden_artikelnummer_incasso: "8.3",
+          
+          onbetaald_bedrag: userFields.hoofdsom?.toString() || "0",
+          
+          veertiendagenbrief_datum: "1 mei 2024",
+          
+          rente_berekening_uitleg: `${userFields.eiser_naam || "Eiser"} heeft recht op de overeengekomen rente van 2% per maand over het onbetaalde bedrag van de rekening vanaf 14 dagen na rekeningdatum. Tot ${userFields.rente_datum_tot || "heden"} is deze rente € ${userFields.rente_bedrag || "0"}.`,
+          
+          aanmaning_datum: "10 mei 2024",
+          aanmaning_verzendwijze: "e-mailadres",
+          aanmaning_ontvangst_datum: "11 mei 2024",
+          
+          reactie_gedaagde: `${userFields.gedaagde_naam || "Gedaagde"} heeft geen reactie gegeven op de aanmaningen. ${userFields.eiser_naam || "Eiser"} heeft meerdere keren geprobeerd contact op te nemen, maar zonder resultaat.`,
+          
+          bewijsmiddel_r1: `offerte van ${userFields.eiser_naam || "eiser"} d.d. 15 maart 2024`,
+          bewijsmiddel_r2: `algemene voorwaarden ${userFields.eiser_naam || "eiser"}`,
+          bewijsmiddel_r3: `rekening van ${userFields.eiser_naam || "eiser"} met nr. ${userFields.rekening_nummer || "INV-2024-001"} van ${userFields.rekening_datum || "1 april 2024"}`,
+          bewijsmiddel_r4: `de brief van ${userFields.eiser_naam || "eiser"} aan ${userFields.gedaagde_naam || "gedaagde"} van 1 mei 2024`,
+          bewijsmiddel_r5: `de aanmaning van ${userFields.eiser_naam || "eiser"} aan ${userFields.gedaagde_naam || "gedaagde"} van 10 mei 2024`,
+          bewijsmiddel_overig: `${userFields.eiser_naam || "Eiser"} biedt aan te bewijzen dat de diensten conform overeenkomst zijn geleverd en dat betaling is uitgebleven ondanks herhaalde aanmaningen.`,
+          getuigen: "Geen getuigen",
+        };
+      } else {
+        // TODO: Real MindStudio integration
+        // Send only userFields + analysis summary to MindStudio
+        // Receive AI-generated narrative sections
+        throw new Error("MindStudio integration not yet implemented. Set USE_MINDSTUDIO_SUMMONS_MOCK=true for development.");
+      }
+      
+      // Save generated summons
+      const summons = await storage.createSummons({
+        caseId,
+        templateId: "official_model_dagvaarding",
+        templateVersion: "v1",
+        userFieldsJson: userFields,
+        aiFieldsJson: aiFields,
+        status: "ready"
+      });
+      
+      await storage.createEvent({
+        caseId,
+        actorUserId: userId,
+        type: "summons_generated",
+        payloadJson: { summonsId: summons.id },
+      });
+      
+      console.log("✅ Summons V2 generated successfully");
+      
+      res.json({ aiFields, summonsId: summons.id });
+    } catch (error) {
+      console.error("Error generating summons V2:", error);
+      res.status(500).json({ message: (error as Error).message || "Failed to generate summons" });
+    }
+  });
+
   // Mock integration routes
   app.post('/api/integrations/bailiff/serve', isAuthenticated, async (req: any, res) => {
     try {
