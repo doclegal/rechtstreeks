@@ -1840,6 +1840,123 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     summonsData?: any;
     error?: string;
   }> {
+    // Development mock fallback when MindStudio flow is not configured
+    if (process.env.USE_MINDSTUDIO_SUMMONS_MOCK === 'true') {
+      console.log("🧪 Using mock summons data (USE_MINDSTUDIO_SUMMONS_MOCK=true)");
+      
+      const mockSummonsData = {
+        meta: {
+          template_version: "v1.0-mock",
+          language: "nl"
+        },
+        court: {
+          name: params.court?.name || "Rechtbank Amsterdam",
+          visit_address: "Parnassusweg 220, 1076 AV Amsterdam",
+          postal_address: "Postbus 1312, 1000 BH Amsterdam",
+          hearing_day: "dinsdag",
+          hearing_date: "15 januari 2025",
+          hearing_time: "10:00 uur"
+        },
+        parties: {
+          claimant: {
+            name: params.claimant.name,
+            place: params.claimant.place,
+            rep_name: params.claimant.rep_name || "",
+            rep_address: params.claimant.rep_address || "",
+            phone: params.claimant.phone || "",
+            email: params.claimant.email || "",
+            iban: params.claimant.iban || "",
+            dossier: `ZAAK-${params.case_id.substring(0, 8)}`
+          },
+          defendant: {
+            name: params.defendant.name,
+            address: params.defendant.address,
+            birthdate: params.defendant.birthdate || "",
+            is_consumer: params.defendant.is_consumer !== false
+          }
+        },
+        case: {
+          subject: "Vordering tot betaling hoofdsom, rente en kosten",
+          amount_eur: 5000.00,
+          interest: {
+            type: "wettelijke handelsrente",
+            from_date: "1 oktober 2024"
+          },
+          interim_sum_eur: 5250.00,
+          costs: {
+            salaris_gemachtigde_eur: 1200.00,
+            dagvaarding_eur: 98.00
+          },
+          total_to_date_eur: 6548.00
+        },
+        sections: {
+          full_claim_items: [
+            { label: "Hoofdsom vordering", amount_eur: 5000.00 },
+            { label: "Wettelijke handelsrente", amount_eur: 250.00 },
+            { label: "Buitengerechtelijke incassokosten", amount_eur: 450.00 },
+            { label: "Salaris gemachtigde", amount_eur: 1200.00 },
+            { label: "Kosten dagvaarding", amount_eur: 98.00 }
+          ],
+          orders_requested: [
+            "Gedaagde te veroordelen tot betaling van € 6.548,- aan eiser",
+            "Met veroordeling van gedaagde in de proceskosten",
+            "Dit vonnis uitvoerbaar bij voorraad te verklaren"
+          ],
+          grounds: {
+            intro: [
+              "Eiser heeft werkzaamheden verricht voor gedaagde op basis van een overeenkomst van opdracht.",
+              "De overeengekomen werkzaamheden zijn conform afspraak uitgevoerd en opgeleverd."
+            ],
+            assignment_and_work: [
+              "Op of omstreeks 1 juli 2024 hebben partijen een overeenkomst gesloten waarbij eiser werkzaamheden zou verrichten voor gedaagde.",
+              "Eiser heeft de overeengekomen werkzaamheden conform afspraak uitgevoerd en in augustus 2024 opgeleverd.",
+              "Gedaagde heeft de oplevering geaccepteerd en is akkoord gegaan met de gefactureerde bedragen."
+            ],
+            terms_and_conditions: [
+              "Op de overeenkomst zijn de algemene voorwaarden van eiser van toepassing.",
+              "In deze voorwaarden is onder meer bepaald dat betaling dient plaats te vinden binnen 30 dagen na factuurdatum."
+            ],
+            invoice: [
+              "Eiser heeft op 15 augustus 2024 een factuur gezonden aan gedaagde voor een bedrag van € 5.000,-.",
+              "De betalingstermijn van 30 dagen is verstreken op 15 september 2024.",
+              "Ondanks meerdere aanmaningen heeft gedaagde niet betaald."
+            ],
+            interest_and_collection_costs: [
+              "Eiser heeft recht op wettelijke handelsrente vanaf de datum van opeisbaarheid (16 september 2024).",
+              "Eiser heeft buitengerechtelijke incassokosten gemaakt conform het Besluit vergoeding voor buitengerechtelijke incassokosten."
+            ],
+            defendant_response: [
+              "Gedaagde heeft op de aanmaningen niet of onvoldoende gereageerd.",
+              "Er is geen dispuut over de kwaliteit van de werkzaamheden of de hoogte van de factuur."
+            ],
+            evidence: {
+              list: [
+                "Overeenkomst van opdracht d.d. 1 juli 2024",
+                "Factuur nr. 2024-0815 d.d. 15 augustus 2024",
+                "Aanmaningsbrief d.d. 20 september 2024",
+                "Ingebrekestelling d.d. 1 oktober 2024"
+              ],
+              offer_of_proof: "Eiser biedt aan om bovengenoemde documenten in het geding te brengen en, indien nodig, bewijs te leveren door middel van getuigen.",
+              witnesses: [
+                "De heer/mevrouw [naam], werkzaam bij eiser, bekend met de uitvoering van de werkzaamheden",
+                "De heer/mevrouw [naam], betrokken bij de contractonderhandelingen"
+              ]
+            }
+          }
+        },
+        signoff: {
+          place: params.claimant.place || "Amsterdam",
+          date: new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }),
+          representative: params.claimant.rep_name || params.claimant.name
+        }
+      };
+      
+      return {
+        success: true,
+        summonsData: mockSummonsData
+      };
+    }
+    
     console.log("⚖️ Calling MindStudio GenerateSummons.flow...");
 
     const variables = {
@@ -1941,7 +2058,7 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
         console.log("Available thread variables:", Object.keys(data.thread?.variables || {}));
         return {
           success: false,
-          error: "No valid summons response from MindStudio - check variable names"
+          error: "MindStudio GenerateSummons.flow returned no summons payload. Verify workflow variables (expected: summons_data/summonsData/output/result containing SummonsV1 JSON). Set USE_MINDSTUDIO_SUMMONS_MOCK=true for development."
         };
       }
 
