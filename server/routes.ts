@@ -1802,6 +1802,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         facts_known.unshift(...summaryFacts);
       }
       
+      // ADD COMPLETE CASE INFORMATION from zaakinformatie
+      const caseInfoFacts: string[] = [];
+      
+      if (caseData.title) {
+        caseInfoFacts.push(`[Zaaktitel] ${caseData.title}`);
+      }
+      
+      if (caseData.description) {
+        // Split long description into sentences
+        const descSentences = caseData.description
+          .split(/\.\s+/)
+          .filter((s: string) => s.trim().length > 10)
+          .map((s: string) => s.trim().endsWith('.') ? s.trim() : s.trim() + '.');
+        caseInfoFacts.push(...descSentences.map((s: string) => `[Zaakomschrijving] ${s}`));
+      }
+      
+      if (caseData.claimAmount) {
+        caseInfoFacts.push(`[Gevorderd bedrag] € ${Number(caseData.claimAmount).toLocaleString('nl-NL', { minimumFractionDigits: 2 })}`);
+      }
+      
+      if (caseData.counterpartyName) {
+        caseInfoFacts.push(`[Wederpartij] ${caseData.counterpartyName}`);
+      }
+      
+      if (caseData.counterpartyAddress) {
+        caseInfoFacts.push(`[Adres wederpartij] ${caseData.counterpartyAddress}`);
+      }
+      
+      if (caseData.counterpartyType) {
+        caseInfoFacts.push(`[Type wederpartij] ${caseData.counterpartyType === 'individual' ? 'Particulier' : 'Bedrijf'}`);
+      }
+      
+      // Add case info facts at the very beginning
+      if (caseInfoFacts.length > 0) {
+        facts_known.unshift(...caseInfoFacts);
+      }
+      
       // FALLBACK: If no facts from analysis, extract from documents
       if (facts_known.length === 0 && documents.length > 0) {
         // Extract key facts from document text
