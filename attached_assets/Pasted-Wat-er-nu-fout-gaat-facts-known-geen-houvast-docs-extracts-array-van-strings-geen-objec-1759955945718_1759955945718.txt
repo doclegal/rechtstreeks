@@ -1,0 +1,93 @@
+Wat er nu fout gaat
+
+facts_known = [] (geen houvast).
+
+docs_extracts = array van strings, geen objecten → onbruikbaar.
+
+Enkele flags als strings i.p.v. booleans (bijv. avoid_numbers: "false").
+
+Wat je moet doen (kort en concreet)
+
+Vul minstens 2–3 feiten in
+facts_known:
+
+“Op 1 mei 2025 heeft mevrouw Jansen een keuken besteld bij Keukenwereld B.V.”
+
+“Levering zou uiterlijk 31 mei 2025 plaatsvinden, maar bleef uit.”
+
+“Eiser heeft meerdere aanmaningen gestuurd.”
+
+Maak docs_extracts bruikbaar (objects, geen strings)
+Gebruik exact dit dataformaat:
+
+"docs_extracts": [
+  {
+    "filename": "Overeenkomst keuken.docx",
+    "content": "KOOPOVEREENKOMST KEUKEN ... Verkoper: Keukenwereld B.V. ... Koper: Mevrouw A. Jansen ... Levering uiterlijk 31 mei 2025 ..."
+  },
+  {
+    "filename": "Brief van koper 30-06-2025.docx",
+    "content": "Op 1 mei 2025 besteld voor € 12.450. Levering nog niet ontvangen. Ingebrekestelling ..."
+  }
+]
+
+
+Tip: knip content desnoods tot ~3–5 zinnen per document (genoeg signalen, minder ruis).
+
+Stuur echte types
+
+no_html, dont_invent, avoid_numbers, flag_is_consumer_case → true/false (booleans).
+
+paragraph_max_words → number (bijv. 150).
+
+(Aanrader) Guard
+Voeg in MindStudio (of Replit) een check toe: als facts_known.length===0 en docs_extracts.length===0 → niet genereren, maar “missing_context” teruggeven.
+
+Referentie: minimale payload die wél vult
+
+Gebruik dit als leidraad voor wat je naar MindStudio stuurt (namen en waarden mag je vervangen; dit is géén code, enkel het dataformaat):
+
+{
+  "case_id": "2121405a-528a-4c9c-903f-08fc0042d0fc",
+  "locale": "nl-NL",
+  "template_version": "1.3",
+  "inhoud_subject": "Keuken niet geleverd",
+  "flag_is_consumer_case": true,
+
+  "eiser_naam": "Mevrouw A. Jansen",
+  "gedaagde_naam": "Keukenwereld B.V.",
+
+  "facts_known": [
+    "Op 1 mei 2025 heeft mevrouw Jansen een keuken besteld bij Keukenwereld B.V.",
+    "De keuken zou uiterlijk op 31 mei 2025 geleverd en geplaatst worden.",
+    "Levering is uitgebleven ondanks herhaalde verzoeken."
+  ],
+  "defenses_expected": [
+    "Vertraging door toeleverancier",
+    "Geen ingebrekestelling ontvangen"
+  ],
+  "legal_basis_refs": [
+    { "law": "BW", "article": "7:17", "note": "non-conformiteit (subtiel, geen uitgebreide citaten)" }
+  ],
+  "evidence_names": [
+    "Koopovereenkomst 01-05-2025",
+    "Brief koper 30-06-2025"
+  ],
+  "docs_extracts": [
+    {
+      "filename": "Overeenkomst keuken.docx",
+      "content": "Verkoper: Keukenwereld B.V. Koper: Mevrouw A. Jansen. Levering uiterlijk 31 mei 2025."
+    },
+    {
+      "filename": "Brief van koper 30-06-2025.docx",
+      "content": "Bestelling 1 mei 2025. Levering nog niet ontvangen. Ingebrekestelling verzonden."
+    }
+    ],
+
+  "tone": "zakelijk, neutraal",
+  "no_html": true,
+  "paragraph_max_words": 150,
+  "dont_invent": true,
+  "avoid_numbers": true,
+  "reference_law_style": "article_number"
+}

@@ -1744,23 +1744,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const facts_known: string[] = [];
       
       // Add known facts
-      if (parsedAnalysis?.facts?.known) {
-        facts_known.push(...parsedAnalysis.facts.known.map((f: string) => `[Vaststaand] ${f}`));
+      if (parsedAnalysis?.facts?.known && parsedAnalysis.facts.known.length > 0) {
+        facts_known.push(...parsedAnalysis.facts.known);
       }
       
       // Add disputed facts (important for legal context)
-      if (parsedAnalysis?.facts?.disputed) {
+      if (parsedAnalysis?.facts?.disputed && parsedAnalysis.facts.disputed.length > 0) {
         facts_known.push(...parsedAnalysis.facts.disputed.map((f: string) => `[Betwist] ${f}`));
       }
       
       // Add unclear facts
-      if (parsedAnalysis?.facts?.unclear) {
+      if (parsedAnalysis?.facts?.unclear && parsedAnalysis.facts.unclear.length > 0) {
         facts_known.push(...parsedAnalysis.facts.unclear.map((f: string) => `[Onduidelijk] ${f}`));
       }
       
-      // Add case summary if available
+      // Add case summary as first fact if available
       if (parsedAnalysis?.summary) {
-        facts_known.unshift(`[Samenvatting] ${parsedAnalysis.summary}`);
+        facts_known.unshift(parsedAnalysis.summary);
+      }
+      
+      // FALLBACK: If no facts from analysis, extract from documents
+      if (facts_known.length === 0 && documents.length > 0) {
+        // Extract key facts from document text
+        const caseTitle = caseData.title || "Zaak";
+        const counterparty = caseData.counterpartyName || "gedaagde";
+        
+        facts_known.push(
+          `Deze zaak betreft: ${caseTitle}`,
+          `Partijen: ${userFields.eiser_naam || "eiser"} versus ${counterparty}`,
+          `Er zijn ${documents.length} document(en) als bewijs bijgevoegd`
+        );
       }
       
       // DEFENSES: Include all defense-related analysis
@@ -1848,13 +1861,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`  - Evidence: ${evidence_names.length} items (provided + missing)`);
       console.log(`  - Document extracts: ${docs_extracts.length} files`);
 
-      // Call MindStudio CreateDagvaarding.flow
+      // Call MindStudio CreateDagvaarding.flow with explicitly typed values
       const result = await aiService.runCreateDagvaarding({
         case_id: caseId,
         locale: "nl",
         template_version: "1.3",
         inhoud_subject: userFields.onderwerp || caseData.title || "Betaling openstaande vordering",
-        flag_is_consumer_case: caseData.counterpartyType === "individual",
+        flag_is_consumer_case: Boolean(caseData.counterpartyType === "individual"), // Explicit boolean
         eiser_naam: userFields.eiser_naam || "Niet opgegeven",
         gedaagde_naam: userFields.gedaagde_naam || caseData.counterpartyName || "Niet opgegeven",
         facts_known,
@@ -1863,10 +1876,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         evidence_names,
         docs_extracts,
         tone: "formal",
-        no_html: true,
-        paragraph_max_words: 150,
-        dont_invent: true,
-        avoid_numbers: false,
+        no_html: true, // Boolean, not string
+        paragraph_max_words: 150, // Number, not string
+        dont_invent: true, // Boolean, not string
+        avoid_numbers: false, // Boolean, not string
         reference_law_style: "article_number"
       });
 

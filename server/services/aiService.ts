@@ -1878,7 +1878,14 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       reference_law_style: params.reference_law_style
     };
 
-    console.log("📤 CreateDagvaarding variables:", JSON.stringify(variables, null, 2));
+    // Log types for debugging
+    console.log("📤 CreateDagvaarding variables:");
+    console.log(`  - facts_known (${typeof params.facts_known}): ${params.facts_known.length} items`);
+    console.log(`  - docs_extracts (${typeof params.docs_extracts}): ${params.docs_extracts.length} items`);
+    console.log(`  - flag_is_consumer_case (${typeof params.flag_is_consumer_case}): ${params.flag_is_consumer_case}`);
+    console.log(`  - no_html (${typeof params.no_html}): ${params.no_html}`);
+    console.log(`  - paragraph_max_words (${typeof params.paragraph_max_words}): ${params.paragraph_max_words}`);
+    console.log("  - docs_extracts sample:", JSON.stringify(params.docs_extracts[0], null, 2));
 
     const requestBody = {
       workerId: process.env.MINDSTUDIO_WORKER_ID,
