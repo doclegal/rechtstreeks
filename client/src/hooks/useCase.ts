@@ -395,8 +395,11 @@ export function useDeleteSummons(caseId: string) {
 
   return useMutation({
     mutationFn: async (summonsId: string) => {
-      const response = await apiRequest("DELETE", `/api/summons/${summonsId}`);
-      return response.json();
+      const response = await apiRequest("DELETE", `/api/cases/${caseId}/summons/${summonsId}`);
+      if (response.ok) {
+        return { success: true };
+      }
+      throw new Error(`Failed to delete summons: ${response.status}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId] });
