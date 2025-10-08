@@ -64,6 +64,7 @@ export interface IStorage {
   createSummons(summonsData: InsertSummons): Promise<Summons>;
   getSummonsByCase(caseId: string): Promise<Summons[]>;
   getSummons(id: string): Promise<Summons | undefined>;
+  deleteSummons(id: string): Promise<void>;
   
   // Template operations
   getTemplates(kind?: string): Promise<Template[]>;
@@ -288,6 +289,10 @@ export class DatabaseStorage implements IStorage {
       .from(summons)
       .where(eq(summons.id, id));
     return summon;
+  }
+
+  async deleteSummons(id: string): Promise<void> {
+    await db.delete(summons).where(eq(summons.id, id));
   }
 
   // Template operations
