@@ -1812,26 +1812,7 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     }
   }
 
-  async runCreateDagvaarding(params: {
-    case_id: string;
-    locale: string;
-    template_version: string;
-    inhoud_subject: string;
-    flag_is_consumer_case: boolean;
-    eiser_naam: string;
-    gedaagde_naam: string;
-    facts_known: string[];
-    defenses_expected: string[];
-    legal_basis_refs: Array<{law: string, article: string, note: string}>;
-    evidence_names: string[];
-    docs_extracts: Array<{filename: string, content: string}>;
-    tone: string;
-    no_html: boolean;
-    paragraph_max_words: number;
-    dont_invent: boolean;
-    avoid_numbers: boolean;
-    reference_law_style: string;
-  }): Promise<{
+  async runCreateDagvaarding(params: any): Promise<{
     success: boolean;
     sections?: {
       grounds: {
@@ -1855,37 +1836,46 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     };
     error?: string;
   }> {
-    console.log("⚖️ Calling MindStudio CreateDagvaarding.flow...");
+    console.log("⚖️ Calling MindStudio CreateDagvaarding.flow with COMPLETE context...");
 
-    const variables = {
-      case_id: params.case_id,
-      locale: params.locale,
-      template_version: params.template_version,
-      inhoud_subject: params.inhoud_subject,
-      flag_is_consumer_case: params.flag_is_consumer_case,
-      eiser_naam: params.eiser_naam,
-      gedaagde_naam: params.gedaagde_naam,
-      facts_known: params.facts_known,
-      defenses_expected: params.defenses_expected,
-      legal_basis_refs: params.legal_basis_refs,
-      evidence_names: params.evidence_names,
-      docs_extracts: params.docs_extracts,
-      tone: params.tone,
-      no_html: params.no_html,
-      paragraph_max_words: params.paragraph_max_words,
-      dont_invent: params.dont_invent,
-      avoid_numbers: params.avoid_numbers,
-      reference_law_style: params.reference_law_style
-    };
-
-    // Log types for debugging
-    console.log("📤 CreateDagvaarding variables:");
-    console.log(`  - facts_known (${typeof params.facts_known}): ${params.facts_known.length} items`);
-    console.log(`  - docs_extracts (${typeof params.docs_extracts}): ${params.docs_extracts.length} items`);
-    console.log(`  - flag_is_consumer_case (${typeof params.flag_is_consumer_case}): ${params.flag_is_consumer_case}`);
-    console.log(`  - no_html (${typeof params.no_html}): ${params.no_html}`);
-    console.log(`  - paragraph_max_words (${typeof params.paragraph_max_words}): ${params.paragraph_max_words}`);
-    console.log("  - docs_extracts sample:", JSON.stringify(params.docs_extracts[0], null, 2));
+    // Check if this is the new complete payload format or old format
+    const isCompletePayload = params.no_summarize === true && params.parties && params.docs_full;
+    
+    let variables;
+    
+    if (isCompletePayload) {
+      // NEW FORMAT: Pass entire complete payload as-is
+      variables = params;
+      console.log("📤 Sending COMPLETE context (no summarization):");
+      console.log(`  - Facts (full): ${params.facts_known_full?.length || 0} items`);
+      console.log(`  - Documents (chunked): ${params.docs_full?.length || 0} chunks`);
+      console.log(`  - Evidence (full): ${params.evidence_full?.length || 0} items`);
+      console.log(`  - Analysis (full): ${params.analysis_full ? 'included' : 'missing'}`);
+      console.log(`  - Total payload size: ~${JSON.stringify(params).length} chars`);
+    } else {
+      // OLD FORMAT: Legacy compatibility
+      variables = {
+        case_id: params.case_id,
+        locale: params.locale,
+        template_version: params.template_version,
+        inhoud_subject: params.inhoud_subject,
+        flag_is_consumer_case: params.flag_is_consumer_case,
+        eiser_naam: params.eiser_naam,
+        gedaagde_naam: params.gedaagde_naam,
+        facts_known: params.facts_known,
+        defenses_expected: params.defenses_expected,
+        legal_basis_refs: params.legal_basis_refs,
+        evidence_names: params.evidence_names,
+        docs_extracts: params.docs_extracts,
+        tone: params.tone,
+        no_html: params.no_html,
+        paragraph_max_words: params.paragraph_max_words,
+        dont_invent: params.dont_invent,
+        avoid_numbers: params.avoid_numbers,
+        reference_law_style: params.reference_law_style
+      };
+      console.log("📤 Sending legacy format (summarized)");
+    }
 
     const requestBody = {
       workerId: process.env.MINDSTUDIO_WORKER_ID,

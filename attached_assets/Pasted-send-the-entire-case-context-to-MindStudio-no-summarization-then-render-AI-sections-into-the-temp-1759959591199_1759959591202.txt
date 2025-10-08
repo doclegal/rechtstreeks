@@ -1,0 +1,101 @@
+send the entire case context to MindStudio (no summarization), then render AI sections into the template
+
+Goal
+When the user clicks Generate summons, collect all available data from the app (UI state + DB + uploads) and send it to MindStudio without any summarization or condensation. MindStudio must receive the raw, lossless context. After the run, insert the returned narrative sections into the AI placeholders in the HTML template, leaving all fixed text untouched.
+
+What to send (exact structure; no summarizing)
+Create one top-level launch payload with these keys. Every field must be sent in full, not summarized, not truncated (except chunking mechanics below).
+
+case_id (string), locale (string), template_version (string)
+
+no_summarize (boolean = true), allow_long_context (boolean = true)
+
+parties: full objects for claimant and defendant (names, addresses, contact details, identifiers)
+
+court_info: full object (court name, addresses, session date/time, deadlines)
+
+claims_all: full array of claims (each with full text, amounts, legal basis)
+
+amounts_all: all amounts, interest parameters, fee policies (full detail)
+
+user_fields_all: all user-entered fields from the template (every raw value)
+
+facts_known_full: array of strings — every fact line you have (no merging, no paraphrasing)
+
+defenses_expected_full: array of strings — every known/anticipated defence (full text)
+
+legal_basis_full: array of {law, article, note} — entire set used in the case
+
+timeline_full: array of {date, actor, event, raw_text} — full timeline items if available
+
+analysis_full: object containing the complete internal analysis JSON from the app (facts, legal analysis, risks, next actions, everything)
+
+communications_full: array of {date, channel, direction, raw_text} — all messages/letters/emails, full content
+
+evidence_full: array of {id, title, type, source, raw_notes, links} — complete evidence registry
+
+docs_full: array of document chunks with no summarization. Use this shape and include all text:
+
+{ filename: string, page?: number, chunk_index: number, total_chunks: number, content: string }
+
+Split large files into sequential chunks (e.g., 6000–8000 characters per chunk). Preserve order via chunk_index and total_chunks.
+
+attachments_meta: array of metadata for all uploaded files (name, size, mimetype, checksum)
+
+flags: { is_consumer_case: boolean, avoid_numbers: boolean, dont_invent: boolean, no_html: boolean }
+
+style: { tone: string, paragraph_max_words: number, reference_law_style: string }
+
+Pre-flight rules (before calling MindStudio)
+
+Do not summarize. Pass every field as-is.
+
+Normalize types: booleans as booleans, numbers as numbers, arrays as arrays; never send booleans as strings.
+
+If any document exceeds token limits, chunk it into docs_full as described; do not delete or compress content.
+
+If the combined payload is still too large for a single run, support paging: split docs_full across multiple sequential calls with a context_batch_id and batch_index/total_batches. Include the non-document context in every batch. (MindStudio will use the latest batch for generation.)
+
+MindStudio call
+
+Worker/flow: CreateDagvaarding.flow
+
+Send the single payload object above as the launch variables (either as distinct launch vars or nested under raw_context).
+
+If nested, use keys: raw_context (object), no_summarize (true), allow_long_context (true).
+
+Expect the End-block to return:
+
+Key: result
+
+Value: the variable holding the strict JSON output with sections (as previously defined).
+
+Expected response (unchanged)
+
+result.sections.grounds.(intro|assignment_and_work|terms_and_conditions|invoice|interest_and_collection_costs|defendant_response) → string[]
+
+result.sections.evidence.(list:string[], offer_of_proof:string, witnesses:string[])
+
+result.sections.orders_requested_text → string[]
+
+result.meta.(template_version, language)
+
+Post-processing
+
+Validate that each "grounds" subsection has multiple paragraphs.
+
+If any subsection is too short, re-run with the same full payload plus a flag { expand_detail: true }. Do not alter or summarize the input.
+
+Insert returned text into the AI placeholders in the HTML template without changing any fixed wording or layout.
+
+Log case_id, full request payload (redact PII where required), and full MindStudio response for auditability.
+
+Acceptance criteria
+
+Replit transmits all case data to MindStudio verbatim (no summarization or paraphrasing).
+
+Large documents are included completely via ordered chunks in docs_full.
+
+MindStudio receives enough context to produce long, case-specific prose.
+
+The UI shows rich, multi-paragraph sections in the summons after generation, with fixed template text preserved exactly.

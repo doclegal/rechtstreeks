@@ -1703,7 +1703,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Generate summons V2 with AI - using CreateDagvaarding.flow
+  // Helper: Chunk document text into manageable pieces (6000-8000 chars)
+  function chunkDocumentText(filename: string, text: string, chunkSize = 7000): Array<{
+    filename: string;
+    page?: number;
+    chunk_index: number;
+    total_chunks: number;
+    content: string;
+  }> {
+    if (!text || text.length === 0) return [];
+    
+    const chunks: Array<{filename: string; chunk_index: number; total_chunks: number; content: string}> = [];
+    let position = 0;
+    
+    while (position < text.length) {
+      const chunk = text.substring(position, position + chunkSize);
+      chunks.push({
+        filename,
+        chunk_index: chunks.length,
+        total_chunks: 0, // Will be set after
+        content: chunk
+      });
+      position += chunkSize;
+    }
+    
+    // Set total_chunks for all
+    const totalChunks = chunks.length;
+    chunks.forEach(c => c.total_chunks = totalChunks);
+    
+    return chunks;
+  }
+
+  // Generate summons V2 with AI - using CreateDagvaarding.flow with COMPLETE context (no summarization)
   app.post('/api/cases/:id/summons-v2/generate', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -1720,10 +1751,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Case must be analyzed first" });
       }
 
-      // Get case documents for extracts
+      // Get case documents with full text
       const documents = await storage.getDocumentsByCase(caseId);
       
-      console.log("🤖 Generating dagvaarding with CreateDagvaarding.flow...");
+      console.log("🤖 Generating dagvaarding with COMPLETE context (no summarization)...");
       
       // Parse analysis data (support both new and old kanton check formats)
       let parsedAnalysis: any = {};
@@ -1770,206 +1801,178 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Failed to parse analysis:", e);
       }
 
-      // Prepare input variables for CreateDagvaarding.flow with complete analysis data
+      // BUILD COMPLETE PAYLOAD - NO SUMMARIZATION
+      console.log("📦 Building complete context payload (no summarization)...");
       
-      // FACTS: Combine all fact types with clear labels
-      const facts_known: string[] = [];
+      // 1. PARTIES - Complete party information
+      const parties = {
+        claimant: {
+          name: userFields.eiser_naam || "Niet opgegeven",
+          address: userFields.eiser_adres || "",
+          contact: userFields.eiser_email || "",
+          type: "individual" // Could be enhanced
+        },
+        defendant: {
+          name: userFields.gedaagde_naam || caseData.counterpartyName || "Niet opgegeven",
+          address: userFields.gedaagde_adres || caseData.counterpartyAddress || "",
+          contact: caseData.counterpartyEmail || "",
+          type: caseData.counterpartyType || "unknown"
+        }
+      };
       
-      // Add known facts
-      if (parsedAnalysis?.facts?.known && parsedAnalysis.facts.known.length > 0) {
-        facts_known.push(...parsedAnalysis.facts.known);
+      // 2. COURT INFO - Complete court details
+      const court_info = {
+        name: userFields.rechtbank_naam || "Rechtbank Amsterdam",
+        location: userFields.rechtbank_locatie || "Amsterdam",
+        session_date: userFields.zitting_datum || "",
+        session_time: userFields.zitting_tijd || ""
+      };
+      
+      // 3. CLAIMS - All claims with full detail
+      const claims_all = [{
+        description: caseData.title || "Betaling openstaande vordering",
+        amount: caseData.claimAmount ? Number(caseData.claimAmount) : 0,
+        details: caseData.description || "",
+        legal_basis: parsedAnalysis?.legal_analysis?.legal_basis || []
+      }];
+      
+      // 4. AMOUNTS - Complete financial details
+      const amounts_all = {
+        principal: caseData.claimAmount ? Number(caseData.claimAmount) : 0,
+        interest_rate: userFields.rente_percentage || 0,
+        collection_costs: userFields.buitengerechtelijke_incassokosten || 0,
+        court_fees: userFields.griffierecht || 0,
+        total: 0 // Will be calculated
+      };
+      
+      // 5. USER FIELDS - ALL user-entered fields (complete, no filtering)
+      const user_fields_all = { ...userFields };
+      
+      // 6. FACTS - COMPLETE facts array (no summarization)
+      const facts_known_full: string[] = [];
+      
+      // Add ALL known facts verbatim
+      if (parsedAnalysis?.facts?.known) {
+        facts_known_full.push(...parsedAnalysis.facts.known);
       }
       
-      // Add disputed facts (important for legal context)
-      if (parsedAnalysis?.facts?.disputed && parsedAnalysis.facts.disputed.length > 0) {
-        facts_known.push(...parsedAnalysis.facts.disputed.map((f: string) => `[Betwist] ${f}`));
+      // Add ALL disputed facts with label
+      if (parsedAnalysis?.facts?.disputed) {
+        facts_known_full.push(...parsedAnalysis.facts.disputed.map((f: string) => `[BETWIST] ${f}`));
       }
       
-      // Add unclear facts
-      if (parsedAnalysis?.facts?.unclear && parsedAnalysis.facts.unclear.length > 0) {
-        facts_known.push(...parsedAnalysis.facts.unclear.map((f: string) => `[Onduidelijk] ${f}`));
+      // Add ALL unclear facts with label
+      if (parsedAnalysis?.facts?.unclear) {
+        facts_known_full.push(...parsedAnalysis.facts.unclear.map((f: string) => `[ONDUIDELIJK] ${f}`));
       }
       
-      // Add case summary facts_brief as first fact if available (as STRING, not object!)
-      if (parsedAnalysis?.summary?.facts_brief) {
-        // Split facts_brief into separate sentences and add each as a fact
-        const summaryFacts = parsedAnalysis.summary.facts_brief
-          .split(/\.\s+/)
-          .filter((s: string) => s.trim().length > 10)
-          .map((s: string) => s.trim().endsWith('.') ? s.trim() : s.trim() + '.');
-        
-        // Add summary facts at the beginning
-        facts_known.unshift(...summaryFacts);
-      }
+      // Add case context facts
+      if (caseData.title) facts_known_full.unshift(`[ZAAKTITEL] ${caseData.title}`);
+      if (caseData.description) facts_known_full.push(`[OMSCHRIJVING] ${caseData.description}`);
+      if (caseData.claimAmount) facts_known_full.push(`[BEDRAG] € ${Number(caseData.claimAmount).toFixed(2)}`);
       
-      // ADD COMPLETE CASE INFORMATION from zaakinformatie
-      const caseInfoFacts: string[] = [];
+      // 7. DEFENSES - Complete defense analysis
+      const defenses_expected_full: string[] = parsedAnalysis?.legal_analysis?.potential_defenses || [];
       
-      if (caseData.title) {
-        caseInfoFacts.push(`[Zaaktitel] ${caseData.title}`);
-      }
+      // 8. LEGAL BASIS - Complete legal foundation
+      const legal_basis_full = parsedAnalysis?.legal_analysis?.legal_basis || [];
       
-      if (caseData.description) {
-        // Split long description into sentences
-        const descSentences = caseData.description
-          .split(/\.\s+/)
-          .filter((s: string) => s.trim().length > 10)
-          .map((s: string) => s.trim().endsWith('.') ? s.trim() : s.trim() + '.');
-        caseInfoFacts.push(...descSentences.map((s: string) => `[Zaakomschrijving] ${s}`));
-      }
+      // 9. TIMELINE - Complete timeline if available
+      const timeline_full: Array<{date: string, actor: string, event: string, raw_text: string}> = [];
+      // Could be populated from events table in future
       
-      if (caseData.claimAmount) {
-        caseInfoFacts.push(`[Gevorderd bedrag] € ${Number(caseData.claimAmount).toLocaleString('nl-NL', { minimumFractionDigits: 2 })}`);
-      }
+      // 10. ANALYSIS - COMPLETE analysis JSON (no filtering)
+      const analysis_full = parsedAnalysis;
       
-      if (caseData.counterpartyName) {
-        caseInfoFacts.push(`[Wederpartij] ${caseData.counterpartyName}`);
-      }
+      // 11. COMMUNICATIONS - All messages/letters (future: from letters table)
+      const communications_full: Array<{date: string, channel: string, direction: string, raw_text: string}> = [];
       
-      if (caseData.counterpartyAddress) {
-        caseInfoFacts.push(`[Adres wederpartij] ${caseData.counterpartyAddress}`);
-      }
-      
-      if (caseData.counterpartyType) {
-        caseInfoFacts.push(`[Type wederpartij] ${caseData.counterpartyType === 'individual' ? 'Particulier' : 'Bedrijf'}`);
-      }
-      
-      // Add case info facts at the very beginning
-      if (caseInfoFacts.length > 0) {
-        facts_known.unshift(...caseInfoFacts);
-      }
-      
-      // FALLBACK: If no facts from analysis, extract from documents
-      if (facts_known.length === 0 && documents.length > 0) {
-        // Extract key facts from document text
-        const caseTitle = caseData.title || "Zaak";
-        const counterparty = caseData.counterpartyName || "gedaagde";
-        
-        facts_known.push(
-          `Deze zaak betreft: ${caseTitle}`,
-          `Partijen: ${userFields.eiser_naam || "eiser"} versus ${counterparty}`,
-          `Er zijn ${documents.length} document(en) als bewijs bijgevoegd`
-        );
-      }
-      
-      // DEFENSES: Include all defense-related analysis
-      const defenses_expected: string[] = [];
-      
-      if (parsedAnalysis?.legal_analysis?.potential_defenses) {
-        defenses_expected.push(...parsedAnalysis.legal_analysis.potential_defenses);
-      }
-      
-      // Add legal issues as context for defenses
-      if (parsedAnalysis?.legal_analysis?.legal_issues) {
-        defenses_expected.push(...parsedAnalysis.legal_analysis.legal_issues.map((i: string) => `[Geschilpunt] ${i}`));
-      }
-      
-      // LEGAL BASIS: Include comprehensive legal analysis
-      const legal_basis_refs: Array<{law: string, article: string, note: string}> = [];
-      
-      // Add structured legal basis
-      if (parsedAnalysis?.legal_analysis?.legal_basis) {
-        legal_basis_refs.push(...parsedAnalysis.legal_analysis.legal_basis.map((b: any) => ({
-          law: b.law || '',
-          article: b.article || '',
-          note: b.note || ''
+      // 12. EVIDENCE - Complete evidence registry
+      const evidence_full: Array<{id: string, title: string, type: string, source: string, raw_notes: string}> = [];
+      if (parsedAnalysis?.evidence?.provided) {
+        evidence_full.push(...parsedAnalysis.evidence.provided.map((e: any, idx: number) => ({
+          id: `evidence_${idx}`,
+          title: e.doc_name || e.source || `Evidence ${idx + 1}`,
+          type: e.type || "document",
+          source: e.source || "",
+          raw_notes: e.notes || ""
         })));
       }
       
-      // Add dispute context as first legal basis entry
-      if (parsedAnalysis?.legal_analysis?.what_is_the_dispute) {
-        legal_basis_refs.unshift({
-          law: 'Context',
-          article: 'Kern geschil',
-          note: parsedAnalysis.legal_analysis.what_is_the_dispute
-        });
+      // 13. DOCS FULL - Complete documents with chunking (NO summarization)
+      const docs_full: Array<{filename: string, chunk_index: number, total_chunks: number, content: string}> = [];
+      for (const doc of documents) {
+        if (doc.extractedText && doc.extractedText.length > 0) {
+          const chunks = chunkDocumentText(doc.filename, doc.extractedText, 7000);
+          docs_full.push(...chunks);
+        }
       }
       
-      // Add preliminary assessment
-      if (parsedAnalysis?.legal_analysis?.preliminary_assessment) {
-        legal_basis_refs.push({
-          law: 'Beoordeling',
-          article: 'Voorlopig',
-          note: parsedAnalysis.legal_analysis.preliminary_assessment
-        });
-      }
+      // 14. ATTACHMENTS META - Metadata for all files
+      const attachments_meta = documents.map(doc => ({
+        name: doc.filename,
+        size: doc.sizeBytes || 0,
+        mimetype: doc.mimetype || "application/octet-stream"
+      }));
       
-      // Add risks as legal considerations
-      if (parsedAnalysis?.legal_analysis?.risks) {
-        parsedAnalysis.legal_analysis.risks.forEach((risk: string, idx: number) => {
-          legal_basis_refs.push({
-            law: 'Risico',
-            article: `${idx + 1}`,
-            note: risk
-          });
-        });
-      }
+      // 15. FLAGS - Control flags
+      const flags = {
+        is_consumer_case: caseData.counterpartyType === "individual",
+        avoid_numbers: false,
+        dont_invent: true,
+        no_html: true,
+        no_summarize: true,
+        allow_long_context: true
+      };
       
-      // EVIDENCE: Include both provided and missing evidence
-      const evidence_names: string[] = [];
+      // 16. STYLE - Writing style preferences
+      const style = {
+        tone: "formal",
+        paragraph_max_words: 150,
+        reference_law_style: "article_number"
+      };
       
-      if (parsedAnalysis?.evidence?.provided) {
-        evidence_names.push(...parsedAnalysis.evidence.provided.map((e: any) => 
-          e.doc_name || e.source || ''
-        ));
-      }
-      
-      // Add missing evidence with clear marker
-      if (parsedAnalysis?.evidence?.missing) {
-        evidence_names.push(...parsedAnalysis.evidence.missing.map((m: string) => 
-          `[ONTBREEKT] ${m}`
-        ));
-      }
-      
-      // docs_extracts: Remove duplicates and limit to 2-4 sentences per document
-      const seen = new Set<string>();
-      const docs_extracts: Array<{filename: string, content: string}> = documents
-        .filter(doc => {
-          if (!doc.extractedText || seen.has(doc.filename)) return false;
-          seen.add(doc.filename);
-          return true;
-        })
-        .map(doc => {
-          // Extract first 2-4 sentences (max 300 chars)
-          const text = doc.extractedText || '';
-          const sentences = text.split(/\.\s+/).slice(0, 4).join('. ');
-          const content = sentences.length > 300 ? sentences.substring(0, 300) + '...' : sentences;
-          
-          return {
-            filename: doc.filename,
-            content: content.endsWith('.') ? content : content + '.'
-          };
-        });
-
-      // Log comprehensive analysis data being sent
-      console.log("📊 Analysis data being sent to MindStudio:");
-      console.log(`  - Facts: ${facts_known.length} items (known/disputed/unclear)`);
-      console.log(`  - Defenses/Issues: ${defenses_expected.length} items`);
-      console.log(`  - Legal basis: ${legal_basis_refs.length} items (including risks/assessment)`);
-      console.log(`  - Evidence: ${evidence_names.length} items (provided + missing)`);
-      console.log(`  - Document extracts: ${docs_extracts.length} files`);
-
-      // Call MindStudio CreateDagvaarding.flow with explicitly typed values
-      const result = await aiService.runCreateDagvaarding({
+      // Assemble complete payload
+      const completePayload = {
+        // Meta
         case_id: caseId,
         locale: "nl",
         template_version: "1.3",
-        inhoud_subject: userFields.onderwerp || caseData.title || "Betaling openstaande vordering",
-        flag_is_consumer_case: Boolean(caseData.counterpartyType === "individual"), // Explicit boolean
-        eiser_naam: userFields.eiser_naam || "Niet opgegeven",
-        gedaagde_naam: userFields.gedaagde_naam || caseData.counterpartyName || "Niet opgegeven",
-        facts_known,
-        defenses_expected,
-        legal_basis_refs,
-        evidence_names,
-        docs_extracts,
-        tone: "formal",
-        no_html: true, // Boolean, not string
-        paragraph_max_words: 150, // Number, not string
-        dont_invent: true, // Boolean, not string
-        avoid_numbers: false, // Boolean, not string
-        reference_law_style: "article_number"
-      });
+        
+        // Control flags
+        no_summarize: true,
+        allow_long_context: true,
+        
+        // Complete data (no summarization)
+        parties,
+        court_info,
+        claims_all,
+        amounts_all,
+        user_fields_all,
+        facts_known_full,
+        defenses_expected_full,
+        legal_basis_full,
+        timeline_full,
+        analysis_full,
+        communications_full,
+        evidence_full,
+        docs_full,
+        attachments_meta,
+        flags,
+        style
+      };
+      
+      // Log payload stats
+      console.log("📊 Complete payload built:");
+      console.log(`  - Facts (full): ${facts_known_full.length} items`);
+      console.log(`  - Defenses (full): ${defenses_expected_full.length} items`);
+      console.log(`  - Legal basis (full): ${legal_basis_full.length} items`);
+      console.log(`  - Evidence (full): ${evidence_full.length} items`);
+      console.log(`  - Documents (chunked): ${docs_full.length} chunks from ${documents.length} files`);
+      console.log(`  - Total payload size: ~${JSON.stringify(completePayload).length} chars`);
+
+      // Call MindStudio with complete context
+      const result = await aiService.runCreateDagvaarding(completePayload);
 
       if (!result.success || !result.sections) {
         throw new Error(result.error || "Failed to generate dagvaarding from MindStudio");
