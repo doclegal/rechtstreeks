@@ -8,6 +8,7 @@ import { fileService } from "./services/fileService";
 import { pdfService } from "./services/pdfService";
 import { mockIntegrations } from "./services/mockIntegrations";
 import { handleDatabaseError } from "./db";
+import { validateSummonsV1 } from "@shared/summonsValidation";
 import multer from "multer";
 import { z } from "zod";
 
@@ -1498,6 +1499,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // The summonsData is the complete SummonsV1 structure
       const summonsData = summonsResult.summonsData;
+
+      // Validate the summons data against SummonsV1 schema
+      const validationResult = validateSummonsV1(summonsData);
+      
+      if (!validationResult.success) {
+        console.error("❌ Summons validation failed:", validationResult.errors);
+        return res.status(400).json({
+          message: "De gegenereerde dagvaarding voldoet niet aan het verwachte formaat",
+          validationErrors: validationResult.errors
+        });
+      }
+
+      console.log("✅ Summons data validated successfully");
 
       // For now, we'll store the JSON and generate HTML later
       // In a future task, we'll create the HTML template component

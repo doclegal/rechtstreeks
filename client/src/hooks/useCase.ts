@@ -347,6 +347,86 @@ export function useDeleteLetter(caseId: string) {
   });
 }
 
+export function useGenerateSummons(caseId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/cases/${caseId}/summons`);
+      return response.json();
+    },
+    onSuccess: async () => {
+      // Invalidate and immediately refetch the queries
+      await queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/cases", caseId] });
+      await queryClient.refetchQueries({ queryKey: ["/api/cases"] });
+      
+      toast({
+        title: "Dagvaarding gegenereerd",
+        description: "De dagvaarding is nu zichtbaar",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Dagvaarding generatie mislukt",
+        description: "Er is een fout opgetreden bij het genereren van de dagvaarding",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useDeleteSummons(caseId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (summonsId: string) => {
+      const response = await apiRequest("DELETE", `/api/summons/${summonsId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+      toast({
+        title: "Dagvaarding verwijderd",
+        description: "De dagvaarding is succesvol verwijderd",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Verwijderen mislukt",
+        description: "Er is een fout opgetreden bij het verwijderen van de dagvaarding",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 export function useOrderBailiff(caseId: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
