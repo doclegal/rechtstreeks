@@ -1732,7 +1732,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           parsedAnalysis = analysis.analysisJson;
         } else if (analysis.rawText) {
           const rawData = JSON.parse(analysis.rawText);
-          parsedAnalysis = rawData.parsedAnalysis || rawData;
+          // Try multiple locations: result.analysis_json (full analysis), parsedAnalysis (old format), or root
+          parsedAnalysis = rawData.result?.analysis_json || rawData.parsedAnalysis || rawData;
         } else if (analysis.factsJson || analysis.legalBasisJson) {
           // OLD KANTON CHECK FORMAT - convert to new format
           console.log("⚠️ Converting old kanton check format to new format");
@@ -1789,9 +1790,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         facts_known.push(...parsedAnalysis.facts.unclear.map((f: string) => `[Onduidelijk] ${f}`));
       }
       
-      // Add case summary as first fact if available
-      if (parsedAnalysis?.summary) {
-        facts_known.unshift(parsedAnalysis.summary);
+      // Add case summary facts_brief as first fact if available (as STRING, not object!)
+      if (parsedAnalysis?.summary?.facts_brief) {
+        // Split facts_brief into separate sentences and add each as a fact
+        const summaryFacts = parsedAnalysis.summary.facts_brief
+          .split(/\.\s+/)
+          .filter((s: string) => s.trim().length > 10)
+          .map((s: string) => s.trim().endsWith('.') ? s.trim() : s.trim() + '.');
+        
+        // Add summary facts at the beginning
+        facts_known.unshift(...summaryFacts);
       }
       
       // FALLBACK: If no facts from analysis, extract from documents
