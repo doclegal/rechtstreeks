@@ -46,6 +46,7 @@ export interface IStorage {
   createDocument(docData: InsertCaseDocument): Promise<CaseDocument>;
   getDocumentsByCase(caseId: string): Promise<CaseDocument[]>;
   getDocument(id: string): Promise<CaseDocument | undefined>;
+  updateDocument(id: string, updates: Partial<InsertCaseDocument>): Promise<CaseDocument>;
   deleteDocument(id: string): Promise<void>;
   touchCase(id: string): Promise<void>; // Update only timestamp
   
@@ -184,6 +185,15 @@ export class DatabaseStorage implements IStorage {
       .from(caseDocuments)
       .where(eq(caseDocuments.id, id));
     return document;
+  }
+
+  async updateDocument(id: string, updates: Partial<InsertCaseDocument>): Promise<CaseDocument> {
+    const [updatedDocument] = await db
+      .update(caseDocuments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(caseDocuments.id, id))
+      .returning();
+    return updatedDocument;
   }
 
   async deleteDocument(id: string): Promise<void> {

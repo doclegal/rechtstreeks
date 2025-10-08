@@ -376,6 +376,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Re-extract text from existing documents (fix for .txt files)
+  app.post('/api/cases/:id/re-extract', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      // Verify case ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      // Get all documents for this case
+      const documents = await storage.getDocumentsByCase(caseId);
+      
+      let reExtractedCount = 0;
+      const results = [];
+      
+      for (const doc of documents) {
+        // Only re-extract if current text indicates extraction failed
+        if (doc.extractedText && doc.extractedText.includes('Tekstextractie niet ondersteund')) {
+          try {
+            // Get file from storage
+            const fileStream = await fileService.getFile(doc.storageKey);
+            if (!fileStream) {
+              console.warn(`File not found for document ${doc.id}`);
+              continue;
+            }
+            
+            // Convert stream to buffer
+            const chunks: any[] = [];
+            for await (const chunk of fileStream) {
+              chunks.push(chunk);
+            }
+            const buffer = Buffer.concat(chunks);
+            
+            // Re-extract text with updated logic
+            const mockFile: Express.Multer.File = {
+              buffer,
+              originalname: doc.filename,
+              mimetype: doc.mimetype || 'application/octet-stream',
+              fieldname: 'file',
+              encoding: '7bit',
+              size: buffer.length,
+              stream: fileStream,
+              destination: '',
+              filename: doc.filename,
+              path: ''
+            };
+            
+            const newExtractedText = await fileService.extractText(mockFile);
+            
+            // Update document with new extracted text
+            await storage.updateDocument(doc.id, { extractedText: newExtractedText });
+            
+            reExtractedCount++;
+            results.push({
+              id: doc.id,
+              filename: doc.filename,
+              oldLength: doc.extractedText.length,
+              newLength: newExtractedText.length,
+              success: true
+            });
+            
+          } catch (error) {
+            console.error(`Failed to re-extract ${doc.filename}:`, error);
+            results.push({
+              id: doc.id,
+              filename: doc.filename,
+              success: false,
+              error: error instanceof Error ? error.message : 'Unknown error'
+            });
+          }
+        }
+      }
+      
+      res.json({ 
+        reExtractedCount, 
+        totalDocuments: documents.length,
+        results 
+      });
+      
+    } catch (error) {
+      console.error("Error re-extracting documents:", error);
+      res.status(500).json({ message: "Failed to re-extract documents" });
+    }
+  });
+
   // Receipt upload rate limiting (sliding window tracking)
   const receiptRateLimit = new Map<string, { count: number; windowStart: number }>();
 
