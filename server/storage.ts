@@ -107,9 +107,9 @@ export class DatabaseStorage implements IStorage {
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
-        target: users.email,
+        target: users.id, // Conflict on OIDC subject (id), not email
         set: {
-          id: userData.id, // Update ID to the new OIDC subject
+          email: userData.email,
           firstName: userData.firstName,
           lastName: userData.lastName,
           profileImageUrl: userData.profileImageUrl,
