@@ -6,6 +6,8 @@ import { useActiveCase } from "@/contexts/CaseContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
 import { Scale, PlusCircle, FileText, AlertCircle, Loader2, Download } from "lucide-react";
 import { SummonsTemplateV2 } from "@/components/SummonsTemplateV2";
@@ -24,6 +26,24 @@ export default function SummonsEditor() {
   const [aiFields, setAIFields] = useState<Partial<AIFields>>({});
   const [activeTab, setActiveTab] = useState<"template" | "form">("form");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+
+  // Fetch available templates
+  const { data: templates, isLoading: templatesLoading } = useQuery<any[]>({
+    queryKey: ["/api/templates", "summons"],
+    queryFn: async () => {
+      const response = await fetch("/api/templates?kind=summons");
+      if (!response.ok) throw new Error("Failed to fetch templates");
+      return response.json();
+    },
+  });
+
+  // Set default template when templates load
+  useEffect(() => {
+    if (templates && templates.length > 0 && !selectedTemplateId) {
+      setSelectedTemplateId(templates[0].id);
+    }
+  }, [templates, selectedTemplateId]);
 
   // Fetch existing summons for this case
   const { data: existingSummons } = useQuery<any[]>({
@@ -262,6 +282,36 @@ export default function SummonsEditor() {
           </Button>
         </div>
       </div>
+
+      {/* Template Selector */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-2">
+            <Label htmlFor="template-select">Kies dagvaarding template</Label>
+            <Select 
+              value={selectedTemplateId} 
+              onValueChange={setSelectedTemplateId}
+              disabled={templatesLoading}
+            >
+              <SelectTrigger id="template-select" data-testid="select-template">
+                <SelectValue placeholder="Selecteer een template..." />
+              </SelectTrigger>
+              <SelectContent>
+                {templates?.map((template) => (
+                  <SelectItem key={template.id} value={template.id} data-testid={`template-option-${template.version}`}>
+                    {template.name} ({template.version})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedTemplateId && templates && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Geselecteerd: {templates.find(t => t.id === selectedTemplateId)?.name}
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Info box */}
       <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950">
