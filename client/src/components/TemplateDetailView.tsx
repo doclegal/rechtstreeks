@@ -6,7 +6,18 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Settings2, Plus, X, Save, ChevronDown, ChevronRight } from "lucide-react";
+import { Settings2, Plus, X, Save, ChevronDown, ChevronRight, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface TemplateDetailViewProps {
   template: any;
@@ -17,6 +28,7 @@ export function TemplateDetailView({ template, onUpdate }: TemplateDetailViewPro
   const { toast } = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Flow linking state
   const [flowName, setFlowName] = useState(template.mindstudioFlowName || "");
@@ -94,6 +106,30 @@ export function TemplateDetailView({ template, onUpdate }: TemplateDetailViewPro
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDeleteTemplate = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await apiRequest("DELETE", `/api/templates/${template.id}`);
+      
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/templates"] });
+        toast({
+          title: "Template verwijderd",
+          description: `Template "${template.name}" is succesvol verwijderd`,
+        });
+        if (onUpdate) onUpdate();
+      }
+    } catch (error) {
+      toast({
+        title: "Verwijderen mislukt",
+        description: "Er is een fout opgetreden bij het verwijderen van de template",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
   
@@ -284,7 +320,45 @@ export function TemplateDetailView({ template, onUpdate }: TemplateDetailViewPro
             </div>
           </div>
           
-          <div className="flex justify-end pt-4">
+          <div className="flex justify-between pt-4">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="destructive" 
+                  disabled={isDeleting}
+                  data-testid="button-delete-template"
+                >
+                  {isDeleting ? (
+                    <>Verwijderen...</>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Template Verwijderen
+                    </>
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Template definitief verwijderen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Je staat op het punt om template "{template.name}" ({template.version}) te verwijderen. 
+                    Deze actie kan niet ongedaan gemaakt worden. Het template wordt volledig uit het systeem verwijderd.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="cancel-delete">Annuleren</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleDeleteTemplate}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    data-testid="confirm-delete"
+                  >
+                    Ja, verwijderen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            
             <Button 
               onClick={handleSaveFlowConfig} 
               disabled={isSaving || !flowName}
