@@ -90,27 +90,59 @@ The database schema supports a complete legal case lifecycle with document versi
 The summons feature requires an existing analysis (kanton check or full analysis) before generation. The complete context payload ensures MindStudio receives all available case data without any summarization or truncation, enabling rich, case-specific legal text generation.
 
 ### Template Management System
-- **Template Parsing**: Automatic detection and extraction of [user] and {ai} field markers from template text
+
+#### Dynamic Template System (New)
+The platform now supports fully dynamic templates where field names in the template directly determine JSON keys:
+
+- **Field Marker Format**:
+  - `[field_name]` - User input fields (e.g., `[eiser_naam]`, `[bedrag]`)
+  - `{field_name}` - AI-generated fields (e.g., `{result_analyses}`, `{juridische_gronden}`)
+  - The exact text in brackets becomes the JSON key
+
+- **Automatic Field Extraction**: Template parser (`server/services/templateParser.ts`) extracts:
+  - All `[user_field]` markers → userFieldsJson array with field names and occurrence counts
+  - All `{ai_field}` markers → aiFieldsJson array with field names and occurrence counts
+  - Field positions for validation and rendering
+
+- **Dynamic Rendering**: `DynamicTemplateRenderer` component renders templates based on parsed fields:
+  - User fields render as editable inputs (yellow highlight when empty)
+  - AI fields render as placeholders until filled by MindStudio (amber highlight)
+  - Supports both inline and multiline fields based on field naming conventions
+  - Handles numeric values including zero correctly
+
+- **MindStudio Integration**: Dynamic field mapping via returnDataKeys:
+  - Template defines mapping: `{key: "template_field", value: "mindstudio.response.path"}`
+  - System resolves nested paths in MindStudio response (e.g., "sections.grounds.intro")
+  - Arrays are automatically joined with newlines
+  - Falls back to legacy hardcoded mapping for backwards compatibility
+
+- **Template Upload Flow**:
+  1. Admin uploads template text/file via POST /api/templates/parse
+  2. System extracts `[user]` and `{ai}` field markers
+  3. Admin configures MindStudio flow name and returnDataKeys mapping
+  4. Template is ready for use with dynamic field population
+
 - **Multi-Format Support**: Parse templates from .txt, .docx, or .pdf files with dynamic imports (pdf-parse uses lazy loading to avoid import issues)
-- **Field Analysis**: Track field occurrences and positions for validation and mapping
-- **MindStudio Flow Linking**: Each template can be linked to a specific MindStudio flow with:
-  - Flow Name/ID configuration (e.g., "CreateDagvaarding.flow")
-  - Launch Variables definition (input parameters expected by the flow)
-  - Return Data Keys mapping (JSON outputs from the flow mapped to {ai} fields)
-- **Template Detail View**: Expandable UI component showing:
+
+- **Template Detail View** (Admin only): Expandable UI component showing:
   - Parsed [user] fields with occurrence counts
   - Parsed {ai} fields with occurrence counts
   - Flow configuration form with save functionality
   - Visual mapping between {ai} fields and return data
+  - Template deletion with confirmation dialog
+
 - **Dynamic Flow Selection**: Summons generation uses the linked flow from selected template
   - Defaults to "CreateDagvaarding.flow" if no flow configured
   - Validates flow name is non-empty before use
   - Trims whitespace and prevents empty flow configurations
-- **Admin-Only Access**: Template parsing and flow linking restricted to admin users
+
 - **API Endpoints**:
   - POST /api/templates/parse - Parse and register template from text/file
   - PATCH /api/templates/:id/flow - Update flow linking configuration
+  - DELETE /api/templates/:id - Delete template (admin only)
   - GET /api/templates/:id - Retrieve full template with flow config
+
+- **Backward Compatibility**: Legacy v1, v2, v3 templates continue to work with hardcoded field mappings
 
 ## External Dependencies
 
