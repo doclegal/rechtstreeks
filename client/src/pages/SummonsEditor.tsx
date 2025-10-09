@@ -40,10 +40,16 @@ export default function SummonsEditor() {
     },
   });
 
-  // Set default template when templates load
+  // Set default template when templates load or when selected template no longer exists
   useEffect(() => {
-    if (templates && templates.length > 0 && !selectedTemplateId) {
-      setSelectedTemplateId(templates[0].id);
+    if (templates && templates.length > 0) {
+      if (!selectedTemplateId) {
+        // No template selected, select first one
+        setSelectedTemplateId(templates[0].id);
+      } else if (!templates.find(t => t.id === selectedTemplateId)) {
+        // Selected template no longer exists (e.g., was deleted), select first available
+        setSelectedTemplateId(templates[0].id);
+      }
     }
   }, [templates, selectedTemplateId]);
 
@@ -317,7 +323,7 @@ export default function SummonsEditor() {
       </Card>
 
       {/* Template Detail View */}
-      {selectedTemplateId && templates && (
+      {selectedTemplateId && templates && templates.find(t => t.id === selectedTemplateId) && (user as any)?.role === 'admin' && (
         <TemplateDetailView 
           template={templates.find(t => t.id === selectedTemplateId)!}
           onUpdate={() => {
