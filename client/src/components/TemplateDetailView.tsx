@@ -30,7 +30,13 @@ export function TemplateDetailView({ template, onUpdate }: TemplateDetailViewPro
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // Flow linking state
+  // Check if multi-step template
+  const isMultiStep = template.isMultiStep || false;
+  const [sectionsConfig, setSectionsConfig] = useState<any[]>(
+    template.sectionsConfig || []
+  );
+  
+  // Flow linking state (for single-step templates)
   const [flowName, setFlowName] = useState(template.mindstudioFlowName || "");
   const [flowId, setFlowId] = useState(template.mindstudioFlowId || "");
   const [launchVariables, setLaunchVariables] = useState<string[]>(
@@ -80,15 +86,41 @@ export function TemplateDetailView({ template, onUpdate }: TemplateDetailViewPro
     setReturnDataKeys(updated);
   };
   
+  // Multi-step section handlers
+  const handleUpdateSectionFlow = (sectionKey: string, flowName: string) => {
+    const updated = sectionsConfig.map(section => 
+      section.sectionKey === sectionKey 
+        ? { ...section, flowName }
+        : section
+    );
+    setSectionsConfig(updated);
+  };
+  
+  const handleUpdateSectionFeedbackVar = (sectionKey: string, feedbackVariableName: string) => {
+    const updated = sectionsConfig.map(section => 
+      section.sectionKey === sectionKey 
+        ? { ...section, feedbackVariableName }
+        : section
+    );
+    setSectionsConfig(updated);
+  };
+  
   const handleSaveFlowConfig = async () => {
     setIsSaving(true);
     try {
-      const response = await apiRequest("PATCH", `/api/templates/${template.id}/flow`, {
+      const payload: any = {
         mindstudioFlowName: flowName,
         mindstudioFlowId: flowId,
         launchVariables,
         returnDataKeys,
-      });
+      };
+      
+      // Add sectionsConfig for multi-step templates
+      if (isMultiStep) {
+        payload.sectionsConfig = sectionsConfig;
+      }
+      
+      const response = await apiRequest("PATCH", `/api/templates/${template.id}/flow`, payload);
       
       if (response.ok) {
         queryClient.invalidateQueries({ queryKey: ["/api/templates"] });
@@ -198,8 +230,73 @@ export function TemplateDetailView({ template, onUpdate }: TemplateDetailViewPro
           
           <hr />
           
-          {/* Flow Configuration */}
-          <div className="space-y-4">
+          {/* Multi-Step Configuration */}
+          {isMultiStep && (
+            <>
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm font-semibold">🔹 Multi-Step Template: 7 Secties</Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Configureer per sectie de MindStudio flow en feedback variable naam. De flow wordt aangeroepen bij "Genereren", de feedback variable wordt gebruikt bij "Afwijzen + opnieuw genereren".
+                  </p>
+                </div>
+                
+                <div className="space-y-4 border rounded-lg p-4 bg-slate-50">
+                  {sectionsConfig.map((section, idx) => (
+                    <div key={section.sectionKey} className="space-y-2 pb-3 border-b last:border-b-0" data-testid={`section-config-${idx}`}>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          Stap {section.stepOrder}
+                        </Badge>
+                        <span className="font-medium text-sm">{section.sectionName}</span>
+                        <Badge variant="secondary" className="text-xs ml-auto">
+                          {'{'}
+                          {section.aiFieldKey}
+                          {'}'}
+                        </Badge>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3 ml-4">
+                        <div>
+                          <Label htmlFor={`flow-${section.sectionKey}`} className="text-xs">
+                            MindStudio Flow Naam
+                          </Label>
+                          <Input
+                            id={`flow-${section.sectionKey}`}
+                            value={section.flowName || ""}
+                            onChange={(e) => handleUpdateSectionFlow(section.sectionKey, e.target.value)}
+                            placeholder="bijv: GenerateVorderingen.flow"
+                            className="text-sm h-8"
+                            data-testid={`input-section-flow-${idx}`}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`feedback-${section.sectionKey}`} className="text-xs">
+                            Feedback Variable Naam
+                          </Label>
+                          <Input
+                            id={`feedback-${section.sectionKey}`}
+                            value={section.feedbackVariableName || ""}
+                            onChange={(e) => handleUpdateSectionFeedbackVar(section.sectionKey, e.target.value)}
+                            placeholder="bijv: user_feedback"
+                            className="text-sm h-8"
+                            data-testid={`input-section-feedback-${idx}`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <hr />
+            </>
+          )}
+          
+          {/* Flow Configuration (Single-Step) */}
+          {!isMultiStep && (
+            <>
+              <div className="space-y-4">
             <div>
               <Label htmlFor="flow-name">MindStudio Flow Name</Label>
               <Input
@@ -319,6 +416,8 @@ export function TemplateDetailView({ template, onUpdate }: TemplateDetailViewPro
               </div>
             </div>
           </div>
+              </>
+            )}
           
           <div className="flex justify-between pt-4">
             <AlertDialog>

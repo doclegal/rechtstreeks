@@ -2954,10 +2954,10 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       }
       
       const templateId = req.params.id;
-      const { mindstudioFlowName, mindstudioFlowId, launchVariables, returnDataKeys } = req.body;
+      const { mindstudioFlowName, mindstudioFlowId, launchVariables, returnDataKeys, sectionsConfig } = req.body;
       
       // Validate input
-      if (!mindstudioFlowName && !mindstudioFlowId && !launchVariables && !returnDataKeys) {
+      if (!mindstudioFlowName && !mindstudioFlowId && !launchVariables && !returnDataKeys && !sectionsConfig) {
         return res.status(400).json({ message: "No flow data provided" });
       }
       
@@ -2972,6 +2972,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       if (mindstudioFlowId !== undefined) updates.mindstudioFlowId = mindstudioFlowId;
       if (launchVariables !== undefined) updates.launchVariables = launchVariables;
       if (returnDataKeys !== undefined) updates.returnDataKeys = returnDataKeys;
+      if (sectionsConfig !== undefined) updates.sectionsConfig = sectionsConfig;
       updates.updatedAt = new Date();
       
       const template = await storage.updateTemplate(templateId, updates);
