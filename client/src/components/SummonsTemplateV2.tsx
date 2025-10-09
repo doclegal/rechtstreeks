@@ -431,7 +431,7 @@ export function SummonsTemplateV2({ userFields, aiFields, onUserFieldChange, edi
         <p>14. De buitengerechtelijke incassokosten bedragen € {(u.incassokosten || 0).toLocaleString('nl-NL', { minimumFractionDigits: 2 })}. Dit bedrag is berekend volgens het Besluit vergoeding voor buitengerechtelijke incassokosten.</p>
 
         <h3>Reactie van <UserField value={u.gedaagde_naam} fieldKey="gedaagde_naam" editable={editable} onChange={onUserFieldChange} /></h3>
-        <p>15. <AIField value={a.reactie_gedaagde} fieldKey="reactie_gedaagde" multiline placeholder="[Vermelden reactie van gedaagde en de reactie van eiser daarop]" /></p>
+        <div>15. <AIField value={a.reactie_gedaagde} fieldKey="reactie_gedaagde" multiline placeholder="[Vermelden reactie van gedaagde en de reactie van eiser daarop]" /></div>
 
         <h3>Bewijsmiddelen</h3>
         <p>16. R1: <AIField value={a.bewijsmiddel_r1} fieldKey="bewijsmiddel_r1" placeholder="[offerte/overeenkomst]" />;</p>
@@ -440,7 +440,7 @@ export function SummonsTemplateV2({ userFields, aiFields, onUserFieldChange, edi
         <p style={{ marginLeft: "2em" }}>R4: <AIField value={a.bewijsmiddel_r4} fieldKey="bewijsmiddel_r4" placeholder="de brief van [naam eiser] aan [naam gedaagde] van [datum]" />;</p>
         <p style={{ marginLeft: "2em" }}>R5: <AIField value={a.bewijsmiddel_r5} fieldKey="bewijsmiddel_r5" placeholder="de brief van de [naam eiser] aan [naam gedaagde] van [datum]" />;</p>
 
-        <p>17. <AIField value={a.bewijsmiddel_overig} fieldKey="bewijsmiddel_overig" multiline placeholder="[Naam eiser] biedt aan te bewijzen dat [te bewijzen feiten]." /> Getuigen zijn: <AIField value={a.getuigen} fieldKey="getuigen" placeholder="[namen en functie]" />.</p>
+        <div>17. <AIField value={a.bewijsmiddel_overig} fieldKey="bewijsmiddel_overig" multiline placeholder="[Naam eiser] biedt aan te bewijzen dat [te bewijzen feiten]." /> Getuigen zijn: <AIField value={a.getuigen} fieldKey="getuigen" placeholder="[namen en functie]" />.</div>
 
         <div style={{ textAlign: "right", marginTop: "2em" }}>5</div>
       </div>

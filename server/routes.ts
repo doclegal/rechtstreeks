@@ -2313,6 +2313,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const templateId = req.params.id;
+      const template = await storage.getTemplate(templateId);
+      
+      if (!template) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      
+      res.json(template);
+    } catch (error) {
+      console.error("Error fetching template:", error);
+      res.status(500).json({ message: "Failed to fetch template" });
+    }
+  });
+
   app.post('/api/templates', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

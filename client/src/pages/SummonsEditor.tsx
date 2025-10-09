@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
 import { Scale, PlusCircle, FileText, AlertCircle, Loader2, Download } from "lucide-react";
 import { SummonsTemplateV2 } from "@/components/SummonsTemplateV2";
+import { SummonsTemplateV1 } from "@/components/SummonsTemplateV1";
 import { UserFields, AIFields, userFieldsSchema } from "@shared/summonsFields";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -413,12 +414,32 @@ export default function SummonsEditor() {
                   <strong>Gele velden</strong> worden automatisch gegenereerd door AI wanneer u op "Genereer dagvaarding" klikt.
                 </p>
               </div>
-              <SummonsTemplateV2
-                userFields={userFields}
-                aiFields={aiFields}
-                onUserFieldChange={handleUserFieldChange}
-                editable={false}
-              />
+              {selectedTemplateId && templates && (
+                (() => {
+                  const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+                  
+                  if (selectedTemplate?.version === 'v1') {
+                    return (
+                      <SummonsTemplateV1
+                        userFields={userFields}
+                        aiFields={aiFields}
+                        onUserFieldChange={handleUserFieldChange}
+                        editable={false}
+                        templateId={selectedTemplateId}
+                      />
+                    );
+                  } else {
+                    return (
+                      <SummonsTemplateV2
+                        userFields={userFields}
+                        aiFields={aiFields}
+                        onUserFieldChange={handleUserFieldChange}
+                        editable={false}
+                      />
+                    );
+                  }
+                })()
+              )}
             </CardContent>
           </Card>
         </TabsContent>
