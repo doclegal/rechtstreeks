@@ -1861,13 +1861,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         // Create section records for each section in sectionsConfig
-        for (const sectionConfig of template!.sectionsConfig as any[]) {
+        for (let i = 0; i < (template!.sectionsConfig as any[]).length; i++) {
+          const sectionConfig = (template!.sectionsConfig as any[])[i];
           await storage.createSummonsSection({
             summonsId: summons.id,
             sectionKey: sectionConfig.sectionKey,
+            sectionName: sectionConfig.sectionName || sectionConfig.sectionKey,
+            stepOrder: i + 1,
+            flowName: sectionConfig.flowName || null,
+            feedbackVariableName: sectionConfig.feedbackVariableName || null,
             status: "pending",
             generatedText: null,
-            userFeedback: null
+            userFeedback: null,
+            generationCount: 0
           });
         }
         
@@ -1882,7 +1888,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           success: true,
           message: "Multi-step summons created",
           summonsId: summons.id,
-          sectionCount: template!.sectionsConfig.length
+          sectionCount: (template!.sectionsConfig as any[]).length
         });
       }
       

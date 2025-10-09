@@ -372,33 +372,72 @@ export default function SummonsEditor() {
           );
         }
         
-        // Multi-step workflow - if no summons exists, show start button
+        // Multi-step workflow - if no summons exists, show template preview with start button
         if (isMultiStep && (!existingSummons || existingSummons.length === 0)) {
           return (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <FileText className="h-16 w-16 text-primary mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">
-                  7-Stappen Dagvaarding Workflow
-                </h3>
-                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                  Dit template gebruikt een stapsgewijze workflow waarbij elke sectie apart door AI wordt gegenereerd en door u wordt beoordeeld.
-                </p>
-                <Button onClick={handleGenerate} disabled={isGenerating} size="lg" data-testid="button-start-multistep">
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      Workflow starten...
-                    </>
-                  ) : (
-                    <>
-                      <PlusCircle className="h-5 w-5 mr-2" />
-                      Start 7-Stappen Workflow
-                    </>
+            <>
+              {/* Info box */}
+              <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950">
+                <CardContent className="py-4">
+                  <div className="flex gap-3">
+                    <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                        7-Stappen Dagvaarding Workflow
+                      </h4>
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        Vul eerst de <strong>gele gebruikersvelden</strong> in hieronder. Start daarna de workflow om de <strong>7 AI-secties</strong> stap voor stap te laten genereren en goed te keuren.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Template Preview */}
+              <Card>
+                <CardContent className="py-6">
+                  <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 rounded-lg">
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                      <strong>Gele velden</strong> zijn gebruikersvelden die u nu kunt invullen. <strong>Oranje AI-velden</strong> worden stap voor stap gegenereerd na het starten van de workflow.
+                    </p>
+                  </div>
+                  {selectedTemplate?.rawTemplateText && (
+                    <DynamicTemplateRenderer
+                      templateText={selectedTemplate.rawTemplateText}
+                      userFields={userFields}
+                      aiFields={{}}
+                      onUserFieldChange={(key, value) => setUserFields(prev => ({ ...prev, [key]: value }))}
+                      editable={true}
+                    />
                   )}
-                </Button>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              {/* Start Workflow Button */}
+              <Card className="border-primary">
+                <CardContent className="py-8 text-center">
+                  <h3 className="text-lg font-semibold text-foreground mb-2">
+                    Klaar om te starten?
+                  </h3>
+                  <p className="text-muted-foreground mb-4 max-w-md mx-auto">
+                    Controleer of alle gele velden zijn ingevuld. Klik dan op de knop om de 7-stappen workflow te starten.
+                  </p>
+                  <Button onClick={handleGenerate} disabled={isGenerating} size="lg" data-testid="button-start-multistep">
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                        Workflow starten...
+                      </>
+                    ) : (
+                      <>
+                        <PlusCircle className="h-5 w-5 mr-2" />
+                        Start 7-Stappen Workflow
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            </>
           );
         }
         
