@@ -11,6 +11,7 @@ import { Link } from "wouter";
 import { Scale, PlusCircle, FileText, AlertCircle, Loader2, Download } from "lucide-react";
 import { SummonsTemplateV2 } from "@/components/SummonsTemplateV2";
 import { SummonsTemplateV1 } from "@/components/SummonsTemplateV1";
+import { TemplateDetailView } from "@/components/TemplateDetailView";
 import { UserFields, AIFields, userFieldsSchema } from "@shared/summonsFields";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -312,6 +313,16 @@ export default function SummonsEditor() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Template Detail View */}
+      {selectedTemplateId && templates && (
+        <TemplateDetailView 
+          template={templates.find(t => t.id === selectedTemplateId)!}
+          onUpdate={() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/templates"] });
+          }}
+        />
+      )}
 
       {/* Info box */}
       <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950">
