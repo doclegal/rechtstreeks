@@ -2094,45 +2094,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Call MindStudio with complete context using template's flow configuration
       const result = await aiService.runCreateDagvaarding(completePayload, flowName);
 
-      if (!result.success || !result.sections) {
+      if (!result.success) {
         throw new Error(result.error || "Failed to generate dagvaarding from MindStudio");
       }
 
-      // Map CreateDagvaarding.flow sections to AI fields
-      const aiFields = {
-        // Map grounds.intro to inleiding
-        inleiding: result.sections.grounds.intro.join('\n\n'),
+      // Map MindStudio response to AI fields
+      let aiFields: Record<string, string> = {};
+      
+      // If template has returnDataKeys, use dynamic mapping
+      if (template?.returnDataKeys && Array.isArray(template.returnDataKeys) && template.returnDataKeys.length > 0) {
+        console.log(`🔄 Using dynamic field mapping from template (${template.returnDataKeys.length} fields)`);
         
-        // Map grounds sections to corresponding fields
-        overeenkomst_datum: "", // Will be filled by AI in grounds.assignment_and_work
-        overeenkomst_omschrijving: result.sections.grounds.assignment_and_work.join('\n\n'),
+        // returnDataKeys is array of {key: "field_name_in_template", value: "path.to.mindstudio.data"}
+        // The key is what goes in the template {field_name}
+        // The value can be a simple key or a path like "sections.grounds.intro"
+        for (const mapping of template.returnDataKeys) {
+          const templateFieldKey = mapping.key; // The field name used in template like "result_analyses"
+          const mindstudioPath = mapping.value || mapping.key; // Path in MindStudio response
+          
+          // Try to extract value from nested path (e.g., "sections.grounds.intro")
+          const pathParts = mindstudioPath.split('.');
+          let value: any = result;
+          
+          for (const part of pathParts) {
+            if (value && typeof value === 'object') {
+              value = value[part];
+            } else {
+              break;
+            }
+          }
+          
+          // Handle arrays by joining
+          if (Array.isArray(value)) {
+            aiFields[templateFieldKey] = value.join('\n\n');
+          } else if (value !== undefined && value !== null) {
+            aiFields[templateFieldKey] = String(value);
+          } else {
+            aiFields[templateFieldKey] = "";
+            console.warn(`⚠️ Could not find value for ${templateFieldKey} at path ${mindstudioPath}`);
+          }
+        }
+      } else {
+        // Fallback to hardcoded mapping for legacy templates
+        console.log("📝 Using legacy hardcoded field mapping");
         
-        algemene_voorwaarden_document: "", // From grounds.terms_and_conditions
-        algemene_voorwaarden_artikelnummer_betaling: "",
-        algemene_voorwaarden_betalingstermijn_dagen: "",
-        algemene_voorwaarden_rente_percentage: "",
-        algemene_voorwaarden_artikelnummer_incasso: "",
-        
-        onbetaald_bedrag: result.sections.grounds.invoice.join('\n\n'),
-        
-        veertiendagenbrief_datum: "",
-        rente_berekening_uitleg: result.sections.grounds.interest_and_collection_costs.join('\n\n'),
-        
-        aanmaning_datum: "",
-        aanmaning_verzendwijze: "",
-        aanmaning_ontvangst_datum: "",
-        
-        reactie_gedaagde: result.sections.grounds.defendant_response.join('\n\n'),
-        
-        // Map evidence to bewijsmiddelen
-        bewijsmiddel_r1: result.sections.evidence.list[0] || "",
-        bewijsmiddel_r2: result.sections.evidence.list[1] || "",
-        bewijsmiddel_r3: result.sections.evidence.list[2] || "",
-        bewijsmiddel_r4: result.sections.evidence.list[3] || "",
-        bewijsmiddel_r5: result.sections.evidence.list[4] || "",
-        bewijsmiddel_overig: result.sections.evidence.offer_of_proof || "",
-        getuigen: result.sections.evidence.witnesses.join(', ') || "Geen getuigen"
-      };
+        if (result.sections) {
+          aiFields = {
+            inleiding: result.sections.grounds.intro.join('\n\n'),
+            overeenkomst_datum: "",
+            overeenkomst_omschrijving: result.sections.grounds.assignment_and_work.join('\n\n'),
+            algemene_voorwaarden_document: "",
+            algemene_voorwaarden_artikelnummer_betaling: "",
+            algemene_voorwaarden_betalingstermijn_dagen: "",
+            algemene_voorwaarden_rente_percentage: "",
+            algemene_voorwaarden_artikelnummer_incasso: "",
+            onbetaald_bedrag: result.sections.grounds.invoice.join('\n\n'),
+            veertiendagenbrief_datum: "",
+            rente_berekening_uitleg: result.sections.grounds.interest_and_collection_costs.join('\n\n'),
+            aanmaning_datum: "",
+            aanmaning_verzendwijze: "",
+            aanmaning_ontvangst_datum: "",
+            reactie_gedaagde: result.sections.grounds.defendant_response.join('\n\n'),
+            bewijsmiddel_r1: result.sections.evidence.list[0] || "",
+            bewijsmiddel_r2: result.sections.evidence.list[1] || "",
+            bewijsmiddel_r3: result.sections.evidence.list[2] || "",
+            bewijsmiddel_r4: result.sections.evidence.list[3] || "",
+            bewijsmiddel_r5: result.sections.evidence.list[4] || "",
+            bewijsmiddel_overig: result.sections.evidence.offer_of_proof || "",
+            getuigen: result.sections.evidence.witnesses.join(', ') || "Geen getuigen"
+          };
+        }
+      }
       
       // Save generated summons
       const summons = await storage.createSummons({
