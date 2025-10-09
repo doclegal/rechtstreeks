@@ -460,7 +460,7 @@ export function TemplateDetailView({ template, onUpdate }: TemplateDetailViewPro
             
             <Button 
               onClick={handleSaveFlowConfig} 
-              disabled={isSaving || !flowName}
+              disabled={isSaving || (!isMultiStep && !flowName)}
               data-testid="button-save-flow-config"
             >
               {isSaving ? (
