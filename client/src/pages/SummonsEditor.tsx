@@ -11,6 +11,7 @@ import { Link } from "wouter";
 import { Scale, PlusCircle, FileText, AlertCircle, Loader2, Download } from "lucide-react";
 import { SummonsTemplateV2 } from "@/components/SummonsTemplateV2";
 import { SummonsTemplateV1 } from "@/components/SummonsTemplateV1";
+import { SummonsTemplateV3 } from "@/components/SummonsTemplateV3";
 import { TemplateDetailView } from "@/components/TemplateDetailView";
 import { UserFields, AIFields, userFieldsSchema } from "@shared/summonsFields";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -363,6 +364,15 @@ export default function SummonsEditor() {
                         onUserFieldChange={handleUserFieldChange}
                         editable={true}
                         templateId={selectedTemplateId}
+                      />
+                    );
+                  } else if (selectedTemplate?.version === 'v3') {
+                    return (
+                      <SummonsTemplateV3
+                        userFields={userFields}
+                        aiFields={aiFields}
+                        onUserFieldChange={handleUserFieldChange}
+                        editable={true}
                       />
                     );
                   } else {

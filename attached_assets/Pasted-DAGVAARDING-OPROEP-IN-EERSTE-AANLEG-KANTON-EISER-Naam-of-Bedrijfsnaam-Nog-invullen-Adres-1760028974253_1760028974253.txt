@@ -1,0 +1,95 @@
+DAGVAARDING / OPROEP IN EERSTE AANLEG (KANTON)
+
+EISER
+Naam of Bedrijfsnaam: [Nog invullen]
+Adres: [Nog invullen]
+Postcode: [Nog invullen]
+Plaats: [Nog invullen]
+E-mailadres: [Nog invullen]
+Telefoonnummer: [Nog invullen]
+{KvK of BSN:} [Nog invullen]
+{Gemachtigde – Naam (indien van toepassing):} [Nog invullen]
+{Gemachtigde – Kantoornaam:} [Nog invullen]
+{Gemachtigde – Adres:} [Nog invullen]
+{Gemachtigde – E-mailadres:} [Nog invullen]
+{Gemachtigde – Telefoonnummer:} [Nog invullen]
+
+GEDAAGDE
+{Naam of Bedrijfsnaam:} [Nog invullen]
+Adres: [Nog invullen]
+Postcode: [Nog invullen]
+Plaats: [Nog invullen]
+E-mailadres (indien bekend): [Nog invullen]
+Telefoonnummer (indien bekend): [Nog invullen]
+{KvK of BSN (indien van toepassing):} [Nog invullen]
+
+GERECHTSDEURWAARDER
+Naam: [Nog invullen]
+Kantooradres: [Nog invullen]
+Kenmerk: [Nog invullen]
+Datum betekening: [Nog invullen]
+Plaats betekening: [Nog invullen]
+
+RECHTBANK EN ZITTING
+Rechtbank: Rechtbank [Nog invullen]
+Afdeling: Team Kanton
+Zittingsdatum: [Nog invullen]
+Zittingstijd: [Nog invullen]
+Zittingsadres: [Nog invullen]
+Zaal/Kamer: [Nog invullen]
+
+OPROEP / AANZEGGING
+Ik, gerechtsdeurwaarder als hiervoor vermeld, roep hierbij gedaagde op om te verschijnen ter zitting zoals boven vermeld.
+Indien u niet verschijnt of geen verweer voert, kan de rechter bij verstek uitspraak doen.
+
+A. VORDERINGEN (DOOR AI IN TE VULLEN)
+{Formuleer alle vorderingen volledig, inclusief hoofdsom, rente, buitengerechtelijke kosten, proceskosten en eventuele nevenvorderingen.}
+
+B. FEITEN (DOOR AI)
+{Beschrijf de relevante feiten in chronologische volgorde, met verwijzing naar producties.}
+
+C. RECHTSGRONDEN EN JURIDISCHE MOTIVERING (DOOR AI)
+{Koppel de feiten aan de toepasselijke rechtsregels en werk per vordering de grondslag en toewijsbaarheid uit.}
+
+D. BEDRAGEN EN PARAMETER-INVOER
+Hoofdsom (€): [Nog invullen]
+Datum ingangsverzuim/rente: [Nog invullen]
+Rentevorm (wettelijk of handelsrente): [Nog invullen]
+Buitengerechtelijke kosten (€): [Nog invullen]
+
+E. SOMMATIES EN COMMUNICATIE (DOOR AI)
+{Vat aanmaningen/sommatie(s) en reacties samen; verwijs naar producties.}
+
+F. VERWACHT VERWEER EN WEERLEGGING (OPTIONEEL, DOOR AI)
+{Anticipeer op mogelijk verweer en geef kernachtige weerlegging.}
+
+G. PRODUCTIES
+Productie 1 – Titel: [Nog invullen]
+Productie 2 – Titel: [Nog invullen]
+Productie 3 – Titel: [Nog invullen]
+Productie 4 – Titel: [Nog invullen]
+Productie 5 – Titel: [Nog invullen]
+Productie 6 – Titel: [Nog invullen]
+
+H. SLOT EN PETITUM (DOOR AI)
+{Formuleer een compact en ondubbelzinnig petitum dat de vorderingen herhaalt, inclusief uitvoerbaar-bij-voorraad indien passend.}
+
+PLAATS EN DATUM
+Plaats: [Nog invullen]
+Datum: [Nog invullen]
+
+ONDERTEKENING EISER / GEMACHTIGDE
+Naam ondertekenaar: [Nog invullen]
+Functie / Kantoorgegevens: [Nog invullen]
+
+— — — — — KNIPLIJN: DEURWAARDERS-EXPLOOT — — — — —
+
+DEURWAARDERS-EXPLOOT (IN TE VULLEN DOOR DE GERECHTSDEURWAARDER)
+Datum betekening: [Nog invullen]
+Naam gerechtsdeurwaarder: [Nog invullen]
+Plaats kantoor: [Nog invullen]
+Adres gedaagde: [Nog invullen]
+Wijze van betekening: [Nog invullen]
+
+Ik heb gedaagde aangezegd te verschijnen op de hiervoor vermelde zitting van de Rechtbank (Team Kanton).
+Handtekening/stempel: [Nog invullen]

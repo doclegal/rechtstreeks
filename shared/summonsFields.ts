@@ -4,7 +4,12 @@ import { z } from "zod";
 export const userFieldsSchema = z.object({
   // Eiser (Plaintiff) gegevens
   eiser_naam: z.string().optional(),
+  eiser_adres: z.string().optional(),
+  eiser_postcode: z.string().optional(),
   eiser_plaats: z.string().optional(),
+  eiser_email: z.string().optional(),
+  eiser_telefoon: z.string().optional(),
+  eiser_kvk_bsn: z.string().optional(),
   eiser_vertegenwoordiger_naam: z.string().optional(),
   eiser_vertegenwoordiger_adres: z.string().optional(),
   eiser_vertegenwoordiger_telefoon: z.string().optional(),
@@ -12,9 +17,21 @@ export const userFieldsSchema = z.object({
   eiser_bankrekening: z.string().optional(),
   eiser_dossiernummer: z.string().optional(),
 
+  // Gemachtigde gegevens (V3 template)
+  gemachtigde_naam: z.string().optional(),
+  gemachtigde_kantoor: z.string().optional(),
+  gemachtigde_adres: z.string().optional(),
+  gemachtigde_email: z.string().optional(),
+  gemachtigde_telefoon: z.string().optional(),
+
   // Gedaagde (Defendant) gegevens
   gedaagde_naam: z.string().optional(),
   gedaagde_adres: z.string().optional(),
+  gedaagde_postcode: z.string().optional(),
+  gedaagde_plaats: z.string().optional(),
+  gedaagde_email: z.string().optional(),
+  gedaagde_telefoon: z.string().optional(),
+  gedaagde_kvk_bsn: z.string().optional(),
   gedaagde_geboortedatum: z.string().optional(),
 
   // Rechtbank gegevens
@@ -26,6 +43,8 @@ export const userFieldsSchema = z.object({
   zitting_datum: z.string().optional(),
   zitting_dag: z.string().optional(),
   zitting_tijd: z.string().optional(),
+  zitting_adres: z.string().optional(),
+  zitting_zaal: z.string().optional(),
   reactie_deadline: z.string().optional(),
   betaal_deadline: z.string().optional(),
 
@@ -40,15 +59,42 @@ export const userFieldsSchema = z.object({
   salaris_gemachtigde: z.number().optional(),
   kosten_dagvaarding: z.number().optional(),
   rente_vanaf_datum: z.string().optional(),
+  datum_verzuim: z.string().optional(),
+  rentevorm: z.string().optional(),
 
   // Deurwaarder gegevens
   deurwaarder_naam: z.string().optional(),
   deurwaarder_plaats: z.string().optional(),
   deurwaarder_adres: z.string().optional(),
   deurwaarder_datum: z.string().optional(),
+  deurwaarder_kenmerk: z.string().optional(),
   deurwaarder_kosten_basis: z.number().optional(),
   deurwaarder_kosten_adresinfo: z.number().optional(),
   deurwaarder_kosten_beslagregister: z.number().optional(),
+  datum_betekening: z.string().optional(),
+  plaats_betekening: z.string().optional(),
+
+  // Producties (bewijsstukken)
+  productie_1: z.string().optional(),
+  productie_2: z.string().optional(),
+  productie_3: z.string().optional(),
+  productie_4: z.string().optional(),
+  productie_5: z.string().optional(),
+  productie_6: z.string().optional(),
+
+  // Ondertekening
+  plaats_datum_ondertekening: z.string().optional(),
+  datum_ondertekening: z.string().optional(),
+  ondertekenaar_naam: z.string().optional(),
+  ondertekenaar_functie: z.string().optional(),
+
+  // Deurwaarders-exploot
+  exploot_datum: z.string().optional(),
+  exploot_deurwaarder: z.string().optional(),
+  exploot_plaats_kantoor: z.string().optional(),
+  exploot_adres_gedaagde: z.string().optional(),
+  exploot_wijze: z.string().optional(),
+  exploot_handtekening: z.string().optional(),
 });
 
 export type UserFields = z.infer<typeof userFieldsSchema>;
@@ -100,6 +146,14 @@ export const aiFieldsSchema = z.object({
   bewijsmiddel_r5: z.string().default(""),
   bewijsmiddel_overig: z.string().default(""),
   getuigen: z.string().default(""),
+
+  // V3 Template sections
+  vorderingen: z.string().default(""),
+  feiten: z.string().default(""),
+  rechtsgronden: z.string().default(""),
+  sommaties: z.string().default(""),
+  verweer_weerlegging: z.string().default(""),
+  petitum: z.string().default(""),
 });
 
 export type AIFields = z.infer<typeof aiFieldsSchema>;
