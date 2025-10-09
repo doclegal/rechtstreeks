@@ -5,7 +5,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
@@ -331,87 +330,13 @@ export default function SummonsEditor() {
         </CardContent>
       </Card>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "template" | "form")}>
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
-          <TabsTrigger value="form" data-testid="tab-form">Formulier</TabsTrigger>
-          <TabsTrigger value="template" data-testid="tab-template">Preview Template</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="form" className="mt-6">
+      {/* Dagvaarding Editor */}
+      <div className="mt-6">
           <Card>
             <CardContent className="py-6">
-              <div className="space-y-6">
-                {/* Group fields by section */}
-                {["Eiser", "Gedaagde", "Rechtbank", "Zitting", "Financieel"].map(section => {
-                  const sectionFields = [
-                    { key: "eiser_naam", label: "Naam eiser", type: "text", section: "Eiser" },
-                    { key: "eiser_plaats", label: "Plaats eiser", type: "text", section: "Eiser" },
-                    { key: "eiser_vertegenwoordiger_naam", label: "Naam vertegenwoordiger", type: "text", section: "Eiser" },
-                    { key: "eiser_vertegenwoordiger_adres", label: "Adres vertegenwoordiger", type: "text", section: "Eiser" },
-                    { key: "eiser_vertegenwoordiger_telefoon", label: "Telefoonnummer", type: "text", section: "Eiser" },
-                    { key: "eiser_vertegenwoordiger_email", label: "E-mailadres", type: "email", section: "Eiser" },
-                    { key: "eiser_bankrekening", label: "Bankrekeningnummer", type: "text", section: "Eiser" },
-                    { key: "eiser_dossiernummer", label: "Dossiernummer", type: "text", section: "Eiser" },
-                    { key: "gedaagde_naam", label: "Naam gedaagde", type: "text", section: "Gedaagde" },
-                    { key: "gedaagde_adres", label: "Adres gedaagde", type: "text", section: "Gedaagde" },
-                    { key: "gedaagde_geboortedatum", label: "Geboortedatum", type: "date", section: "Gedaagde" },
-                    { key: "rechtbank_naam", label: "Naam rechtbank", type: "text", section: "Rechtbank" },
-                    { key: "rechtbank_postadres", label: "Postadres", type: "text", section: "Rechtbank" },
-                    { key: "rechtbank_bezoekadres", label: "Bezoekadres", type: "text", section: "Rechtbank" },
-                    { key: "zitting_datum", label: "Datum zitting", type: "date", section: "Zitting" },
-                    { key: "zitting_dag", label: "Dag van de week", type: "text", section: "Zitting" },
-                    { key: "zitting_tijd", label: "Tijdstip", type: "text", section: "Zitting" },
-                    { key: "reactie_deadline", label: "Deadline reactie", type: "date", section: "Zitting" },
-                    { key: "betaal_deadline", label: "Deadline betaling", type: "date", section: "Zitting" },
-                    { key: "onderwerp", label: "Onderwerp rekening", type: "text", section: "Financieel" },
-                    { key: "rekening_nummer", label: "Rekeningnummer", type: "text", section: "Financieel" },
-                    { key: "rekening_datum", label: "Rekeningdatum", type: "date", section: "Financieel" },
-                    { key: "hoofdsom", label: "Hoofdsom (€)", type: "number", section: "Financieel" },
-                    { key: "rente_datum_tot", label: "Rente tot", type: "date", section: "Financieel" },
-                    { key: "rente_bedrag", label: "Rentebedrag (€)", type: "number", section: "Financieel" },
-                    { key: "incassokosten", label: "Incassokosten (€)", type: "number", section: "Financieel" },
-                    { key: "salaris_gemachtigde", label: "Salaris gemachtigde (€)", type: "number", section: "Financieel" },
-                    { key: "kosten_dagvaarding", label: "Kosten dagvaarding (€)", type: "number", section: "Financieel" },
-                    { key: "rente_vanaf_datum", label: "Rente vanaf", type: "date", section: "Financieel" },
-                  ].filter(f => f.section === section);
-
-                  return (
-                    <div key={section}>
-                      <h3 className="text-lg font-semibold mb-3 text-foreground">{section}</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {sectionFields.map(field => (
-                          <div key={field.key}>
-                            <label className="block text-sm font-medium text-foreground mb-1">
-                              {field.label}
-                            </label>
-                            <input
-                              type={field.type}
-                              value={userFields[field.key as keyof UserFields] || ""}
-                              onChange={(e) => handleUserFieldChange(
-                                field.key as keyof UserFields,
-                                e.target.value
-                              )}
-                              className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                              data-testid={`input-${field.key}`}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="template" className="mt-6">
-          <Card>
-            <CardContent className="py-6">
-              <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 rounded-lg">
-                <p className="text-sm text-amber-800 dark:text-amber-200">
-                  <strong>Gele velden</strong> worden automatisch gegenereerd door AI wanneer u op "Genereer dagvaarding" klikt.
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  <strong>Gele velden</strong> kun je direct invullen in de dagvaarding hieronder. Klik op een geel veld om te bewerken. <strong>Gele velden met AI-tekst</strong> worden automatisch gegenereerd wanneer u op "Genereer dagvaarding" klikt.
                 </p>
               </div>
               {selectedTemplateId && templates && (
@@ -424,7 +349,7 @@ export default function SummonsEditor() {
                         userFields={userFields}
                         aiFields={aiFields}
                         onUserFieldChange={handleUserFieldChange}
-                        editable={false}
+                        editable={true}
                         templateId={selectedTemplateId}
                       />
                     );
@@ -434,7 +359,7 @@ export default function SummonsEditor() {
                         userFields={userFields}
                         aiFields={aiFields}
                         onUserFieldChange={handleUserFieldChange}
-                        editable={false}
+                        editable={true}
                       />
                     );
                   }
@@ -442,8 +367,7 @@ export default function SummonsEditor() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+      </div>
     </div>
   );
 }
