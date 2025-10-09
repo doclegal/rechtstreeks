@@ -2331,6 +2331,181 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Seed default templates (one-time setup or admin utility)
+  app.post('/api/templates/seed', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const templateV2Body = `📄 TEMPLATE – DAGVAARDING KANTONRECHTER
+
+(zonder aanzegging, met vaste teksten en invulvelden)
+
+DAGVAARDING
+
+Datum: [USER_FIELD: datum opmaak]
+
+1. Partijen
+
+Eiser(es):
+Naam: [USER_FIELD: naam eiser]
+Adres: [USER_FIELD: adres eiser]
+Postcode en woonplaats: [USER_FIELD: woonplaats eiser]
+Geboortedatum / KvK-nummer (indien van toepassing): [USER_FIELD: geboortedatum of KvK]
+Eventueel vertegenwoordigd door: [USER_FIELD: gemachtigde / advocaat / deurwaarder]
+
+tegen
+
+Gedaagde:
+Naam: [USER_FIELD: naam gedaagde]
+Adres: [USER_FIELD: adres gedaagde]
+Postcode en woonplaats: [USER_FIELD: woonplaats gedaagde]
+Geboortedatum / KvK-nummer (indien van toepassing): [USER_FIELD: geboortedatum of KvK]
+
+2. Oproep
+
+Aan: [USER_FIELD: naam gedaagde]
+
+U wordt hierbij opgeroepen om te verschijnen ter terechtzitting van de Rechtbank [USER_FIELD: rechtbanknaam], sector kanton, locatie [USER_FIELD: plaats rechtbank],
+op [USER_FIELD: datum zitting] om [USER_FIELD: tijdstip] uur.
+
+De zitting zal plaatsvinden in de openbare terechtzitting van de kantonrechter in bovengenoemde rechtbank.
+
+3. Inleiding
+
+Deze dagvaarding heeft betrekking op een geschil tussen eiser(es) en gedaagde met betrekking tot:
+[AI_FIELD: korte omschrijving van het geschil in één alinea (zoals: niet-geleverde keuken, huurachterstand, arbeidsgeschil, etc.)]
+
+4. Feiten
+
+Eiser(es) legt aan deze vordering de volgende feiten ten grondslag:
+
+[AI_FIELD: chronologisch feitenrelaas — per feit één genummerde alinea, in neutrale stijl.
+Bijvoorbeeld:
+
+Op [datum] hebben partijen een overeenkomst gesloten betreffende [...].
+
+Eiser(es) heeft aan haar verplichtingen voldaan door [...].
+
+Gedaagde is ondanks herhaalde aanmaningen in gebreke gebleven met [...].
+
+De schade die hierdoor is ontstaan bedraagt [...].
+]
+
+5. De vordering (Eis)
+
+Eiser(es) vordert dat de kantonrechter bij vonnis, uitvoerbaar bij voorraad, gedaagde veroordeelt tot het volgende:
+
+[AI_FIELD: hoofdeis – bijvoorbeeld betaling van een bedrag van € ... wegens ...]
+
+[AI_FIELD: nevenvordering – wettelijke rente vanaf datum ... tot volledige betaling]
+
+[AI_FIELD: vergoeding van buitengerechtelijke incassokosten of schadeposten]
+
+[AI_FIELD: veroordeling van gedaagde in de proceskosten]
+
+Teneinde te horen veroordelen overeenkomstig bovenstaande vorderingen.
+
+6. Gronden van de vordering (Motivering)
+
+Eiser(es) grondt deze vorderingen op het volgende:
+
+[AI_FIELD: juridische motivering, verwijzingen naar relevante wetsartikelen en beginselen.
+Bijvoorbeeld: "De vordering is gebaseerd op artikel 6:74 BW (wanprestatie). Gedaagde is tekortgeschoten in de nakoming van de overeenkomst doordat..."
+]
+
+7. Bewijs en producties
+
+Ter onderbouwing van deze vorderingen verwijst eiser(es) naar de volgende producties:
+
+Nr.     Omschrijving productie  Door wie ingebracht
+1       [USER_FIELD: naam bestand / document]   Eiser(es)
+2       [USER_FIELD: naam bestand / document]   Eiser(es)
+3       [AI_FIELD: eventueel aanvullend bewijs of verwijzing naar stukken uit feitenrelaas]     AI
+
+Eiser(es) biedt, voor zover vereist, aan het gestelde te bewijzen met alle middelen rechtens, in het bijzonder door overlegging van bovengenoemde producties en het horen van partijen en getuigen.
+
+8. Reactie van gedaagde (informatie voor leken)
+
+(Deze tekst blijft altijd staan, is wettelijk voorgeschreven in lekenprocedures.)
+
+U kunt schriftelijk of mondeling reageren op deze dagvaarding.
+
+Als u het eens bent met de vordering, hoeft u niets te doen; de rechter kan de vordering dan toewijzen.
+
+Als u het niet eens bent, kunt u verweer voeren tijdens of vóór de zitting.
+
+Verschijnt u niet, dan kan de rechter uitspraak doen zonder uw reactie ("verstek").
+
+Heeft u vragen over de procedure, kijk dan op www.rechtspraak.nl
+ of neem contact op met de griffie van de rechtbank.
+
+9. Proceskosten
+
+Eiser(es) verzoekt de kantonrechter om gedaagde te veroordelen in de kosten van de procedure, waaronder begrepen het griffierecht en de kosten van betekening.
+
+10. Slot en ondertekening
+
+Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: datum].
+
+[USER_FIELD: Naam gemachtigde of eiser]
+[USER_FIELD: Adres gemachtigde / kantooradres]
+[USER_FIELD: Handtekening (digitaal of fysiek)]
+
+11. Bijlagen`;
+
+      // Create template v2
+      const templateV2 = await storage.createTemplate({
+        kind: "summons",
+        name: "Dagvaarding Kantonrechter (met vaste teksten)",
+        version: "v2",
+        bodyMarkdown: templateV2Body,
+        fieldsJson: {
+          user_fields: [
+            "datum opmaak",
+            "naam eiser",
+            "adres eiser",
+            "woonplaats eiser",
+            "geboortedatum of KvK",
+            "gemachtigde / advocaat / deurwaarder",
+            "naam gedaagde",
+            "adres gedaagde",
+            "woonplaats gedaagde",
+            "rechtbanknaam",
+            "plaats rechtbank",
+            "datum zitting",
+            "tijdstip",
+            "naam bestand / document",
+            "plaats opmaak",
+            "Naam gemachtigde of eiser",
+            "Adres gemachtigde / kantooradres",
+            "Handtekening (digitaal of fysiek)"
+          ],
+          ai_fields: [
+            "korte omschrijving van het geschil",
+            "chronologisch feitenrelaas",
+            "hoofdeis",
+            "nevenvordering",
+            "vergoeding kosten",
+            "proceskosten",
+            "juridische motivering",
+            "aanvullend bewijs"
+          ]
+        },
+        isActive: true
+      });
+
+      res.json({ success: true, template: templateV2 });
+    } catch (error) {
+      console.error("Error seeding templates:", error);
+      res.status(500).json({ message: "Failed to seed templates" });
+    }
+  });
+
   // File download routes
   app.get('/api/files/*', isAuthenticated, async (req: any, res) => {
     try {
