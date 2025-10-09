@@ -108,16 +108,21 @@ export function TemplateDetailView({ template, onUpdate }: TemplateDetailViewPro
   const handleSaveFlowConfig = async () => {
     setIsSaving(true);
     try {
-      const payload: any = {
-        mindstudioFlowName: flowName,
-        mindstudioFlowId: flowId,
-        launchVariables,
-        returnDataKeys,
-      };
+      const payload: any = {};
       
-      // Add sectionsConfig for multi-step templates
+      // For multi-step templates, only send sectionsConfig
       if (isMultiStep) {
         payload.sectionsConfig = sectionsConfig;
+      } else {
+        // For single-step templates, send flow config
+        if (flowName.trim()) {
+          payload.mindstudioFlowName = flowName;
+        }
+        if (flowId) {
+          payload.mindstudioFlowId = flowId;
+        }
+        payload.launchVariables = launchVariables;
+        payload.returnDataKeys = returnDataKeys;
       }
       
       const response = await apiRequest("PATCH", `/api/templates/${template.id}/flow`, payload);
