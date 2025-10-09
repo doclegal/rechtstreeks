@@ -1845,8 +1845,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if template has MindStudio flow configured
-      const flowName = template?.mindstudioFlowName || "CreateDagvaarding.flow";
-      console.log(`🔄 Using MindStudio flow: ${flowName}${template ? ' (from template)' : ' (default)'}`);
+      // Explicitly default to CreateDagvaarding.flow if template flow name is missing or empty
+      const flowName = (template?.mindstudioFlowName && template.mindstudioFlowName.trim()) 
+        ? template.mindstudioFlowName.trim() 
+        : "CreateDagvaarding.flow";
+      console.log(`🔄 Using MindStudio flow: ${flowName}${template?.mindstudioFlowName ? ' (from template)' : ' (default)'}`);
       
       const analysis = await storage.getLatestAnalysis(caseId);
       if (!analysis) {
@@ -2088,8 +2091,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`  - Documents (chunked): ${docs_full.length} chunks from ${documents.length} files`);
       console.log(`  - Total payload size: ~${JSON.stringify(completePayload).length} chars`);
 
-      // Call MindStudio with complete context
-      const result = await aiService.runCreateDagvaarding(completePayload);
+      // Call MindStudio with complete context using template's flow configuration
+      const result = await aiService.runCreateDagvaarding(completePayload, flowName);
 
       if (!result.success || !result.sections) {
         throw new Error(result.error || "Failed to generate dagvaarding from MindStudio");
@@ -2623,9 +2626,14 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         return res.status(400).json({ message: "No flow data provided" });
       }
       
+      // Validate flow name is not empty if provided
+      if (mindstudioFlowName !== undefined && typeof mindstudioFlowName === 'string' && mindstudioFlowName.trim() === '') {
+        return res.status(400).json({ message: "MindStudio flow name cannot be empty" });
+      }
+      
       // Update template
       const updates: any = {};
-      if (mindstudioFlowName !== undefined) updates.mindstudioFlowName = mindstudioFlowName;
+      if (mindstudioFlowName !== undefined) updates.mindstudioFlowName = mindstudioFlowName.trim();
       if (mindstudioFlowId !== undefined) updates.mindstudioFlowId = mindstudioFlowId;
       if (launchVariables !== undefined) updates.launchVariables = launchVariables;
       if (returnDataKeys !== undefined) updates.returnDataKeys = returnDataKeys;

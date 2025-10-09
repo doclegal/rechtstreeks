@@ -89,6 +89,29 @@ The database schema supports a complete legal case lifecycle with document versi
 
 The summons feature requires an existing analysis (kanton check or full analysis) before generation. The complete context payload ensures MindStudio receives all available case data without any summarization or truncation, enabling rich, case-specific legal text generation.
 
+### Template Management System
+- **Template Parsing**: Automatic detection and extraction of [user] and {ai} field markers from template text
+- **Multi-Format Support**: Parse templates from .txt, .docx, or .pdf files with dynamic imports (pdf-parse uses lazy loading to avoid import issues)
+- **Field Analysis**: Track field occurrences and positions for validation and mapping
+- **MindStudio Flow Linking**: Each template can be linked to a specific MindStudio flow with:
+  - Flow Name/ID configuration (e.g., "CreateDagvaarding.flow")
+  - Launch Variables definition (input parameters expected by the flow)
+  - Return Data Keys mapping (JSON outputs from the flow mapped to {ai} fields)
+- **Template Detail View**: Expandable UI component showing:
+  - Parsed [user] fields with occurrence counts
+  - Parsed {ai} fields with occurrence counts
+  - Flow configuration form with save functionality
+  - Visual mapping between {ai} fields and return data
+- **Dynamic Flow Selection**: Summons generation uses the linked flow from selected template
+  - Defaults to "CreateDagvaarding.flow" if no flow configured
+  - Validates flow name is non-empty before use
+  - Trims whitespace and prevents empty flow configurations
+- **Admin-Only Access**: Template parsing and flow linking restricted to admin users
+- **API Endpoints**:
+  - POST /api/templates/parse - Parse and register template from text/file
+  - PATCH /api/templates/:id/flow - Update flow linking configuration
+  - GET /api/templates/:id - Retrieve full template with flow config
+
 ## External Dependencies
 
 ### Cloud Services

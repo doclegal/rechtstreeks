@@ -1812,7 +1812,7 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     }
   }
 
-  async runCreateDagvaarding(params: any): Promise<{
+  async runCreateDagvaarding(params: any, flowName: string = "CreateDagvaarding.flow"): Promise<{
     success: boolean;
     sections?: {
       grounds: {
@@ -1836,7 +1836,7 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     };
     error?: string;
   }> {
-    console.log("⚖️ Calling MindStudio CreateDagvaarding.flow with COMPLETE context...");
+    console.log(`⚖️ Calling MindStudio ${flowName} with COMPLETE context...`);
 
     // Check if this is the new complete payload format or old format
     const isCompletePayload = params.no_summarize === true && params.parties && params.docs_full;
@@ -1880,7 +1880,7 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     const requestBody = {
       workerId: process.env.MINDSTUDIO_WORKER_ID,
       variables,
-      workflow: "CreateDagvaarding.flow",
+      workflow: flowName,
       includeBillingCost: true
     };
 
