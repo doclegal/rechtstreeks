@@ -2654,6 +2654,40 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
     }
   });
 
+  // Delete template
+  app.delete('/api/templates/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const templateId = req.params.id;
+      
+      // Check if template exists
+      const template = await storage.getTemplate(templateId);
+      if (!template) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      
+      // Delete template
+      await storage.deleteTemplate(templateId);
+      
+      res.json({
+        success: true,
+        message: "Template deleted successfully"
+      });
+    } catch (error) {
+      console.error("Error deleting template:", error);
+      res.status(500).json({ 
+        message: "Failed to delete template",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // File download routes
   app.get('/api/files/*', isAuthenticated, async (req: any, res) => {
     try {

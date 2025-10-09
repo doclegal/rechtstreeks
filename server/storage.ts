@@ -72,6 +72,7 @@ export interface IStorage {
   getTemplate(id: string): Promise<Template | undefined>;
   createTemplate(templateData: InsertTemplate): Promise<Template>;
   updateTemplate(id: string, updates: Partial<InsertTemplate>): Promise<Template>;
+  deleteTemplate(id: string): Promise<void>;
   
   // Event operations
   createEvent(eventData: InsertEvent): Promise<Event>;
@@ -345,6 +346,12 @@ export class DatabaseStorage implements IStorage {
       .where(eq(templates.id, id))
       .returning();
     return template;
+  }
+
+  async deleteTemplate(id: string): Promise<void> {
+    await db
+      .delete(templates)
+      .where(eq(templates.id, id));
   }
 
   // Event operations
