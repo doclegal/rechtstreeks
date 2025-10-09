@@ -163,8 +163,22 @@ export const templates = pgTable("templates", {
   bodyMarkdown: text("body_markdown").notNull(),
   fieldsJson: jsonb("fields_json"),
   validationsJson: jsonb("validations_json"),
+  
+  // Template parsing and flow linking
+  rawTemplateText: text("raw_template_text"), // Original template text with [user] and {ai} fields
+  userFieldsJson: jsonb("user_fields_json"), // Parsed [user] field keys with occurrences
+  aiFieldsJson: jsonb("ai_fields_json"), // Parsed {ai} field keys with occurrences
+  fieldOccurrences: jsonb("field_occurrences"), // Count of each field occurrence
+  
+  // MindStudio flow linking
+  mindstudioFlowName: varchar("mindstudio_flow_name"), // Name of linked MindStudio flow
+  mindstudioFlowId: varchar("mindstudio_flow_id"), // ID of linked MindStudio flow
+  launchVariables: jsonb("launch_variables"), // Array of variable names expected as input (Start block)
+  returnDataKeys: jsonb("return_data_keys"), // Array of JSON keys the flow returns (End block)
+  
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("idx_templates_kind").on(table.kind),
   index("idx_templates_active").on(table.isActive),

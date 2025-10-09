@@ -1,0 +1,89 @@
+I want you to build the functionality that manages multiple legal text templates, each linked to a specific MindStudio flow.
+Templates are not uploaded by end users — they are provided by me as the developer (for example, through a shared file or direct injection into the app).
+Your job is to ensure that once a new template file is provided, the app automatically reads, parses, and registers it in a uniform way.
+
+Template Specification
+
+Each template is a plain-text file (.txt or .docx or .pdf) that follows a simple syntax:
+
+User-input fields are marked with square brackets: [field_key]
+
+AI-generated fields are marked with curly braces: {field_key}
+
+
+
+Core Functionality
+
+Template Intake 
+
+When I, the developer, provide a new template file to the system (via the chat prompting that a new template is shared), the app automatically:
+
+Reads the raw text.
+
+Detects [user] and {ai} fields.
+
+Creates a new template record in storage with:
+
+Template name / ID
+
+Parsed field lists (userFields, aiFields)
+
+Raw text
+
+Occurrence counts per field key
+
+Created / updated timestamps
+
+There is no UI for uploading — the focus is on consistent automatic recognition and structured registration once a template is added.
+
+Template Display & Management
+
+All templates appear in the existing template list within the app.
+
+Selecting a template shows:
+
+The template name and preview with fields as it is already implemented
+
+Two lists:
+
+User fields ([])
+
+AI fields ({})
+
+For User fields: fill in 'Nog in te vullen'.
+
+
+
+Flow Linking (MindStudio)
+
+Each template can be linked to exactly one MindStudio flow.
+For test purpose i would like to have a template detail view below each template.
+
+In the template detail view, show:
+
+1. Linked Flow Name / ID: this is a input text aerea where I can fill in the name of the Mindstudio flow to be connected with, including a save button. When i click on save, you conect this template to the this Mindstudio flow. When I click on 'Genereer dagvaarding' you choose this saved Mindstudio flow. You use all other credentials as API key as already saved in the system (secrets)
+
+2. Launch Variables (Start block) → list of variables the flow expects as input. Show the names of the Variables so I can add them into the Launch Variables block in Mindstudio.
+
+3. Return Data (End block) → list of JSON keys the flow returns on completion.: Show the JSON output you axpect as Key and Value for each JSON output as return data form Mindstudio
+
+I can manually enter or edit these lists for each template (since they come from MindStudio) and then save is. On Save you make shure the template and all fields are connected the right way.
+
+The app must clearly show which {ai} fields in the template correspond to keys in the Return Data list.
+
+
+Acceptance Criteria
+
+When I add a template, the app automatically parses it and creates a new template record.
+
+I can see each template’s [user] and {ai} fields clearly listed.
+
+I can link each template to one MindStudio flow and manually define:
+
+Launch Variables (inputs from Replit → MindStudio)
+
+Return Data keys (outputs from MindStudio → Replit)
+
+The mapping between {ai} fields and flow return data is visually clear and validated.
+
+Duplicate or empty field keys are flagged as errors.

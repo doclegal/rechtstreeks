@@ -9,6 +9,7 @@ import { pdfService } from "./services/pdfService";
 import { mockIntegrations } from "./services/mockIntegrations";
 import { handleDatabaseError } from "./db";
 import { validateSummonsV1 } from "@shared/summonsValidation";
+import { parseTemplateText, extractTextFromFile, validateParsedTemplate } from "./services/templateParser";
 import multer from "multer";
 import { z } from "zod";
 
@@ -2519,6 +2520,116 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
     } catch (error) {
       console.error("Error seeding templates:", error);
       res.status(500).json({ message: "Failed to seed templates" });
+    }
+  });
+
+  // Parse and register new template from text or file
+  app.post('/api/templates/parse', isAuthenticated, upload.single('file'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      let templateText = '';
+      
+      // Extract text from file or request body
+      if (req.file) {
+        // File upload
+        templateText = await extractTextFromFile(req.file.buffer, req.file.mimetype);
+      } else if (req.body.text) {
+        // Direct text input
+        templateText = req.body.text;
+      } else {
+        return res.status(400).json({ message: "No template text or file provided" });
+      }
+      
+      // Parse template
+      const parsed = parseTemplateText(templateText);
+      
+      // Validate parsed template
+      const validation = validateParsedTemplate(parsed);
+      if (!validation.valid) {
+        return res.status(400).json({ 
+          message: "Template validation failed", 
+          errors: validation.errors 
+        });
+      }
+      
+      // Create template record
+      const templateData = {
+        kind: req.body.kind || 'summons',
+        name: req.body.name || 'Untitled Template',
+        version: req.body.version || 'v1',
+        bodyMarkdown: templateText,
+        rawTemplateText: templateText,
+        userFieldsJson: parsed.userFields.map(f => ({ key: f.key, occurrences: f.occurrences })),
+        aiFieldsJson: parsed.aiFields.map(f => ({ key: f.key, occurrences: f.occurrences })),
+        fieldOccurrences: parsed.fieldOccurrences,
+        isActive: true,
+      };
+      
+      const template = await storage.createTemplate(templateData);
+      
+      res.json({
+        success: true,
+        template,
+        parsed: {
+          totalUserFields: parsed.totalUserFields,
+          totalAiFields: parsed.totalAiFields,
+          userFields: parsed.userFields,
+          aiFields: parsed.aiFields,
+        }
+      });
+    } catch (error) {
+      console.error("Error parsing template:", error);
+      res.status(500).json({ 
+        message: "Failed to parse template",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Update MindStudio flow linking for a template
+  app.patch('/api/templates/:id/flow', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const templateId = req.params.id;
+      const { mindstudioFlowName, mindstudioFlowId, launchVariables, returnDataKeys } = req.body;
+      
+      // Validate input
+      if (!mindstudioFlowName && !mindstudioFlowId && !launchVariables && !returnDataKeys) {
+        return res.status(400).json({ message: "No flow data provided" });
+      }
+      
+      // Update template
+      const updates: any = {};
+      if (mindstudioFlowName !== undefined) updates.mindstudioFlowName = mindstudioFlowName;
+      if (mindstudioFlowId !== undefined) updates.mindstudioFlowId = mindstudioFlowId;
+      if (launchVariables !== undefined) updates.launchVariables = launchVariables;
+      if (returnDataKeys !== undefined) updates.returnDataKeys = returnDataKeys;
+      updates.updatedAt = new Date();
+      
+      const template = await storage.updateTemplate(templateId, updates);
+      
+      res.json({
+        success: true,
+        template
+      });
+    } catch (error) {
+      console.error("Error updating template flow:", error);
+      res.status(500).json({ 
+        message: "Failed to update template flow",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
