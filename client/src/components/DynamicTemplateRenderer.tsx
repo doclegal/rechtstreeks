@@ -87,7 +87,7 @@ export function DynamicTemplateRenderer({
     
     if (part.type === 'userField' && part.fieldKey) {
       const value = userFields[part.fieldKey];
-      const isEmpty = value === undefined || value === '' || value === 0;
+      const isEmpty = value === undefined || value === '' || (typeof value === 'number' && isNaN(value));
       
       if (!editable) {
         return (
