@@ -1844,6 +1844,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Check if template is multi-step (has sectionsConfig)
+      const isMultiStep = template?.sectionsConfig && Array.isArray(template.sectionsConfig) && template.sectionsConfig.length > 0;
+      
+      if (isMultiStep) {
+        console.log("🔁 Multi-step template detected, creating summons with sections...");
+        
+        // Create summons record with status "in_progress"
+        const summons = await storage.createSummons({
+          caseId,
+          templateId: templateId || "official_model_dagvaarding",
+          templateVersion: template?.version || "v4-multistep",
+          userFieldsJson: userFields,
+          aiFieldsJson: {},
+          status: "in_progress"
+        });
+        
+        // Create section records for each section in sectionsConfig
+        for (const sectionConfig of template!.sectionsConfig as any[]) {
+          await storage.createSummonsSection({
+            summonsId: summons.id,
+            sectionKey: sectionConfig.sectionKey,
+            status: "pending",
+            generatedText: null,
+            userFeedback: null
+          });
+        }
+        
+        await storage.createEvent({
+          caseId,
+          actorUserId: userId,
+          type: "summons_multistep_started",
+          payloadJson: { summonsId: summons.id, templateId },
+        });
+        
+        return res.json({
+          success: true,
+          message: "Multi-step summons created",
+          summonsId: summons.id,
+          sectionCount: template!.sectionsConfig.length
+        });
+      }
+      
+      // Single-step flow continues below
       // Check if template has MindStudio flow configured
       // Explicitly default to CreateDagvaarding.flow if template flow name is missing or empty
       const flowName = (template?.mindstudioFlowName && template.mindstudioFlowName.trim()) 

@@ -14,6 +14,7 @@ import { SummonsTemplateV1 } from "@/components/SummonsTemplateV1";
 import { SummonsTemplateV3 } from "@/components/SummonsTemplateV3";
 import { DynamicTemplateRenderer } from "@/components/DynamicTemplateRenderer";
 import { TemplateDetailView } from "@/components/TemplateDetailView";
+import { MultiStepSummonsWorkflow } from "@/components/MultiStepSummonsWorkflow";
 import { UserFields, AIFields, userFieldsSchema } from "@shared/summonsFields";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -144,18 +145,29 @@ export default function SummonsEditor() {
       const data = await response.json();
       
       if (response.ok) {
-        // Update AI fields with MindStudio response
-        setAIFields(data.aiFields);
-        
-        queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId, "summons-v2"] });
-        
-        toast({
-          title: "Dagvaarding gegenereerd",
-          description: "AI heeft de ontbrekende secties ingevuld",
-        });
-        
-        // Switch to template view
-        setActiveTab("template");
+        // Check if this is a multi-step workflow (response has summonsId but no aiFields)
+        if (data.summonsId && !data.aiFields) {
+          // Multi-step workflow started
+          queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId, "summons-v2"] });
+          
+          toast({
+            title: "7-Stappen Workflow gestart",
+            description: `${data.sectionCount} secties zijn klaar om gegenereerd te worden.`,
+          });
+        } else {
+          // Single-step workflow - update AI fields
+          setAIFields(data.aiFields);
+          
+          queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId, "summons-v2"] });
+          
+          toast({
+            title: "Dagvaarding gegenereerd",
+            description: "AI heeft de ontbrekende secties ingevuld",
+          });
+          
+          // Switch to template view
+          setActiveTab("template");
+        }
       } else {
         throw new Error(data.message || "Generatie mislukt");
       }
@@ -268,29 +280,41 @@ export default function SummonsEditor() {
           </p>
         </div>
         
-        <div className="flex gap-3">
-          <Button onClick={handleSaveDraft} variant="outline" data-testid="button-save-draft">
-            <FileText className="h-4 w-4 mr-2" />
-            Concept opslaan
-          </Button>
-          <Button onClick={handleGenerate} disabled={isGenerating} data-testid="button-generate">
-            {isGenerating ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Genereren...
-              </>
-            ) : (
-              <>
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Genereer dagvaarding
-              </>
-            )}
-          </Button>
-          <Button onClick={handleDownloadPDF} variant="outline" data-testid="button-download-pdf">
-            <Download className="h-4 w-4 mr-2" />
-            Download PDF
-          </Button>
-        </div>
+        {selectedTemplateId && templates && (() => {
+          const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+          const isMultiStep = selectedTemplate?.sectionsConfig && Array.isArray(selectedTemplate.sectionsConfig) && selectedTemplate.sectionsConfig.length > 0;
+          
+          // Don't show single-step buttons for multi-step templates
+          if (isMultiStep) {
+            return null;
+          }
+          
+          return (
+            <div className="flex gap-3">
+              <Button onClick={handleSaveDraft} variant="outline" data-testid="button-save-draft">
+                <FileText className="h-4 w-4 mr-2" />
+                Concept opslaan
+              </Button>
+              <Button onClick={handleGenerate} disabled={isGenerating} data-testid="button-generate">
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Genereren...
+                  </>
+                ) : (
+                  <>
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Genereer dagvaarding
+                  </>
+                )}
+              </Button>
+              <Button onClick={handleDownloadPDF} variant="outline" data-testid="button-download-pdf">
+                <Download className="h-4 w-4 mr-2" />
+                Download PDF
+              </Button>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Template Selector */}
@@ -333,84 +357,131 @@ export default function SummonsEditor() {
         />
       )}
 
-      {/* Info box */}
-      <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950">
-        <CardContent className="py-4">
-          <div className="flex gap-3">
-            <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
-                Hoe werkt het?
-              </h4>
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                Vul de <strong>blauwe velden</strong> (uw gegevens) in. De <strong>gele velden</strong> worden automatisch door AI gegenereerd op basis van uw zaakanalyse. Alle vaste tekst blijft ongewijzigd volgens het officiële Model dagvaarding.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Dagvaarding Editor */}
-      <div className="mt-6">
-          <Card>
-            <CardContent className="py-6">
-              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800 dark:text-blue-200">
-                  <strong>Gele velden</strong> kun je direct invullen in de dagvaarding hieronder. Klik op een geel veld om te bewerken. <strong>Gele velden met AI-tekst</strong> worden automatisch gegenereerd wanneer u op "Genereer dagvaarding" klikt.
+      {selectedTemplateId && templates && (() => {
+        const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+        const isMultiStep = selectedTemplate?.sectionsConfig && Array.isArray(selectedTemplate.sectionsConfig) && selectedTemplate.sectionsConfig.length > 0;
+        
+        // Multi-step workflow - if summons exists, show workflow
+        if (isMultiStep && existingSummons && existingSummons.length > 0) {
+          return (
+            <MultiStepSummonsWorkflow
+              caseId={caseId!}
+              summonsId={existingSummons[0].id}
+              templateId={selectedTemplateId}
+            />
+          );
+        }
+        
+        // Multi-step workflow - if no summons exists, show start button
+        if (isMultiStep && (!existingSummons || existingSummons.length === 0)) {
+          return (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <FileText className="h-16 w-16 text-primary mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-foreground mb-2">
+                  7-Stappen Dagvaarding Workflow
+                </h3>
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                  Dit template gebruikt een stapsgewijze workflow waarbij elke sectie apart door AI wordt gegenereerd en door u wordt beoordeeld.
                 </p>
-              </div>
-              {selectedTemplateId && templates && (
-                (() => {
-                  const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
-                  
-                  // Use dynamic renderer if template has rawTemplateText
-                  if (selectedTemplate?.rawTemplateText) {
-                    return (
-                      <DynamicTemplateRenderer
-                        templateText={selectedTemplate.rawTemplateText}
-                        userFields={userFields}
-                        aiFields={aiFields}
-                        onUserFieldChange={(key, value) => setUserFields(prev => ({ ...prev, [key]: value }))}
-                        editable={true}
-                      />
-                    );
-                  }
-                  
-                  // Fall back to versioned templates for legacy support
-                  if (selectedTemplate?.version === 'v1') {
-                    return (
-                      <SummonsTemplateV1
-                        userFields={userFields}
-                        aiFields={aiFields}
-                        onUserFieldChange={handleUserFieldChange}
-                        editable={true}
-                        templateId={selectedTemplateId}
-                      />
-                    );
-                  } else if (selectedTemplate?.version === 'v3') {
-                    return (
-                      <SummonsTemplateV3
-                        userFields={userFields}
-                        aiFields={aiFields}
-                        onUserFieldChange={handleUserFieldChange}
-                        editable={true}
-                      />
-                    );
-                  } else {
-                    return (
-                      <SummonsTemplateV2
-                        userFields={userFields}
-                        aiFields={aiFields}
-                        onUserFieldChange={handleUserFieldChange}
-                        editable={true}
-                      />
-                    );
-                  }
-                })()
-              )}
-            </CardContent>
-          </Card>
-      </div>
+                <Button onClick={handleGenerate} disabled={isGenerating} size="lg" data-testid="button-start-multistep">
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Workflow starten...
+                    </>
+                  ) : (
+                    <>
+                      <PlusCircle className="h-5 w-5 mr-2" />
+                      Start 7-Stappen Workflow
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        }
+        
+        // Single-step workflow
+        return (
+          <>
+            {/* Info box */}
+            <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950">
+              <CardContent className="py-4">
+                <div className="flex gap-3">
+                  <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                      Hoe werkt het?
+                    </h4>
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      Vul de <strong>blauwe velden</strong> (uw gegevens) in. De <strong>gele velden</strong> worden automatisch door AI gegenereerd op basis van uw zaakanalyse. Alle vaste tekst blijft ongewijzigd volgens het officiële Model dagvaarding.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Dagvaarding Editor */}
+            <div className="mt-6">
+              <Card>
+                <CardContent className="py-6">
+                  <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      <strong>Gele velden</strong> kun je direct invullen in de dagvaarding hieronder. Klik op een geel veld om te bewerken. <strong>Gele velden met AI-tekst</strong> worden automatisch gegenereerd wanneer u op "Genereer dagvaarding" klikt.
+                    </p>
+                  </div>
+                  {(() => {
+                    // Use dynamic renderer if template has rawTemplateText
+                    if (selectedTemplate?.rawTemplateText) {
+                      return (
+                        <DynamicTemplateRenderer
+                          templateText={selectedTemplate.rawTemplateText}
+                          userFields={userFields}
+                          aiFields={aiFields}
+                          onUserFieldChange={(key, value) => setUserFields(prev => ({ ...prev, [key]: value }))}
+                          editable={true}
+                        />
+                      );
+                    }
+                    
+                    // Fall back to versioned templates for legacy support
+                    if (selectedTemplate?.version === 'v1') {
+                      return (
+                        <SummonsTemplateV1
+                          userFields={userFields}
+                          aiFields={aiFields}
+                          onUserFieldChange={handleUserFieldChange}
+                          editable={true}
+                          templateId={selectedTemplateId}
+                        />
+                      );
+                    } else if (selectedTemplate?.version === 'v3') {
+                      return (
+                        <SummonsTemplateV3
+                          userFields={userFields}
+                          aiFields={aiFields}
+                          onUserFieldChange={handleUserFieldChange}
+                          editable={true}
+                        />
+                      );
+                    } else {
+                      return (
+                        <SummonsTemplateV2
+                          userFields={userFields}
+                          aiFields={aiFields}
+                          onUserFieldChange={handleUserFieldChange}
+                          editable={true}
+                        />
+                      );
+                    }
+                  })()}
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        );
+      })()}
     </div>
   );
 }
