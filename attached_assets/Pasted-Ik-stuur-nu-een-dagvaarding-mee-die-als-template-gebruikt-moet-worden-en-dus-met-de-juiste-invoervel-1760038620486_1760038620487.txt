@@ -1,0 +1,63 @@
+Ik stuur nu een dagvaarding mee die als template gebruikt moet worden en dus met de juiste invoervelden. Sla deze op de juiste manier op.
+Maak vervolgens in de app een stapsgewijze dagvaardinggenerator met deze template die bestaat uit 7 opeenvolgende onderdelen.
+Elk onderdeel wordt gevuld door een aparte MindStudio-flow die na elkaar wordt uitgevoerd.
+De gebruiker kan na elke stap de AI-tekst bekijken, goedkeuren of afkeuren, en eventueel opmerkingen toevoegen om het onderdeel opnieuw te laten genereren.
+Pas wanneer een onderdeel is goedgekeurd, kan de gebruiker doorgaan naar het volgende.
+
+De 7 onderdelen zijn:
+
+- Vorderingen
+
+- Feiten (chronologisch overzicht)
+
+- Rechtsgronden en juridische motivering
+
+- Verloop van het geschil (communicatie, brieven, sommaties)
+
+- Verwacht verweer en weerlegging
+
+- Slot en petitum
+
+- Producties en eindcontrole
+
+Voor elk onderdeel geldt:
+
+Er wordt één specifieke MindStudio-flow aangeroepen. De gebruiker moet dus zeven keer na elkaar dmv een button de flow kunnen aanroepen.
+
+De input bestaat uit alle gebruikersvelden uit de template (de [Nog invullen]-velden) plus de al geaccepteerde onderdelen van eerdere stappen.
+
+De flow levert precies één tekstveld terug, bijvoorbeeld “feiten” of “petitum”.
+
+De tekst van die flow wordt op het scherm geplaatst in het bijbehorende blok van de dagvaarding.
+
+De gebruiker kan per blok:
+
+Genereren: de flow wordt gestart.
+
+Accepteren: markeer het onderdeel als definitief en ga door naar het volgende blok.
+
+Afwijzen: toon een tekstveld waarin de gebruiker opmerkingen of verbeterpunten kan noteren; dan moet de gebruiker met dezelfde button opnieuw genereren maar nu met de extra info, stuur deze opmerkingen mee naar mindstudio bij de nieuwe generatie.
+
+De app moet duidelijk aangeven:
+
+welk blok actief is;
+
+of een onderdeel al is goedgekeurd of nog in bewerking;
+
+en de status van elke stap (bijvoorbeeld: “wordt gegenereerd”, “klaar ter controle”, “goedgekeurd”, “afgekeurd”).
+
+Zodra alle zeven onderdelen zijn goedgekeurd:
+
+- worden ze samengevoegd met de vaste teksten van de dagvaardingtemplate;
+
+- worden alle [Nog invullen]-velden vervangen door de waarden van de gebruiker;
+
+- en krijgt de gebruiker een complete, goed leesbare conceptdagvaarding te zien met mogelijkheid om te exporteren (bijvoorbeeld als pdf of docx).
+
+In het deel waar de flow kan worden ingevuld per template moet ik het volgende kunnen invullen
+- per elk van de 7 delen moet ik kunnen aangeven welke flow (met welke naam) met de bijbehorende button wordt gestart
+- per flow moet ik kunnen zien als welke variabele de eventuele extra info (opmerkingen van gebruiker) worden meegstuurd naar mindstudio zodat ik dat juist kan instellen als launch variable
+
+Gebruik overal dezelfde stijl en indeling als in de bestaande templates.
+Zorg dat vaste tekstblokken niet door de AI worden overschreven.
+De gebruiker moet in het scherm ook kunnen zien welke MindStudio-flow bij elk blok hoort en welk onderdeel daarmee wordt gevuld.

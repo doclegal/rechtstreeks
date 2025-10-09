@@ -136,6 +136,15 @@ export const letters = pgTable("letters", {
   index("idx_letters_case").on(table.caseId),
 ]);
 
+// Section status enum for multi-step summons generation (must be before summons table)
+export const summonsSectionStatusEnum = pgEnum("summons_section_status", [
+  "pending",
+  "generating",
+  "ready_for_review",
+  "approved",
+  "rejected"
+]);
+
 export const summons = pgTable("summons", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   caseId: varchar("case_id").notNull().references(() => cases.id, { onDelete: "cascade" }),
@@ -149,10 +158,31 @@ export const summons = pgTable("summons", {
   pdfStorageKey: text("pdf_storage_key"),
   status: varchar("status").default("draft"), // draft, generating, ready, reviewed, filed
   generationError: text("generation_error"),
+  isMultiStep: boolean("is_multi_step").default(false), // Whether this summons uses multi-step generation
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("idx_summons_case").on(table.caseId),
+]);
+
+// Multi-step summons sections (for 7-step dagvaarding)
+export const summonsSections = pgTable("summons_sections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  summonsId: varchar("summons_id").notNull().references(() => summons.id, { onDelete: "cascade" }),
+  sectionKey: varchar("section_key").notNull(), // e.g., "VORDERINGEN", "FEITEN", "RECHTSGRONDEN"
+  sectionName: text("section_name").notNull(), // Display name
+  stepOrder: integer("step_order").notNull(), // 1-7 for ordering
+  status: summonsSectionStatusEnum("status").default("pending"),
+  flowName: varchar("flow_name"), // MindStudio flow to call for this section
+  feedbackVariableName: varchar("feedback_variable_name"), // Variable name for user feedback in MindStudio
+  generatedText: text("generated_text"), // AI-generated text for this section
+  userFeedback: text("user_feedback"), // User comments/corrections for regeneration
+  generationCount: integer("generation_count").default(0), // How many times generated
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_summons_sections_summons").on(table.summonsId),
+  index("idx_summons_sections_order").on(table.summonsId, table.stepOrder),
 ]);
 
 export const templates = pgTable("templates", {
@@ -170,11 +200,15 @@ export const templates = pgTable("templates", {
   aiFieldsJson: jsonb("ai_fields_json"), // Parsed {ai} field keys with occurrences
   fieldOccurrences: jsonb("field_occurrences"), // Count of each field occurrence
   
-  // MindStudio flow linking
+  // MindStudio flow linking (single-step templates)
   mindstudioFlowName: varchar("mindstudio_flow_name"), // Name of linked MindStudio flow
   mindstudioFlowId: varchar("mindstudio_flow_id"), // ID of linked MindStudio flow
   launchVariables: jsonb("launch_variables"), // Array of variable names expected as input (Start block)
   returnDataKeys: jsonb("return_data_keys"), // Array of JSON keys the flow returns (End block)
+  
+  // Multi-step configuration (for 7-step dagvaarding)
+  isMultiStep: boolean("is_multi_step").default(false), // Whether this template uses multi-step generation
+  sectionsConfig: jsonb("sections_config"), // Array of section configs: [{sectionKey, sectionName, stepOrder, flowName, feedbackVariableName, aiFieldKey}]
   
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
@@ -383,6 +417,12 @@ export const insertSummonsSchema = createInsertSchema(summons).omit({
   createdAt: true,
 });
 
+export const insertSummonsSectionSchema = createInsertSchema(summonsSections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertTemplateSchema = createInsertSchema(templates).omit({
   id: true,
   createdAt: true,
@@ -455,6 +495,9 @@ export type Letter = typeof letters.$inferSelect;
 export type InsertLetter = z.infer<typeof insertLetterSchema>;
 export type Summons = typeof summons.$inferSelect;
 export type InsertSummons = z.infer<typeof insertSummonsSchema>;
+export type SummonsSection = typeof summonsSections.$inferSelect;
+export type InsertSummonsSection = z.infer<typeof insertSummonsSectionSchema>;
+export type SummonsSectionStatus = typeof summonsSections.status.enumValues[number];
 export type Template = typeof templates.$inferSelect;
 export type InsertTemplate = z.infer<typeof insertTemplateSchema>;
 export type Event = typeof events.$inferSelect;
