@@ -12,6 +12,7 @@ import { Scale, PlusCircle, FileText, AlertCircle, Loader2, Download } from "luc
 import { SummonsTemplateV2 } from "@/components/SummonsTemplateV2";
 import { SummonsTemplateV1 } from "@/components/SummonsTemplateV1";
 import { SummonsTemplateV3 } from "@/components/SummonsTemplateV3";
+import { DynamicTemplateRenderer } from "@/components/DynamicTemplateRenderer";
 import { TemplateDetailView } from "@/components/TemplateDetailView";
 import { UserFields, AIFields, userFieldsSchema } from "@shared/summonsFields";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -362,6 +363,20 @@ export default function SummonsEditor() {
                 (() => {
                   const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
                   
+                  // Use dynamic renderer if template has rawTemplateText
+                  if (selectedTemplate?.rawTemplateText) {
+                    return (
+                      <DynamicTemplateRenderer
+                        templateText={selectedTemplate.rawTemplateText}
+                        userFields={userFields}
+                        aiFields={aiFields}
+                        onUserFieldChange={(key, value) => setUserFields(prev => ({ ...prev, [key]: value }))}
+                        editable={true}
+                      />
+                    );
+                  }
+                  
+                  // Fall back to versioned templates for legacy support
                   if (selectedTemplate?.version === 'v1') {
                     return (
                       <SummonsTemplateV1
