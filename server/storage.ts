@@ -5,6 +5,7 @@ import {
   analyses,
   letters,
   summons,
+  summonsSections,
   templates,
   events,
   webhooks,
@@ -21,6 +22,8 @@ import {
   type InsertLetter,
   type Summons,
   type InsertSummons,
+  type SummonsSection,
+  type InsertSummonsSection,
   type Template,
   type InsertTemplate,
   type Event,
@@ -66,6 +69,14 @@ export interface IStorage {
   getSummonsByCase(caseId: string): Promise<Summons[]>;
   getSummons(id: string): Promise<Summons | undefined>;
   deleteSummons(id: string): Promise<void>;
+  updateSummons(id: string, updates: Partial<InsertSummons>): Promise<Summons>;
+  
+  // Summons Section operations (multi-step)
+  createSummonsSection(sectionData: InsertSummonsSection): Promise<SummonsSection>;
+  getSummonsSections(summonsId: string): Promise<SummonsSection[]>;
+  getSummonsSection(id: string): Promise<SummonsSection | undefined>;
+  getSummonsSectionByKey(summonsId: string, sectionKey: string): Promise<SummonsSection | undefined>;
+  updateSummonsSection(id: string, updates: Partial<InsertSummonsSection>): Promise<SummonsSection>;
   
   // Template operations
   getTemplates(kind?: string): Promise<Template[]>;
@@ -304,6 +315,60 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSummons(id: string): Promise<void> {
     await db.delete(summons).where(eq(summons.id, id));
+  }
+
+  async updateSummons(id: string, updates: Partial<InsertSummons>): Promise<Summons> {
+    const [updated] = await db
+      .update(summons)
+      .set({...updates, updatedAt: new Date()})
+      .where(eq(summons.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Summons Section operations (multi-step)
+  async createSummonsSection(sectionData: InsertSummonsSection): Promise<SummonsSection> {
+    const [section] = await db
+      .insert(summonsSections)
+      .values(sectionData)
+      .returning();
+    return section;
+  }
+
+  async getSummonsSections(summonsId: string): Promise<SummonsSection[]> {
+    return await db
+      .select()
+      .from(summonsSections)
+      .where(eq(summonsSections.summonsId, summonsId))
+      .orderBy(summonsSections.stepOrder);
+  }
+
+  async getSummonsSection(id: string): Promise<SummonsSection | undefined> {
+    const [section] = await db
+      .select()
+      .from(summonsSections)
+      .where(eq(summonsSections.id, id));
+    return section;
+  }
+
+  async getSummonsSectionByKey(summonsId: string, sectionKey: string): Promise<SummonsSection | undefined> {
+    const [section] = await db
+      .select()
+      .from(summonsSections)
+      .where(and(
+        eq(summonsSections.summonsId, summonsId),
+        eq(summonsSections.sectionKey, sectionKey)
+      ));
+    return section;
+  }
+
+  async updateSummonsSection(id: string, updates: Partial<InsertSummonsSection>): Promise<SummonsSection> {
+    const [updated] = await db
+      .update(summonsSections)
+      .set({...updates, updatedAt: new Date()})
+      .where(eq(summonsSections.id, id))
+      .returning();
+    return updated;
   }
 
   // Template operations

@@ -2195,6 +2195,309 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Multi-step summons generation endpoints
+  // Get all sections for a summons
+  app.get('/api/cases/:caseId/summons/:summonsId/sections', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { caseId, summonsId } = req.params;
+      
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      const summons = await storage.getSummons(summonsId);
+      if (!summons || summons.caseId !== caseId) {
+        return res.status(404).json({ message: "Summons not found" });
+      }
+      
+      const sections = await storage.getSummonsSections(summonsId);
+      res.json(sections);
+    } catch (error) {
+      console.error("Error fetching summons sections:", error);
+      res.status(500).json({ message: "Failed to fetch sections" });
+    }
+  });
+
+  // Generate a specific section using MindStudio
+  app.post('/api/cases/:caseId/summons/:summonsId/sections/:sectionKey/generate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { caseId, summonsId, sectionKey } = req.params;
+      const { userFields, previousSections, userFeedback } = req.body;
+      
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      const summons = await storage.getSummons(summonsId);
+      if (!summons || summons.caseId !== caseId) {
+        return res.status(404).json({ message: "Summons not found" });
+      }
+      
+      // Get the section
+      const section = await storage.getSummonsSectionByKey(summonsId, sectionKey);
+      if (!section) {
+        return res.status(404).json({ message: "Section not found" });
+      }
+      
+      // Update section status to generating
+      await storage.updateSummonsSection(section.id, {
+        status: "generating"
+      });
+      
+      // Get template for flow configuration
+      const template = summons.templateId ? await storage.getTemplate(summons.templateId) : null;
+      
+      // Find section config in template
+      const sectionsConfig = template?.sectionsConfig as any[];
+      const sectionConfig = sectionsConfig?.find((s: any) => s.sectionKey === sectionKey);
+      
+      if (!sectionConfig || !sectionConfig.flowName) {
+        return res.status(400).json({ message: "No MindStudio flow configured for this section" });
+      }
+      
+      const flowName = sectionConfig.flowName;
+      const feedbackVariableName = sectionConfig.feedbackVariableName || "user_feedback";
+      
+      // Get analysis and documents for context
+      const analysis = await storage.getLatestAnalysis(caseId);
+      const documents = await storage.getDocumentsByCase(caseId);
+      
+      // Build launch variables for MindStudio
+      const launchVariables: any = {
+        ...userFields,
+        ...previousSections,
+        case_id: caseId,
+        summons_id: summonsId,
+        section_key: sectionKey
+      };
+      
+      // Add user feedback if provided (for regeneration)
+      if (userFeedback) {
+        launchVariables[feedbackVariableName] = userFeedback;
+      }
+      
+      // Add analysis context if available
+      if (analysis?.analysisJson) {
+        launchVariables.analysis = analysis.analysisJson;
+      }
+      
+      // Add document context
+      if (documents.length > 0) {
+        launchVariables.documents = documents.map(d => ({
+          filename: d.filename,
+          text: d.extractedText?.substring(0, 5000) // Limit text length
+        }));
+      }
+      
+      // Call MindStudio flow
+      const mindstudioApiKey = process.env.MINDSTUDIO_API_KEY;
+      const useMock = process.env.USE_MINDSTUDIO_SUMMONS_MOCK === 'true';
+      
+      if (useMock || !mindstudioApiKey) {
+        // Return mock response for development
+        const mockText = `[MOCK] Gegenereerde tekst voor sectie ${section.sectionName}.\n\nDit is een placeholder tekst die door MindStudio zou worden gegenereerd.\n\nIn productie wordt hier de echte ${flowName} aangeroepen.`;
+        
+        await storage.updateSummonsSection(section.id, {
+          status: "ready_for_review",
+          generatedText: mockText,
+          generationCount: (section.generationCount || 0) + 1,
+          userFeedback: userFeedback || null
+        });
+        
+        const updatedSection = await storage.getSummonsSection(section.id);
+        return res.json(updatedSection);
+      }
+      
+      // Real MindStudio call
+      const mindstudioResponse = await fetch(`https://api.mindstudio.ai/v1/workflows/${flowName}/run`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${mindstudioApiKey}`
+        },
+        body: JSON.stringify({
+          variables: launchVariables
+        })
+      });
+      
+      if (!mindstudioResponse.ok) {
+        throw new Error(`MindStudio API error: ${mindstudioResponse.statusText}`);
+      }
+      
+      const result = await mindstudioResponse.json();
+      
+      // Extract generated text from result based on section config
+      const aiFieldKey = sectionConfig.aiFieldKey || sectionKey;
+      const generatedText = result[aiFieldKey] || result.text || result.output || '';
+      
+      // Update section with generated text
+      await storage.updateSummonsSection(section.id, {
+        status: "ready_for_review",
+        generatedText,
+        generationCount: (section.generationCount || 0) + 1,
+        userFeedback: userFeedback || null
+      });
+      
+      const updatedSection = await storage.getSummonsSection(section.id);
+      res.json(updatedSection);
+    } catch (error) {
+      console.error("Error generating section:", error);
+      res.status(500).json({ message: (error as Error).message || "Failed to generate section" });
+    }
+  });
+
+  // Approve a section
+  app.post('/api/cases/:caseId/summons/:summonsId/sections/:sectionKey/approve', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { caseId, summonsId, sectionKey } = req.params;
+      
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      const summons = await storage.getSummons(summonsId);
+      if (!summons || summons.caseId !== caseId) {
+        return res.status(404).json({ message: "Summons not found" });
+      }
+      
+      const section = await storage.getSummonsSectionByKey(summonsId, sectionKey);
+      if (!section) {
+        return res.status(404).json({ message: "Section not found" });
+      }
+      
+      // Update section status to approved
+      await storage.updateSummonsSection(section.id, {
+        status: "approved"
+      });
+      
+      const updatedSection = await storage.getSummonsSection(section.id);
+      res.json(updatedSection);
+    } catch (error) {
+      console.error("Error approving section:", error);
+      res.status(500).json({ message: "Failed to approve section" });
+    }
+  });
+
+  // Reject a section with feedback
+  app.post('/api/cases/:caseId/summons/:summonsId/sections/:sectionKey/reject', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { caseId, summonsId, sectionKey } = req.params;
+      const { feedback } = req.body;
+      
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      const summons = await storage.getSummons(summonsId);
+      if (!summons || summons.caseId !== caseId) {
+        return res.status(404).json({ message: "Summons not found" });
+      }
+      
+      const section = await storage.getSummonsSectionByKey(summonsId, sectionKey);
+      if (!section) {
+        return res.status(404).json({ message: "Section not found" });
+      }
+      
+      // Update section status to rejected with feedback
+      await storage.updateSummonsSection(section.id, {
+        status: "rejected",
+        userFeedback: feedback
+      });
+      
+      const updatedSection = await storage.getSummonsSection(section.id);
+      res.json(updatedSection);
+    } catch (error) {
+      console.error("Error rejecting section:", error);
+      res.status(500).json({ message: "Failed to reject section" });
+    }
+  });
+
+  // Assemble final dagvaarding when all sections are approved
+  app.post('/api/cases/:caseId/summons/:summonsId/assemble', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { caseId, summonsId } = req.params;
+      const { userFields } = req.body;
+      
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      const summons = await storage.getSummons(summonsId);
+      if (!summons || summons.caseId !== caseId) {
+        return res.status(404).json({ message: "Summons not found" });
+      }
+      
+      // Get all sections
+      const sections = await storage.getSummonsSections(summonsId);
+      
+      // Check if all sections are approved
+      const allApproved = sections.every(s => s.status === "approved");
+      if (!allApproved) {
+        return res.status(400).json({ message: "Not all sections are approved yet" });
+      }
+      
+      // Get template
+      const template = summons.templateId ? await storage.getTemplate(summons.templateId) : null;
+      if (!template || !template.rawTemplateText) {
+        return res.status(400).json({ message: "Template not found" });
+      }
+      
+      // Build AI fields from approved sections
+      const aiFields: any = {};
+      sections.forEach(section => {
+        const sectionConfig = (template.sectionsConfig as any[])?.find((s: any) => s.sectionKey === section.sectionKey);
+        const aiFieldKey = sectionConfig?.aiFieldKey || section.sectionKey;
+        aiFields[aiFieldKey] = section.generatedText || '';
+      });
+      
+      // Replace fields in template text
+      let finalText = template.rawTemplateText;
+      
+      // Replace user fields
+      Object.entries(userFields || {}).forEach(([key, value]) => {
+        const regex = new RegExp(`\\[${key}\\]`, 'g');
+        finalText = finalText.replace(regex, value as string || '');
+      });
+      
+      // Replace AI fields
+      Object.entries(aiFields).forEach(([key, value]) => {
+        const regex = new RegExp(`\\{${key}[^}]*\\}`, 'g');
+        finalText = finalText.replace(regex, value as string || '');
+      });
+      
+      // Update summons with final assembled text
+      await storage.updateSummons(summonsId, {
+        userFieldsJson: userFields,
+        aiFieldsJson: aiFields,
+        markdown: finalText,
+        status: "ready"
+      });
+      
+      await storage.createEvent({
+        caseId,
+        actorUserId: userId,
+        type: "summons_assembled",
+        payloadJson: { summonsId },
+      });
+      
+      const updatedSummons = await storage.getSummons(summonsId);
+      res.json(updatedSummons);
+    } catch (error) {
+      console.error("Error assembling summons:", error);
+      res.status(500).json({ message: "Failed to assemble summons" });
+    }
+  });
+
   // Mock integration routes
   app.post('/api/integrations/bailiff/serve', isAuthenticated, async (req: any, res) => {
     try {
