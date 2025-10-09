@@ -1828,12 +1828,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const caseId = req.params.id;
-      const { userFields } = req.body;
+      const { userFields, templateId } = req.body;
       
       const caseData = await storage.getCase(caseId);
       if (!caseData || caseData.ownerUserId !== userId) {
         return res.status(404).json({ message: "Case not found" });
       }
+      
+      // Get template configuration if provided
+      let template = null;
+      if (templateId) {
+        template = await storage.getTemplate(templateId);
+        if (!template) {
+          return res.status(404).json({ message: "Template not found" });
+        }
+      }
+      
+      // Check if template has MindStudio flow configured
+      const flowName = template?.mindstudioFlowName || "CreateDagvaarding.flow";
+      console.log(`🔄 Using MindStudio flow: ${flowName}${template ? ' (from template)' : ' (default)'}`);
       
       const analysis = await storage.getLatestAnalysis(caseId);
       if (!analysis) {

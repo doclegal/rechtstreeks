@@ -1,4 +1,3 @@
-import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 
 /**
@@ -101,6 +100,8 @@ export function parseTemplateText(text: string): ParsedTemplate {
  */
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   try {
+    // Dynamic import to avoid pdf-parse test file loading issue
+    const pdfParse = (await import('pdf-parse')).default;
     const data = await pdfParse(buffer);
     return data.text;
   } catch (error) {

@@ -127,9 +127,10 @@ export default function SummonsEditor() {
 
     setIsGenerating(true);
     try {
-      // Send only user fields to MindStudio
+      // Send user fields and template ID to MindStudio
       const response = await apiRequest("POST", `/api/cases/${caseId}/summons-v2/generate`, {
-        userFields
+        userFields,
+        templateId: selectedTemplateId
       });
       
       const data = await response.json();
