@@ -31,6 +31,7 @@ export default function SummonsEditor() {
   const [activeTab, setActiveTab] = useState<"template" | "form">("form");
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [showTemplatePreview, setShowTemplatePreview] = useState(false);
 
   // Fetch available templates
   const { data: templates, isLoading: templatesLoading } = useQuery<any[]>({
@@ -362,15 +363,77 @@ export default function SummonsEditor() {
       {selectedTemplateId && templates && (() => {
         const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
         const isMultiStep = selectedTemplate?.sectionsConfig && Array.isArray(selectedTemplate.sectionsConfig) && selectedTemplate.sectionsConfig.length > 0;
+        const hasSummons = existingSummons && existingSummons.length > 0;
         
-        // Multi-step workflow - if summons exists, show workflow
-        if (isMultiStep && existingSummons && existingSummons.length > 0) {
+        // Multi-step workflow - if summons exists, show workflow with toggle for template preview
+        if (isMultiStep && hasSummons) {
           return (
-            <MultiStepSummonsWorkflow
-              caseId={caseId!}
-              summonsId={existingSummons[0].id}
-              templateId={selectedTemplateId}
-            />
+            <>
+              {!showTemplatePreview && (
+                <Card className="border-primary mb-4">
+                  <CardContent className="py-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">
+                        Actieve workflow voor deze template. Klik op "Bekijk Template" om de volledige dagvaarding tekst te zien.
+                      </p>
+                      <Button variant="outline" onClick={() => setShowTemplatePreview(true)} data-testid="button-view-template">
+                        <FileText className="h-4 w-4 mr-2" />
+                        Bekijk Template
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {showTemplatePreview && (
+                <>
+                  {/* Info box */}
+                  <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 mb-4">
+                    <CardContent className="py-4">
+                      <div className="flex gap-3 items-center justify-between">
+                        <div className="flex gap-3">
+                          <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                              Template Voorbeeld
+                            </h4>
+                            <p className="text-sm text-blue-800 dark:text-blue-200">
+                              Dit is de volledige dagvaarding template. Klik op "Terug naar Workflow" om door te gaan.
+                            </p>
+                          </div>
+                        </div>
+                        <Button variant="outline" onClick={() => setShowTemplatePreview(false)}>
+                          Terug naar Workflow
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Template Preview */}
+                  <Card className="mb-4">
+                    <CardContent className="py-6">
+                      {selectedTemplate?.rawTemplateText && (
+                        <DynamicTemplateRenderer
+                          templateText={selectedTemplate.rawTemplateText}
+                          userFields={userFields}
+                          aiFields={{}}
+                          onUserFieldChange={(key, value) => setUserFields(prev => ({ ...prev, [key]: value }))}
+                          editable={true}
+                        />
+                      )}
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+              
+              {!showTemplatePreview && (
+                <MultiStepSummonsWorkflow
+                  caseId={caseId!}
+                  summonsId={existingSummons[0].id}
+                  templateId={selectedTemplateId}
+                />
+              )}
+            </>
           );
         }
         
