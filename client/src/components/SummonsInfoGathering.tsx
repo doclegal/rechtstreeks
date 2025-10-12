@@ -62,7 +62,13 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
     ? legalAnalysis.legal_issues 
     : (typeof legalAnalysis.legal_issues === 'string' ? [legalAnalysis.legal_issues] : []);
 
-  const caseSubject = caseOverview.summary || caseOverview.title || "Niet beschikbaar";
+  // Try multiple sources for case subject
+  const caseSubject = 
+    caseOverview.summary || 
+    caseOverview.title || 
+    analysis?.summary?.facts_brief ||
+    analysis?.summary?.legal_brief ||
+    "Niet beschikbaar";
   const claimantName = claimant.name || "Eiser onbekend";
   const defendantName = defendant.name || "Gedaagde onbekend";
   const legalDomain = legalIssues.length > 0 

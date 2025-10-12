@@ -3630,7 +3630,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
             user_feedback: [{ question: "Wat is het verweer van gedaagde?", answer: "" }]
           },
           verloop: {
-            summary: `[MOCK] Verloop van het geschil: Casus gestart op ${new Date(caseData.createdAt).toLocaleDateString('nl-NL')}`,
+            summary: `[MOCK] Verloop van het geschil: Casus gestart op ${caseData.createdAt ? new Date(caseData.createdAt).toLocaleDateString('nl-NL') : 'onbekend'}`,
             user_feedback: [{ question: "Zijn er verdere ontwikkelingen?", answer: "" }]
           },
           rechtsgronden: {
@@ -3653,13 +3653,83 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       }
       
       // Call MindStudio with case_snapshot
-      const mindstudioResponse = await AIService.runMindStudioFlow(
-        flowName || 'DV_Complete.flow',
-        { case_snapshot: caseSnapshot }
-      );
+      const requestBody = {
+        workerId: process.env.MINDSTUDIO_WORKER_ID,
+        variables: { case_snapshot: caseSnapshot },
+        workflow: flowName || 'DV_Complete.flow',
+        includeBillingCost: true
+      };
       
-      // Parse and return the response
-      res.json(mindstudioResponse);
+      console.log("📤 MindStudio complete flow request to:", flowName || 'DV_Complete.flow');
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes
+      
+      const response = await fetch('https://v1.mindstudio-api.com/developer/v2/agents/run', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ MindStudio API error:", response.status, errorText);
+        throw new Error(`MindStudio API error: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log("📥 MindStudio complete flow response received");
+      
+      // Parse response - expect all 7 sections in one response
+      let flowResponse;
+      
+      // Try to find the response in various possible locations
+      const possibleVarNames = ['all_sections', 'sections', 'dagvaarding_sections', 'output', 'result'];
+      
+      // First try output.results
+      if (data.output?.results) {
+        for (const varName of possibleVarNames) {
+          if (data.output.results[varName]) {
+            const rawValue = data.output.results[varName].value || data.output.results[varName];
+            try {
+              flowResponse = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
+              console.log(`✅ Found ${varName} in output.results`);
+              break;
+            } catch (e) {
+              console.log(`⚠️ Failed to parse ${varName}:`, e);
+            }
+          }
+        }
+      }
+      
+      // If not in output.results, try thread.variables
+      if (!flowResponse && data.thread?.variables) {
+        for (const varName of possibleVarNames) {
+          if (data.thread.variables[varName]) {
+            const rawValue = data.thread.variables[varName].value || data.thread.variables[varName];
+            try {
+              flowResponse = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
+              console.log(`✅ Found ${varName} in thread.variables`);
+              break;
+            } catch (e) {
+              console.log(`⚠️ Failed to parse ${varName}:`, e);
+            }
+          }
+        }
+      }
+      
+      if (!flowResponse) {
+        console.error("❌ No flow response found in MindStudio output");
+        throw new Error("No valid response from MindStudio flow");
+      }
+      
+      res.json(flowResponse);
     } catch (error) {
       console.error('Error running complete flow:', error);
       res.status(500).json({ message: 'Failed to run complete flow' });
