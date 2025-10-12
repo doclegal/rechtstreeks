@@ -2707,6 +2707,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const kind = req.query.kind as string;
       const templates = await storage.getTemplates(kind);
+      
+      // Debug: Check if rawTemplateText is present
+      if (templates.length > 0) {
+        console.log(`📋 Templates API: Returning ${templates.length} templates`);
+        const firstTemplate = templates[0];
+        console.log(`   First template keys: ${Object.keys(firstTemplate).join(', ')}`);
+        console.log(`   Has rawTemplateText: ${!!firstTemplate.rawTemplateText}, length: ${firstTemplate.rawTemplateText?.length || 0}`);
+      }
+      
       res.json(templates);
     } catch (error) {
       console.error("Error fetching templates:", error);

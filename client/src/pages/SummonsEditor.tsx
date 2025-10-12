@@ -40,6 +40,8 @@ export default function SummonsEditor() {
       if (!response.ok) throw new Error("Failed to fetch templates");
       return response.json();
     },
+    staleTime: 0, // Always fetch fresh data
+    refetchOnMount: true,
   });
 
   // Set default template when templates load or when selected template no longer exists
@@ -401,7 +403,7 @@ export default function SummonsEditor() {
                       <strong>Gele velden</strong> zijn gebruikersvelden die u nu kunt invullen. <strong>Oranje AI-velden</strong> worden stap voor stap gegenereerd na het starten van de workflow.
                     </p>
                   </div>
-                  {selectedTemplate?.rawTemplateText && (
+                  {selectedTemplate?.rawTemplateText ? (
                     <DynamicTemplateRenderer
                       templateText={selectedTemplate.rawTemplateText}
                       userFields={userFields}
@@ -409,6 +411,17 @@ export default function SummonsEditor() {
                       onUserFieldChange={(key, value) => setUserFields(prev => ({ ...prev, [key]: value }))}
                       editable={true}
                     />
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">
+                        Template tekst wordt geladen... (Template ID: {selectedTemplateId})
+                      </p>
+                      {selectedTemplate && (
+                        <p className="text-sm text-muted-foreground mt-2">
+                          Debug: Template naam: {selectedTemplate.name}, heeft rawTemplateText: {selectedTemplate.rawTemplateText ? 'ja' : 'nee'}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </CardContent>
               </Card>
