@@ -2547,6 +2547,154 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // MindStudio flow execution for dagvaarding sections
+  app.post('/api/mindstudio/run-flow', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { flowName, caseId } = req.body;
+      
+      if (!flowName) {
+        return res.status(400).json({ message: "flowName is required" });
+      }
+      
+      if (!caseId) {
+        return res.status(400).json({ message: "caseId is required" });
+      }
+      
+      // Verify case ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      // Get case analysis for context
+      const analysis = await storage.getLatestAnalysis(caseId);
+      
+      // Prepare variables for MindStudio
+      const variables: any = {
+        case_id: caseId,
+        case_title: caseData.title,
+        case_description: caseData.description || "",
+        case_overview: analysis?.analysisJson || {},
+      };
+      
+      console.log(`🚀 Running MindStudio flow: ${flowName} for case: ${caseId}`);
+      
+      // Check for API configuration
+      if (!process.env.MINDSTUDIO_WORKER_ID || !process.env.MINDSTUDIO_API_KEY) {
+        console.warn("⚠️ MindStudio configuration missing, returning mock response");
+        
+        // Return mock response for development
+        return res.json({
+          summary: `[MOCK] Dit is een test samenvatting voor ${flowName}. De flow zou hier de inhoud van deze sectie genereren op basis van de case data.`,
+          user_feedback: [
+            {
+              question: "[MOCK] Zijn er aanvullende feiten die u wilt toevoegen?",
+              answer: ""
+            },
+            {
+              question: "[MOCK] Zijn er specifieke details die belangrijk zijn voor deze sectie?",
+              answer: ""
+            }
+          ]
+        });
+      }
+      
+      const requestBody = {
+        workerId: process.env.MINDSTUDIO_WORKER_ID,
+        variables,
+        workflow: flowName,
+        includeBillingCost: true
+      };
+      
+      console.log("📤 MindStudio request:", JSON.stringify(requestBody, null, 2));
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes
+      
+      const response = await fetch('https://v1.mindstudio-api.com/developer/v2/agents/run', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ MindStudio API error:", response.status, errorText);
+        throw new Error(`MindStudio API error: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log("📥 MindStudio response:", JSON.stringify(data, null, 2));
+      
+      // Parse response from MindStudio
+      let flowResponse;
+      
+      // Try to find the response in various possible locations
+      const possibleVarNames = ['summary', 'output', 'result', 'section_data', 'response'];
+      
+      // First try output.results
+      if (data.output?.results) {
+        for (const varName of possibleVarNames) {
+          if (data.output.results[varName]) {
+            const rawValue = data.output.results[varName].value || data.output.results[varName];
+            try {
+              flowResponse = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
+              console.log(`✅ Found ${varName} in output.results`);
+              break;
+            } catch (e) {
+              console.log(`⚠️ Failed to parse ${varName}:`, e);
+            }
+          }
+        }
+      }
+      
+      // If not in output.results, try thread.variables
+      if (!flowResponse && data.thread?.variables) {
+        for (const varName of possibleVarNames) {
+          if (data.thread.variables[varName]) {
+            const rawValue = data.thread.variables[varName].value || data.thread.variables[varName];
+            try {
+              flowResponse = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
+              console.log(`✅ Found ${varName} in thread.variables`);
+              break;
+            } catch (e) {
+              console.log(`⚠️ Failed to parse ${varName}:`, e);
+            }
+          }
+        }
+      }
+      
+      if (!flowResponse) {
+        console.error("❌ No flow response found in MindStudio output");
+        return res.status(500).json({ 
+          message: "MindStudio flow completed but returned no parseable response",
+          summary: "",
+          user_feedback: []
+        });
+      }
+      
+      // Ensure response has required fields
+      const response_data = {
+        summary: flowResponse.summary || flowResponse.text || "",
+        user_feedback: flowResponse.user_feedback || flowResponse.questions || []
+      };
+      
+      console.log("✅ Processed flow response:", response_data);
+      res.json(response_data);
+      
+    } catch (error) {
+      console.error("Error running MindStudio flow:", error);
+      res.status(500).json({ message: "Failed to run MindStudio flow" });
+    }
+  });
+
   // Mock integration routes
   app.post('/api/integrations/bailiff/serve', isAuthenticated, async (req: any, res) => {
     try {

@@ -40,6 +40,12 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
   // Fetch case analysis for summary
   const { data: analysis } = useQuery<any>({
     queryKey: ["/api/cases", caseId, "analysis"],
+    queryFn: async () => {
+      const response = await fetch(`/api/cases/${caseId}/analysis`);
+      if (!response.ok) throw new Error("Failed to fetch analysis");
+      return response.json();
+    },
+    enabled: !!caseId,
   });
 
   // Extract summary info from analysis
