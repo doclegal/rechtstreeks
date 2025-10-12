@@ -49,8 +49,9 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
   });
 
   // Extract summary info from analysis
-  const caseOverview = analysis?.analysisJson?.case_overview || {};
-  const legalAnalysis = analysis?.analysisJson?.legal_analysis || {};
+  // The API returns the analysis directly (not nested in analysisJson)
+  const caseOverview = analysis?.case_overview || {};
+  const legalAnalysis = analysis?.legal_analysis || {};
   const parties = caseOverview.parties || {};
   const claimant = parties.claimant || {};
   const defendant = parties.defendant || {};
