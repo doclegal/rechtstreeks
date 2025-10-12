@@ -15,6 +15,7 @@ import { SummonsTemplateV3 } from "@/components/SummonsTemplateV3";
 import { DynamicTemplateRenderer } from "@/components/DynamicTemplateRenderer";
 import { TemplateDetailView } from "@/components/TemplateDetailView";
 import { MultiStepSummonsWorkflow } from "@/components/MultiStepSummonsWorkflow";
+import { SummonsInfoGathering } from "@/components/SummonsInfoGathering";
 import { UserFields, AIFields, userFieldsSchema } from "@shared/summonsFields";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -365,8 +366,13 @@ export default function SummonsEditor() {
         const isMultiStep = selectedTemplate?.sectionsConfig && Array.isArray(selectedTemplate.sectionsConfig) && selectedTemplate.sectionsConfig.length > 0;
         const hasSummons = existingSummons && existingSummons.length > 0;
         
-        // Multi-step workflow - if summons exists, show workflow with toggle for template preview
-        if (isMultiStep && hasSummons) {
+        // Multi-step workflow - show new simplified info gathering screen
+        if (isMultiStep) {
+          return <SummonsInfoGathering caseId={caseId!} templateId={selectedTemplateId} />;
+        }
+        
+        // OLD CODE - keeping for reference but not used anymore
+        if (false && isMultiStep && hasSummons) {
           return (
             <>
               {!showTemplatePreview && (
