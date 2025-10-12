@@ -3449,6 +3449,8 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       
       // If we have parsed analysis with new format, use it
       if (parsedAnalysis) {
+        console.log('📊 Analysis API: Returning parsed analysis with case_overview:', !!parsedAnalysis.case_overview);
+        console.log('   Parties:', parsedAnalysis.case_overview?.parties?.length || 0);
         const result = {
           // Include new summary structure
           summary: parsedAnalysis.summary || undefined,

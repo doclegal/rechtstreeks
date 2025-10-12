@@ -52,16 +52,23 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
   // The API returns the analysis directly (not nested in analysisJson)
   const caseOverview = analysis?.case_overview || {};
   const legalAnalysis = analysis?.legal_analysis || {};
-  const parties = caseOverview.parties || {};
-  const claimant = parties.claimant || {};
-  const defendant = parties.defendant || {};
-  const legalIssues = legalAnalysis.legal_issues || [];
+  
+  // Parties can be either an array or an object
+  const partiesArray = Array.isArray(caseOverview.parties) ? caseOverview.parties : [];
+  const claimant = partiesArray.find((p: any) => p.role === 'claimant') || 
+                   caseOverview.parties?.claimant || {};
+  const defendant = partiesArray.find((p: any) => p.role === 'respondent' || p.role === 'defendant') || 
+                    caseOverview.parties?.defendant || {};
+  
+  const legalIssues = Array.isArray(legalAnalysis.legal_issues) 
+    ? legalAnalysis.legal_issues 
+    : (typeof legalAnalysis.legal_issues === 'string' ? [legalAnalysis.legal_issues] : []);
 
   const caseSubject = caseOverview.summary || caseOverview.title || "Niet beschikbaar";
   const claimantName = claimant.name || "Eiser onbekend";
   const defendantName = defendant.name || "Gedaagde onbekend";
   const legalDomain = legalIssues.length > 0 
-    ? legalIssues.map((issue: any) => issue.area || issue.category).filter(Boolean).join(", ")
+    ? legalIssues.map((issue: any) => typeof issue === 'string' ? issue : (issue.area || issue.category || issue)).filter(Boolean).join(", ")
     : "Niet gespecificeerd";
 
   // MindStudio flow configurations
