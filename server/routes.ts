@@ -3512,6 +3512,311 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
     }
   });
 
+  // Run complete MindStudio flow with case snapshot
+  app.post('/api/mindstudio/run-complete-flow', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { caseId, flowName } = req.body;
+      
+      if (!caseId) {
+        return res.status(400).json({ message: "caseId is required" });
+      }
+      
+      // Verify case ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      // Get analysis data
+      const analysis = await storage.getLatestAnalysis(caseId);
+      let parsedAnalysis = null;
+      
+      if (analysis?.rawText) {
+        try {
+          const rawData = JSON.parse(analysis.rawText);
+          parsedAnalysis = rawData.result?.analysis_json || rawData.analysis_json;
+        } catch (error) {
+          console.log('Could not parse analysis:', error);
+        }
+      }
+      
+      // Get documents
+      const documents = await storage.getDocumentsByCase(caseId);
+      
+      // Build case_snapshot (same logic as build-case-snapshot endpoint)
+      const partiesArray = Array.isArray(parsedAnalysis?.case_overview?.parties) 
+        ? parsedAnalysis.case_overview.parties 
+        : [];
+      const claimant = partiesArray.find((p: any) => p.role === 'claimant') || {};
+      const defendant = partiesArray.find((p: any) => p.role === 'respondent' || p.role === 'defendant') || {};
+      
+      const legalIssues = parsedAnalysis?.legal_analysis?.legal_issues || [];
+      let caseType = "geldvordering";
+      let domainHint = "monetary_claim";
+      
+      if (legalIssues.some((i: string) => i.toLowerCase().includes('arbeid') || i.toLowerCase().includes('employment'))) {
+        caseType = "arbeidsrecht";
+        domainHint = "employment";
+      } else if (legalIssues.some((i: string) => i.toLowerCase().includes('huur') || i.toLowerCase().includes('lease') || i.toLowerCase().includes('tenancy'))) {
+        caseType = "huur";
+        domainHint = "tenancy";
+      } else if (legalIssues.some((i: string) => i.toLowerCase().includes('consument') || i.toLowerCase().includes('consumer'))) {
+        caseType = "consumentenzaken";
+        domainHint = "consumer_sale";
+      }
+      
+      const caseSnapshot = {
+        meta: {
+          case_id: caseId,
+          snapshot_version: "1.0",
+          created_at: new Date().toISOString(),
+          locale: "nl-NL",
+          user_role: "claimant"
+        },
+        routing: {
+          case_type: caseType,
+          domain_hint: domainHint,
+          is_kantonzaak: parsedAnalysis?.case_overview?.is_kantonzaak || false,
+          court_info: {}
+        },
+        parties: {
+          eiser: {
+            name: claimant.name || caseData.title?.split(' vs ')[0] || "Eiser",
+            type: claimant.type || "individual"
+          },
+          gedaagde: {
+            name: defendant.name || caseData.counterpartyName || "Gedaagde",
+            type: defendant.type || caseData.counterpartyType || "individual"
+          }
+        },
+        facts: {
+          known: parsedAnalysis?.facts?.known || [],
+          disputed: parsedAnalysis?.facts?.disputed || [],
+          unclear: parsedAnalysis?.facts?.unclear || []
+        },
+        claims_candidate: [{
+          label: "Hoofdvordering",
+          basis: parsedAnalysis?.summary?.legal_brief || caseData.description || "",
+          amount: parseFloat(caseData.claimAmount || "0"),
+          notes: parsedAnalysis?.summary?.claims_brief || ""
+        }],
+        defenses_expected: parsedAnalysis?.legal_analysis?.potential_defenses || [],
+        evidence: {
+          have: (parsedAnalysis?.evidence?.provided || []).map((ev: any, idx: number) => ({
+            id: `ev-${idx}`,
+            type: ev.source || "document",
+            title: ev.doc_name || `Bewijs ${idx + 1}`,
+            summary: (ev.key_passages || []).join('; ')
+          })),
+          missing: parsedAnalysis?.evidence?.missing || []
+        }
+      };
+      
+      console.log(`🚀 Running complete MindStudio flow: ${flowName || 'DV_Complete.flow'} for case: ${caseId}`);
+      
+      // Check for API configuration
+      if (!process.env.MINDSTUDIO_WORKER_ID || !process.env.MINDSTUDIO_API_KEY) {
+        console.warn("⚠️ MindStudio configuration missing, returning mock response");
+        
+        // Return mock response with all 7 sections
+        return res.json({
+          feiten: {
+            summary: `[MOCK] Samenvatting Feiten: ${parsedAnalysis?.facts?.known?.slice(0, 2).join('; ') || 'Geen feiten beschikbaar'}`,
+            user_feedback: [{ question: "Zijn er aanvullende feiten?", answer: "" }]
+          },
+          verweer: {
+            summary: `[MOCK] Verweer: ${parsedAnalysis?.legal_analysis?.potential_defenses?.slice(0, 1).join('; ') || 'Geen verweer beschikbaar'}`,
+            user_feedback: [{ question: "Wat is het verweer van gedaagde?", answer: "" }]
+          },
+          verloop: {
+            summary: `[MOCK] Verloop van het geschil: Casus gestart op ${new Date(caseData.createdAt).toLocaleDateString('nl-NL')}`,
+            user_feedback: [{ question: "Zijn er verdere ontwikkelingen?", answer: "" }]
+          },
+          rechtsgronden: {
+            summary: `[MOCK] Rechtsgronden: ${parsedAnalysis?.legal_analysis?.legal_basis?.map((b: any) => `${b.law} ${b.article}`).join(', ') || 'BW'}`,
+            user_feedback: [{ question: "Zijn er aanvullende wetsartikelen?", answer: "" }]
+          },
+          vorderingen: {
+            summary: `[MOCK] Vorderingen: Hoofdvordering €${caseData.claimAmount || '0'}`,
+            user_feedback: [{ question: "Zijn er nevenvorderingen?", answer: "" }]
+          },
+          slot: {
+            summary: `[MOCK] Slot: Eiser vordert toewijzing van de vorderingen`,
+            user_feedback: [{ question: "Aanvullende slotopmerkingen?", answer: "" }]
+          },
+          producties: {
+            summary: `[MOCK] Producties: ${documents.length} documenten als bewijs`,
+            user_feedback: [{ question: "Ontbreken er bewijsstukken?", answer: "" }]
+          }
+        });
+      }
+      
+      // Call MindStudio with case_snapshot
+      const mindstudioResponse = await AIService.runMindStudioFlow(
+        flowName || 'DV_Complete.flow',
+        { case_snapshot: caseSnapshot }
+      );
+      
+      // Parse and return the response
+      res.json(mindstudioResponse);
+    } catch (error) {
+      console.error('Error running complete flow:', error);
+      res.status(500).json({ message: 'Failed to run complete flow' });
+    }
+  });
+
+  // Build case snapshot for complete summons generation
+  app.get('/api/cases/:id/build-case-snapshot', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      // Get case data
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      // Get analysis data
+      const analysis = await storage.getLatestAnalysis(caseId);
+      let parsedAnalysis = null;
+      
+      if (analysis?.rawText) {
+        try {
+          const rawData = JSON.parse(analysis.rawText);
+          parsedAnalysis = rawData.result?.analysis_json || rawData.analysis_json;
+        } catch (error) {
+          console.log('Could not parse analysis:', error);
+        }
+      }
+      
+      // Get documents
+      const documents = await storage.getDocumentsByCase(caseId);
+      
+      // Build case_snapshot according to schema
+      const partiesArray = Array.isArray(parsedAnalysis?.case_overview?.parties) 
+        ? parsedAnalysis.case_overview.parties 
+        : [];
+      const claimant = partiesArray.find((p: any) => p.role === 'claimant') || {};
+      const defendant = partiesArray.find((p: any) => p.role === 'respondent' || p.role === 'defendant') || {};
+      
+      // Determine case type and domain
+      const legalIssues = parsedAnalysis?.legal_analysis?.legal_issues || [];
+      let caseType = "geldvordering";
+      let domainHint = "monetary_claim";
+      
+      if (legalIssues.some((i: string) => i.toLowerCase().includes('arbeid') || i.toLowerCase().includes('employment'))) {
+        caseType = "arbeidsrecht";
+        domainHint = "employment";
+      } else if (legalIssues.some((i: string) => i.toLowerCase().includes('huur') || i.toLowerCase().includes('lease') || i.toLowerCase().includes('tenancy'))) {
+        caseType = "huur";
+        domainHint = "tenancy";
+      } else if (legalIssues.some((i: string) => i.toLowerCase().includes('consument') || i.toLowerCase().includes('consumer'))) {
+        caseType = "consumentenzaken";
+        domainHint = "consumer_sale";
+      }
+      
+      const caseSnapshot = {
+        case_snapshot: {
+          meta: {
+            case_id: caseId,
+            snapshot_version: "1.0",
+            created_at: new Date().toISOString(),
+            locale: "nl-NL",
+            user_role: "claimant"
+          },
+          routing: {
+            case_type: caseType,
+            domain_hint: domainHint,
+            is_kantonzaak: parsedAnalysis?.case_overview?.is_kantonzaak || false,
+            court_info: {}
+          },
+          parties: {
+            eiser: {
+              name: claimant.name || caseData.title?.split(' vs ')[0] || "Eiser",
+              type: claimant.type || "individual",
+              email: caseData.counterpartyEmail || "",
+              phone: caseData.counterpartyPhone || "",
+              address: caseData.counterpartyAddress || ""
+            },
+            gedaagde: {
+              name: defendant.name || caseData.counterpartyName || "Gedaagde",
+              type: defendant.type || caseData.counterpartyType || "individual",
+              email: caseData.counterpartyEmail || "",
+              phone: caseData.counterpartyPhone || "",
+              address: caseData.counterpartyAddress || ""
+            },
+            relatie: partiesArray.find((p: any) => p.relationship)?.relationship || "onbekend"
+          },
+          facts: {
+            known: parsedAnalysis?.facts?.known || [],
+            disputed: parsedAnalysis?.facts?.disputed || [],
+            unclear: parsedAnalysis?.facts?.unclear || []
+          },
+          claims_candidate: [{
+            label: "Hoofdvordering",
+            basis: parsedAnalysis?.summary?.legal_brief || caseData.description || "",
+            amount: parseFloat(caseData.claimAmount || "0"),
+            notes: parsedAnalysis?.summary?.claims_brief || ""
+          }],
+          defenses_expected: parsedAnalysis?.legal_analysis?.potential_defenses || [],
+          evidence: {
+            have: (parsedAnalysis?.evidence?.provided || []).map((ev: any, idx: number) => ({
+              id: `ev-${idx}`,
+              type: ev.source || "document",
+              title: ev.doc_name || `Bewijs ${idx + 1}`,
+              summary: (ev.key_passages || []).join('; '),
+              source: "Analyse",
+              url_or_ref: ev.doc_url || ""
+            })),
+            missing: parsedAnalysis?.evidence?.missing || []
+          },
+          timeline: [],
+          constraints: {
+            amounts: {
+              claim_total: parseFloat(caseData.claimAmount || "0")
+            },
+            deadlines: {},
+            jurisdiction_notes: parsedAnalysis?.case_overview?.is_kantonzaak 
+              ? "Kantonzaak - bedrag onder €25.000" 
+              : "Rechtbankzaak"
+          },
+          user_answers_history: (parsedAnalysis?.missing_info_answers || []).map((ans: any) => ({
+            q: ans.question || "",
+            a: ans.answer || ""
+          })),
+          attachments_ref: documents.map((doc: any, idx: number) => ({
+            id: doc.id || `doc-${idx}`,
+            type: doc.mimetype || "application/pdf",
+            url_or_ref: `/api/documents/${doc.id}/download`,
+            ocr_text_excerpt: doc.extractedText?.substring(0, 200) || ""
+          })),
+          privacy: {
+            pii_level: "med",
+            anonymized: false
+          },
+          ui_state: {
+            template_target: "dagvaarding",
+            previous_outputs_ref: ""
+          },
+          router_hint: {
+            confidence: 0.8,
+            why: `Gebaseerd op ${legalIssues.length} juridische kwesties en claim van €${caseData.claimAmount}`
+          },
+          needs_clarification: (parsedAnalysis?.questions_to_answer || []).length > 0,
+          clarification_questions: (parsedAnalysis?.questions_to_answer || []).slice(0, 5)
+        }
+      };
+      
+      console.log('📋 Case snapshot built successfully');
+      res.json(caseSnapshot);
+    } catch (error) {
+      console.error('Error building case snapshot:', error);
+      res.status(500).json({ message: 'Failed to build case snapshot' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

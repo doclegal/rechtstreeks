@@ -1,0 +1,161 @@
+a single compact JSON object called case_snapshot that the frontend will pass to MindStudio as a launch variable. Do not include any prose, explanations, or markdown—return only valid JSON that conforms to the schema below.
+
+Purpose
+
+Enable MindStudio to (1) route the case to the correct legal domain and (2) ask only the minimal set of high-value follow-up questions before drafting a summons.
+
+Avoid token bloat: summarize crisply, include references to large files—not their full content.
+
+Input Sources (already available to you)
+
+Prior Analysis results (structured JSON and text).
+
+“MijnZaak” user data (parties, contact, amounts, timeline, uploaded files).
+
+Current chat answers.
+
+Output Requirements
+
+Return exactly one top-level object:
+
+{
+  "case_snapshot": { ... }
+}
+
+JSON Schema (must match; add fields only if backward compatible)
+{
+  "type": "object",
+  "required": ["case_snapshot"],
+  "properties": {
+    "case_snapshot": {
+      "type": "object",
+      "required": ["meta","routing","parties","facts","claims_candidate","defenses_expected","evidence","timeline","constraints","user_answers_history","attachments_ref","privacy","ui_state"],
+      "properties": {
+        "meta": {
+          "type": "object",
+          "required": ["case_id","snapshot_version","created_at","locale","user_role"],
+          "properties": {
+            "case_id": {"type":"string"},
+            "snapshot_version": {"type":"string"},
+            "created_at": {"type":"string", "description":"ISO-8601"},
+            "locale": {"type":"string", "enum":["nl-NL"]},
+            "user_role": {"type":"string"}
+          }
+        },
+        "routing": {
+          "type":"object",
+          "required":["case_type","domain_hint","is_kantonzaak"],
+          "properties": {
+            "case_type": {"type":"string","description":"One of: arbeidsrecht | huur | consumentenzaken | geldvordering"},
+            "domain_hint": {"type":"string","description":"English alias e.g. employment | tenancy | consumer_sale | monetary_claim"},
+            "is_kantonzaak": {"type":"boolean"},
+            "court_info": {"type":"object"}
+          }
+        },
+        "parties": {
+          "type":"object",
+          "required":["eiser","gedaagde"],
+          "properties": {
+            "eiser": {"type":"object"},
+            "gedaagde": {"type":"object"},
+            "relatie": {"type":"string"}
+          }
+        },
+        "facts": {
+          "type":"object",
+          "required":["known","disputed","unclear"],
+          "properties": {
+            "known": {"type":"array","items":{"type":"string"}},
+            "disputed": {"type":"array","items":{"type":"string"}},
+            "unclear": {"type":"array","items":{"type":"string"}}
+          }
+        },
+        "claims_candidate": {
+          "type":"array",
+          "items":{"type":"object","properties":{
+            "label":{"type":"string"},
+            "basis":{"type":"string"},
+            "amount":{"type":["number","string"]},
+            "notes":{"type":"string"}
+          }}
+        },
+        "defenses_expected": {"type":"array","items":{"type":"string"}},
+        "evidence": {
+          "type":"object",
+          "required":["have","missing"],
+          "properties": {
+            "have": {"type":"array","items":{"type":"object","properties":{
+              "id":{"type":"string"},
+              "type":{"type":"string"},
+              "title":{"type":"string"},
+              "summary":{"type":"string"},
+              "source":{"type":"string","enum":["Analyse","MijnZaak","Upload","Email","Chat"]},
+              "url_or_ref":{"type":"string"}
+            }}},
+            "missing": {"type":"array","items":{"type":"string"}}
+          }
+        },
+        "timeline": {"type":"array","items":{"type":"object","properties":{
+          "date":{"type":"string","description":"ISO-8601"},
+          "event":{"type":"string"},
+          "doc_ref":{"type":"string"}
+        }}},
+        "constraints": {"type":"object","properties":{
+          "amounts":{"type":"object"},
+          "deadlines":{"type":"object"},
+          "jurisdiction_notes":{"type":"string"}
+        }},
+        "user_answers_history": {"type":"array","items":{"type":"object","properties":{
+          "q":{"type":"string"},
+          "a":{"type":"string"}
+        }}},
+        "attachments_ref": {"type":"array","items":{"type":"object","properties":{
+          "id":{"type":"string"},
+          "type":{"type":"string"},
+          "url_or_ref":{"type":"string"},
+          "ocr_text_excerpt":{"type":"string"}
+        }}},
+        "privacy": {"type":"object","properties":{
+          "pii_level":{"type":"string","enum":["low","med","high"]},
+          "anonymized":{"type":"boolean"}
+        }},
+        "ui_state": {"type":"object","properties":{
+          "template_target":{"type":"string","enum":["dagvaarding","brief","analyse"]},
+          "previous_outputs_ref":{"type":"string"}
+        }},
+        "router_hint": {
+          "type":"object",
+          "properties": {
+            "confidence":{"type":"number"},
+            "why":{"type":"string"}
+          }
+        },
+        "needs_clarification": {"type":"boolean"},
+        "clarification_questions": {"type":"array","items":{"type":"string"}}
+      }
+    }
+  }
+}
+
+Required Content & Constraints
+
+Keep facts to crisp bullets (aim 12–18 total across known/disputed/unclear).
+
+For evidence.have, include concise summary and a url_or_ref. Never embed file contents.
+
+Normalize dates to ISO-8601 and amounts to numbers or numeric strings with dot decimal.
+
+Set routing.case_type to one of: arbeidsrecht, huur, consumentenzaken, or geldvordering.
+Add a brief router_hint.why explaining the choice and router_hint.confidence (0–1).
+
+If crucial info is missing, set needs_clarification: true and add up to 5 high-value clarification_questions.
+
+Must be valid JSON. No comments, no trailing commas, no additional top-level keys.
+
+Quality Bar
+
+Accurate, non-speculative, privacy-aware. Include only data needed for routing and pre-summons questioning.
+
+Prefer specificity over length. If uncertain, mark in unclear and propose a question.
+
+Return only the JSON.
