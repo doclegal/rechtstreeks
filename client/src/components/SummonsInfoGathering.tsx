@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Sparkles } from "lucide-react";
 
 interface SummonsInfoGatheringProps {
   caseId: string;
@@ -35,7 +34,7 @@ interface SectionsState {
 export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatheringProps) {
   const { toast } = useToast();
   const [sections, setSections] = useState<SectionsState>({});
-  const [loadingSection, setLoadingSection] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Fetch case analysis for summary
   const { data: analysis } = useQuery<any>({
@@ -49,7 +48,6 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
   });
 
   // Extract summary info from analysis
-  // The API returns the analysis directly (not nested in analysisJson)
   const caseOverview = analysis?.case_overview || {};
   const legalAnalysis = analysis?.legal_analysis || {};
   
@@ -71,69 +69,58 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
     ? legalIssues.map((issue: any) => typeof issue === 'string' ? issue : (issue.area || issue.category || issue)).filter(Boolean).join(", ")
     : "Niet gespecificeerd";
 
-  // MindStudio flow configurations
-  const flowConfigs = {
-    feiten: { flowName: "DV_Feiten.flow", displayName: "Feiten" },
-    verweer: { flowName: "DV_Verweer.flow", displayName: "Verweer" },
-    verloop: { flowName: "DV_Verloop.flow", displayName: "Verloop geschil" },
-    rechtsgronden: { flowName: "DV_Rechtsgronden.flow", displayName: "Rechtsgronden" },
-    vorderingen: { flowName: "DV_Vorderingen.flow", displayName: "Vorderingen" },
-    slot: { flowName: "DV_Slot.flow", displayName: "Slot" },
-    producties: { flowName: "DV_Producties.flow", displayName: "Producties" },
+  // Section display names
+  const sectionDisplayNames = {
+    feiten: "Feiten",
+    verweer: "Verweer",
+    verloop: "Verloop geschil",
+    rechtsgronden: "Rechtsgronden",
+    vorderingen: "Vorderingen",
+    slot: "Slot",
+    producties: "Producties",
   };
 
-  const runFlowMutation = useMutation({
-    mutationFn: async ({ sectionKey, flowName }: { sectionKey: string; flowName: string }) => {
-      setLoadingSection(sectionKey);
+  const runCompleteFlowMutation = useMutation({
+    mutationFn: async () => {
+      setIsGenerating(true);
       
-      // Call MindStudio flow
-      const response = await apiRequest("POST", `/api/mindstudio/run-flow`, {
-        flowName,
+      // Call complete flow endpoint
+      const response = await apiRequest("POST", `/api/mindstudio/run-complete-flow`, {
         caseId,
-        // Add any additional context needed by the flow
+        flowName: "DV_Complete.flow", // Default flow name for complete generation
       });
 
       const data = await response.json();
-      return { sectionKey, data };
+      return data;
     },
-    onSuccess: ({ sectionKey, data }) => {
-      // Expected JSON structure from MindStudio:
+    onSuccess: (data) => {
+      // Expected response structure:
       // {
-      //   "summary": "Samenvatting van de sectie inhoud...",
-      //   "user_feedback": [
-      //     { "question": "Vraag 1?", "answer": "" },
-      //     { "question": "Vraag 2?", "answer": "" }
-      //   ]
+      //   feiten: { summary: "...", user_feedback: [...] },
+      //   verweer: { summary: "...", user_feedback: [...] },
+      //   ... (all 7 sections)
       // }
       
-      setSections(prev => ({
-        ...prev,
-        [sectionKey]: {
-          summary: data.summary || "",
-          user_feedback: data.user_feedback || [],
-        },
-      }));
-      
-      setLoadingSection(null);
+      setSections(data);
+      setIsGenerating(false);
       
       toast({
-        title: "Sectie voltooid",
-        description: `${flowConfigs[sectionKey as keyof typeof flowConfigs].displayName} is succesvol ingevuld.`,
+        title: "Informatie verzameld",
+        description: "Alle secties zijn succesvol ingevuld met de beschikbare informatie.",
       });
     },
     onError: (error: any) => {
-      setLoadingSection(null);
+      setIsGenerating(false);
       toast({
         title: "Fout",
-        description: error.message || "Er ging iets mis bij het starten van de flow.",
+        description: error.message || "Er ging iets mis bij het verzamelen van informatie.",
         variant: "destructive",
       });
     },
   });
 
-  const handleRunFlow = (sectionKey: keyof typeof flowConfigs) => {
-    const config = flowConfigs[sectionKey];
-    runFlowMutation.mutate({ sectionKey, flowName: config.flowName });
+  const handleRunCompleteFlow = () => {
+    runCompleteFlowMutation.mutate();
   };
 
   const handleAnswerChange = (sectionKey: string, questionIndex: number, answer: string) => {
@@ -156,6 +143,10 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
       };
     });
   };
+
+  const allSectionsCompleted = Object.keys(sectionDisplayNames).every(
+    key => sections[key as keyof SectionsState]?.summary
+  );
 
   return (
     <div className="space-y-6">
@@ -186,97 +177,111 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
         </CardContent>
       </Card>
 
-      {/* Info message */}
+      {/* Info message and Complete button */}
       <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950">
-        <CardContent className="py-4">
-          <div className="flex gap-3">
-            <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
-                Informatie verzamelen
-              </h4>
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                Klik op "Volledig maken" bij elke sectie om de benodigde informatie te verzamelen. 
-                Vul daarna de vragen in die verschijnen.
-              </p>
+        <CardContent className="py-6">
+          <div className="space-y-4">
+            <div className="flex gap-3">
+              <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                  Informatie verzamelen
+                </h4>
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  Klik op "Volledig maken" om automatisch alle benodigde informatie voor de dagvaarding te verzamelen 
+                  op basis van uw zaakgegevens en juridische analyse. U kunt daarna de vragen invullen die nog ontbreken.
+                </p>
+              </div>
             </div>
+            
+            {!allSectionsCompleted && (
+              <div className="flex justify-center pt-2">
+                <Button 
+                  onClick={handleRunCompleteFlow}
+                  disabled={isGenerating}
+                  size="lg"
+                  className="gap-2"
+                  data-testid="button-complete-all"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Bezig met verzamelen...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-5 w-5" />
+                      Volledig maken
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Sections */}
-      {Object.entries(flowConfigs).map(([sectionKey, config]) => {
-        const sectionData = sections[sectionKey as keyof SectionsState];
-        const isCompleted = !!sectionData?.summary;
-        const isLoading = loadingSection === sectionKey;
+      {/* Sections - only show when data is available */}
+      {Object.keys(sections).length > 0 && (
+        <>
+          <div className="pt-4">
+            <h3 className="text-lg font-semibold mb-4">Verzamelde informatie</h3>
+          </div>
 
-        return (
-          <Card key={sectionKey} data-testid={`card-section-${sectionKey}`}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <CardTitle>{config.displayName}</CardTitle>
-                  {isCompleted && (
-                    <CheckCircle2 className="h-5 w-5 text-green-600" data-testid={`icon-completed-${sectionKey}`} />
-                  )}
-                </div>
-                {!isCompleted && (
-                  <Button 
-                    onClick={() => handleRunFlow(sectionKey as keyof typeof flowConfigs)}
-                    disabled={isLoading}
-                    data-testid={`button-complete-${sectionKey}`}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Bezig...
-                      </>
-                    ) : (
-                      "Volledig maken"
-                    )}
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
+          {Object.entries(sectionDisplayNames).map(([sectionKey, displayName]) => {
+            const sectionData = sections[sectionKey as keyof SectionsState];
             
-            {sectionData && (
-              <CardContent className="space-y-4">
-                {/* Summary */}
-                {sectionData.summary && (
-                  <div className="bg-muted/50 p-4 rounded-lg">
-                    <Label className="text-sm font-semibold mb-2 block">Samenvatting</Label>
-                    <p className="text-sm whitespace-pre-wrap" data-testid={`text-summary-${sectionKey}`}>
-                      {sectionData.summary}
-                    </p>
-                  </div>
-                )}
+            if (!sectionData) return null;
 
-                {/* User Feedback Questions */}
-                {sectionData.user_feedback && sectionData.user_feedback.length > 0 && (
-                  <div className="space-y-4">
-                    <Label className="text-sm font-semibold">Aanvullende vragen</Label>
-                    {sectionData.user_feedback.map((item, index) => (
-                      <div key={index} className="space-y-2">
-                        <Label className="text-sm">{item.question}</Label>
-                        <Textarea
-                          value={item.answer}
-                          onChange={(e) => handleAnswerChange(sectionKey, index, e.target.value)}
-                          placeholder="Uw antwoord..."
-                          className="min-h-[80px]"
-                          data-testid={`input-feedback-${sectionKey}-${index}`}
-                        />
-                      </div>
-                    ))}
+            return (
+              <Card key={sectionKey} data-testid={`card-section-${sectionKey}`}>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <CardTitle>{displayName}</CardTitle>
+                    {sectionData.summary && (
+                      <CheckCircle2 className="h-5 w-5 text-green-600" data-testid={`icon-completed-${sectionKey}`} />
+                    )}
                   </div>
-                )}
-              </CardContent>
-            )}
-          </Card>
-        );
-      })}
+                </CardHeader>
+                
+                <CardContent className="space-y-4">
+                  {/* Summary */}
+                  {sectionData.summary && (
+                    <div className="bg-muted/50 p-4 rounded-lg">
+                      <Label className="text-sm font-semibold mb-2 block">Samenvatting</Label>
+                      <p className="text-sm whitespace-pre-wrap" data-testid={`text-summary-${sectionKey}`}>
+                        {sectionData.summary}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* User Feedback Questions */}
+                  {sectionData.user_feedback && sectionData.user_feedback.length > 0 && (
+                    <div className="space-y-4">
+                      <Label className="text-sm font-semibold">Aanvullende vragen</Label>
+                      {sectionData.user_feedback.map((item, index) => (
+                        <div key={index} className="space-y-2">
+                          <Label className="text-sm">{item.question}</Label>
+                          <Textarea
+                            value={item.answer}
+                            onChange={(e) => handleAnswerChange(sectionKey, index, e.target.value)}
+                            placeholder="Uw antwoord..."
+                            className="min-h-[80px]"
+                            data-testid={`input-feedback-${sectionKey}-${index}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </>
+      )}
 
       {/* Submit button - only show when all sections are completed */}
-      {Object.keys(flowConfigs).every(key => sections[key as keyof SectionsState]?.summary) && (
+      {allSectionsCompleted && (
         <Card className="border-green-200 bg-green-50 dark:bg-green-950">
           <CardContent className="py-6">
             <div className="text-center space-y-4">
