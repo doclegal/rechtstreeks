@@ -390,7 +390,7 @@ export default function Analysis() {
                 <TabsTrigger value="aanbevelingen" data-testid="tab-aanbevelingen">Aanbevelingen</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="samenvatting" className="space-y-4 pt-2">
+              <TabsContent value="samenvatting" className="space-y-4 pt-6">
                 {fullAnalysis.summary && (
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
@@ -441,7 +441,7 @@ export default function Analysis() {
                 )}
               </TabsContent>
 
-              <TabsContent value="partijen" className="space-y-4 pt-2">
+              <TabsContent value="partijen" className="space-y-4 pt-6">
                 {fullAnalysis.case_overview?.parties && fullAnalysis.case_overview.parties.length > 0 ? (
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
@@ -479,7 +479,7 @@ export default function Analysis() {
                 )}
               </TabsContent>
 
-              <TabsContent value="feiten" className="space-y-4 pt-2">
+              <TabsContent value="feiten" className="space-y-4 pt-6">
                 {fullAnalysis.facts ? (
                   <div className="space-y-6">
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
@@ -543,7 +543,7 @@ export default function Analysis() {
                 )}
               </TabsContent>
 
-              <TabsContent value="juridisch" className="space-y-6 pt-2">
+              <TabsContent value="juridisch" className="space-y-6 pt-6">
                 {fullAnalysis.legal_analysis?.what_is_the_dispute && (
                   <Card>
                     <CardContent className="pt-6">
@@ -614,7 +614,7 @@ export default function Analysis() {
                 )}
               </TabsContent>
 
-              <TabsContent value="risico" className="space-y-4 pt-2">
+              <TabsContent value="risico" className="space-y-4 pt-6">
                 {fullAnalysis.legal_analysis?.risks && fullAnalysis.legal_analysis.risks.length > 0 ? (
                   <div>
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
@@ -663,7 +663,7 @@ export default function Analysis() {
                 )}
               </TabsContent>
 
-              <TabsContent value="aanbevelingen" className="space-y-4 pt-2">
+              <TabsContent value="aanbevelingen" className="space-y-4 pt-6">
                 {fullAnalysis.legal_analysis?.next_actions && fullAnalysis.legal_analysis.next_actions.length > 0 ? (
                   <div>
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-blue-800 dark:text-blue-200">
