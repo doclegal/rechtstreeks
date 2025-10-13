@@ -799,12 +799,30 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
               </div>
             )}
             
+            {/* GEDAAGDE warning - show if user is GEDAAGDE */}
+            {caseData?.userRole === "GEDAAGDE" && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mt-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-amber-900 dark:text-amber-100">
+                      Geen toegang tot dagvaarding
+                    </h4>
+                    <p className="text-sm text-amber-800 dark:text-amber-200 mt-1">
+                      Alleen de EISER (eisende partij) kan een dagvaarding opstellen. U bent geregistreerd als GEDAAGDE in deze zaak. 
+                      Een gedaagde reageert op een dagvaarding met een conclusie van antwoord.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {/* Initial button - only show when no readiness check done yet */}
             {!readinessResult && !allSectionsCompleted && (
               <div className="flex justify-center pt-2">
                 <Button 
                   onClick={handleStartWorkflow}
-                  disabled={isCheckingReadiness || isGeneratingComplete}
+                  disabled={isCheckingReadiness || isGeneratingComplete || caseData?.userRole === "GEDAAGDE"}
                   size="lg"
                   className="gap-2"
                   data-testid="button-complete-all"

@@ -146,7 +146,35 @@ export default function Summons() {
         </p>
       </div>
 
-      {!hasAnalysis ? (
+      {/* GEDAAGDE warning - show ALWAYS if user is GEDAAGDE */}
+      {(currentCase as any).userRole === "GEDAAGDE" && (
+        <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
+          <CardContent className="py-8">
+            <div className="flex items-start gap-4">
+              <AlertCircle className="h-8 w-8 text-amber-600 dark:text-amber-400 mt-1 flex-shrink-0" />
+              <div>
+                <h3 className="text-xl font-semibold text-amber-900 dark:text-amber-100 mb-2">
+                  Geen toegang tot dagvaarding
+                </h3>
+                <p className="text-amber-800 dark:text-amber-200 mb-4">
+                  Alleen de <strong>EISER (eisende partij)</strong> kan een dagvaarding opstellen. U bent geregistreerd als <strong>GEDAAGDE</strong> in deze zaak.
+                </p>
+                <p className="text-amber-800 dark:text-amber-200 mb-4">
+                  Een gedaagde reageert op een dagvaarding met een <strong>conclusie van antwoord</strong>. Dit is de verwerende reactie op de claims van de eiser.
+                </p>
+                <Button asChild variant="outline" className="border-amber-600 text-amber-900 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-amber-900/40">
+                  <Link href="/my-case">
+                    Terug naar Mijn Zaak
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* No analysis placeholder - only show for EISER */}
+      {!hasAnalysis && (currentCase as any).userRole !== "GEDAAGDE" && (
         <Card>
           <CardContent className="py-12">
             <div className="text-center">
@@ -165,7 +193,10 @@ export default function Summons() {
             </div>
           </CardContent>
         </Card>
-      ) : (
+      )}
+
+      {/* Summons tiles and editor - only show for EISER with analysis */}
+      {hasAnalysis && (currentCase as any).userRole !== "GEDAAGDE" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Generate Summons Tile */}
           <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>

@@ -234,6 +234,48 @@ export default function SummonsEditor() {
   }
 
   const hasAnalysis = !!(currentCase as any).analysis || !!(currentCase as any).fullAnalysis;
+  const userRole = (currentCase as any).userRole || "EISER";
+
+  // GEDAAGDE cannot create summons - show warning instead
+  if (userRole === "GEDAAGDE") {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
+            <Scale className="h-8 w-8 text-primary" />
+            Dagvaarding
+          </h1>
+          <p className="text-muted-foreground">
+            Genereer de officiële dagvaarding voor uw juridische procedure
+          </p>
+        </div>
+
+        <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
+          <CardContent className="py-8">
+            <div className="flex items-start gap-4">
+              <AlertCircle className="h-8 w-8 text-amber-600 dark:text-amber-400 mt-1 flex-shrink-0" />
+              <div>
+                <h3 className="text-xl font-semibold text-amber-900 dark:text-amber-100 mb-2">
+                  Geen toegang tot dagvaarding
+                </h3>
+                <p className="text-amber-800 dark:text-amber-200 mb-4">
+                  Alleen de <strong>EISER (eisende partij)</strong> kan een dagvaarding opstellen. U bent geregistreerd als <strong>GEDAAGDE</strong> in deze zaak.
+                </p>
+                <p className="text-amber-800 dark:text-amber-200 mb-4">
+                  Een gedaagde reageert op een dagvaarding met een <strong>conclusie van antwoord</strong>. Dit is de verwerende reactie op de claims van de eiser.
+                </p>
+                <Button asChild variant="outline" className="border-amber-600 text-amber-900 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-amber-900/40">
+                  <Link href="/my-case">
+                    Terug naar Mijn Zaak
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (!hasAnalysis) {
     return (
