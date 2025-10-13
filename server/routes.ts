@@ -3729,10 +3729,28 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
           console.log("  ✓ next_flow:", readinessResult.next_flow);
         }
         if (data.result.dv_missing_items) {
-          readinessResult.dv_missing_items = Array.isArray(data.result.dv_missing_items) 
+          const rawItems = Array.isArray(data.result.dv_missing_items) 
             ? data.result.dv_missing_items.filter((item: any) => item && Object.keys(item).length > 0)
             : [];
-          console.log("  ✓ dv_missing_items:", readinessResult.dv_missing_items.length, "items (filtered)");
+          
+          // Log first 3 items to debug what's coming back
+          console.log("  🔍 Raw dv_missing_items sample:", JSON.stringify(rawItems.slice(0, 3), null, 2));
+          
+          // Filter out internal/technical fields that users can't provide
+          const internalFieldKeywords = ['case_type', 'legal_domain', 'facts_complete', 'evidence_complete', 
+                                          'has_legal_basis', 'risk_level', 'claimant_name', 'defendant_name',
+                                          'factual information', 'case information', 'parties information'];
+          
+          readinessResult.dv_missing_items = rawItems.filter((item: any) => {
+            const itemText = typeof item === 'string' ? item.toLowerCase() : 
+                            (item.item || item.label || item.name || '').toLowerCase();
+            
+            // Exclude if matches internal keywords
+            return !internalFieldKeywords.some(keyword => itemText.includes(keyword));
+          });
+          
+          console.log("  ✓ dv_missing_items:", readinessResult.dv_missing_items.length, 
+                      "items (filtered from", rawItems.length, "total)");
         }
         if (data.result.dv_claim_options) {
           readinessResult.dv_claim_options = Array.isArray(data.result.dv_claim_options)
@@ -4007,9 +4025,22 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
           readinessResult.next_flow = data.result.next_flow;
         }
         if (data.result.dv_missing_items) {
-          readinessResult.dv_missing_items = Array.isArray(data.result.dv_missing_items) 
+          const rawItems = Array.isArray(data.result.dv_missing_items) 
             ? data.result.dv_missing_items.filter((item: any) => item && Object.keys(item).length > 0)
             : [];
+          
+          // Filter out internal/technical fields that users can't provide
+          const internalFieldKeywords = ['case_type', 'legal_domain', 'facts_complete', 'evidence_complete', 
+                                          'has_legal_basis', 'risk_level', 'claimant_name', 'defendant_name',
+                                          'factual information', 'case information', 'parties information'];
+          
+          readinessResult.dv_missing_items = rawItems.filter((item: any) => {
+            const itemText = typeof item === 'string' ? item.toLowerCase() : 
+                            (item.item || item.label || item.name || '').toLowerCase();
+            
+            // Exclude if matches internal keywords
+            return !internalFieldKeywords.some(keyword => itemText.includes(keyword));
+          });
         }
         if (data.result.dv_claim_options) {
           readinessResult.dv_claim_options = Array.isArray(data.result.dv_claim_options)
