@@ -479,27 +479,42 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
                     )}
                   </div>
                 ))}
-                
-                <div className="flex justify-center pt-2">
-                  <Button 
-                    onClick={handleProceedWithAnswers}
-                    disabled={isGeneratingComplete}
-                    size="lg"
-                    className="gap-2"
-                    data-testid="button-proceed-with-answers"
-                  >
-                    {isGeneratingComplete ? (
-                      <>
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        Dagvaarding wordt gegenereerd...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-5 w-5" />
-                        Doorgaan naar genereren
-                      </>
-                    )}
-                  </Button>
+              </div>
+            )}
+
+            {/* Claim Options - select requested relief */}
+            {readinessResult && !readinessResult.ready_for_summons && readinessResult.dv_claim_options.length > 0 && (
+              <div className="space-y-3 pt-4">
+                <Label className="text-sm font-semibold text-green-900 dark:text-green-100">
+                  Selecteer vorderingen
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Kies één of meerdere vorderingen die u wilt opnemen in de dagvaarding.
+                </p>
+                <div className="space-y-2">
+                  {readinessResult.dv_claim_options.map((claim, idx) => (
+                    <div key={idx} className="flex items-start gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border border-green-200 dark:border-green-800">
+                      <Checkbox
+                        id={`claim-${idx}`}
+                        checked={selectedClaims.has(idx)}
+                        onCheckedChange={(checked) => {
+                          setSelectedClaims(prev => {
+                            const newSet = new Set(prev);
+                            if (checked) {
+                              newSet.add(idx);
+                            } else {
+                              newSet.delete(idx);
+                            }
+                            return newSet;
+                          });
+                        }}
+                        data-testid={`checkbox-claim-${idx}`}
+                      />
+                      <Label htmlFor={`claim-${idx}`} className="text-sm cursor-pointer flex-1">
+                        {claim}
+                      </Label>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
