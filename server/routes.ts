@@ -3661,11 +3661,14 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       }
       
       // Call MindStudio DV_Questions.flow
+      // Send all fields directly in body (MindStudio wraps them in webhookParams automatically)
       const requestBody = {
-        workerId: process.env.MINDSTUDIO_WORKER_ID,
-        variables,
-        workflow: 'DV_Questions.flow',
-        includeBillingCost: true
+        ...variables,  // Spread all variables directly into root
+        // Add limit fields for MindStudio flow control
+        max_questions: 6,
+        max_missing_items: 6,
+        max_claim_options: 5,
+        max_evidence_per_claim: 4
       };
       
       console.log("📤 MindStudio DV_Questions.flow request");
@@ -3678,6 +3681,8 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+          'x-mindstudio-worker-id': process.env.MINDSTUDIO_WORKER_ID!,
+          'x-mindstudio-workflow': 'DV_Questions.flow'
         },
         body: JSON.stringify(requestBody),
         signal: controller.signal
@@ -3892,21 +3897,38 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         input_case_details: inputCaseDetails
       };
       
-      // Add user-provided responses to variables
+      // Build user_answers object (matching MindStudio field names from DV_Questions.flow output)
+      // Convert questionAnswers (keyed as "question_0", "question_1"...) to proper answer objects
+      const user_answers: Record<string, string> = {};
       if (questionAnswers && Object.keys(questionAnswers).length > 0) {
-        variables.user_question_answers = questionAnswers;
+        Object.entries(questionAnswers).forEach(([key, value]) => {
+          user_answers[key] = String(value);
+        });
       }
+      // Add "weet ik niet" responses
       if (questionDontKnow && Object.keys(questionDontKnow).length > 0) {
-        variables.user_dont_know_flags = questionDontKnow;
+        Object.entries(questionDontKnow).forEach(([key, isDontKnow]) => {
+          if (isDontKnow) {
+            user_answers[key] = "Weet ik niet";
+          }
+        });
       }
-      if (selectedClaims && selectedClaims.length > 0) {
-        variables.user_selected_claims = selectedClaims;
-      }
+      // Add missing item responses
       if (missingItemResponses && Object.keys(missingItemResponses).length > 0) {
-        variables.user_missing_items_handled = Object.keys(missingItemResponses).length;
+        Object.entries(missingItemResponses).forEach(([key, value]) => {
+          if (typeof value === 'string' && value === 'dont_have') {
+            user_answers[`missing_${key}`] = "Heb ik niet";
+          } else if (value) {
+            user_answers[`missing_${key}`] = "Bijgevoegd";
+          }
+        });
+      }
+      // Add selected claims
+      if (selectedClaims && selectedClaims.length > 0) {
+        user_answers.selected_claims = selectedClaims.join(',');
       }
       
-      console.log("📊 Variables with user responses:", JSON.stringify(variables, null, 2));
+      console.log("📊 User answers for rerun:", JSON.stringify(user_answers, null, 2));
       
       // Check for API configuration
       if (!process.env.MINDSTUDIO_WORKER_ID || !process.env.MINDSTUDIO_API_KEY) {
@@ -3925,11 +3947,17 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       }
       
       // Call MindStudio DV_Questions.flow with user responses
+      // Send all fields directly in body (MindStudio wraps them in webhookParams automatically)
       const requestBody = {
-        workerId: process.env.MINDSTUDIO_WORKER_ID,
-        variables,
-        workflow: 'DV_Questions.flow',
-        includeBillingCost: true
+        ...variables,  // Spread all base variables
+        user_answers,  // Add user responses for rerun
+        rerun_count: 1,  // Track iteration count
+        last_snapshot_hash: "user_input_v1",  // Version tracking
+        // Add limit fields for MindStudio flow control
+        max_questions: 6,
+        max_missing_items: 6,
+        max_claim_options: 5,
+        max_evidence_per_claim: 4
       };
       
       console.log("📤 MindStudio DV_Questions.flow request (with user responses)");
@@ -3942,6 +3970,8 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+          'x-mindstudio-worker-id': process.env.MINDSTUDIO_WORKER_ID!,
+          'x-mindstudio-workflow': 'DV_Questions.flow'
         },
         body: JSON.stringify(requestBody),
         signal: controller.signal
