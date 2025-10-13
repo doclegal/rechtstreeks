@@ -38,10 +38,16 @@ interface ClarifyingQuestion {
   hint?: string;
 }
 
+interface MissingItem {
+  item: string;
+  why_needed: string;
+  priority: string;
+}
+
 interface ReadinessResult {
   ready_for_summons: boolean;
   next_flow: string;
-  dv_missing_items: string[];
+  dv_missing_items: MissingItem[];
   dv_claim_options: any[];
   dv_evidence_plan: any;
   dv_clarifying_questions: ClarifyingQuestion[];
@@ -292,10 +298,17 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
                   Ontbrekende informatie
                 </Label>
                 <ul className="text-sm text-orange-800 dark:text-orange-200 space-y-1">
-                  {readinessResult.dv_missing_items.map((item, idx) => (
+                  {readinessResult.dv_missing_items.map((missingItem, idx) => (
                     <li key={idx} className="flex items-start gap-2">
                       <span className="text-orange-600 dark:text-orange-400">•</span>
-                      <span>{item}</span>
+                      <span>
+                        <strong>{missingItem.item}</strong>
+                        {missingItem.why_needed && (
+                          <span className="text-xs block text-orange-700 dark:text-orange-300 mt-0.5">
+                            ({missingItem.why_needed})
+                          </span>
+                        )}
+                      </span>
                     </li>
                   ))}
                 </ul>
