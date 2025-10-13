@@ -3683,8 +3683,13 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       const data = await response.json();
       console.log("✅ DV_Questions.flow response received:", {
         threadId: data.threadId,
-        hasResult: !!data.result
+        hasResult: !!data.result,
+        hasThread: !!data.thread,
+        postsCount: data.thread?.posts?.length || 0
       });
+      
+      // DEBUG: Log full response structure
+      console.log("🔍 Full MindStudio response:", JSON.stringify(data, null, 2));
       
       // Parse the response - look for the structured variables in thread posts
       let readinessResult = {
@@ -3698,37 +3703,51 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       };
       
       if (data.thread?.posts) {
+        console.log(`📝 Parsing ${data.thread.posts.length} posts for variables...`);
         for (const post of data.thread.posts) {
           const vars = post.debugLog?.newState?.variables;
           if (vars) {
+            console.log("📌 Found variables in post:", Object.keys(vars));
+            
             // Extract all dv_* variables
             if (vars.ready_for_summons?.value !== undefined) {
               readinessResult.ready_for_summons = vars.ready_for_summons.value === true || vars.ready_for_summons.value === 'true';
+              console.log("  ✓ ready_for_summons:", readinessResult.ready_for_summons);
             }
             if (vars.next_flow?.value) {
               readinessResult.next_flow = vars.next_flow.value;
+              console.log("  ✓ next_flow:", readinessResult.next_flow);
             }
             if (vars.dv_missing_items?.value) {
               const val = vars.dv_missing_items.value;
               readinessResult.dv_missing_items = typeof val === 'string' ? JSON.parse(val) : val;
+              console.log("  ✓ dv_missing_items:", readinessResult.dv_missing_items.length, "items");
             }
             if (vars.dv_claim_options?.value) {
               const val = vars.dv_claim_options.value;
               readinessResult.dv_claim_options = typeof val === 'string' ? JSON.parse(val) : val;
+              console.log("  ✓ dv_claim_options:", readinessResult.dv_claim_options.length, "options");
             }
             if (vars.dv_evidence_plan?.value) {
               const val = vars.dv_evidence_plan.value;
               readinessResult.dv_evidence_plan = typeof val === 'string' ? JSON.parse(val) : val;
+              console.log("  ✓ dv_evidence_plan:", Object.keys(readinessResult.dv_evidence_plan));
             }
             if (vars.dv_clarifying_questions?.value) {
               const val = vars.dv_clarifying_questions.value;
               readinessResult.dv_clarifying_questions = typeof val === 'string' ? JSON.parse(val) : val;
+              console.log("  ✓ dv_clarifying_questions:", readinessResult.dv_clarifying_questions.length, "questions");
             }
             if (vars.dv_question_text?.value) {
               readinessResult.dv_question_text = vars.dv_question_text.value;
+              console.log("  ✓ dv_question_text:", readinessResult.dv_question_text.substring(0, 50) + "...");
             }
+          } else {
+            console.log("⚠️ Post has no variables in debugLog.newState");
           }
         }
+      } else {
+        console.log("⚠️ No thread.posts found in MindStudio response");
       }
       
       console.log("📋 Readiness check result:", {
