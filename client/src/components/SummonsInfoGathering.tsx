@@ -608,8 +608,9 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
                 <div className="space-y-2">
                   {readinessResult.dv_claim_options.map((claim, idx) => {
                     const claimText = typeof claim === 'string' ? claim : (claim.label || claim.claim || String(claim));
-                    const claimReason = typeof claim === 'object' && claim.short_reason ? claim.short_reason : '';
-                    const claimFeasibility = typeof claim === 'object' && claim.feasibility ? claim.feasibility : '';
+                    const claimReason = typeof claim === 'object' && claim.short_reason ? String(claim.short_reason) : '';
+                    // Always convert feasibility to string
+                    const claimFeasibility = typeof claim === 'object' && claim.feasibility ? String(claim.feasibility) : '';
                     
                     return (
                       <div key={idx} className="flex items-start gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border border-green-200 dark:border-green-800">
