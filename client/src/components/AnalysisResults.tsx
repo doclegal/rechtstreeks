@@ -72,6 +72,7 @@ interface AnalysisResultsProps {
   caseId?: string;
   onFullAnalyze?: () => void;
   isFullAnalyzing?: boolean;
+  userRole?: "EISER" | "GEDAAGDE"; // User's role in the case
 }
 
 export default function AnalysisResults({ 
@@ -83,7 +84,8 @@ export default function AnalysisResults({
   hasNewInfo = false,
   caseId,
   onFullAnalyze,
-  isFullAnalyzing = false
+  isFullAnalyzing = false,
+  userRole = "EISER" // Default to claimant if not specified
 }: AnalysisResultsProps) {
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({});
   const [isSubmittingAnswers, setIsSubmittingAnswers] = useState(false);
@@ -312,7 +314,7 @@ export default function AnalysisResults({
                     </p>
                   </div>
 
-                  {/* Parties - altijd tonen */}
+                  {/* Parties - altijd tonen met duidelijke markering wie de gebruiker is */}
                   <div className="space-y-2">
                     <h4 className="font-medium text-sm flex items-center gap-2">
                       <Users className="h-4 w-4" />
@@ -320,15 +322,25 @@ export default function AnalysisResults({
                     </h4>
                     <div className="text-sm text-gray-700 dark:text-gray-300" data-testid="text-parties">
                       {parsedKantonCheck.parties ? (
-                        <div className="space-y-1">
+                        <div className="space-y-2">
                           {parsedKantonCheck.parties.claimant_name && (
-                            <div><strong>Eiser:</strong> {parsedKantonCheck.parties.claimant_name}</div>
+                            <div className={`flex items-center gap-2 p-2 rounded ${userRole === 'EISER' ? 'bg-primary/10 border-l-4 border-primary' : ''}`}>
+                              <strong>Eiser:</strong> {parsedKantonCheck.parties.claimant_name}
+                              {userRole === 'EISER' && (
+                                <Badge variant="default" className="ml-2 text-xs">Dit bent u</Badge>
+                              )}
+                            </div>
                           )}
                           {parsedKantonCheck.parties.defendant_name && (
-                            <div><strong>Verweerder:</strong> {parsedKantonCheck.parties.defendant_name}</div>
+                            <div className={`flex items-center gap-2 p-2 rounded ${userRole === 'GEDAAGDE' ? 'bg-primary/10 border-l-4 border-primary' : ''}`}>
+                              <strong>Verweerder:</strong> {parsedKantonCheck.parties.defendant_name}
+                              {userRole === 'GEDAAGDE' && (
+                                <Badge variant="default" className="ml-2 text-xs">Dit bent u</Badge>
+                              )}
+                            </div>
                           )}
                           {parsedKantonCheck.parties.relationship && (
-                            <div><strong>Relatie:</strong> {parsedKantonCheck.parties.relationship}</div>
+                            <div className="pl-2"><strong>Relatie:</strong> {parsedKantonCheck.parties.relationship}</div>
                           )}
                         </div>
                       ) : 'Geen partijen informatie beschikbaar'}
@@ -500,7 +512,7 @@ export default function AnalysisResults({
             </CardHeader>
             <CollapsibleContent>
               <CardContent>
-                <MindStudioAnalysis analysis={mindstudioAnalysis} caseId={caseId} />
+                <MindStudioAnalysis analysis={mindstudioAnalysis} caseId={caseId} userRole={userRole} />
               </CardContent>
             </CollapsibleContent>
           </Card>

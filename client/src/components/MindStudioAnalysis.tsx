@@ -94,6 +94,7 @@ interface MindStudioAnalysisProps {
     };
   };
   caseId: string;
+  userRole?: "EISER" | "GEDAAGDE"; // User's role in the case
 }
 
 const LegalTermTooltip = ({ term, explanation, children }: { term: string; explanation: string; children: React.ReactNode }) => (
@@ -150,7 +151,7 @@ const getCaseType = (caseOverview: any) => {
   return "Onbekend";
 };
 
-const CaseSummaryCard = ({ analysis }: { analysis: any }) => {
+const CaseSummaryCard = ({ analysis, userRole = "EISER" }: { analysis: any; userRole?: "EISER" | "GEDAAGDE" }) => {
   if (!analysis.case_overview) return null;
 
   const caseType = getCaseType(analysis.case_overview);
@@ -164,22 +165,28 @@ const CaseSummaryCard = ({ analysis }: { analysis: any }) => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {/* Parties */}
+        {/* Parties - with clear indication of user role */}
         {analysis.case_overview.parties && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-blue-600" />
               <span className="font-medium text-sm">Partijen</span>
             </div>
-            <div className="pl-6 space-y-1 text-sm">
+            <div className="pl-6 space-y-2 text-sm">
               {analysis.case_overview.parties.claimant && (
-                <div>
+                <div className={`flex items-center gap-2 p-1.5 -ml-2 rounded ${userRole === 'EISER' ? 'bg-primary/10 border-l-3 border-primary' : ''}`}>
                   <span className="text-green-600 font-medium">Eiser:</span> {analysis.case_overview.parties.claimant.name}
+                  {userRole === 'EISER' && (
+                    <Badge variant="default" className="ml-1 text-[10px] py-0 px-1.5 h-5">U</Badge>
+                  )}
                 </div>
               )}
               {analysis.case_overview.parties.defendant && (
-                <div>
+                <div className={`flex items-center gap-2 p-1.5 -ml-2 rounded ${userRole === 'GEDAAGDE' ? 'bg-primary/10 border-l-3 border-primary' : ''}`}>
                   <span className="text-red-600 font-medium">Verweerder:</span> {analysis.case_overview.parties.defendant.name}
+                  {userRole === 'GEDAAGDE' && (
+                    <Badge variant="default" className="ml-1 text-[10px] py-0 px-1.5 h-5">U</Badge>
+                  )}
                 </div>
               )}
             </div>
@@ -437,7 +444,7 @@ const EvidenceChecklist = ({ evidence, caseId }: { evidence: any; caseId: string
   );
 };
 
-export function MindStudioAnalysis({ analysis, caseId }: MindStudioAnalysisProps) {
+export function MindStudioAnalysis({ analysis, caseId, userRole = "EISER" }: MindStudioAnalysisProps) {
   if (!analysis) {
     return (
       <Card>
@@ -455,7 +462,7 @@ export function MindStudioAnalysis({ analysis, caseId }: MindStudioAnalysisProps
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
           {/* Left column: Sticky Case Summary (1/4 width on xl screens) */}
           <div className="xl:col-span-1">
-            <CaseSummaryCard analysis={analysis} />
+            <CaseSummaryCard analysis={analysis} userRole={userRole} />
           </div>
           
           {/* Right column: Main content (3/4 width on xl screens) */}
