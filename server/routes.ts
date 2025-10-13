@@ -3606,6 +3606,12 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         claimsSummary
       ].filter(Boolean).join("\n");
       
+      // Get user role from case (default to EISER if not set)
+      const userRole = caseData.userRole || "EISER";
+      const perspectiveText = userRole === "EISER" 
+        ? "De gebruiker is de EISER (eisende partij/claimant). Stel vragen en analyseer de zaak vanuit het perspectief van degene die een vordering wil instellen."
+        : "De gebruiker is de GEDAAGDE (verwerende partij/defendant). Stel vragen en analyseer de zaak vanuit het perspectief van degene die zich moet verdedigen.";
+      
       // Build variables for DV_Questions.flow
       const variables = {
         case_type: caseType,
@@ -3624,7 +3630,10 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         claimant_name: claimant.name || caseData.title?.split(' vs ')[0] || "Eiser",
         defendant_name: defendant.name || caseData.counterpartyName || "Gedaagde",
         has_full_analysis: !!parsedAnalysis,
-        input_case_details: inputCaseDetails
+        input_case_details: inputCaseDetails,
+        // CRITICAL: User role and perspective for correct question context
+        user_role: userRole,
+        user_perspective: perspectiveText
       };
       
       console.log(`🔍 Running DV_Questions.flow for case: ${caseId}`);
@@ -3887,6 +3896,12 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         claimsSummary
       ].filter(Boolean).join("\n");
       
+      // Get user role from case (default to EISER if not set)
+      const userRole = caseData.userRole || "EISER";
+      const perspectiveText = userRole === "EISER" 
+        ? "De gebruiker is de EISER (eisende partij/claimant). Stel vragen en analyseer de zaak vanuit het perspectief van degene die een vordering wil instellen."
+        : "De gebruiker is de GEDAAGDE (verwerende partij/defendant). Stel vragen en analyseer de zaak vanuit het perspectief van degene die zich moet verdedigen.";
+      
       // Build base variables
       const variables: any = {
         case_type: caseType,
@@ -3905,7 +3920,10 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         claimant_name: claimant.name || caseData.title?.split(' vs ')[0] || "Eiser",
         defendant_name: defendant.name || caseData.counterpartyName || "Gedaagde",
         has_full_analysis: !!parsedAnalysis,
-        input_case_details: inputCaseDetails
+        input_case_details: inputCaseDetails,
+        // CRITICAL: User role and perspective for correct question context
+        user_role: userRole,
+        user_perspective: perspectiveText
       };
       
       // Build user_answers object (matching MindStudio field names from DV_Questions.flow output)
@@ -4222,10 +4240,20 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         });
       }
       
+      // CRITICAL: For dagvaarding (summons), user MUST always be EISER (claimant)
+      // This ensures MindStudio generates the summons from the correct perspective
+      const userRole = "EISER";
+      const perspectiveText = "De gebruiker is de EISER (eisende partij/claimant). Genereer de dagvaarding vanuit het perspectief van degene die een vordering instelt. De gebruiker is NOOIT de gedaagde bij een dagvaarding.";
+      
       // Call MindStudio with case_snapshot
       const requestBody = {
         workerId: process.env.MINDSTUDIO_WORKER_ID,
-        variables: { case_snapshot: caseSnapshot },
+        variables: { 
+          case_snapshot: caseSnapshot,
+          // CRITICAL: User role and perspective for dagvaarding context
+          user_role: userRole,
+          user_perspective: perspectiveText
+        },
         workflow: flowName || 'DV_Complete.flow',
         includeBillingCost: true
       };
