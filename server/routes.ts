@@ -3714,27 +3714,27 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         }
         if (data.result.dv_missing_items) {
           readinessResult.dv_missing_items = Array.isArray(data.result.dv_missing_items) 
-            ? data.result.dv_missing_items 
+            ? data.result.dv_missing_items.filter((item: any) => item && Object.keys(item).length > 0)
             : [];
-          console.log("  ✓ dv_missing_items:", readinessResult.dv_missing_items.length, "items");
+          console.log("  ✓ dv_missing_items:", readinessResult.dv_missing_items.length, "items (filtered)");
         }
         if (data.result.dv_claim_options) {
           readinessResult.dv_claim_options = Array.isArray(data.result.dv_claim_options)
-            ? data.result.dv_claim_options
+            ? data.result.dv_claim_options.filter((item: any) => item && Object.keys(item).length > 0)
             : [];
-          console.log("  ✓ dv_claim_options:", readinessResult.dv_claim_options.length, "options");
+          console.log("  ✓ dv_claim_options:", readinessResult.dv_claim_options.length, "options (filtered)");
         }
         if (data.result.dv_evidence_plan) {
           readinessResult.dv_evidence_plan = Array.isArray(data.result.dv_evidence_plan)
-            ? data.result.dv_evidence_plan
+            ? data.result.dv_evidence_plan.filter((item: any) => item && Object.keys(item).length > 0)
             : [];
-          console.log("  ✓ dv_evidence_plan:", readinessResult.dv_evidence_plan.length, "plans");
+          console.log("  ✓ dv_evidence_plan:", readinessResult.dv_evidence_plan.length, "plans (filtered)");
         }
         if (data.result.dv_clarifying_questions) {
           readinessResult.dv_clarifying_questions = Array.isArray(data.result.dv_clarifying_questions)
-            ? data.result.dv_clarifying_questions
+            ? data.result.dv_clarifying_questions.filter((item: any) => item && Object.keys(item).length > 0)
             : [];
-          console.log("  ✓ dv_clarifying_questions:", readinessResult.dv_clarifying_questions.length, "questions");
+          console.log("  ✓ dv_clarifying_questions:", readinessResult.dv_clarifying_questions.length, "questions (filtered)");
         }
         if (data.result.dv_question_text) {
           readinessResult.dv_question_text = data.result.dv_question_text;
@@ -3742,6 +3742,38 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         }
       } else {
         console.log("⚠️ No result object found in MindStudio response");
+      }
+      
+      // FALLBACK: If MindStudio returned empty arrays, use analysis data
+      if (readinessResult.dv_missing_items.length === 0 && parsedAnalysis) {
+        console.log("🔄 Using fallback: populating missing items from analysis");
+        const missingInfo = parsedAnalysis.missing_info_for_assessment || [];
+        readinessResult.dv_missing_items = missingInfo.map((info: any) => ({
+          item: info.question || "Ontbrekende informatie",
+          why_needed: info.answer_type === 'file_upload' ? "Bewijs vereist" : "Toelichting nodig",
+          priority: "hoog"
+        })).slice(0, 5);
+      }
+      
+      if (readinessResult.dv_clarifying_questions.length === 0 && parsedAnalysis) {
+        console.log("🔄 Using fallback: populating clarifying questions from analysis");
+        const questionsToAnswer = parsedAnalysis.questions_to_answer || [];
+        const factsUnclear = parsedAnalysis.facts?.unclear || [];
+        
+        const questions = [
+          ...questionsToAnswer.slice(0, 3).map((q: string) => ({
+            question: q,
+            reason: "Nodig voor beoordeling",
+            expected_evidence: ["Documenten", "Toelichting"]
+          })),
+          ...factsUnclear.slice(0, 2).map((fact: any) => ({
+            question: `Kunt u de volgende kwestie nader toelichten: ${typeof fact === 'string' ? fact : fact.detail || fact.label}?`,
+            reason: "Feit is onduidelijk",
+            expected_evidence: ["Schriftelijk bewijs", "Verklaring"]
+          }))
+        ].slice(0, 5);
+        
+        readinessResult.dv_clarifying_questions = questions;
       }
       
       console.log("📋 Readiness check result:", {
