@@ -2,11 +2,12 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, AlertCircle, Loader2, Sparkles } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Sparkles, HelpCircle } from "lucide-react";
 
 interface SummonsInfoGatheringProps {
   caseId: string;
@@ -31,10 +32,29 @@ interface SectionsState {
   producties?: SectionData;
 }
 
+interface ClarifyingQuestion {
+  question: string;
+  field: string;
+  hint?: string;
+}
+
+interface ReadinessResult {
+  ready_for_summons: boolean;
+  next_flow: string;
+  dv_missing_items: string[];
+  dv_claim_options: any[];
+  dv_evidence_plan: any;
+  dv_clarifying_questions: ClarifyingQuestion[];
+  dv_question_text: string;
+}
+
 export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatheringProps) {
   const { toast } = useToast();
   const [sections, setSections] = useState<SectionsState>({});
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isCheckingReadiness, setIsCheckingReadiness] = useState(false);
+  const [isGeneratingComplete, setIsGeneratingComplete] = useState(false);
+  const [readinessResult, setReadinessResult] = useState<ReadinessResult | null>(null);
+  const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({});
 
   // Fetch case analysis for summary
   const { data: analysis } = useQuery<any>({
@@ -86,47 +106,112 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
     producties: "Producties",
   };
 
-  const runCompleteFlowMutation = useMutation({
+  // Step 1: Check readiness with DV_Questions.flow
+  const checkReadinessMutation = useMutation({
     mutationFn: async () => {
-      setIsGenerating(true);
+      setIsCheckingReadiness(true);
       
-      // Call complete flow endpoint
-      const response = await apiRequest("POST", `/api/mindstudio/run-complete-flow`, {
-        caseId,
-        flowName: "DV_Complete.flow", // Default flow name for complete generation
+      const response = await apiRequest("POST", `/api/mindstudio/run-questions-flow`, {
+        caseId
       });
 
       const data = await response.json();
-      return data;
+      return data as ReadinessResult;
     },
     onSuccess: (data) => {
-      // Expected response structure:
-      // {
-      //   feiten: { summary: "...", user_feedback: [...] },
-      //   verweer: { summary: "...", user_feedback: [...] },
-      //   ... (all 7 sections)
-      // }
+      setReadinessResult(data);
+      setIsCheckingReadiness(false);
       
-      setSections(data);
-      setIsGenerating(false);
-      
-      toast({
-        title: "Informatie verzameld",
-        description: "Alle secties zijn succesvol ingevuld met de beschikbare informatie.",
-      });
+      if (data.ready_for_summons) {
+        // Directly proceed to DV_Complete.flow with the next_flow from response
+        toast({
+          title: "Zaak is compleet",
+          description: "Alle benodigde informatie is aanwezig. Dagvaarding wordt nu gegenereerd...",
+        });
+        // Pass next_flow and answers directly to avoid stale state
+        runCompleteFlowMutation.mutate({ 
+          nextFlow: data.next_flow, 
+          userAnswers: {} 
+        });
+      } else {
+        // Show clarifying questions
+        toast({
+          title: "Aanvullende informatie nodig",
+          description: `${data.dv_missing_items.length} items ontbreken. Beantwoord de vragen hieronder.`,
+        });
+      }
     },
     onError: (error: any) => {
-      setIsGenerating(false);
+      setIsCheckingReadiness(false);
       toast({
-        title: "Fout",
-        description: error.message || "Er ging iets mis bij het verzamelen van informatie.",
+        title: "Fout bij readiness check",
+        description: error.message || "Er ging iets mis bij het controleren van de zaak.",
         variant: "destructive",
       });
     },
   });
 
-  const handleRunCompleteFlow = () => {
-    runCompleteFlowMutation.mutate();
+  // Step 2: Run complete flow with answers
+  const runCompleteFlowMutation = useMutation({
+    mutationFn: async (params?: { nextFlow?: string; userAnswers?: Record<string, string> }) => {
+      setIsGeneratingComplete(true);
+      
+      // Use passed params or fallback to state
+      const flowName = params?.nextFlow || readinessResult?.next_flow || "DV_Complete.flow";
+      const answers = params?.userAnswers || questionAnswers;
+      
+      const payload: any = {
+        caseId,
+        flowName
+      };
+      
+      if (Object.keys(answers).length > 0) {
+        payload.userAnswers = answers;
+      }
+      
+      const response = await apiRequest("POST", `/api/mindstudio/run-complete-flow`, payload);
+
+      const data = await response.json();
+      return data;
+    },
+    onSuccess: (data) => {
+      setSections(data);
+      setIsGeneratingComplete(false);
+      
+      // Reset all state after successful generation
+      setQuestionAnswers({});
+      setReadinessResult(null);
+      
+      toast({
+        title: "Dagvaarding gegenereerd",
+        description: "Alle secties zijn succesvol ingevuld.",
+      });
+    },
+    onError: (error: any) => {
+      setIsGeneratingComplete(false);
+      toast({
+        title: "Fout",
+        description: error.message || "Er ging iets mis bij het genereren van de dagvaarding.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleStartWorkflow = () => {
+    // Start with readiness check
+    checkReadinessMutation.mutate();
+  };
+
+  const handleProceedWithAnswers = () => {
+    // User has answered questions, now run complete flow with answers
+    if (readinessResult) {
+      // Snapshot answers at click time to prevent stale data during mutation
+      const answersSnapshot = { ...questionAnswers };
+      runCompleteFlowMutation.mutate({ 
+        nextFlow: readinessResult.next_flow, 
+        userAnswers: answersSnapshot 
+      });
+    }
   };
 
   const handleAnswerChange = (sectionKey: string, questionIndex: number, answer: string) => {
@@ -194,25 +279,97 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
                   Informatie verzamelen
                 </h4>
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  Klik op "Volledig maken" om automatisch alle benodigde informatie voor de dagvaarding te verzamelen 
-                  op basis van uw zaakgegevens en juridische analyse. U kunt daarna de vragen invullen die nog ontbreken.
+                  Klik op "Volledig maken" om te controleren of alle benodigde informatie voor de dagvaarding aanwezig is. 
+                  {readinessResult && !readinessResult.ready_for_summons && " Beantwoord de vragen hieronder om door te gaan."}
                 </p>
               </div>
             </div>
+
+            {/* Show missing items if available */}
+            {readinessResult && !readinessResult.ready_for_summons && readinessResult.dv_missing_items.length > 0 && (
+              <div className="bg-orange-100 dark:bg-orange-950 p-3 rounded-lg">
+                <Label className="text-sm font-semibold text-orange-900 dark:text-orange-100 mb-2 block">
+                  Ontbrekende informatie
+                </Label>
+                <ul className="text-sm text-orange-800 dark:text-orange-200 space-y-1">
+                  {readinessResult.dv_missing_items.map((item, idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <span className="text-orange-600 dark:text-orange-400">•</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Show clarifying questions */}
+            {readinessResult && !readinessResult.ready_for_summons && readinessResult.dv_clarifying_questions.length > 0 && (
+              <div className="space-y-4 pt-2">
+                <Label className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                  Beantwoord de volgende vragen:
+                </Label>
+                {readinessResult.dv_clarifying_questions.map((q, idx) => (
+                  <div key={idx} className="space-y-2">
+                    <Label className="text-sm flex items-center gap-2">
+                      <HelpCircle className="h-4 w-4 text-blue-600" />
+                      {q.question}
+                    </Label>
+                    <Textarea
+                      value={questionAnswers[q.field] || ""}
+                      onChange={(e) => setQuestionAnswers(prev => ({ ...prev, [q.field]: e.target.value }))}
+                      placeholder="Uw antwoord..."
+                      className="min-h-[80px]"
+                      data-testid={`input-clarifying-${idx}`}
+                    />
+                    {q.hint && (
+                      <p className="text-xs text-muted-foreground">{q.hint}</p>
+                    )}
+                  </div>
+                ))}
+                
+                <div className="flex justify-center pt-2">
+                  <Button 
+                    onClick={handleProceedWithAnswers}
+                    disabled={isGeneratingComplete}
+                    size="lg"
+                    className="gap-2"
+                    data-testid="button-proceed-with-answers"
+                  >
+                    {isGeneratingComplete ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        Dagvaarding wordt gegenereerd...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-5 w-5" />
+                        Doorgaan naar genereren
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
             
-            {!allSectionsCompleted && (
+            {/* Initial button - only show when no readiness check done yet */}
+            {!readinessResult && !allSectionsCompleted && (
               <div className="flex justify-center pt-2">
                 <Button 
-                  onClick={handleRunCompleteFlow}
-                  disabled={isGenerating}
+                  onClick={handleStartWorkflow}
+                  disabled={isCheckingReadiness || isGeneratingComplete}
                   size="lg"
                   className="gap-2"
                   data-testid="button-complete-all"
                 >
-                  {isGenerating ? (
+                  {isCheckingReadiness ? (
                     <>
                       <Loader2 className="h-5 w-5 animate-spin" />
-                      Bezig met verzamelen...
+                      Zaak wordt gecontroleerd...
+                    </>
+                  ) : isGeneratingComplete ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Dagvaarding wordt gegenereerd...
                     </>
                   ) : (
                     <>

@@ -1,0 +1,140 @@
+DV_Questions Flow: Legal Case Readiness Analyzer
+Purpose
+This workflow determines if a legal case is ready for drafting a summons (dagvaarding) in the Dutch legal system. If not ready, it generates domain-specific claim options, evidence plans, and clarifying questions in Dutch.
+
+How It Works
+The agent follows a simple decision tree:
+
+Receive Case Data - The workflow receives case metadata through API launch variables
+Evaluate Completeness - The logic router evaluates if all required elements are present
+Generate Response - Based on completeness, the agent either:
+Confirms readiness for summons drafting
+Generates missing information, claim options, and questions
+Return Structured Data - All outputs are returned in structured JSON format
+Input Variables
+The workflow accepts these launch variables from your Replit application:
+
+case_type
+ - Case category (arbeidsrecht, huur, consument, geldvordering)
+legal_domain
+ - Specific legal domain
+facts_complete
+ - Whether all facts are available (boolean)
+evidence_complete
+ - Whether all evidence is available (boolean)
+evidence_missing
+ - Array of missing evidence items
+has_legal_basis
+ - Whether the case has legal standing (boolean)
+risk_level
+ - Assessment of case risk (low, medium, high)
+Plus additional metadata variables (see full specifications)
+Output Structure
+The workflow returns a structured JSON response with:
+
+ready_for_summons
+ - Boolean indicating if summons can proceed
+next_flow
+ - The next workflow to execute based on case domain
+dv_missing_items
+ - Items needed to complete the case
+dv_claim_options
+ - Possible legal claims with feasibility ratings
+dv_evidence_plan
+ - Required and preferred evidence per claim
+dv_clarifying_questions
+ - Questions to gather missing information
+dv_question_text
+ - User-facing question about preferred claims
+Usage
+To invoke this workflow from your Replit application:
+
+// Example API call to the workflow
+
+const
+ response 
+=
+ 
+await
+ 
+fetch
+(
+'https://your-mindstudio-webhook-url'
+,
+ 
+{
+
+  
+method
+:
+ 
+'POST'
+,
+
+  
+headers
+:
+ 
+{
+ 
+'Content-Type'
+:
+ 
+'application/json'
+ 
+}
+,
+
+  
+body
+:
+ 
+JSON
+.
+stringify
+(
+{
+
+    
+case_type
+:
+ 
+'consument'
+,
+
+    
+legal_domain
+:
+ 
+'koopovereenkomst'
+,
+
+    
+facts_complete
+:
+ 
+false
+,
+
+    
+// Additional required variables...
+
+  
+}
+)
+
+}
+)
+;
+
+const
+ result 
+=
+ 
+await
+ response
+.
+json
+(
+)
+;
