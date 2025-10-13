@@ -61,16 +61,20 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
   const [isCheckingReadiness, setIsCheckingReadiness] = useState(false);
   const [isGeneratingComplete, setIsGeneratingComplete] = useState(false);
   const [readinessResult, setReadinessResult] = useState<ReadinessResult | null>(null);
-  const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({});
   
-  // User responses for missing items
+  // User responses for missing items (text + upload)
   const [missingItemResponses, setMissingItemResponses] = useState<Record<number, {
+    textAnswer?: string;
     uploadedDocId?: string;
     dontHave: boolean;
   }>>({});
   
-  // User "don't know" flags for questions
-  const [questionDontKnow, setQuestionDontKnow] = useState<Record<number, boolean>>({});
+  // User responses for questions (text + upload)
+  const [questionResponses, setQuestionResponses] = useState<Record<number, {
+    textAnswer?: string;
+    uploadedDocId?: string;
+    dontKnow: boolean;
+  }>>({});
   
   // Selected claim options
   const [selectedClaims, setSelectedClaims] = useState<Set<number>>(new Set());
@@ -125,9 +129,9 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
     producties: "Producties",
   };
 
-  // Upload mutation for missing items
+  // Upload mutation for both missing items and questions
   const uploadMutation = useMutation({
-    mutationFn: async ({ file, itemIndex }: { file: File; itemIndex: number }) => {
+    mutationFn: async ({ file, index, type }: { file: File; index: number; type: 'missing' | 'question' }) => {
       const formData = new FormData();
       formData.append('files', file);
 
@@ -142,16 +146,28 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
       }
 
       const result = await response.json();
-      return { docId: result.documents?.[0]?.id, itemIndex };
+      return { docId: result.documents?.[0]?.id, index, type };
     },
     onSuccess: (data) => {
-      setMissingItemResponses(prev => ({
-        ...prev,
-        [data.itemIndex]: {
-          uploadedDocId: data.docId,
-          dontHave: false
-        }
-      }));
+      if (data.type === 'missing') {
+        setMissingItemResponses(prev => ({
+          ...prev,
+          [data.index]: {
+            ...prev[data.index],
+            uploadedDocId: data.docId,
+            dontHave: false
+          }
+        }));
+      } else {
+        setQuestionResponses(prev => ({
+          ...prev,
+          [data.index]: {
+            ...prev[data.index],
+            uploadedDocId: data.docId,
+            dontKnow: false
+          }
+        }));
+      }
       toast({
         title: "Bestand geüpload",
         description: "Het document is succesvol toegevoegd.",
@@ -217,8 +233,7 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
       const response = await apiRequest("POST", `/api/mindstudio/submit-user-responses`, {
         caseId,
         missingItemResponses,
-        questionAnswers,
-        questionDontKnow,
+        questionResponses,
         selectedClaims: Array.from(selectedClaims)
       });
 
@@ -234,10 +249,19 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
           title: "Zaak is compleet",
           description: "Alle informatie is aanwezig. Dagvaarding wordt gegenereerd...",
         });
+        
+        // Build combined answers from question responses for DV_Complete
+        const combinedAnswers: Record<string, string> = {};
+        Object.entries(questionResponses).forEach(([idx, resp]) => {
+          if (resp.textAnswer) {
+            combinedAnswers[`question_${idx}`] = resp.textAnswer;
+          }
+        });
+        
         // Automatically trigger complete flow WITH the user answers
         runCompleteFlowMutation.mutate({ 
           nextFlow: data.next_flow, 
-          userAnswers: questionAnswers 
+          userAnswers: combinedAnswers 
         });
       } else {
         // Still missing info, reset ALL state for fresh checklist
@@ -247,8 +271,7 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
         });
         // Reset ALL per-index state so UI reflects latest gaps
         setMissingItemResponses({});
-        setQuestionAnswers({});
-        setQuestionDontKnow({});
+        setQuestionResponses({});
         setSelectedClaims(new Set());
       }
     },
@@ -268,7 +291,7 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
       
       // Use passed params or fallback to state
       const flowName = params?.nextFlow || readinessResult?.next_flow || "DV_Complete.flow";
-      const answers = params?.userAnswers || questionAnswers;
+      const answers = params?.userAnswers || {};
       
       const payload: any = {
         caseId,
@@ -289,7 +312,9 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
       setIsGeneratingComplete(false);
       
       // Reset all state after successful generation
-      setQuestionAnswers({});
+      setQuestionResponses({});
+      setMissingItemResponses({});
+      setSelectedClaims(new Set());
       setReadinessResult(null);
       
       toast({
@@ -315,8 +340,14 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
   const handleProceedWithAnswers = () => {
     // User has answered questions, now run complete flow with answers
     if (readinessResult) {
-      // Snapshot answers at click time to prevent stale data during mutation
-      const answersSnapshot = { ...questionAnswers };
+      // Build combined answers from question responses
+      const answersSnapshot: Record<string, string> = {};
+      Object.entries(questionResponses).forEach(([idx, resp]) => {
+        if (resp.textAnswer) {
+          answersSnapshot[`question_${idx}`] = resp.textAnswer;
+        }
+      });
+      
       runCompleteFlowMutation.mutate({ 
         nextFlow: readinessResult.next_flow, 
         userAnswers: answersSnapshot 
@@ -353,15 +384,22 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
   const isInputComplete = () => {
     if (!readinessResult || readinessResult.ready_for_summons) return false;
     
-    // Check missing items
+    // Check missing items (text OR upload OR marked as "don't have")
     const allMissingItemsHandled = readinessResult.dv_missing_items.every((_, idx) => {
       const response = missingItemResponses[idx];
-      return response?.uploadedDocId || response?.dontHave;
+      const hasText = response?.textAnswer && response.textAnswer.trim().length > 0;
+      const hasUpload = !!response?.uploadedDocId;
+      const isDontHave = !!response?.dontHave;
+      return hasText || hasUpload || isDontHave;
     });
     
-    // Check clarifying questions
+    // Check clarifying questions (text OR upload OR marked as "don't know")
     const allQuestionsAnswered = readinessResult.dv_clarifying_questions.every((_, idx) => {
-      return questionAnswers[`question_${idx}`] || questionDontKnow[idx];
+      const response = questionResponses[idx];
+      const hasText = response?.textAnswer && response.textAnswer.trim().length > 0;
+      const hasUpload = !!response?.uploadedDocId;
+      const isDontKnow = !!response?.dontKnow;
+      return hasText || hasUpload || isDontKnow;
     });
     
     // Check claim options (at least one selected if claims exist)
@@ -441,7 +479,7 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
               </div>
             </div>
 
-            {/* Missing Items - upload or mark as don't have */}
+            {/* Missing Items - text AND/OR upload */}
             {readinessResult && !readinessResult.ready_for_summons && readinessResult.dv_missing_items.length > 0 && (
               <div className="space-y-3 pt-4">
                 <Label className="text-sm font-semibold text-orange-900 dark:text-orange-100">
@@ -449,9 +487,10 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
                 </Label>
                 <div className="space-y-3">
                   {readinessResult.dv_missing_items.map((missingItem, idx) => {
-                    const response = missingItemResponses[idx];
-                    const isUploaded = !!response?.uploadedDocId;
-                    const isDontHave = !!response?.dontHave;
+                    const response = missingItemResponses[idx] || { dontHave: false };
+                    const hasText = !!response.textAnswer && response.textAnswer.trim().length > 0;
+                    const hasUpload = !!response.uploadedDocId;
+                    const isDontHave = !!response.dontHave;
                     
                     return (
                       <div key={idx} className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
@@ -465,32 +504,50 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
                             )}
                           </div>
                           
-                          {!isDontHave && !isUploaded && (
-                            <div className="flex gap-2">
-                              <Input
-                                type="file"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    uploadMutation.mutate({ file, itemIndex: idx });
-                                  }
-                                }}
-                                accept=".pdf,.docx,.doc,.png,.jpg,.jpeg"
-                                data-testid={`input-upload-missing-${idx}`}
-                                disabled={uploadMutation.isPending}
-                              />
-                            </div>
-                          )}
-                          
-                          {isUploaded && (
-                            <div className="flex items-center gap-2 text-green-700 dark:text-green-400 text-sm">
-                              <CheckCircle2 className="h-4 w-4" />
-                              <span>Document geüpload</span>
-                            </div>
+                          {!isDontHave && (
+                            <>
+                              {/* Text input */}
+                              <div>
+                                <Textarea
+                                  value={response.textAnswer || ""}
+                                  onChange={(e) => setMissingItemResponses(prev => ({
+                                    ...prev,
+                                    [idx]: {
+                                      ...prev[idx],
+                                      textAnswer: e.target.value,
+                                      dontHave: false
+                                    }
+                                  }))}
+                                  placeholder="Beschrijf het ontbrekende item of voer details in..."
+                                  className="min-h-[60px]"
+                                  data-testid={`textarea-missing-${idx}`}
+                                />
+                              </div>
+                              
+                              {/* File upload */}
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="file"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      uploadMutation.mutate({ file, index: idx, type: 'missing' });
+                                    }
+                                  }}
+                                  accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.eml,.msg"
+                                  data-testid={`input-upload-missing-${idx}`}
+                                  disabled={uploadMutation.isPending}
+                                  className="flex-1"
+                                />
+                                {hasUpload && (
+                                  <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                                )}
+                              </div>
+                            </>
                           )}
                           
                           {isDontHave && (
-                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-sm">
+                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-sm py-2">
                               <AlertCircle className="h-4 w-4" />
                               <span>Gemarkeerd als "Heb ik niet"</span>
                             </div>
@@ -505,6 +562,7 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
                                   ...prev,
                                   [idx]: {
                                     dontHave: !!checked,
+                                    textAnswer: undefined,
                                     uploadedDocId: undefined
                                   }
                                 }));
@@ -523,14 +581,17 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
               </div>
             )}
 
-            {/* Show clarifying questions */}
+            {/* Show clarifying questions - text AND/OR upload */}
             {readinessResult && !readinessResult.ready_for_summons && readinessResult.dv_clarifying_questions.length > 0 && (
               <div className="space-y-4 pt-2">
                 <Label className="text-sm font-semibold text-blue-900 dark:text-blue-100">
                   Beantwoord de volgende vragen:
                 </Label>
                 {readinessResult.dv_clarifying_questions.map((q, idx) => {
-                  const isDontKnow = questionDontKnow[idx];
+                  const response = questionResponses[idx] || { dontKnow: false };
+                  const hasText = !!response.textAnswer && response.textAnswer.trim().length > 0;
+                  const hasUpload = !!response.uploadedDocId;
+                  const isDontKnow = !!response.dontKnow;
                   
                   return (
                     <div key={idx} className="space-y-2 p-3 bg-white dark:bg-gray-900 rounded-lg border border-blue-200 dark:border-blue-800">
@@ -545,13 +606,43 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
                       )}
                       
                       {!isDontKnow && (
-                        <Textarea
-                          value={questionAnswers[`question_${idx}`] || ""}
-                          onChange={(e) => setQuestionAnswers(prev => ({ ...prev, [`question_${idx}`]: e.target.value }))}
-                          placeholder="Uw antwoord..."
-                          className="min-h-[80px]"
-                          data-testid={`input-clarifying-${idx}`}
-                        />
+                        <>
+                          {/* Text answer */}
+                          <Textarea
+                            value={response.textAnswer || ""}
+                            onChange={(e) => setQuestionResponses(prev => ({
+                              ...prev,
+                              [idx]: {
+                                ...prev[idx],
+                                textAnswer: e.target.value,
+                                dontKnow: false
+                              }
+                            }))}
+                            placeholder="Uw antwoord..."
+                            className="min-h-[80px]"
+                            data-testid={`textarea-clarifying-${idx}`}
+                          />
+                          
+                          {/* File upload */}
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="file"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  uploadMutation.mutate({ file, index: idx, type: 'question' });
+                                }
+                              }}
+                              accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.eml,.msg"
+                              data-testid={`input-upload-question-${idx}`}
+                              disabled={uploadMutation.isPending}
+                              className="flex-1"
+                            />
+                            {hasUpload && (
+                              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                            )}
+                          </div>
+                        </>
                       )}
                       
                       {isDontKnow && (
@@ -566,17 +657,14 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
                           id={`dont-know-${idx}`}
                           checked={isDontKnow}
                           onCheckedChange={(checked) => {
-                            setQuestionDontKnow(prev => ({
+                            setQuestionResponses(prev => ({
                               ...prev,
-                              [idx]: !!checked
+                              [idx]: {
+                                dontKnow: !!checked,
+                                textAnswer: undefined,
+                                uploadedDocId: undefined
+                              }
                             }));
-                            if (checked) {
-                              setQuestionAnswers(prev => {
-                                const newAnswers = { ...prev };
-                                delete newAnswers[`question_${idx}`];
-                                return newAnswers;
-                              });
-                            }
                           }}
                           data-testid={`checkbox-dont-know-${idx}`}
                         />

@@ -3785,7 +3785,15 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   app.post('/api/mindstudio/submit-user-responses', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { caseId, missingItemResponses, questionAnswers, questionDontKnow, selectedClaims } = req.body;
+      const { 
+        caseId, 
+        missingItemResponses, 
+        questionResponses, 
+        // Legacy support (deprecated)
+        questionAnswers, 
+        questionDontKnow, 
+        selectedClaims 
+      } = req.body;
       
       if (!caseId) {
         return res.status(400).json({ message: "caseId is required" });
@@ -3800,8 +3808,8 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       console.log(`📤 User submitted responses for case: ${caseId}`);
       console.log("User responses:", { 
         missingItems: Object.keys(missingItemResponses || {}).length,
-        questions: Object.keys(questionAnswers || {}).length,
-        dontKnow: Object.keys(questionDontKnow || {}).length,
+        questionResponses: Object.keys(questionResponses || {}).length,
+        legacyQuestions: Object.keys(questionAnswers || {}).length,
         claims: selectedClaims?.length || 0
       });
       
@@ -3901,31 +3909,50 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       };
       
       // Build user_answers object (matching MindStudio field names from DV_Questions.flow output)
-      // Convert questionAnswers (keyed as "question_0", "question_1"...) to proper answer objects
       const user_answers: Record<string, string> = {};
-      if (questionAnswers && Object.keys(questionAnswers).length > 0) {
-        Object.entries(questionAnswers).forEach(([key, value]) => {
-          user_answers[key] = String(value);
+      
+      // NEW: Handle questionResponses (with text + upload + dontKnow)
+      if (questionResponses && Object.keys(questionResponses).length > 0) {
+        Object.entries(questionResponses).forEach(([idx, response]: [string, any]) => {
+          if (response.dontKnow) {
+            user_answers[`question_${idx}`] = "Weet ik niet";
+          } else if (response.textAnswer) {
+            user_answers[`question_${idx}`] = String(response.textAnswer);
+          } else if (response.uploadedDocId) {
+            user_answers[`question_${idx}`] = `Bijgevoegd (doc: ${response.uploadedDocId})`;
+          }
         });
       }
-      // Add "weet ik niet" responses
+      
+      // LEGACY: Handle old questionAnswers/questionDontKnow (backwards compatibility)
+      if (questionAnswers && Object.keys(questionAnswers).length > 0) {
+        Object.entries(questionAnswers).forEach(([key, value]) => {
+          if (!user_answers[key]) { // Don't override new format
+            user_answers[key] = String(value);
+          }
+        });
+      }
       if (questionDontKnow && Object.keys(questionDontKnow).length > 0) {
         Object.entries(questionDontKnow).forEach(([key, isDontKnow]) => {
-          if (isDontKnow) {
+          if (isDontKnow && !user_answers[key]) {
             user_answers[key] = "Weet ik niet";
           }
         });
       }
-      // Add missing item responses
+      
+      // Handle missing item responses (with text + upload + dontHave)
       if (missingItemResponses && Object.keys(missingItemResponses).length > 0) {
-        Object.entries(missingItemResponses).forEach(([key, value]) => {
-          if (typeof value === 'string' && value === 'dont_have') {
-            user_answers[`missing_${key}`] = "Heb ik niet";
-          } else if (value) {
-            user_answers[`missing_${key}`] = "Bijgevoegd";
+        Object.entries(missingItemResponses).forEach(([idx, response]: [string, any]) => {
+          if (response.dontHave) {
+            user_answers[`missing_${idx}`] = "Heb ik niet";
+          } else if (response.textAnswer) {
+            user_answers[`missing_${idx}`] = String(response.textAnswer);
+          } else if (response.uploadedDocId) {
+            user_answers[`missing_${idx}`] = `Bijgevoegd (doc: ${response.uploadedDocId})`;
           }
         });
       }
+      
       // Add selected claims
       if (selectedClaims && selectedClaims.length > 0) {
         user_answers.selected_claims = selectedClaims.join(',');
