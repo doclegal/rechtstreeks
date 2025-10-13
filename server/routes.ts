@@ -3661,17 +3661,22 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       }
       
       // Call MindStudio DV_Questions.flow
-      // Send all fields directly in body (MindStudio wraps them in webhookParams automatically)
+      // MindStudio v2 API: send variables in the body, they become available in the flow
       const requestBody = {
-        ...variables,  // Spread all variables directly into root
-        // Add limit fields for MindStudio flow control
-        max_questions: 6,
-        max_missing_items: 6,
-        max_claim_options: 5,
-        max_evidence_per_claim: 4
+        workerId: process.env.MINDSTUDIO_WORKER_ID,
+        workflow: 'DV_Questions.flow',
+        variables: {
+          ...variables,
+          // Add limit fields for MindStudio flow control
+          max_questions: 6,
+          max_missing_items: 6,
+          max_claim_options: 5,
+          max_evidence_per_claim: 4
+        }
       };
       
       console.log("📤 MindStudio DV_Questions.flow request");
+      console.log("📊 Sending variables:", JSON.stringify(requestBody.variables, null, 2));
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3 * 60 * 1000); // 3 minutes
@@ -3680,9 +3685,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
-          'x-mindstudio-worker-id': process.env.MINDSTUDIO_WORKER_ID!,
-          'x-mindstudio-workflow': 'DV_Questions.flow'
+          'Authorization': `Bearer ${process.env.MINDSTUDIO_API_KEY}`
         },
         body: JSON.stringify(requestBody),
         signal: controller.signal
@@ -3729,28 +3732,10 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
           console.log("  ✓ next_flow:", readinessResult.next_flow);
         }
         if (data.result.dv_missing_items) {
-          const rawItems = Array.isArray(data.result.dv_missing_items) 
+          readinessResult.dv_missing_items = Array.isArray(data.result.dv_missing_items) 
             ? data.result.dv_missing_items.filter((item: any) => item && Object.keys(item).length > 0)
             : [];
-          
-          // Log first 3 items to debug what's coming back
-          console.log("  🔍 Raw dv_missing_items sample:", JSON.stringify(rawItems.slice(0, 3), null, 2));
-          
-          // Filter out internal/technical fields that users can't provide
-          const internalFieldKeywords = ['case_type', 'legal_domain', 'facts_complete', 'evidence_complete', 
-                                          'has_legal_basis', 'risk_level', 'claimant_name', 'defendant_name',
-                                          'factual information', 'case information', 'parties information'];
-          
-          readinessResult.dv_missing_items = rawItems.filter((item: any) => {
-            const itemText = typeof item === 'string' ? item.toLowerCase() : 
-                            (item.item || item.label || item.name || '').toLowerCase();
-            
-            // Exclude if matches internal keywords
-            return !internalFieldKeywords.some(keyword => itemText.includes(keyword));
-          });
-          
-          console.log("  ✓ dv_missing_items:", readinessResult.dv_missing_items.length, 
-                      "items (filtered from", rawItems.length, "total)");
+          console.log("  ✓ dv_missing_items:", readinessResult.dv_missing_items.length, "items");
         }
         if (data.result.dv_claim_options) {
           readinessResult.dv_claim_options = Array.isArray(data.result.dv_claim_options)
@@ -3965,20 +3950,25 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       }
       
       // Call MindStudio DV_Questions.flow with user responses
-      // Send all fields directly in body (MindStudio wraps them in webhookParams automatically)
+      // MindStudio v2 API: send variables in the body, they become available in the flow
       const requestBody = {
-        ...variables,  // Spread all base variables
-        user_answers,  // Add user responses for rerun
-        rerun_count: 1,  // Track iteration count
-        last_snapshot_hash: "user_input_v1",  // Version tracking
-        // Add limit fields for MindStudio flow control
-        max_questions: 6,
-        max_missing_items: 6,
-        max_claim_options: 5,
-        max_evidence_per_claim: 4
+        workerId: process.env.MINDSTUDIO_WORKER_ID,
+        workflow: 'DV_Questions.flow',
+        variables: {
+          ...variables,  // Spread all base variables
+          user_answers,  // Add user responses for rerun
+          rerun_count: 1,  // Track iteration count
+          last_snapshot_hash: "user_input_v1",  // Version tracking
+          // Add limit fields for MindStudio flow control
+          max_questions: 6,
+          max_missing_items: 6,
+          max_claim_options: 5,
+          max_evidence_per_claim: 4
+        }
       };
       
       console.log("📤 MindStudio DV_Questions.flow request (with user responses)");
+      console.log("📊 Sending variables:", JSON.stringify(requestBody.variables, null, 2));
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3 * 60 * 1000);
@@ -3987,9 +3977,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
-          'x-mindstudio-worker-id': process.env.MINDSTUDIO_WORKER_ID!,
-          'x-mindstudio-workflow': 'DV_Questions.flow'
+          'Authorization': `Bearer ${process.env.MINDSTUDIO_API_KEY}`
         },
         body: JSON.stringify(requestBody),
         signal: controller.signal
@@ -4025,22 +4013,9 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
           readinessResult.next_flow = data.result.next_flow;
         }
         if (data.result.dv_missing_items) {
-          const rawItems = Array.isArray(data.result.dv_missing_items) 
+          readinessResult.dv_missing_items = Array.isArray(data.result.dv_missing_items) 
             ? data.result.dv_missing_items.filter((item: any) => item && Object.keys(item).length > 0)
             : [];
-          
-          // Filter out internal/technical fields that users can't provide
-          const internalFieldKeywords = ['case_type', 'legal_domain', 'facts_complete', 'evidence_complete', 
-                                          'has_legal_basis', 'risk_level', 'claimant_name', 'defendant_name',
-                                          'factual information', 'case information', 'parties information'];
-          
-          readinessResult.dv_missing_items = rawItems.filter((item: any) => {
-            const itemText = typeof item === 'string' ? item.toLowerCase() : 
-                            (item.item || item.label || item.name || '').toLowerCase();
-            
-            // Exclude if matches internal keywords
-            return !internalFieldKeywords.some(keyword => itemText.includes(keyword));
-          });
         }
         if (data.result.dv_claim_options) {
           readinessResult.dv_claim_options = Array.isArray(data.result.dv_claim_options)
