@@ -280,7 +280,7 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
           <div className="space-y-4">
             <div className="flex gap-3">
               <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-              <div>
+              <div className="flex-1">
                 <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
                   Informatie verzamelen
                 </h4>
@@ -288,6 +288,27 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
                   Klik op "Volledig maken" om te controleren of alle benodigde informatie voor de dagvaarding aanwezig is. 
                   {readinessResult && !readinessResult.ready_for_summons && " Beantwoord de vragen hieronder om door te gaan."}
                 </p>
+                
+                {/* Status badges */}
+                {readinessResult && !readinessResult.ready_for_summons && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {readinessResult.dv_missing_items.length > 0 && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-200 text-orange-900 dark:bg-orange-900 dark:text-orange-200">
+                        {readinessResult.dv_missing_items.length} ontbrekende {readinessResult.dv_missing_items.length === 1 ? 'item' : 'items'}
+                      </span>
+                    )}
+                    {readinessResult.dv_clarifying_questions.length > 0 && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-200 text-blue-900 dark:bg-blue-900 dark:text-blue-200">
+                        {readinessResult.dv_clarifying_questions.length} {readinessResult.dv_clarifying_questions.length === 1 ? 'vraag' : 'vragen'}
+                      </span>
+                    )}
+                    {readinessResult.dv_claim_options.length > 0 && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-200 text-green-900 dark:bg-green-900 dark:text-green-200">
+                        {readinessResult.dv_claim_options.length} {readinessResult.dv_claim_options.length === 1 ? 'vordering' : 'vorderingen'}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
