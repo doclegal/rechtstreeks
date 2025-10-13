@@ -454,31 +454,70 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
                 <Label className="text-sm font-semibold text-blue-900 dark:text-blue-100">
                   Beantwoord de volgende vragen:
                 </Label>
-                {readinessResult.dv_clarifying_questions.map((q, idx) => (
-                  <div key={idx} className="space-y-2">
-                    <Label className="text-sm flex items-center gap-2">
-                      <HelpCircle className="h-4 w-4 text-blue-600" />
-                      {q.question}
-                    </Label>
-                    {q.reason && (
-                      <p className="text-xs text-blue-700 dark:text-blue-300 mb-1">
-                        ({q.reason})
-                      </p>
-                    )}
-                    <Textarea
-                      value={questionAnswers[`question_${idx}`] || ""}
-                      onChange={(e) => setQuestionAnswers(prev => ({ ...prev, [`question_${idx}`]: e.target.value }))}
-                      placeholder="Uw antwoord..."
-                      className="min-h-[80px]"
-                      data-testid={`input-clarifying-${idx}`}
-                    />
-                    {q.expected_evidence && q.expected_evidence.length > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        Verwacht bewijs: {q.expected_evidence.join(", ")}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                {readinessResult.dv_clarifying_questions.map((q, idx) => {
+                  const isDontKnow = questionDontKnow[idx];
+                  
+                  return (
+                    <div key={idx} className="space-y-2 p-3 bg-white dark:bg-gray-900 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <Label className="text-sm flex items-center gap-2">
+                        <HelpCircle className="h-4 w-4 text-blue-600" />
+                        {q.question}
+                      </Label>
+                      {q.reason && (
+                        <p className="text-xs text-blue-700 dark:text-blue-300 mb-1">
+                          ({q.reason})
+                        </p>
+                      )}
+                      
+                      {!isDontKnow && (
+                        <Textarea
+                          value={questionAnswers[`question_${idx}`] || ""}
+                          onChange={(e) => setQuestionAnswers(prev => ({ ...prev, [`question_${idx}`]: e.target.value }))}
+                          placeholder="Uw antwoord..."
+                          className="min-h-[80px]"
+                          data-testid={`input-clarifying-${idx}`}
+                        />
+                      )}
+                      
+                      {isDontKnow && (
+                        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-sm py-2">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>Gemarkeerd als "Weet ik niet"</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id={`dont-know-${idx}`}
+                          checked={isDontKnow}
+                          onCheckedChange={(checked) => {
+                            setQuestionDontKnow(prev => ({
+                              ...prev,
+                              [idx]: !!checked
+                            }));
+                            if (checked) {
+                              setQuestionAnswers(prev => {
+                                const newAnswers = { ...prev };
+                                delete newAnswers[`question_${idx}`];
+                                return newAnswers;
+                              });
+                            }
+                          }}
+                          data-testid={`checkbox-dont-know-${idx}`}
+                        />
+                        <Label htmlFor={`dont-know-${idx}`} className="text-sm cursor-pointer">
+                          Weet ik niet
+                        </Label>
+                      </div>
+                      
+                      {q.expected_evidence && q.expected_evidence.length > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Verwacht bewijs: {q.expected_evidence.join(", ")}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
