@@ -3773,6 +3773,252 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
     }
   });
 
+  // Submit user responses and re-run DV_Questions.flow
+  app.post('/api/mindstudio/submit-user-responses', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { caseId, missingItemResponses, questionAnswers, questionDontKnow, selectedClaims } = req.body;
+      
+      if (!caseId) {
+        return res.status(400).json({ message: "caseId is required" });
+      }
+      
+      // Verify case ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      console.log(`📤 User submitted responses for case: ${caseId}`);
+      console.log("User responses:", { 
+        missingItems: Object.keys(missingItemResponses || {}).length,
+        questions: Object.keys(questionAnswers || {}).length,
+        dontKnow: Object.keys(questionDontKnow || {}).length,
+        claims: selectedClaims?.length || 0
+      });
+      
+      // Get analysis data (same logic as run-questions-flow)
+      const analysis = await storage.getLatestAnalysis(caseId);
+      let parsedAnalysis = null;
+      
+      if (analysis?.rawText) {
+        try {
+          const rawData = JSON.parse(analysis.rawText);
+          parsedAnalysis = rawData.result?.analysis_json || rawData.analysis_json;
+          
+          if (!parsedAnalysis && rawData.thread?.posts) {
+            for (const post of rawData.thread.posts) {
+              if (post.debugLog?.newState?.variables?.analysis_json?.value) {
+                const value = post.debugLog.newState.variables.analysis_json.value;
+                parsedAnalysis = typeof value === 'string' ? JSON.parse(value) : value;
+                break;
+              }
+            }
+          }
+        } catch (error) {
+          console.log('Could not parse analysis:', error);
+        }
+      }
+      
+      // Same calculations as run-questions-flow
+      const legalIssues = parsedAnalysis?.legal_analysis?.legal_issues || [];
+      let caseType = "geldvordering";
+      let legalDomain = "algemeen";
+      
+      if (legalIssues.length > 0) {
+        const firstIssue = typeof legalIssues[0] === 'string' ? legalIssues[0] : String(legalIssues[0]);
+        legalDomain = firstIssue;
+        
+        if (firstIssue.toLowerCase().includes('arbeid') || firstIssue.toLowerCase().includes('employment')) {
+          caseType = "arbeidsrecht";
+        } else if (firstIssue.toLowerCase().includes('huur') || firstIssue.toLowerCase().includes('lease') || firstIssue.toLowerCase().includes('tenancy')) {
+          caseType = "huur";
+        } else if (firstIssue.toLowerCase().includes('consument') || firstIssue.toLowerCase().includes('consumer')) {
+          caseType = "consument";
+        }
+      }
+      
+      const factsKnown = parsedAnalysis?.facts?.known || [];
+      const factsUnclear = parsedAnalysis?.facts?.unclear || [];
+      const factsComplete = factsKnown.length > 0 && factsUnclear.length === 0;
+      
+      const evidenceProvided = parsedAnalysis?.evidence?.provided || [];
+      const evidenceMissing = parsedAnalysis?.evidence?.missing || [];
+      const evidenceComplete = evidenceProvided.length > 0 && evidenceMissing.length === 0;
+      
+      const legalBasis = parsedAnalysis?.legal_analysis?.legal_basis || [];
+      const hasLegalBasis = legalBasis.length > 0;
+      
+      const risks = parsedAnalysis?.legal_analysis?.risks || [];
+      let riskLevel = "low";
+      if (risks.length >= 4) riskLevel = "high";
+      else if (risks.length >= 2) riskLevel = "medium";
+      
+      const missingInfo = parsedAnalysis?.missing_info_for_assessment || [];
+      
+      const partiesArray = Array.isArray(parsedAnalysis?.case_overview?.parties) 
+        ? parsedAnalysis.case_overview.parties 
+        : [];
+      const claimant = partiesArray.find((p: any) => p.role === 'claimant') || {};
+      const defendant = partiesArray.find((p: any) => p.role === 'respondent' || p.role === 'defendant') || {};
+      
+      const knownFacts = factsKnown.map((f: any) => 
+        typeof f === 'string' ? f : (f.detail || f.label || String(f))
+      );
+      const claimsSummary = parsedAnalysis?.summary?.claims_brief || caseData.description || "";
+      const inputCaseDetails = [
+        ...knownFacts,
+        claimsSummary
+      ].filter(Boolean).join("\n");
+      
+      // Build base variables
+      const variables: any = {
+        case_type: caseType,
+        legal_domain: legalDomain,
+        facts_complete: factsComplete,
+        facts_unclear_count: factsUnclear.length,
+        missing_info_count: missingInfo.length,
+        evidence_complete: evidenceComplete,
+        evidence_provided: evidenceProvided.map((ev: any) => ev.doc_name || ev.source || 'Document').slice(0, 10),
+        evidence_missing: evidenceMissing.slice(0, 10),
+        has_legal_basis: hasLegalBasis,
+        legal_basis_count: legalBasis.length,
+        risk_level: riskLevel,
+        claim_amount: parseFloat(caseData.claimAmount || "0"),
+        claims_summary: parsedAnalysis?.summary?.claims_brief || caseData.description || "",
+        claimant_name: claimant.name || caseData.title?.split(' vs ')[0] || "Eiser",
+        defendant_name: defendant.name || caseData.counterpartyName || "Gedaagde",
+        has_full_analysis: !!parsedAnalysis,
+        input_case_details: inputCaseDetails
+      };
+      
+      // Add user-provided responses to variables
+      if (questionAnswers && Object.keys(questionAnswers).length > 0) {
+        variables.user_question_answers = questionAnswers;
+      }
+      if (questionDontKnow && Object.keys(questionDontKnow).length > 0) {
+        variables.user_dont_know_flags = questionDontKnow;
+      }
+      if (selectedClaims && selectedClaims.length > 0) {
+        variables.user_selected_claims = selectedClaims;
+      }
+      if (missingItemResponses && Object.keys(missingItemResponses).length > 0) {
+        variables.user_missing_items_handled = Object.keys(missingItemResponses).length;
+      }
+      
+      console.log("📊 Variables with user responses:", JSON.stringify(variables, null, 2));
+      
+      // Check for API configuration
+      if (!process.env.MINDSTUDIO_WORKER_ID || !process.env.MINDSTUDIO_API_KEY) {
+        console.warn("⚠️ MindStudio configuration missing, returning mock response");
+        
+        // After user submission, assume ready (mock mode)
+        return res.json({
+          ready_for_summons: true,
+          next_flow: "DV_Complete.flow",
+          dv_missing_items: [],
+          dv_claim_options: [],
+          dv_evidence_plan: [],
+          dv_clarifying_questions: [],
+          dv_question_text: ""
+        });
+      }
+      
+      // Call MindStudio DV_Questions.flow with user responses
+      const requestBody = {
+        workerId: process.env.MINDSTUDIO_WORKER_ID,
+        variables,
+        workflow: 'DV_Questions.flow',
+        includeBillingCost: true
+      };
+      
+      console.log("📤 MindStudio DV_Questions.flow request (with user responses)");
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3 * 60 * 1000);
+      
+      const response = await fetch('https://v1.mindstudio-api.com/developer/v2/agents/run', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ MindStudio API error:", response.status, errorText);
+        throw new Error(`MindStudio API error: ${response.status} ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log("✅ DV_Questions.flow response received (after user input)");
+      
+      // Parse response (same logic as run-questions-flow)
+      let readinessResult = {
+        ready_for_summons: false,
+        next_flow: "DV_Complete.flow",
+        dv_missing_items: [] as any[],
+        dv_claim_options: [] as any[],
+        dv_evidence_plan: [] as any[],
+        dv_clarifying_questions: [] as any[],
+        dv_question_text: ""
+      };
+      
+      if (data.result) {
+        if (data.result.ready_for_summons !== undefined) {
+          readinessResult.ready_for_summons = data.result.ready_for_summons === true || data.result.ready_for_summons === 'true';
+        }
+        if (data.result.next_flow) {
+          readinessResult.next_flow = data.result.next_flow;
+        }
+        if (data.result.dv_missing_items) {
+          readinessResult.dv_missing_items = Array.isArray(data.result.dv_missing_items) 
+            ? data.result.dv_missing_items.filter((item: any) => item && Object.keys(item).length > 0)
+            : [];
+        }
+        if (data.result.dv_claim_options) {
+          readinessResult.dv_claim_options = Array.isArray(data.result.dv_claim_options)
+            ? data.result.dv_claim_options.filter((item: any) => item && Object.keys(item).length > 0)
+            : [];
+        }
+        if (data.result.dv_evidence_plan) {
+          readinessResult.dv_evidence_plan = Array.isArray(data.result.dv_evidence_plan)
+            ? data.result.dv_evidence_plan.filter((item: any) => item && Object.keys(item).length > 0)
+            : [];
+        }
+        if (data.result.dv_clarifying_questions) {
+          readinessResult.dv_clarifying_questions = Array.isArray(data.result.dv_clarifying_questions)
+            ? data.result.dv_clarifying_questions.filter((item: any) => item && Object.keys(item).length > 0)
+            : [];
+        }
+        if (data.result.dv_question_text) {
+          readinessResult.dv_question_text = data.result.dv_question_text;
+        }
+      }
+      
+      console.log("📋 Readiness after user input:", {
+        ready: readinessResult.ready_for_summons,
+        nextFlow: readinessResult.next_flow,
+        stillMissingCount: readinessResult.dv_missing_items.length,
+        stillQuestionsCount: readinessResult.dv_clarifying_questions.length
+      });
+      
+      res.json(readinessResult);
+      
+    } catch (error) {
+      console.error('Error submitting user responses:', error);
+      res.status(500).json({ 
+        message: 'Failed to process user responses',
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // Run complete MindStudio flow with case snapshot
   app.post('/api/mindstudio/run-complete-flow', isAuthenticated, async (req: any, res) => {
     try {
