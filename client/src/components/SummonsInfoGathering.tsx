@@ -79,6 +79,17 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
   // Selected claim options
   const [selectedClaims, setSelectedClaims] = useState<Set<number>>(new Set());
 
+  // Fetch case data to check user role
+  const { data: caseData } = useQuery<any>({
+    queryKey: ["/api/cases", caseId],
+    queryFn: async () => {
+      const response = await fetch(`/api/cases/${caseId}`);
+      if (!response.ok) throw new Error("Failed to fetch case");
+      return response.json();
+    },
+    enabled: !!caseId,
+  });
+
   // Fetch case analysis for summary
   const { data: analysis } = useQuery<any>({
     queryKey: ["/api/cases", caseId, "analysis"],
@@ -333,6 +344,18 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
   });
 
   const handleStartWorkflow = () => {
+    // CRITICAL: Only EISER can create a dagvaarding (summons)
+    const userRole = caseData?.userRole || "EISER";
+    
+    if (userRole === "GEDAAGDE") {
+      toast({
+        title: "Geen toegang tot dagvaarding",
+        description: "Alleen de EISER (eisende partij) kan een dagvaarding opstellen. U bent geregistreerd als GEDAAGDE in deze zaak.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // Start with readiness check
     checkReadinessMutation.mutate();
   };
