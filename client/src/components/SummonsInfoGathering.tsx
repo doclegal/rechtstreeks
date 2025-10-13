@@ -299,6 +299,35 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
     key => sections[key as keyof SectionsState]?.summary
   );
 
+  // Check if all user inputs are complete
+  const isInputComplete = () => {
+    if (!readinessResult || readinessResult.ready_for_summons) return false;
+    
+    // Check missing items
+    const allMissingItemsHandled = readinessResult.dv_missing_items.every((_, idx) => {
+      const response = missingItemResponses[idx];
+      return response?.uploadedDocId || response?.dontHave;
+    });
+    
+    // Check clarifying questions
+    const allQuestionsAnswered = readinessResult.dv_clarifying_questions.every((_, idx) => {
+      return questionAnswers[`question_${idx}`] || questionDontKnow[idx];
+    });
+    
+    // Check claim options (at least one selected if claims exist)
+    const claimsHandled = readinessResult.dv_claim_options.length === 0 || selectedClaims.size > 0;
+    
+    return allMissingItemsHandled && allQuestionsAnswered && claimsHandled;
+  };
+
+  const handleSubmitUserInfo = () => {
+    // TODO: Call backend to re-run DV_Questions.flow with user responses
+    toast({
+      title: "Informatie wordt verwerkt",
+      description: "De flow wordt opnieuw uitgevoerd met uw antwoorden...",
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Case Summary */}
@@ -555,6 +584,21 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+            
+            {/* Submit user information button - show when all inputs are complete */}
+            {readinessResult && !readinessResult.ready_for_summons && isInputComplete() && (
+              <div className="flex justify-center pt-4">
+                <Button 
+                  onClick={handleSubmitUserInfo}
+                  size="lg"
+                  className="gap-2"
+                  data-testid="button-submit-user-info"
+                >
+                  <Sparkles className="h-5 w-5" />
+                  Informatie indienen
+                </Button>
               </div>
             )}
             
