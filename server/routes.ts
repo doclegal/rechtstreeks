@@ -3596,6 +3596,16 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       const claimant = partiesArray.find((p: any) => p.role === 'claimant') || {};
       const defendant = partiesArray.find((p: any) => p.role === 'respondent' || p.role === 'defendant') || {};
       
+      // Build input_case_details - platte samenvatting van feiten en claims
+      const knownFacts = factsKnown.map((f: any) => 
+        typeof f === 'string' ? f : (f.detail || f.label || String(f))
+      );
+      const claimsSummary = parsedAnalysis?.summary?.claims_brief || caseData.description || "";
+      const inputCaseDetails = [
+        ...knownFacts,
+        claimsSummary
+      ].filter(Boolean).join("\n");
+      
       // Build variables for DV_Questions.flow
       const variables = {
         case_type: caseType,
@@ -3613,7 +3623,8 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         claims_summary: parsedAnalysis?.summary?.claims_brief || caseData.description || "",
         claimant_name: claimant.name || caseData.title?.split(' vs ')[0] || "Eiser",
         defendant_name: defendant.name || caseData.counterpartyName || "Gedaagde",
-        has_full_analysis: !!parsedAnalysis
+        has_full_analysis: !!parsedAnalysis,
+        input_case_details: inputCaseDetails
       };
       
       console.log(`🔍 Running DV_Questions.flow for case: ${caseId}`);
@@ -3742,38 +3753,6 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         }
       } else {
         console.log("⚠️ No result object found in MindStudio response");
-      }
-      
-      // FALLBACK: If MindStudio returned empty arrays, use analysis data
-      if (readinessResult.dv_missing_items.length === 0 && parsedAnalysis) {
-        console.log("🔄 Using fallback: populating missing items from analysis");
-        const missingInfo = parsedAnalysis.missing_info_for_assessment || [];
-        readinessResult.dv_missing_items = missingInfo.map((info: any) => ({
-          item: info.question || "Ontbrekende informatie",
-          why_needed: info.answer_type === 'file_upload' ? "Bewijs vereist" : "Toelichting nodig",
-          priority: "hoog"
-        })).slice(0, 5);
-      }
-      
-      if (readinessResult.dv_clarifying_questions.length === 0 && parsedAnalysis) {
-        console.log("🔄 Using fallback: populating clarifying questions from analysis");
-        const questionsToAnswer = parsedAnalysis.questions_to_answer || [];
-        const factsUnclear = parsedAnalysis.facts?.unclear || [];
-        
-        const questions = [
-          ...questionsToAnswer.slice(0, 3).map((q: string) => ({
-            question: q,
-            reason: "Nodig voor beoordeling",
-            expected_evidence: ["Documenten", "Toelichting"]
-          })),
-          ...factsUnclear.slice(0, 2).map((fact: any) => ({
-            question: `Kunt u de volgende kwestie nader toelichten: ${typeof fact === 'string' ? fact : fact.detail || fact.label}?`,
-            reason: "Feit is onduidelijk",
-            expected_evidence: ["Schriftelijk bewijs", "Verklaring"]
-          }))
-        ].slice(0, 5);
-        
-        readinessResult.dv_clarifying_questions = questions;
       }
       
       console.log("📋 Readiness check result:", {
