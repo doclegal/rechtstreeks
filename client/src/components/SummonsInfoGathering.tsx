@@ -61,6 +61,18 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
   const [isGeneratingComplete, setIsGeneratingComplete] = useState(false);
   const [readinessResult, setReadinessResult] = useState<ReadinessResult | null>(null);
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({});
+  
+  // User responses for missing items
+  const [missingItemResponses, setMissingItemResponses] = useState<Record<number, {
+    uploadedDocId?: string;
+    dontHave: boolean;
+  }>>({});
+  
+  // User "don't know" flags for questions
+  const [questionDontKnow, setQuestionDontKnow] = useState<Record<number, boolean>>({});
+  
+  // Selected claim options
+  const [selectedClaims, setSelectedClaims] = useState<Set<number>>(new Set());
 
   // Fetch case analysis for summary
   const { data: analysis } = useQuery<any>({
