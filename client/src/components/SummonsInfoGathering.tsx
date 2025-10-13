@@ -211,6 +211,56 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
     },
   });
 
+  // Submit user responses mutation
+  const submitUserResponsesMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/mindstudio/submit-user-responses`, {
+        caseId,
+        missingItemResponses,
+        questionAnswers,
+        questionDontKnow,
+        selectedClaims: Array.from(selectedClaims)
+      });
+
+      const data = await response.json();
+      return data as ReadinessResult;
+    },
+    onSuccess: (data) => {
+      setReadinessResult(data);
+      
+      if (data.ready_for_summons) {
+        // Case is now complete, proceed to DV_Complete.flow with collected answers
+        toast({
+          title: "Zaak is compleet",
+          description: "Alle informatie is aanwezig. Dagvaarding wordt gegenereerd...",
+        });
+        // Automatically trigger complete flow WITH the user answers
+        runCompleteFlowMutation.mutate({ 
+          nextFlow: data.next_flow, 
+          userAnswers: questionAnswers 
+        });
+      } else {
+        // Still missing info, reset ALL state for fresh checklist
+        toast({
+          title: "Nog meer informatie nodig",
+          description: `${data.dv_missing_items.length} items ontbreken nog. Beantwoord de nieuwe vragen.`,
+        });
+        // Reset ALL per-index state so UI reflects latest gaps
+        setMissingItemResponses({});
+        setQuestionAnswers({});
+        setQuestionDontKnow({});
+        setSelectedClaims(new Set());
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout bij indienen",
+        description: error.message || "Er ging iets mis bij het verwerken van uw antwoorden.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Step 2: Run complete flow with answers
   const runCompleteFlowMutation = useMutation({
     mutationFn: async (params?: { nextFlow?: string; userAnswers?: Record<string, string> }) => {
@@ -321,11 +371,7 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
   };
 
   const handleSubmitUserInfo = () => {
-    // TODO: Call backend to re-run DV_Questions.flow with user responses
-    toast({
-      title: "Informatie wordt verwerkt",
-      description: "De flow wordt opnieuw uitgevoerd met uw antwoorden...",
-    });
+    submitUserResponsesMutation.mutate();
   };
 
   return (
@@ -560,29 +606,53 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
                   Kies één of meerdere vorderingen die u wilt opnemen in de dagvaarding.
                 </p>
                 <div className="space-y-2">
-                  {readinessResult.dv_claim_options.map((claim, idx) => (
-                    <div key={idx} className="flex items-start gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border border-green-200 dark:border-green-800">
-                      <Checkbox
-                        id={`claim-${idx}`}
-                        checked={selectedClaims.has(idx)}
-                        onCheckedChange={(checked) => {
-                          setSelectedClaims(prev => {
-                            const newSet = new Set(prev);
-                            if (checked) {
-                              newSet.add(idx);
-                            } else {
-                              newSet.delete(idx);
-                            }
-                            return newSet;
-                          });
-                        }}
-                        data-testid={`checkbox-claim-${idx}`}
-                      />
-                      <Label htmlFor={`claim-${idx}`} className="text-sm cursor-pointer flex-1">
-                        {claim}
-                      </Label>
-                    </div>
-                  ))}
+                  {readinessResult.dv_claim_options.map((claim, idx) => {
+                    const claimText = typeof claim === 'string' ? claim : (claim.label || claim.claim || String(claim));
+                    const claimReason = typeof claim === 'object' && claim.short_reason ? claim.short_reason : '';
+                    const claimFeasibility = typeof claim === 'object' && claim.feasibility ? claim.feasibility : '';
+                    
+                    return (
+                      <div key={idx} className="flex items-start gap-3 p-3 bg-white dark:bg-gray-900 rounded-lg border border-green-200 dark:border-green-800">
+                        <Checkbox
+                          id={`claim-${idx}`}
+                          checked={selectedClaims.has(idx)}
+                          onCheckedChange={(checked) => {
+                            setSelectedClaims(prev => {
+                              const newSet = new Set(prev);
+                              if (checked) {
+                                newSet.add(idx);
+                              } else {
+                                newSet.delete(idx);
+                              }
+                              return newSet;
+                            });
+                          }}
+                          data-testid={`checkbox-claim-${idx}`}
+                        />
+                        <div className="flex-1">
+                          <Label htmlFor={`claim-${idx}`} className="text-sm cursor-pointer font-medium">
+                            {claimText}
+                          </Label>
+                          {claimReason && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {claimReason}
+                            </p>
+                          )}
+                          {claimFeasibility && (
+                            <span className={`text-xs inline-block mt-1 px-2 py-0.5 rounded-full ${
+                              claimFeasibility.toLowerCase() === 'hoog' || claimFeasibility.toLowerCase() === 'high' 
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                                : claimFeasibility.toLowerCase() === 'laag' || claimFeasibility.toLowerCase() === 'low'
+                                ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                            }`}>
+                              Slagingskans: {claimFeasibility}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -592,12 +662,27 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
               <div className="flex justify-center pt-4">
                 <Button 
                   onClick={handleSubmitUserInfo}
+                  disabled={submitUserResponsesMutation.isPending || isGeneratingComplete}
                   size="lg"
                   className="gap-2"
                   data-testid="button-submit-user-info"
                 >
-                  <Sparkles className="h-5 w-5" />
-                  Informatie indienen
+                  {submitUserResponsesMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Informatie wordt verwerkt...
+                    </>
+                  ) : isGeneratingComplete ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Dagvaarding wordt gegenereerd...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-5 w-5" />
+                      Informatie indienen
+                    </>
+                  )}
                 </Button>
               </div>
             )}
