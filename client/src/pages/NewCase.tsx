@@ -18,6 +18,9 @@ const newCaseSchema = z.object({
   description: z.string().min(10, "Beschrijving moet minimaal 10 karakters bevatten"),
   category: z.string().min(1, "Selecteer een categorie"),
   claimAmount: z.string().optional(),
+  userRole: z.enum(["EISER", "GEDAAGDE"], {
+    required_error: "Selecteer uw rol in deze zaak",
+  }),
   counterpartyType: z.enum(["individual", "company"]),
   counterpartyName: z.string().min(1, "Naam wederpartij is verplicht"),
   counterpartyEmail: z.string().email("Ongeldig emailadres").optional().or(z.literal("")),
@@ -39,6 +42,7 @@ export default function NewCase() {
       description: "",
       category: "",
       claimAmount: "",
+      userRole: "EISER", // Default to claimant (required for dagvaarding)
       counterpartyType: "individual",
       counterpartyName: "",
       counterpartyEmail: "",
@@ -164,6 +168,76 @@ export default function NewCase() {
                 />
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* User Role Selection */}
+        <Card className="border-2 border-primary/20 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="text-primary">Uw rol in deze zaak *</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Het is belangrijk te weten of u degene bent die een vordering indient, of degene die wordt aangeklaagd.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div 
+                className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                  form.watch("userRole") === "EISER" 
+                    ? "border-primary bg-primary/10 shadow-sm" 
+                    : "border-border hover:border-primary/50"
+                }`}
+                onClick={() => form.setValue("userRole", "EISER")}
+                data-testid="option-role-eiser"
+              >
+                <div className="flex items-start space-x-3">
+                  <div className={`mt-0.5 h-5 w-5 rounded-full border-2 flex items-center justify-center ${
+                    form.watch("userRole") === "EISER" ? "border-primary" : "border-border"
+                  }`}>
+                    {form.watch("userRole") === "EISER" && (
+                      <div className="h-2.5 w-2.5 rounded-full bg-primary" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-foreground">Ik ben de Eiser</div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Ik wil een vordering indienen tegen een wederpartij. Ik ben de aanklager/eisende partij.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div 
+                className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                  form.watch("userRole") === "GEDAAGDE" 
+                    ? "border-primary bg-primary/10 shadow-sm" 
+                    : "border-border hover:border-primary/50"
+                }`}
+                onClick={() => form.setValue("userRole", "GEDAAGDE")}
+                data-testid="option-role-gedaagde"
+              >
+                <div className="flex items-start space-x-3">
+                  <div className={`mt-0.5 h-5 w-5 rounded-full border-2 flex items-center justify-center ${
+                    form.watch("userRole") === "GEDAAGDE" ? "border-primary" : "border-border"
+                  }`}>
+                    {form.watch("userRole") === "GEDAAGDE" && (
+                      <div className="h-2.5 w-2.5 rounded-full bg-primary" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-foreground">Ik ben de Gedaagde</div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Er is een vordering tegen mij ingediend. Ik ben de verwerende/aangeklaagde partij.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {form.formState.errors.userRole && (
+              <p className="text-sm text-destructive mt-2">
+                {form.formState.errors.userRole.message}
+              </p>
+            )}
           </CardContent>
         </Card>
 
