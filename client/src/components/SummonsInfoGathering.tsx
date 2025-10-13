@@ -34,8 +34,8 @@ interface SectionsState {
 
 interface ClarifyingQuestion {
   question: string;
-  field: string;
-  hint?: string;
+  reason: string;
+  expected_evidence: string[];
 }
 
 interface MissingItem {
@@ -327,15 +327,22 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
                       <HelpCircle className="h-4 w-4 text-blue-600" />
                       {q.question}
                     </Label>
+                    {q.reason && (
+                      <p className="text-xs text-blue-700 dark:text-blue-300 mb-1">
+                        ({q.reason})
+                      </p>
+                    )}
                     <Textarea
-                      value={questionAnswers[q.field] || ""}
-                      onChange={(e) => setQuestionAnswers(prev => ({ ...prev, [q.field]: e.target.value }))}
+                      value={questionAnswers[`question_${idx}`] || ""}
+                      onChange={(e) => setQuestionAnswers(prev => ({ ...prev, [`question_${idx}`]: e.target.value }))}
                       placeholder="Uw antwoord..."
                       className="min-h-[80px]"
                       data-testid={`input-clarifying-${idx}`}
                     />
-                    {q.hint && (
-                      <p className="text-xs text-muted-foreground">{q.hint}</p>
+                    {q.expected_evidence && q.expected_evidence.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Verwacht bewijs: {q.expected_evidence.join(", ")}
+                      </p>
                     )}
                   </div>
                 ))}
