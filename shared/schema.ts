@@ -38,6 +38,12 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// User role enum (who is the user in the dispute?)
+export const userRoleEnum = pgEnum("user_role", [
+  "EISER",      // User is the claimant/plaintiff
+  "GEDAAGDE"    // User is the defendant/respondent
+]);
+
 // Case status enum
 export const caseStatusEnum = pgEnum("case_status", [
   "NEW_INTAKE",
@@ -64,6 +70,7 @@ export const cases = pgTable("cases", {
   counterpartyEmail: varchar("counterparty_email"),
   counterpartyPhone: varchar("counterparty_phone"),
   counterpartyAddress: text("counterparty_address"),
+  userRole: userRoleEnum("user_role").default("EISER").notNull(), // Who is the user? Default: claimant (for dagvaarding)
   status: caseStatusEnum("status").default("NEW_INTAKE"),
   currentStep: varchar("current_step"),
   nextActionLabel: varchar("next_action_label"),
