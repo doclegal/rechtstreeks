@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, AlertCircle, Loader2, Sparkles, HelpCircle } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Sparkles, HelpCircle, Upload, FileText } from "lucide-react";
 
 interface SummonsInfoGatheringProps {
   caseId: string;
@@ -123,6 +124,47 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
     slot: "Slot",
     producties: "Producties",
   };
+
+  // Upload mutation for missing items
+  const uploadMutation = useMutation({
+    mutationFn: async ({ file, itemIndex }: { file: File; itemIndex: number }) => {
+      const formData = new FormData();
+      formData.append('files', file);
+
+      const response = await fetch(`/api/cases/${caseId}/uploads`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const result = await response.json();
+      return { docId: result.documents?.[0]?.id, itemIndex };
+    },
+    onSuccess: (data) => {
+      setMissingItemResponses(prev => ({
+        ...prev,
+        [data.itemIndex]: {
+          uploadedDocId: data.docId,
+          dontHave: false
+        }
+      }));
+      toast({
+        title: "Bestand geüpload",
+        description: "Het document is succesvol toegevoegd.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Upload mislukt",
+        description: "Er ging iets mis bij het uploaden. Probeer opnieuw.",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Step 1: Check readiness with DV_Questions.flow
   const checkReadinessMutation = useMutation({
@@ -324,27 +366,85 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
               </div>
             </div>
 
-            {/* Show missing items if available */}
+            {/* Missing Items - upload or mark as don't have */}
             {readinessResult && !readinessResult.ready_for_summons && readinessResult.dv_missing_items.length > 0 && (
-              <div className="bg-orange-100 dark:bg-orange-950 p-3 rounded-lg">
-                <Label className="text-sm font-semibold text-orange-900 dark:text-orange-100 mb-2 block">
+              <div className="space-y-3 pt-4">
+                <Label className="text-sm font-semibold text-orange-900 dark:text-orange-100">
                   Ontbrekende informatie
                 </Label>
-                <ul className="text-sm text-orange-800 dark:text-orange-200 space-y-1">
-                  {readinessResult.dv_missing_items.map((missingItem, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <span className="text-orange-600 dark:text-orange-400">•</span>
-                      <span>
-                        <strong>{missingItem.item}</strong>
-                        {missingItem.why_needed && (
-                          <span className="text-xs block text-orange-700 dark:text-orange-300 mt-0.5">
-                            ({missingItem.why_needed})
-                          </span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="space-y-3">
+                  {readinessResult.dv_missing_items.map((missingItem, idx) => {
+                    const response = missingItemResponses[idx];
+                    const isUploaded = !!response?.uploadedDocId;
+                    const isDontHave = !!response?.dontHave;
+                    
+                    return (
+                      <div key={idx} className="bg-white dark:bg-gray-900 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
+                        <div className="space-y-3">
+                          <div>
+                            <Label className="text-sm font-semibold">{missingItem.item}</Label>
+                            {missingItem.why_needed && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {missingItem.why_needed}
+                              </p>
+                            )}
+                          </div>
+                          
+                          {!isDontHave && !isUploaded && (
+                            <div className="flex gap-2">
+                              <Input
+                                type="file"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    uploadMutation.mutate({ file, itemIndex: idx });
+                                  }
+                                }}
+                                accept=".pdf,.docx,.doc,.png,.jpg,.jpeg"
+                                data-testid={`input-upload-missing-${idx}`}
+                                disabled={uploadMutation.isPending}
+                              />
+                            </div>
+                          )}
+                          
+                          {isUploaded && (
+                            <div className="flex items-center gap-2 text-green-700 dark:text-green-400 text-sm">
+                              <CheckCircle2 className="h-4 w-4" />
+                              <span>Document geüpload</span>
+                            </div>
+                          )}
+                          
+                          {isDontHave && (
+                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-sm">
+                              <AlertCircle className="h-4 w-4" />
+                              <span>Gemarkeerd als "Heb ik niet"</span>
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id={`dont-have-${idx}`}
+                              checked={isDontHave}
+                              onCheckedChange={(checked) => {
+                                setMissingItemResponses(prev => ({
+                                  ...prev,
+                                  [idx]: {
+                                    dontHave: !!checked,
+                                    uploadedDocId: undefined
+                                  }
+                                }));
+                              }}
+                              data-testid={`checkbox-dont-have-${idx}`}
+                            />
+                            <Label htmlFor={`dont-have-${idx}`} className="text-sm cursor-pointer">
+                              Heb ik niet
+                            </Label>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
