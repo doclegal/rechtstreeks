@@ -956,6 +956,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             caseId,
             model: 'mindstudio-full-analysis',
             rawText: JSON.stringify(fullAnalysisResult, null, 2), // Save entire result including parsedAnalysis
+            analysisJson: fullAnalysisResult.parsedAnalysis,
+            extractedTexts: fullAnalysisResult.extractedTexts,
+            missingInfoStruct: fullAnalysisResult.missingInfoStruct,
+            allFiles: fullAnalysisResult.allFiles,
+            userContext: fullAnalysisResult.userContext,  // User's procedural role + legal role
+            procedureContext: fullAnalysisResult.procedureContext,  // Procedural info (kantonzaak, court, confidence)
+            // Legacy fields for backwards compatibility
             factsJson: analysisData?.facts ? [
               ...(analysisData.facts.known || []).map((fact: string) => ({ label: 'Vaststaande feiten', detail: fact })),
               ...(analysisData.facts.disputed || []).map((fact: string) => ({ label: 'Betwiste feiten', detail: fact })),
@@ -1140,6 +1147,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           extractedTexts: secondRunResult.extractedTexts,
           missingInfoStruct: secondRunResult.missingInfoStruct,
           allFiles: secondRunResult.allFiles,
+          userContext: secondRunResult.userContext,  // User's procedural role + legal role
+          procedureContext: secondRunResult.procedureContext,  // Procedural info (kantonzaak, court, confidence)
           prevAnalysisId: prevAnalysis.id,
           missingInfoAnswers: missing_info_answers,
           // Legacy fields for backwards compatibility

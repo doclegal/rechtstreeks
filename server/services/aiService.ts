@@ -972,6 +972,8 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     extractedTexts?: any;  // extracted_texts
     missingInfoStruct?: any;  // missing_info_struct  
     allFiles?: any;  // all_files
+    userContext?: any;  // user_context (procedural role + legal role)
+    procedureContext?: any;  // procedure_context (kantonzaak, court, confidence)
     rawText?: string;
     billingCost?: string;
   }> {
@@ -1054,6 +1056,8 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       let missingInfoStruct = null;  // missing_info_struct
       let extractedTexts = null;  // extracted_texts
       let allFiles = null;  // all_files
+      let userContext = null;  // user_context (procedural role + legal role)
+      let procedureContext = null;  // procedure_context (kantonzaak, court, confidence)
       
       try {
         // Primary: Look for analysis_json AND missing_info_struct in thread posts
@@ -1105,6 +1109,20 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
               console.log("✅ Found all_files in debugLog.newState.variables");
               const responseValue = post.debugLog.newState.variables.all_files.value;
               allFiles = typeof responseValue === 'string' ? JSON.parse(responseValue) : responseValue;
+            }
+            
+            // Look for user_context
+            if (!userContext && post.debugLog?.newState?.variables?.user_context?.value) {
+              console.log("✅ Found user_context in debugLog.newState.variables");
+              const responseValue = post.debugLog.newState.variables.user_context.value;
+              userContext = typeof responseValue === 'string' ? JSON.parse(responseValue) : responseValue;
+            }
+            
+            // Look for procedure_context
+            if (!procedureContext && post.debugLog?.newState?.variables?.procedure_context?.value) {
+              console.log("✅ Found procedure_context in debugLog.newState.variables");
+              const responseValue = post.debugLog.newState.variables.procedure_context.value;
+              procedureContext = typeof responseValue === 'string' ? JSON.parse(responseValue) : responseValue;
             }
           }
         }
@@ -1203,6 +1221,8 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
         extractedTexts,  // extracted_texts  
         missingInfoStruct,  // missing_info_struct
         allFiles,  // all_files
+        userContext,  // user_context (procedural role + legal role)
+        procedureContext,  // procedure_context (kantonzaak, court, confidence)
         rawText: JSON.stringify(data, null, 2),
         billingCost: data.billingCost
       };
