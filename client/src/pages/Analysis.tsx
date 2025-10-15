@@ -90,20 +90,29 @@ export default function Analysis() {
   const kantonNotSuitable = parsedKantonCheck?.ok === false;
 
   let fullAnalysis = null;
+  let userContext = null;
+  let procedureContext = null;
+  
   try {
     if ((currentCase?.fullAnalysis as any)?.parsedAnalysis && typeof (currentCase.fullAnalysis as any).parsedAnalysis === 'object') {
       fullAnalysis = (currentCase.fullAnalysis as any).parsedAnalysis;
+      userContext = (currentCase?.fullAnalysis as any)?.userContext || null;
+      procedureContext = (currentCase?.fullAnalysis as any)?.procedureContext || null;
     } else if (currentCase?.fullAnalysis?.rawText) {
       const rawData = JSON.parse(currentCase.fullAnalysis.rawText);
       
       // Check if parsedAnalysis exists at top level
       if (rawData.parsedAnalysis && typeof rawData.parsedAnalysis === 'object') {
         fullAnalysis = rawData.parsedAnalysis;
+        userContext = rawData.userContext || null;
+        procedureContext = rawData.procedureContext || null;
       }
       // Check in result.analysis_json
       else if (rawData.result?.analysis_json) {
         const analysisJson = rawData.result.analysis_json;
         fullAnalysis = typeof analysisJson === 'string' ? JSON.parse(analysisJson) : analysisJson;
+        userContext = rawData.userContext || rawData.result?.user_context || null;
+        procedureContext = rawData.procedureContext || rawData.result?.procedure_context || null;
       }
       // Check in thread posts (MindStudio format)
       else if (rawData.thread?.posts) {
@@ -112,7 +121,16 @@ export default function Analysis() {
           if (post.debugLog?.newState?.variables?.analysis_json?.value) {
             const parsedValue = post.debugLog.newState.variables.analysis_json.value;
             fullAnalysis = typeof parsedValue === 'string' ? JSON.parse(parsedValue) : parsedValue;
-            break;
+          }
+          // Look for user_context
+          if (post.debugLog?.newState?.variables?.user_context?.value) {
+            const parsedValue = post.debugLog.newState.variables.user_context.value;
+            userContext = typeof parsedValue === 'string' ? JSON.parse(parsedValue) : parsedValue;
+          }
+          // Look for procedure_context
+          if (post.debugLog?.newState?.variables?.procedure_context?.value) {
+            const parsedValue = post.debugLog.newState.variables.procedure_context.value;
+            procedureContext = typeof parsedValue === 'string' ? JSON.parse(parsedValue) : parsedValue;
           }
         }
       }
@@ -442,6 +460,63 @@ export default function Analysis() {
               </TabsContent>
 
               <TabsContent value="partijen" className="space-y-4 pt-6">
+                {/* User Context & Procedure Context */}
+                {(userContext || procedureContext) && (
+                  <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 mb-6">
+                    <CardContent className="pt-6">
+                      <h3 className="text-lg font-semibold mb-4 text-blue-900 dark:text-blue-100 flex items-center gap-2">
+                        <Scale className="h-5 w-5" />
+                        Uw Procedurepositie
+                      </h3>
+                      <div className="space-y-3">
+                        {userContext && (
+                          <div>
+                            <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">Procedurerole:</p>
+                            <div className="flex gap-2 flex-wrap">
+                              {userContext.procedural_role && (
+                                <Badge variant="default" className="bg-blue-600" data-testid="badge-procedural-role">
+                                  {userContext.procedural_role === 'eiser' ? 'EISER (Eisende partij)' : 
+                                   userContext.procedural_role === 'gedaagde' ? 'GEDAAGDE (Verwerende partij)' : 
+                                   userContext.procedural_role}
+                                </Badge>
+                              )}
+                              {userContext.legal_role && (
+                                <Badge variant="outline" className="border-blue-400" data-testid="badge-legal-role">
+                                  {userContext.legal_role}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {procedureContext && (
+                          <div>
+                            <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">Procedure type:</p>
+                            <div className="flex gap-2 flex-wrap">
+                              {procedureContext.is_kantonzaak !== undefined && (
+                                <Badge variant={procedureContext.is_kantonzaak ? "default" : "outline"} 
+                                       className={procedureContext.is_kantonzaak ? "bg-green-600" : ""} 
+                                       data-testid="badge-kantonzaak">
+                                  {procedureContext.is_kantonzaak ? 'Kantonzaak' : 'Niet kantonzaak'}
+                                </Badge>
+                              )}
+                              {procedureContext.court_type && (
+                                <Badge variant="outline" className="border-blue-400" data-testid="badge-court-type">
+                                  {procedureContext.court_type}
+                                </Badge>
+                              )}
+                              {procedureContext.confidence_level && (
+                                <Badge variant="secondary" data-testid="badge-confidence">
+                                  {procedureContext.confidence_level} zekerheid
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                
                 {fullAnalysis.case_overview?.parties && fullAnalysis.case_overview.parties.length > 0 ? (
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
