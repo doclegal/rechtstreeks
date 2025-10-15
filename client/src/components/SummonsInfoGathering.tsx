@@ -458,7 +458,7 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
             </div>
           </div>
           <div>
-            <Label className="text-sm font-semibold text-muted-foreground">Rechtsgebied</Label>
+            <Label className="text-sm font-semibold text-muted-foreground">Juridische Kernpunten</Label>
             <p className="text-base mt-1" data-testid="text-legal-domain">{legalDomain}</p>
           </div>
         </CardContent>
