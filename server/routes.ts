@@ -3674,20 +3674,19 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       // Normalize user_role to lowercase for MindStudio compatibility
       const normalizedUserRole = userRole.toLowerCase(); // "EISER" → "eiser", "GEDAAGDE" → "gedaagde"
       
+      // DV_Questions.flow is now On-demand (API), so send variables directly (no webhookParams wrapper)
       const requestBody = {
         workerId: process.env.MINDSTUDIO_WORKER_ID,
         workflow: 'DV_Questions.flow',
         variables: {
-          webhookParams: {
-            ...variables,
-            user_role: normalizedUserRole,
-            user_perspective: normalizedUserRole, // "eiser" or "gedaagde"
-            // Add limit fields for MindStudio flow control
-            max_questions: 6,
-            max_missing_items: 6,
-            max_claim_options: 5,
-            max_evidence_per_claim: 4
-          }
+          ...variables,
+          user_role: normalizedUserRole,
+          user_perspective: normalizedUserRole, // "eiser" or "gedaagde"
+          // Add limit fields for MindStudio flow control
+          max_questions: 6,
+          max_missing_items: 6,
+          max_claim_options: 5,
+          max_evidence_per_claim: 4
         }
       };
       
