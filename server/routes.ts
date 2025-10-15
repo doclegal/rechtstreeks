@@ -4001,27 +4001,24 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       }
       
       // Call MindStudio DV_Questions.flow with user responses
-      // MindStudio v2 API: Wrap all variables in webhookParams object
-      // Normalize user_role to lowercase for MindStudio compatibility
+      // DV_Questions.flow is now On-demand (API), so send variables directly (no webhookParams wrapper)
       const normalizedUserRole = userRole.toLowerCase(); // "EISER" → "eiser", "GEDAAGDE" → "gedaagde"
       
       const requestBody = {
         workerId: process.env.MINDSTUDIO_WORKER_ID,
         workflow: 'DV_Questions.flow',
         variables: {
-          webhookParams: {
-            ...variables,  // Spread all base variables
-            user_role: normalizedUserRole,
-            user_perspective: normalizedUserRole, // "eiser" or "gedaagde"
-            user_answers,  // Add user responses for rerun
-            rerun_count: 1,  // Track iteration count
-            last_snapshot_hash: "user_input_v1",  // Version tracking
-            // Add limit fields for MindStudio flow control
-            max_questions: 6,
-            max_missing_items: 6,
-            max_claim_options: 5,
-            max_evidence_per_claim: 4
-          }
+          ...variables,  // Spread all base variables
+          user_role: normalizedUserRole,
+          user_perspective: normalizedUserRole, // "eiser" or "gedaagde"
+          user_answers,  // Add user responses for rerun
+          rerun_count: 1,  // Track iteration count
+          last_snapshot_hash: "user_input_v1",  // Version tracking
+          // Add limit fields for MindStudio flow control
+          max_questions: 6,
+          max_missing_items: 6,
+          max_claim_options: 5,
+          max_evidence_per_claim: 4
         }
       };
       
