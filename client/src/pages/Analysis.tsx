@@ -762,10 +762,24 @@ export default function Analysis() {
                     <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
                       <CardContent className="pt-6">
                         <ul className="space-y-3">
-                          {fullAnalysis.legal_analysis.next_actions.map((action: string, index: number) => (
+                          {fullAnalysis.legal_analysis.next_actions.map((action: any, index: number) => (
                             <li key={index} className="flex gap-3" data-testid={`recommendation-${index}`}>
                               <span className="text-blue-600 dark:text-blue-400 font-bold">{index + 1}.</span>
-                              <p className="text-sm text-blue-900 dark:text-blue-100">{action}</p>
+                              <div className="flex-1">
+                                <p className="text-sm text-blue-900 dark:text-blue-100">
+                                  {typeof action === 'string' ? action : action.action || JSON.stringify(action)}
+                                </p>
+                                {typeof action === 'object' && action.reason && (
+                                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                                    <strong>Reden:</strong> {action.reason}
+                                  </p>
+                                )}
+                                {typeof action === 'object' && action.priority && (
+                                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                                    <strong>Prioriteit:</strong> {action.priority}
+                                  </p>
+                                )}
+                              </div>
                             </li>
                           ))}
                         </ul>
