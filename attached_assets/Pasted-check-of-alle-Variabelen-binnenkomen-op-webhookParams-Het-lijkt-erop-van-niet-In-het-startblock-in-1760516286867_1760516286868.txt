@@ -1,0 +1,367 @@
+check of alle Variabelen binnenkomen op webhookParams. Het lijkt erop van niet. In het startblock in mindstudio staat slechts één launch var: webhookParams (type object). Wordt dit nu op de juiste manier verstuurd vanuit de app? Hier is de log van de laatste run:Action
+Duration
+Run Started
+71 ms
+1
+Action started on AgentDispatcher
+Instance ID: k2r5x
+ at Oct 15, 2025 9:23:03.455 AM GMT+2
+2
+ New run with ID "043faea9-9927-4e1d-8275-ce5a56e9e151"
+3
+ Preparing launch variables
+4
+ Running workflow DV_Questions.flow
+5
+ Initializing {{currentDate}} with value "Oct 15, 2025 7:23:03 AM"
+6
+ Initializing {{global.userId}} with value "cea0889c-9c7e-46fb-ba63-0a5f3bfc9de2"
+7
+ Initializing {{global.threadId}} with value "043faea9-9927-4e1d-8275-ce5a56e9e151"
+8
+ Initializing {{global.username}} with value "Pieter D."
+9
+ Initializing {{global.userEmail}} with value "pdelaat@gmail.com"
+10
+ Initializing {{global.companyName}} with value "Notforlawyers"
+11
+ Initializing {{$launchVariables->case_type}} with value "geldvordering"
+12
+ Initializing {{$launchVariables->user_role}} with value "EISER"
+13
+ Initializing {{$launchVariables->risk_level}} with value "medium"
+14
+ Initializing {{$launchVariables->claim_amount}} with value "131.49"
+15
+ Initializing {{$launchVariables->legal_domain}} with value "Nakoming van contractuele verplichtingen"
+16
+ Initializing {{$launchVariables->claimant_name}} with value "pieter"
+17
+ Initializing {{$launchVariables->max_questions}} with value "6"
+18
+ Initializing {{$launchVariables->claims_summary}} with value "Eiser vordert volledige terugbetaling van €131,49, inclusief eventuele kosten, wegens niet‑geleverde goederen."
+19
+ Initializing {{$launchVariables->defendant_name}} with value "Gereedschapcentrum.nl"
+20
+ Initializing {{$launchVariables->facts_complete}} with value "false"
+21
+ Initializing {{$launchVariables->has_legal_basis}} with value JSON
+true
+22
+ Initializing {{$launchVariables->evidence_missing}} with value JSON
+[
+0: "Leveringsbewijs of verzendingsdocument"
+1: "E-mailcorrespondentie met verkoper"
+2: "Bankafschrift waarop de betaling van €131,49 zichtbaar is"
+]
+23
+ Initializing {{$launchVariables->user_perspective}} with value "De gebruiker is de EISER (eisende partij/claimant). Stel vragen en analyseer de zaak vanuit het perspectief van degene die een vordering wil instellen."
+24
+ Initializing {{$launchVariables->evidence_complete}} with value "false"
+25
+ Initializing {{$launchVariables->evidence_provided}} with value JSON
+[
+0: "Factuur-20250429036.pdf"
+]
+26
+ Initializing {{$launchVariables->has_full_analysis}} with value JSON
+true
+27
+ Initializing {{$launchVariables->legal_basis_count}} with value "2"
+28
+ Initializing {{$launchVariables->max_claim_options}} with value "5"
+29
+ Initializing {{$launchVariables->max_missing_items}} with value "6"
+30
+ Initializing {{$launchVariables->input_case_details}} with value "Pieter bestelde via de webshop van Gereedschapcentrum.nl een zaagblad.
+Hij betaalde €131,49.
+Een factuur (11‑10‑2025) is ontvangen.
+Het product is niet geleverd...."
+31
+ Initializing {{$launchVariables->missing_info_count}} with value "3"
+32
+ Initializing {{$launchVariables->facts_unclear_count}} with value "3"
+33
+ Initializing {{$launchVariables->max_evidence_per_claim}} with value "4"
+34
+ Dispatching run request to Agent Runner
+35
+ Action completed
+Logic Block
+1,16 s
+1
+Action started on CloudRunner
+Instance ID: tc5mw
+ at Oct 15, 2025 9:23:03.691 AM GMT+2
+2
+ Evaluating logic block
+3
+ Resolving conditions
+4
+ Evaluating conditions
+5
+ Received raw response: "2"
+6
+ Evaluated conditions, selected "2"
+Context
+Decide if the case is COMPLETE.
+Use ONLY the booleans below as provided via webhookParams.
+Do not infer or reinterpret missing values.
+
+JSON:
+{
+  "facts_complete": ,
+  "evidence_complete": ,
+  "has_legal_basis": 
+}
+
+Definition:
+- COMPLETE = (facts_complete === true) AND (evidence_complete === true) AND (has_legal_basis === true)
+- Otherwise INCOMPLETE.
+
+Pick exactly one condition:
+#1 Condition – COMPLETE → Gen_Ready
+Select ONLY if facts_complete == true AND evidence_complete == true AND has_legal_basis == true.
+
+#2 Condition – INCOMPLETE → Gen_Questions
+Select if ANY of the three is false, null, undefined, or missing.
+
+Include the user_role context in routing decisions or explanations where relevant.
+Option
+Raw Value
+Resolved Value
+Destination
+#1
+Condition #1 – COMPLETE → Gen_Ready
+Select ONLY if facts_complete == true AND evidence_complete == true AND has_legal_basis == true.
+Otherwise do NOT select.
+Condition #1 – COMPLETE → Gen_Ready
+Select ONLY if facts_complete == true AND evidence_complete == true AND has_legal_basis == true.
+Otherwise do NOT select.
+DV_Questions.flow ->
+Gen_Ready
+#2
+Condition #2 – INCOMPLETE → Gen_Questions
+Select if ANY of facts_complete, evidence_complete, has_legal_basis is false.
+Condition #2 – INCOMPLETE → Gen_Questions
+Select if ANY of facts_complete, evidence_complete, has_legal_basis is false.
+DV_Questions.flow ->
+Gen_Questions
+7
+ Transitioning to 
+DV_Questions.flow ->
+Gen_Questions
+8
+ Action completed
+Billing Events
+claude-3-5-haiku-llm_inference-prompt
+(462 units at $0,000000800 per unit)
+$0,000369600
+claude-3-5-haiku-llm_inference-response
+(5 units at $0,000004000 per unit)
+$0,000020000
+Action Total
+$0,000389600
+Gen_Questions - Background Message
+22,63 s
+1
+Action started on CloudRunner
+Instance ID: tc5mw
+ at Oct 15, 2025 9:23:04.882 AM GMT+2
+2
+ Sending message: "SYSTEM
+Return ONLY one valid JSON object. No prose, no markdown.
+
+Hard rules:..."
+3
+ Loading message history
+4
+ Preparing to query 
+Claude 3.5 Sonnet at 0.2° with a maximum response size of 4,000 tokens
+5
+ Resolving variables
+6
+ Sending resolved message: "SYSTEM
+Return ONLY one valid JSON object. No prose, no markdown.
+
+Hard rules:..."
+7
+ Waiting for model response...
+8
+ Received first response token
+9
+ Received full result: 4,480 tokens (3,204 sent, 1,276 received) at 56.799 tokens/second
+10
+ Received result: JSON
+{
+ready_for_summons: false
+next_flow: "DV_GeldVragen.flow"
+confidence: 0.65
+dv_missing_items: [
+0: {}
+1: {}
+2: {}
+]
+dv_claim_options: [
+0: {}
+1: {}
+2: {}
+]
+dv_evidence_plan: [
+0: {}
+1: {}
+2: {}
+]
+dv_clarifying_questions: [
+0: {}
+1: {}
+2: {}
+]
+dv_question_text: "Om uw zaak goed voor te bereiden voor de rechter, hebben we nog wat extra informatie nodig. Kunt u de volgende vragen beantwoorden?"
+}
+11
+ Saving result to variable {{questions_output}}
+12
+ Action completed
+Billing Events
+claude-3.5-sonnet-bedrock-llm_inference-prompt
+(3.204 units at $0,000003000 per unit)
+$0,009612000
+claude-3.5-sonnet-bedrock-llm_inference-response
+(1.276 units at $0,000015000 per unit)
+$0,019140000
+Action Total
+$0,028752000
+GenSanitizeQuestions - Background Message
+19,30 s
+1
+Action started on CloudRunner
+Instance ID: tc5mw
+ at Oct 15, 2025 9:23:27.573 AM GMT+2
+2
+ Sending message: "SYSTEM
+You are a JSON sanitizer. Return ONLY one valid JSON object. No prose.
+
+Goals:..."
+3
+ Loading message history
+4
+ Preparing to query 
+Claude 3.5 Haiku at 0.5° with a maximum response size of 8,192 tokens
+5
+ Resolving variables
+6
+ Sending resolved message: "SYSTEM
+You are a JSON sanitizer. Return ONLY one valid JSON object. No prose.
+
+Goals:..."
+7
+ Waiting for model response...
+8
+ Received first response token
+9
+ Received full result: 5,753 tokens (4,390 sent, 1,363 received) at 73.835 tokens/second
+10
+ Received result: JSON
+{
+ready_for_summons: false
+next_flow: "DV_GeldVragen.flow"
+confidence: 0.65
+dv_missing_items: [
+0: {}
+1: {}
+2: {}
+]
+dv_claim_options: [
+0: {}
+1: {}
+2: {}
+]
+dv_evidence_plan: [
+0: {}
+1: {}
+2: {}
+]
+dv_clarifying_questions: [
+0: {}
+1: {}
+2: {}
+]
+dv_question_text: "Om uw zaak goed voor te bereiden voor de rechter, hebben we nog wat extra informatie nodig. Kunt u de volgende vragen beantwoorden?"
+}
+11
+ Saving result to variable {{questions_clean}}
+12
+ Action completed
+Billing Events
+claude-3-5-haiku-llm_inference-prompt
+(4.390 units at $0,000000800 per unit)
+$0,003512000
+claude-3-5-haiku-llm_inference-response
+(1.363 units at $0,000004000 per unit)
+$0,005452000
+Action Total
+$0,008964000
+Sending Output
+656 ms
+1
+Action started on CloudRunner
+Instance ID: tc5mw
+ at Oct 15, 2025 9:23:46.947 AM GMT+2
+2
+ Sending JSON: JSON
+{
+next_flow: "{{#if ready_output}}{{ready_output.next_flow}}{{else}}{{questions_clean.next_flow}}{{/if}}"
+confidence: "{{#if ready_output}}{{ready_output.confidence}}{{else}}{{questions_clean.confidence}}{{/if}}"
+dv_claim_options: "{{#if ready_output}}{{json ready_output.dv_claim_options}}{{else}}{{json questions_clean.dv_claim_options}}{{/if}}"
+dv_evidence_plan: "{{#if ready_output}}{{json ready_output.dv_evidence_plan}}{{else}}{{json questions_clean.dv_evidence_plan}}{{/if}}"
+dv_missing_items: "{{#if ready_output}}{{json ready_output.dv_missing_items}}{{else}}{{json questions_clean.dv_missing_items}}{{/if}}"
+dv_question_text: "{{#if ready_output}}{{ready_output.dv_question_text}}{{else}}{{questions_clean.dv_question_text}}{{/if}}"
+ready_for_summons: "{{#if ready_output}}{{ready_output.ready_for_summons}}{{else}}{{questions_clean.ready_for_summons}}{{/if}}"
+dv_questions_result: "{{#if ready_output}}{{json ready_output}}{{else}}{{json questions_clean}}{{/if}}"
+dv_clarifying_questions: "{{#if ready_output}}{{json ready_output.dv_clarifying_questions}}{{else}}{{json questions_clean.dv_clarifying_questions}}{{/if}}"
+}
+3
+ Resolving variables
+4
+ Sending message: JSON
+{
+next_flow: "DV_GeldVragen.flow"
+confidence: 0.65
+dv_claim_options: [
+0: {}
+1: {}
+2: {}
+]
+dv_evidence_plan: [
+0: {}
+1: {}
+2: {}
+]
+dv_missing_items: [
+0: {}
+1: {}
+2: {}
+]
+dv_question_text: "Om uw zaak goed voor te bereiden voor de rechter, hebben we nog wat extra informatie nodig. Kunt u de volgende vragen beantwoorden?"
+ready_for_summons: false
+dv_questions_result: {
+ready_for_summons: false
+next_flow: "DV_GeldVragen.flow"
+confidence: 0.65
+dv_missing_items: []
+dv_claim_options: []
+dv_evidence_plan: []
+dv_clarifying_questions: []
+dv_question_text: "Om uw zaak goed voor te bereiden voor de rechter, hebben we nog wat extra informatie nodig. Kunt u de volgende vragen beantwoorden?"
+}
+dv_clarifying_questions: [
+0: {}
+1: {}
+2: {}
+]
+}
+5
+ Action completed
+Run Completed
+43,815 s
