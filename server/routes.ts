@@ -3670,17 +3670,24 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       }
       
       // Call MindStudio DV_Questions.flow
-      // MindStudio v2 API: send variables in the body, they become available in the flow
+      // MindStudio v2 API: Wrap all variables in webhookParams object
+      // Normalize user_role to lowercase for MindStudio compatibility
+      const normalizedUserRole = userRole.toLowerCase(); // "EISER" → "eiser", "GEDAAGDE" → "gedaagde"
+      
       const requestBody = {
         workerId: process.env.MINDSTUDIO_WORKER_ID,
         workflow: 'DV_Questions.flow',
         variables: {
-          ...variables,
-          // Add limit fields for MindStudio flow control
-          max_questions: 6,
-          max_missing_items: 6,
-          max_claim_options: 5,
-          max_evidence_per_claim: 4
+          webhookParams: {
+            ...variables,
+            user_role: normalizedUserRole,
+            user_perspective: normalizedUserRole, // "eiser" or "gedaagde"
+            // Add limit fields for MindStudio flow control
+            max_questions: 6,
+            max_missing_items: 6,
+            max_claim_options: 5,
+            max_evidence_per_claim: 4
+          }
         }
       };
       
@@ -3995,20 +4002,27 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       }
       
       // Call MindStudio DV_Questions.flow with user responses
-      // MindStudio v2 API: send variables in the body, they become available in the flow
+      // MindStudio v2 API: Wrap all variables in webhookParams object
+      // Normalize user_role to lowercase for MindStudio compatibility
+      const normalizedUserRole = userRole.toLowerCase(); // "EISER" → "eiser", "GEDAAGDE" → "gedaagde"
+      
       const requestBody = {
         workerId: process.env.MINDSTUDIO_WORKER_ID,
         workflow: 'DV_Questions.flow',
         variables: {
-          ...variables,  // Spread all base variables
-          user_answers,  // Add user responses for rerun
-          rerun_count: 1,  // Track iteration count
-          last_snapshot_hash: "user_input_v1",  // Version tracking
-          // Add limit fields for MindStudio flow control
-          max_questions: 6,
-          max_missing_items: 6,
-          max_claim_options: 5,
-          max_evidence_per_claim: 4
+          webhookParams: {
+            ...variables,  // Spread all base variables
+            user_role: normalizedUserRole,
+            user_perspective: normalizedUserRole, // "eiser" or "gedaagde"
+            user_answers,  // Add user responses for rerun
+            rerun_count: 1,  // Track iteration count
+            last_snapshot_hash: "user_input_v1",  // Version tracking
+            // Add limit fields for MindStudio flow control
+            max_questions: 6,
+            max_missing_items: 6,
+            max_claim_options: 5,
+            max_evidence_per_claim: 4
+          }
         }
       };
       
@@ -4243,16 +4257,18 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       // CRITICAL: For dagvaarding (summons), user MUST always be EISER (claimant)
       // This ensures MindStudio generates the summons from the correct perspective
       const userRole = "EISER";
-      const perspectiveText = "De gebruiker is de EISER (eisende partij/claimant). Genereer de dagvaarding vanuit het perspectief van degene die een vordering instelt. De gebruiker is NOOIT de gedaagde bij een dagvaarding.";
+      const normalizedUserRole = "eiser"; // Lowercase for MindStudio compatibility
       
-      // Call MindStudio with case_snapshot
+      // Call MindStudio with case_snapshot wrapped in webhookParams
       const requestBody = {
         workerId: process.env.MINDSTUDIO_WORKER_ID,
         variables: { 
-          case_snapshot: caseSnapshot,
-          // CRITICAL: User role and perspective for dagvaarding context
-          user_role: userRole,
-          user_perspective: perspectiveText
+          webhookParams: {
+            case_snapshot: caseSnapshot,
+            // CRITICAL: User role and perspective for dagvaarding context
+            user_role: normalizedUserRole,
+            user_perspective: normalizedUserRole // "eiser"
+          }
         },
         workflow: flowName || 'DV_Complete.flow',
         includeBillingCost: true
