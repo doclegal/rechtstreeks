@@ -640,27 +640,6 @@ export default function Analysis() {
                     <p>Geen risico informatie beschikbaar</p>
                   </div>
                 )}
-
-                {fullAnalysis.missing_info_for_assessment && fullAnalysis.missing_info_for_assessment.length > 0 && (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
-                      <AlertTriangle className="h-5 w-5" />
-                      Ontbrekende Informatie
-                    </h3>
-                    <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950/30">
-                      <CardContent className="pt-6">
-                        <ul className="space-y-2">
-                          {fullAnalysis.missing_info_for_assessment.map((item: any, index: number) => (
-                            <li key={index} className="text-sm text-yellow-900 dark:text-yellow-100">
-                              <span className="font-medium">{item.question || item.label}:</span>{' '}
-                              {item.expected || item.description || 'Nog te verstrekken'}
-                            </li>
-                          ))}
-                        </ul>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
               </TabsContent>
 
               <TabsContent value="aanbevelingen" className="space-y-4 pt-6">

@@ -274,24 +274,6 @@ export default function FullAnalysis() {
             </Card>
           )}
 
-          {fullAnalysis.missing_info_for_assessment && fullAnalysis.missing_info_for_assessment.length > 0 && (
-            <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950/30">
-              <CardHeader>
-                <CardTitle className="text-yellow-800 dark:text-yellow-200">Ontbrekende informatie</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {fullAnalysis.missing_info_for_assessment.map((item: any, index: number) => (
-                    <li key={index} className="text-sm text-yellow-900 dark:text-yellow-100">
-                      <span className="font-medium">{item.question || item.label}:</span>{' '}
-                      {item.expected || item.description || 'Nog te verstrekken'}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
-
           <div className="flex justify-between pt-4">
             <Button variant="outline" asChild data-testid="button-back">
               <Link href="/analysis">
