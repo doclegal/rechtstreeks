@@ -637,10 +637,22 @@ export default function Analysis() {
                       Juridische Kwesties
                     </h3>
                     <div className="space-y-4">
-                      {fullAnalysis.legal_analysis.legal_issues.map((issue: string, index: number) => (
+                      {fullAnalysis.legal_analysis.legal_issues.map((issue: any, index: number) => (
                         <Card key={index} data-testid={`legal-issue-${index}`}>
                           <CardContent className="pt-6">
-                            <p className="text-sm text-foreground">{issue}</p>
+                            <p className="text-sm text-foreground">
+                              {typeof issue === 'string' ? issue : issue.issue || JSON.stringify(issue)}
+                            </p>
+                            {typeof issue === 'object' && issue.relevance && (
+                              <p className="text-xs text-muted-foreground mt-2">
+                                <strong>Relevantie:</strong> {issue.relevance}
+                              </p>
+                            )}
+                            {typeof issue === 'object' && issue.related_facts && issue.related_facts.length > 0 && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                <strong>Gerelateerde feiten:</strong> {issue.related_facts.join(', ')}
+                              </p>
+                            )}
                           </CardContent>
                         </Card>
                       ))}
@@ -670,11 +682,20 @@ export default function Analysis() {
                       <Scale className="h-5 w-5 text-primary" />
                       Mogelijke Verweren
                     </h3>
-                    <ul className="space-y-2">
-                      {fullAnalysis.legal_analysis.potential_defenses.map((defense: string, index: number) => (
+                    <ul className="space-y-3">
+                      {fullAnalysis.legal_analysis.potential_defenses.map((defense: any, index: number) => (
                         <li key={index} className="flex gap-3">
                           <span className="text-primary font-bold mt-0.5">&bull;</span>
-                          <p className="text-sm text-foreground">{defense}</p>
+                          <div className="flex-1">
+                            <p className="text-sm text-foreground">
+                              {typeof defense === 'string' ? defense : defense.defense || JSON.stringify(defense)}
+                            </p>
+                            {typeof defense === 'object' && defense.strength_estimate && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                <strong>Sterkte:</strong> {defense.strength_estimate}
+                              </p>
+                            )}
+                          </div>
                         </li>
                       ))}
                     </ul>
