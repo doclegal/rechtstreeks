@@ -3567,14 +3567,16 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       let legalDomain = "algemeen";
       
       if (legalIssues.length > 0) {
-        const firstIssue = typeof legalIssues[0] === 'string' ? legalIssues[0] : String(legalIssues[0]);
-        legalDomain = firstIssue;
+        const firstIssue = legalIssues[0];
+        legalDomain = typeof firstIssue === 'string' 
+          ? firstIssue 
+          : (firstIssue.issue || firstIssue.area || firstIssue.category || firstIssue.description || "algemeen");
         
-        if (firstIssue.toLowerCase().includes('arbeid') || firstIssue.toLowerCase().includes('employment')) {
+        if (legalDomain.toLowerCase().includes('arbeid') || legalDomain.toLowerCase().includes('employment')) {
           caseType = "arbeidsrecht";
-        } else if (firstIssue.toLowerCase().includes('huur') || firstIssue.toLowerCase().includes('lease') || firstIssue.toLowerCase().includes('tenancy')) {
+        } else if (legalDomain.toLowerCase().includes('huur') || legalDomain.toLowerCase().includes('lease') || legalDomain.toLowerCase().includes('tenancy')) {
           caseType = "huur";
-        } else if (firstIssue.toLowerCase().includes('consument') || firstIssue.toLowerCase().includes('consumer')) {
+        } else if (legalDomain.toLowerCase().includes('consument') || legalDomain.toLowerCase().includes('consumer')) {
           caseType = "consument";
         }
       }
@@ -3866,14 +3868,16 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       let legalDomain = "algemeen";
       
       if (legalIssues.length > 0) {
-        const firstIssue = typeof legalIssues[0] === 'string' ? legalIssues[0] : String(legalIssues[0]);
-        legalDomain = firstIssue;
+        const firstIssue = legalIssues[0];
+        legalDomain = typeof firstIssue === 'string' 
+          ? firstIssue 
+          : (firstIssue.issue || firstIssue.area || firstIssue.category || firstIssue.description || "algemeen");
         
-        if (firstIssue.toLowerCase().includes('arbeid') || firstIssue.toLowerCase().includes('employment')) {
+        if (legalDomain.toLowerCase().includes('arbeid') || legalDomain.toLowerCase().includes('employment')) {
           caseType = "arbeidsrecht";
-        } else if (firstIssue.toLowerCase().includes('huur') || firstIssue.toLowerCase().includes('lease') || firstIssue.toLowerCase().includes('tenancy')) {
+        } else if (legalDomain.toLowerCase().includes('huur') || legalDomain.toLowerCase().includes('lease') || legalDomain.toLowerCase().includes('tenancy')) {
           caseType = "huur";
-        } else if (firstIssue.toLowerCase().includes('consument') || firstIssue.toLowerCase().includes('consumer')) {
+        } else if (legalDomain.toLowerCase().includes('consument') || legalDomain.toLowerCase().includes('consumer')) {
           caseType = "consument";
         }
       }

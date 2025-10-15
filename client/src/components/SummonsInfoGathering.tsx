@@ -126,7 +126,7 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
   const claimantName = claimant.name || "Eiser onbekend";
   const defendantName = defendant.name || "Gedaagde onbekend";
   const legalDomain = legalIssues.length > 0 
-    ? legalIssues.map((issue: any) => typeof issue === 'string' ? issue : (issue.area || issue.category || issue)).filter(Boolean).join(", ")
+    ? legalIssues.map((issue: any) => typeof issue === 'string' ? issue : (issue.issue || issue.area || issue.category || issue.description)).filter(Boolean).join(", ")
     : "Niet gespecificeerd";
 
   // Section display names
