@@ -720,10 +720,24 @@ export default function Analysis() {
                     <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30">
                       <CardContent className="pt-6">
                         <ul className="space-y-3">
-                          {fullAnalysis.legal_analysis.risks.map((risk: string, index: number) => (
+                          {fullAnalysis.legal_analysis.risks.map((risk: any, index: number) => (
                             <li key={index} className="flex gap-3" data-testid={`risk-item-${index}`}>
                               <span className="text-orange-600 dark:text-orange-400 font-bold mt-0.5">&bull;</span>
-                              <p className="text-sm text-orange-900 dark:text-orange-100">{risk}</p>
+                              <div className="flex-1">
+                                <p className="text-sm text-orange-900 dark:text-orange-100">
+                                  {typeof risk === 'string' ? risk : risk.risk || JSON.stringify(risk)}
+                                </p>
+                                {typeof risk === 'object' && risk.severity && (
+                                  <p className="text-xs text-orange-700 dark:text-orange-300 mt-1">
+                                    <strong>Ernst:</strong> {risk.severity}
+                                  </p>
+                                )}
+                                {typeof risk === 'object' && risk.mitigation && (
+                                  <p className="text-xs text-orange-700 dark:text-orange-300 mt-1">
+                                    <strong>Mitigatie:</strong> {risk.mitigation}
+                                  </p>
+                                )}
+                              </div>
                             </li>
                           ))}
                         </ul>
