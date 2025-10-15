@@ -111,6 +111,10 @@ export const analyses = pgTable("analyses", {
   missingInfoStruct: jsonb("missing_info_struct"), // UI-ready missing-info items
   allFiles: jsonb("all_files"), // Consolidated file list
   
+  // User and procedure context (from MindStudio)
+  userContext: jsonb("user_context"), // User's procedural role (eiser/gedaagde) + legal role (koper/huurder/etc)
+  procedureContext: jsonb("procedure_context"), // Procedural info (kantonzaak, court type, confidence)
+  
   // Legacy fields (kept for backwards compatibility)
   factsJson: jsonb("facts_json"),
   issuesJson: jsonb("issues_json"),
