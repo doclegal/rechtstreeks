@@ -34,13 +34,13 @@ export default function MissingInfo({
   onUpdated 
 }: MissingInfoProps) {
   const { toast } = useToast();
-  const [answers, setAnswers] = useState<Map<string, Answer>>(new Map());
+  const [draftAnswers, setDraftAnswers] = useState<Map<string, Answer>>(new Map());
   const [textValues, setTextValues] = useState<Map<string, string>>(new Map());
   const [showUploadForReq, setShowUploadForReq] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingReqId, setEditingReqId] = useState<string | null>(null);
 
-  // Fetch saved responses
+  // Fetch saved responses (already submitted)
   const { data: savedResponsesData } = useQuery<{ responses: Answer[] }>({
     queryKey: ['/api/cases', caseId, 'missing-info', 'responses'],
     queryFn: async () => {
@@ -51,17 +51,12 @@ export default function MissingInfo({
   });
 
   const savedResponses = savedResponsesData?.responses || [];
-
-  // Initialize answers with saved responses
-  useEffect(() => {
-    if (savedResponses.length > 0) {
-      const savedAnswersMap = new Map<string, Answer>();
-      savedResponses.forEach((response: Answer) => {
-        savedAnswersMap.set(response.requirementId, response);
-      });
-      setAnswers(savedAnswersMap);
-    }
-  }, [savedResponses]);
+  
+  // Create a Map of saved responses for easy lookup
+  const savedResponsesMap = new Map<string, Answer>();
+  savedResponses.forEach((response: Answer) => {
+    savedResponsesMap.set(response.requirementId, response);
+  });
 
   const handleTextChange = (reqId: string, value: string) => {
     const newTextValues = new Map(textValues);
@@ -72,7 +67,7 @@ export default function MissingInfo({
   const handleTextBlur = (reqId: string) => {
     const value = textValues.get(reqId) || '';
     const trimmedValue = value.trim();
-    const newAnswers = new Map(answers);
+    const newAnswers = new Map(draftAnswers);
     
     if (trimmedValue) {
       newAnswers.set(reqId, {
@@ -83,11 +78,11 @@ export default function MissingInfo({
     } else {
       newAnswers.delete(reqId);
     }
-    setAnswers(newAnswers);
+    setDraftAnswers(newAnswers);
   };
 
   const handleSelectAnswer = (reqId: string, value: string) => {
-    const newAnswers = new Map(answers);
+    const newAnswers = new Map(draftAnswers);
     if (value) {
       newAnswers.set(reqId, {
         requirementId: reqId,
@@ -97,28 +92,28 @@ export default function MissingInfo({
     } else {
       newAnswers.delete(reqId);
     }
-    setAnswers(newAnswers);
+    setDraftAnswers(newAnswers);
   };
 
   const handleDocumentUploaded = (reqId: string, documentId: string) => {
-    const newAnswers = new Map(answers);
+    const newAnswers = new Map(draftAnswers);
     newAnswers.set(reqId, {
       requirementId: reqId,
       kind: 'document',
       documentId
     });
-    setAnswers(newAnswers);
+    setDraftAnswers(newAnswers);
     setShowUploadForReq(null);
   };
 
   const handleNotAvailable = (reqId: string) => {
-    const newAnswers = new Map(answers);
+    const newAnswers = new Map(draftAnswers);
     newAnswers.set(reqId, {
       requirementId: reqId,
       kind: 'not_available',
       notAvailable: true
     });
-    setAnswers(newAnswers);
+    setDraftAnswers(newAnswers);
     
     // Clear any text value that might have been entered
     const newTextValues = new Map(textValues);
@@ -127,9 +122,9 @@ export default function MissingInfo({
   };
 
   const handleSubmit = async () => {
-    // Check if all required items are answered
+    // Check if all required items are answered (check both saved and draft)
     const unansweredRequired = requirements.filter(
-      req => req.required && !answers.has(req.id)
+      req => req.required && !savedResponsesMap.has(req.id) && !draftAnswers.has(req.id)
     );
     
     if (unansweredRequired.length > 0) {
@@ -141,10 +136,10 @@ export default function MissingInfo({
       return;
     }
     
-    if (answers.size === 0) {
+    if (draftAnswers.size === 0) {
       toast({
-        title: "Geen antwoorden",
-        description: "Vul minimaal één antwoord in voordat u verstuurt",
+        title: "Geen nieuwe antwoorden",
+        description: "Vul minimaal één nieuw antwoord in voordat u verstuurt",
         variant: "destructive"
       });
       return;
@@ -152,7 +147,7 @@ export default function MissingInfo({
 
     setIsSubmitting(true);
     try {
-      const responses = Array.from(answers.values());
+      const responses = Array.from(draftAnswers.values());
       await apiRequest("POST", `/api/cases/${caseId}/missing-info/responses`, {
         responses
       });
@@ -162,8 +157,8 @@ export default function MissingInfo({
         description: "Klik op 'Juridische Analyse' om een heranalyse te starten met de nieuwe informatie"
       });
 
-      // Clear answers and editing state
-      setAnswers(new Map());
+      // Clear draft answers and editing state
+      setDraftAnswers(new Map());
       setTextValues(new Map());
       setEditingReqId(null);
       
@@ -189,8 +184,8 @@ export default function MissingInfo({
   }
 
   const requiredCount = requirements.filter(req => req.required).length;
-  const requiredAnsweredCount = requirements.filter(req => req.required && answers.has(req.id)).length;
-  const totalAnsweredCount = answers.size;
+  const requiredAnsweredCount = requirements.filter(req => req.required && savedResponsesMap.has(req.id)).length;
+  const totalAnsweredCount = savedResponsesMap.size;
 
   return (
     <>
@@ -220,22 +215,24 @@ export default function MissingInfo({
           </Alert>
 
           {requirements.map((req) => {
-            const hasAnswer = answers.has(req.id);
-            const answer = answers.get(req.id);
+            // Check if this requirement has been SUBMITTED (not just drafted)
+            const isSubmitted = savedResponsesMap.has(req.id);
+            const submittedAnswer = savedResponsesMap.get(req.id);
+            const isEditing = editingReqId === req.id;
             
             return (
               <div 
                 key={req.id}
                 className={`p-4 rounded-lg border-2 transition-colors ${
-                  hasAnswer ? 'border-success bg-success/5' : 'border-muted bg-muted/50'
+                  isSubmitted && !isEditing ? 'border-success bg-success/5' : 'border-muted bg-muted/50'
                 }`}
                 data-testid={`requirement-${req.id}`}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      {hasAnswer && <CheckCircle2 className="h-4 w-4 text-success" />}
-                      {!hasAnswer && <AlertTriangle className="h-4 w-4 text-warning" />}
+                      {isSubmitted && !isEditing && <CheckCircle2 className="h-4 w-4 text-success" />}
+                      {(!isSubmitted || isEditing) && <AlertTriangle className="h-4 w-4 text-warning" />}
                       <span className="font-medium text-foreground">
                         {req.label}
                       </span>
@@ -256,7 +253,7 @@ export default function MissingInfo({
                   </div>
                 </div>
 
-                {!hasAnswer && (
+                {!isSubmitted && (
                   <div className="space-y-3 mt-3">
                     {/* Select dropdown for options (multiple_choice) */}
                     {req.options && req.options.length > 0 && req.inputKind === 'text' && (
@@ -319,29 +316,29 @@ export default function MissingInfo({
                   </div>
                 )}
 
-                {hasAnswer && editingReqId !== req.id && (
+                {isSubmitted && !isEditing && (
                   <div className="mt-3 p-3 bg-background rounded border">
                     <div className="flex items-start gap-2 text-sm">
                       <div className="flex-1">
-                        {answer?.kind === 'text' && (
+                        {submittedAnswer?.kind === 'text' && (
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
                               <Type className="h-4 w-4 text-muted-foreground" />
                               <span className="text-muted-foreground text-xs">Tekst antwoord:</span>
                             </div>
-                            <p className="text-sm font-medium pl-6">{answer.value}</p>
+                            <p className="text-sm font-medium pl-6">{submittedAnswer.value}</p>
                           </div>
                         )}
-                        {answer?.kind === 'document' && (
+                        {submittedAnswer?.kind === 'document' && (
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
                               <FileText className="h-4 w-4 text-muted-foreground" />
                               <span className="text-muted-foreground text-xs">Document:</span>
                             </div>
-                            <p className="text-sm font-medium pl-6">{answer.documentName || 'Geüpload document'}</p>
+                            <p className="text-sm font-medium pl-6">{submittedAnswer.documentName || 'Geüpload document'}</p>
                           </div>
                         )}
-                        {answer?.kind === 'not_available' && (
+                        {submittedAnswer?.kind === 'not_available' && (
                           <div className="flex items-center gap-2">
                             <XCircle className="h-4 w-4 text-muted-foreground" />
                             <span className="text-muted-foreground italic text-xs">Niet beschikbaar</span>
@@ -353,9 +350,6 @@ export default function MissingInfo({
                         size="sm"
                         onClick={() => {
                           setEditingReqId(req.id);
-                          const newAnswers = new Map(answers);
-                          newAnswers.delete(req.id);
-                          setAnswers(newAnswers);
                         }}
                         className="text-xs flex items-center gap-1"
                         data-testid={`button-edit-${req.id}`}
@@ -367,7 +361,7 @@ export default function MissingInfo({
                   </div>
                 )}
                 
-                {hasAnswer && editingReqId === req.id && (
+                {isSubmitted && isEditing && (
                   <div className="space-y-3 mt-3">
                     {/* Show input fields when editing */}
                     {(req.inputKind === 'text' || req.inputKind === 'document' || !req.inputKind) && (!req.options || req.options.length === 0) && (
@@ -419,15 +413,15 @@ export default function MissingInfo({
 
           <Button
             onClick={handleSubmit}
-            disabled={requiredAnsweredCount < requiredCount || isSubmitting}
+            disabled={draftAnswers.size === 0 || isSubmitting}
             className="w-full"
             data-testid="button-submit-missing-info"
           >
             <Send className="mr-2 h-4 w-4" />
-            {isSubmitting ? "Bezig met versturen..." : requiredAnsweredCount < requiredCount ? `Vereiste velden ontbreken (${requiredAnsweredCount}/${requiredCount})` : `Versturen (${totalAnsweredCount} ${totalAnsweredCount === 1 ? 'antwoord' : 'antwoorden'})`}
+            {isSubmitting ? "Bezig met versturen..." : draftAnswers.size === 0 ? "Vul eerst antwoorden in" : `Versturen (${draftAnswers.size} ${draftAnswers.size === 1 ? 'antwoord' : 'antwoorden'})`}
           </Button>
 
-          {answers.size > 0 && (
+          {draftAnswers.size > 0 && (
             <p className="text-xs text-muted-foreground text-center">
               Na het versturen kunt u een heranalyse starten met de nieuwe informatie
             </p>
