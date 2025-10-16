@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useLocation } from "wouter";
-import { PlusCircle, FileSearch, Scale, CheckCircle, XCircle, ArrowRight, FileText, Users, AlertTriangle, Files } from "lucide-react";
+import { PlusCircle, FileSearch, Scale, CheckCircle, XCircle, ArrowRight, FileText, Users, AlertTriangle, AlertCircle, Files } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 import { useActiveCase } from "@/contexts/CaseContext";
 import DocumentList from "@/components/DocumentList";
@@ -205,9 +205,10 @@ export default function Analysis() {
       fullAnalysis = (currentCase.fullAnalysis as any).parsedAnalysis;
       userContext = (currentCase?.fullAnalysis as any)?.userContext || null;
       procedureContext = (currentCase?.fullAnalysis as any)?.procedureContext || null;
-      flags = (currentCase?.fullAnalysis as any)?.flags || null;
-      goNogoAdvice = (currentCase?.fullAnalysis as any)?.goNogoAdvice || null;
-      readyForSummons = (currentCase?.fullAnalysis as any)?.readyForSummons;
+      // Try top-level first, then fallback to parsedAnalysis
+      flags = (currentCase?.fullAnalysis as any)?.flags || fullAnalysis?.flags || null;
+      goNogoAdvice = (currentCase?.fullAnalysis as any)?.goNogoAdvice || fullAnalysis?.go_nogo_advice || null;
+      readyForSummons = (currentCase?.fullAnalysis as any)?.readyForSummons ?? fullAnalysis?.ready_for_summons;
       extractedTexts = (currentCase?.fullAnalysis as any)?.extractedTexts || null;
       allFiles = (currentCase?.fullAnalysis as any)?.allFiles || null;
     } else if (currentCase?.fullAnalysis?.rawText) {
@@ -218,9 +219,10 @@ export default function Analysis() {
         fullAnalysis = rawData.parsedAnalysis;
         userContext = rawData.userContext || null;
         procedureContext = rawData.procedureContext || null;
-        flags = rawData.flags || null;
-        goNogoAdvice = rawData.goNogoAdvice || null;
-        readyForSummons = rawData.readyForSummons;
+        // Try top-level first, then fallback to parsedAnalysis
+        flags = rawData.flags || fullAnalysis?.flags || null;
+        goNogoAdvice = rawData.goNogoAdvice || fullAnalysis?.go_nogo_advice || null;
+        readyForSummons = rawData.readyForSummons ?? fullAnalysis?.ready_for_summons;
         extractedTexts = rawData.extractedTexts || null;
         allFiles = rawData.allFiles || null;
       }
@@ -233,9 +235,10 @@ export default function Analysis() {
         }
         userContext = result.user_context || null;
         procedureContext = result.procedure_context || null;
-        flags = result.flags || null;
-        goNogoAdvice = result.go_nogo_advice || null;
-        readyForSummons = result.ready_for_summons;
+        // Try top-level first, then fallback to fullAnalysis (parsed analysis_json)
+        flags = result.flags || fullAnalysis?.flags || null;
+        goNogoAdvice = result.go_nogo_advice || fullAnalysis?.go_nogo_advice || null;
+        readyForSummons = result.ready_for_summons ?? fullAnalysis?.ready_for_summons;
         extractedTexts = result.extracted_texts || null;
         allFiles = result.all_files || null;
       }
