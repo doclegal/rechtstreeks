@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCases, useAnalyzeCase, useFullAnalyzeCase } from "@/hooks/useCase";
 import { useToast } from "@/hooks/use-toast";
@@ -8,9 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useLocation } from "wouter";
-import { PlusCircle, FileSearch, Scale, CheckCircle, XCircle, ArrowRight, FileText, Users, AlertTriangle } from "lucide-react";
+import { PlusCircle, FileSearch, Scale, CheckCircle, XCircle, ArrowRight, FileText, Users, AlertTriangle, Files } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 import { useActiveCase } from "@/contexts/CaseContext";
+import DocumentList from "@/components/DocumentList";
+import MissingInfo from "@/components/MissingInfo";
 
 export default function Analysis() {
   const { user, isLoading: authLoading } = useAuth();
@@ -18,6 +20,8 @@ export default function Analysis() {
   const { toast } = useToast();
   const [kantonCheckResult, setKantonCheckResult] = useState<any>(null);
   const [kantonDialogOpen, setKantonDialogOpen] = useState(false);
+  const [documentenOpen, setDocumentenOpen] = useState(false);
+  const [nogAanTeLeverenOpen, setNogAanTeLeverenOpen] = useState(false);
   const [location, setLocation] = useLocation();
   
   const currentCase = useActiveCase();
@@ -25,6 +29,104 @@ export default function Analysis() {
 
   const analyzeMutation = useAnalyzeCase(caseId || "");
   const fullAnalyzeMutation = useFullAnalyzeCase(caseId || "");
+
+  const missingRequirements = useMemo(() => {
+    const fullAnalysis = currentCase?.fullAnalysis as any;
+    const parsedAnalysis = fullAnalysis?.parsedAnalysis;
+    const analysis = currentCase?.analysis as any;
+    const dataSource = parsedAnalysis || analysis;
+    if (!dataSource) return [];
+    
+    if (dataSource?.missing_info_for_assessment && Array.isArray(dataSource.missing_info_for_assessment)) {
+      return dataSource.missing_info_for_assessment.map((item: any, index: number) => {
+        let inputKind: 'text' | 'document' | 'both' = 'text';
+        if (item.answer_type === 'file_upload') {
+          inputKind = 'document';
+        } else if (item.answer_type === 'text') {
+          inputKind = 'text';
+        } else if (item.answer_type === 'multiple_choice') {
+          inputKind = 'text';
+        }
+        
+        let description: string | undefined;
+        let options: Array<{value: string, label: string}> | undefined;
+        
+        if (typeof item.expected === 'string') {
+          description = item.expected;
+        } else if (Array.isArray(item.expected)) {
+          options = item.expected.map((opt: string) => ({
+            value: opt,
+            label: opt
+          }));
+          description = 'Kies een optie uit de lijst';
+        }
+        
+        return {
+          id: item.id || `req-${index}`,
+          key: item.key || item.id || `requirement-${index}`,
+          label: item.question || item.label || 'Vraag zonder label',
+          description: description || item.description || undefined,
+          required: item.required !== false,
+          inputKind: inputKind,
+          acceptMimes: item.accept_mimes || item.acceptMimes || undefined,
+          maxLength: item.max_length || item.maxLength || undefined,
+          options: options || item.options || undefined,
+          examples: typeof item.expected === 'string' ? [item.expected] : item.examples || undefined,
+        };
+      });
+    }
+    
+    if (dataSource?.evidence?.missing && Array.isArray(dataSource.evidence.missing)) {
+      return dataSource.evidence.missing.map((item: any, index: number) => {
+        if (typeof item === 'string') {
+          return {
+            id: `evidence-${index}`,
+            key: `evidence-requirement-${index}`,
+            label: item,
+            description: 'Upload het gevraagde document om uw zaak te versterken',
+            required: false,
+            inputKind: 'document' as const,
+            acceptMimes: undefined,
+            maxLength: undefined,
+            options: undefined,
+            examples: undefined,
+          };
+        }
+        return {
+          id: item.id || `evidence-${index}`,
+          key: item.key || item.id || `evidence-requirement-${index}`,
+          label: item.label || item.name || item.description || 'Ontbrekend bewijs',
+          description: item.description || item.reason || 'Upload het gevraagde document',
+          required: item.required !== false,
+          inputKind: item.input_kind || item.inputKind || 'document' as const,
+          acceptMimes: item.accept_mimes || item.acceptMimes || undefined,
+          maxLength: item.max_length || item.maxLength || undefined,
+          options: item.options || undefined,
+          examples: item.examples || undefined,
+        };
+      });
+    }
+    
+    if (dataSource?.missingDocsJson && Array.isArray(dataSource.missingDocsJson)) {
+      return dataSource.missingDocsJson.map((label: string, index: number) => ({
+        id: `legacy-${index}`,
+        key: `legacy-requirement-${index}`,
+        label: label,
+        description: undefined,
+        required: true,
+        inputKind: 'document' as const,
+        acceptMimes: undefined,
+        maxLength: undefined,
+        options: undefined,
+        examples: undefined,
+      }));
+    }
+    
+    return [];
+  }, [currentCase?.analysis, currentCase?.fullAnalysis]);
+
+  const docCount = currentCase?.documents?.length || 0;
+  const requiredCount = missingRequirements.filter((r: any) => r.required).length;
 
   useEffect(() => {
     if (analyzeMutation.isSuccess && analyzeMutation.data) {
@@ -387,6 +489,95 @@ export default function Analysis() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <Dialog open={documentenOpen} onOpenChange={setDocumentenOpen}>
+          <DialogTrigger asChild>
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow relative" data-testid="card-documenten-analysis">
+              <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+              <CardHeader>
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Files className="h-8 w-8 text-primary" />
+                </div>
+                <CardTitle className="text-center">Documenten</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="text-2xl font-bold text-foreground">{docCount}</p>
+                <p className="text-sm text-muted-foreground">
+                  {docCount === 1 ? 'document' : 'documenten'} geüpload
+                </p>
+              </CardContent>
+            </Card>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Geüploade documenten</DialogTitle>
+            </DialogHeader>
+            <div className="mt-4">
+              <DocumentList 
+                documents={currentCase?.documents || []}
+                caseId={currentCase?.id || ""}
+                onDocumentUploaded={() => refetch()}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={nogAanTeLeverenOpen} onOpenChange={setNogAanTeLeverenOpen}>
+          <DialogTrigger asChild>
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow relative" data-testid="card-nog-aan-te-leveren-analysis">
+              <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+              <CardHeader>
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="h-8 w-8 text-primary" />
+                </div>
+                <CardTitle className="text-center">Nog aan te leveren</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                {missingRequirements.length > 0 ? (
+                  <>
+                    <p className="text-2xl font-bold text-foreground">{requiredCount}</p>
+                    <p className="text-sm text-muted-foreground">
+                      vereiste {requiredCount === 1 ? 'vraag' : 'vragen'}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-12 w-12 text-success mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Alles is compleet</p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Wat we nog nodig hebben</DialogTitle>
+            </DialogHeader>
+            <div className="mt-4">
+              {missingRequirements.length > 0 ? (
+                <MissingInfo 
+                  requirements={missingRequirements}
+                  caseId={currentCase?.id || ""}
+                  onUpdated={() => {
+                    refetch();
+                    setNogAanTeLeverenOpen(false);
+                  }}
+                />
+              ) : (
+                <Card>
+                  <CardContent className="text-center py-8">
+                    <CheckCircle className="h-12 w-12 text-success mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      Er zijn momenteel geen openstaande vragen of documenten vereist.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {fullAnalysis && (
