@@ -20,9 +20,10 @@ interface MissingInfoProps {
 
 interface Answer {
   requirementId: string;
-  kind: 'document' | 'text';
+  kind: 'document' | 'text' | 'not_available';
   value?: string;
   documentId?: string;
+  notAvailable?: boolean;
 }
 
 export default function MissingInfo({ 
@@ -82,6 +83,21 @@ export default function MissingInfo({
     });
     setAnswers(newAnswers);
     setShowUploadForReq(null);
+  };
+
+  const handleNotAvailable = (reqId: string) => {
+    const newAnswers = new Map(answers);
+    newAnswers.set(reqId, {
+      requirementId: reqId,
+      kind: 'not_available',
+      notAvailable: true
+    });
+    setAnswers(newAnswers);
+    
+    // Clear any text value that might have been entered
+    const newTextValues = new Map(textValues);
+    newTextValues.delete(reqId);
+    setTextValues(newTextValues);
   };
 
   const handleSubmit = async () => {
@@ -244,7 +260,7 @@ export default function MissingInfo({
                     
                     {/* Document upload - show for 'document' or undefined inputKind */}
                     {(req.inputKind === 'document' || !req.inputKind) && (
-                      <div className="flex gap-2">
+                      <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
                           size="sm"
@@ -254,6 +270,14 @@ export default function MissingInfo({
                           <Upload className="mr-2 h-4 w-4" />
                           {req.inputKind === 'document' ? 'Upload document' : 'Of upload document'}
                         </Button>
+                        <button
+                          type="button"
+                          onClick={() => handleNotAvailable(req.id)}
+                          className="text-xs text-muted-foreground hover:text-foreground underline"
+                          data-testid={`link-not-available-${req.id}`}
+                        >
+                          Ik heb dit niet
+                        </button>
                       </div>
                     )}
                     
@@ -280,6 +304,12 @@ export default function MissingInfo({
                         <>
                           <Upload className="h-4 w-4 text-muted-foreground" />
                           <span className="text-muted-foreground">Document geüpload</span>
+                        </>
+                      )}
+                      {answer?.kind === 'not_available' && (
+                        <>
+                          <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-muted-foreground italic">Niet beschikbaar</span>
                         </>
                       )}
                       <Button
