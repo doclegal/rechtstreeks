@@ -61,20 +61,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Helper function to parse fullAnalysis rawText and extract parsedAnalysis
+  // Helper function to parse fullAnalysis rawText and extract parsedAnalysis + new keys
   function enrichFullAnalysis(fullAnalysis: any) {
     if (!fullAnalysis || !fullAnalysis.rawText) return fullAnalysis;
     
     try {
       const data = JSON.parse(fullAnalysis.rawText);
       let parsedAnalysis = null;
+      let extractedTexts = null;
+      let allFiles = null;
+      let userContext = null;
+      let procedureContext = null;
+      let flags = null;
+      let goNogoAdvice = null;
+      let readyForSummons = null;
       
       // Try to get parsedAnalysis if it already exists (new format)
       if (data.parsedAnalysis && typeof data.parsedAnalysis === 'object') {
         parsedAnalysis = data.parsedAnalysis;
       }
-      // Extract from MindStudio response structure (old format)
-      else if (data.thread?.posts) {
+      
+      // Get new keys from response
+      if (data.extractedTexts) extractedTexts = data.extractedTexts;
+      if (data.allFiles) allFiles = data.allFiles;
+      if (data.userContext) userContext = data.userContext;
+      if (data.procedureContext) procedureContext = data.procedureContext;
+      if (data.flags) flags = data.flags;
+      if (data.goNogoAdvice) goNogoAdvice = data.goNogoAdvice;
+      if (data.readyForSummons !== undefined) readyForSummons = data.readyForSummons;
+      
+      // FALLBACK: Extract from MindStudio response structure (old format)
+      if (!parsedAnalysis && data.thread?.posts) {
         // Look for analysis_json in thread posts
         for (const post of data.thread.posts) {
           if (!parsedAnalysis && post.debugLog?.newState?.variables?.analysis_json?.value) {
@@ -97,7 +114,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (parsedAnalysis) {
         return {
           ...fullAnalysis,
-          parsedAnalysis
+          parsedAnalysis,
+          extractedTexts,
+          allFiles,
+          userContext,
+          procedureContext,
+          flags,
+          goNogoAdvice,
+          readyForSummons
         };
       }
     } catch (error) {

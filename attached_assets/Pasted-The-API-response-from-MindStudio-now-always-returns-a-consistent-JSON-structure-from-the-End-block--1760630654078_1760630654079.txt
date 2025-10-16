@@ -1,0 +1,73 @@
+The API response from MindStudio now always returns a consistent JSON structure from the End-block, regardless of whether the run was successful, partial, or early-exit.
+
+Incoming JSON keys
+
+case_id → Unique case identifier.
+
+all_files → Array of all combined files (uploaded, new, or from previous answers).
+
+extracted_texts → Array of summarized document contents (name, url, type, summary, bullets).
+
+analysis_json → The full structured legal analysis result, always present even in fallback cases.
+
+user_context → Party role and procedural role (e.g., buyer, tenant, employer).
+
+procedure_context → Kanton competence, court type, and confidence values.
+
+flags → Booleans showing completeness (facts_complete, evidence_complete, has_legal_basis).
+
+go_nogo_advice → System advice: can proceed or not, with reason and conditions.
+
+ready_for_summons → Boolean indicator used to unlock the “Create Summons” stage in the UI.
+
+missing_info_struct → Array of clarifying questions that the user must answer (each item includes question, reason, answer_type, and for uploads a file_spec).
+
+ready_for_summons → Duplicated boolean for direct UI binding.
+
+go_nogo_advice → Duplicated object for summary display.
+
+flags → Duplicated subset for quick progress indicators.
+
+user_context / procedure_context → Duplicated subsets for showing the determined roles and jurisdiction.
+
+What the UI should show
+
+Header / Case Summary
+
+Display case_id, detected roles (user_context), and whether it’s a kantonzaak (procedure_context.is_kantonzaak).
+
+Documents section
+
+Show list of all_files with status indicators.
+
+Render extracted summaries and bullet points from extracted_texts.
+
+Legal Analysis section
+
+Use analysis_json.summary and flags to show factual and legal completeness.
+
+Visual cue if ready_for_summons == true.
+
+Next Steps / Missing Info
+
+Display each item in missing_info_struct as a question card.
+
+For answer_type: "text", show a text input.
+
+For answer_type: "file_upload", show a file upload field with specs from file_spec.
+
+Advice Panel
+
+Show go_nogo_advice.reason and conditions in plain language.
+
+Mark clearly if HITL review is required (hitl_flag: true).
+
+Fallback Handling
+
+If analysis_json exists but flags are all false, show a neutral banner:
+“Analysis incomplete or awaiting input.”
+
+If all_files.length == 0, show:
+“No usable documents found — please upload at least one file.”
+
+👉 In short: the UI logic doesn’t need to change much — only ensure that the new fields (missing_info_struct, flags, go_nogo_advice, and duplicated ready_for_summons) are displayed dynamically whenever present.

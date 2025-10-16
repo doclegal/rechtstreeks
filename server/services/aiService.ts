@@ -1051,137 +1051,110 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
         throw new Error("No threadId received from Mindstudio");
       }
 
-      // Parse the structured MindStudio output - per contract specification
+      // Parse the structured MindStudio output - NEW consistent structure
+      // All keys now come directly from data.result as top-level properties
       let parsedAnalysis = null;  // analysis_json
       let missingInfoStruct = null;  // missing_info_struct
       let extractedTexts = null;  // extracted_texts
       let allFiles = null;  // all_files
       let userContext = null;  // user_context (procedural role + legal role)
       let procedureContext = null;  // procedure_context (kantonzaak, court, confidence)
+      let flags = null;  // flags (facts_complete, evidence_complete, has_legal_basis)
+      let goNogoAdvice = null;  // go_nogo_advice (proceed_now, reason, conditions, hitl_flag)
+      let readyForSummons = null;  // ready_for_summons
       
       try {
-        // Primary: Look for analysis_json AND missing_info_struct in thread posts
-        if (data.thread?.posts) {
-          console.log("🔍 Searching in thread posts for analysis_json and missing_info_struct variables...");
-          for (const post of data.thread.posts) {
-            // Look in debugLog newState variables for analysis_json
-            if (!parsedAnalysis && post.debugLog?.newState?.variables?.analysis_json?.value) {
-              console.log("✅ Found analysis_json in debugLog.newState.variables");
-              const responseValue = post.debugLog.newState.variables.analysis_json.value;
-              if (typeof responseValue === 'string') {
-                parsedAnalysis = JSON.parse(responseValue);
-              } else {
-                parsedAnalysis = responseValue;
-              }
-            }
-            
-            // Look for missing_info_struct (contains repaired_missing from MindStudio)
-            if (!missingInfoStruct && post.debugLog?.newState?.variables?.missing_info_struct?.value) {
-              console.log("✅ Found missing_info_struct in debugLog.newState.variables");
-              const responseValue = post.debugLog.newState.variables.missing_info_struct.value;
-              if (typeof responseValue === 'string') {
-                missingInfoStruct = JSON.parse(responseValue);
-              } else {
-                missingInfoStruct = responseValue;
-              }
-            }
-            
-            // Also check for repaired_missing directly
-            if (!missingInfoStruct && post.debugLog?.newState?.variables?.repaired_missing?.value) {
-              console.log("✅ Found repaired_missing in debugLog.newState.variables");
-              const responseValue = post.debugLog.newState.variables.repaired_missing.value;
-              if (typeof responseValue === 'string') {
-                missingInfoStruct = JSON.parse(responseValue);
-              } else {
-                missingInfoStruct = responseValue;
-              }
-            }
-            
-            // Look for extracted_texts
-            if (!extractedTexts && post.debugLog?.newState?.variables?.extracted_texts?.value) {
-              console.log("✅ Found extracted_texts in debugLog.newState.variables");
-              const responseValue = post.debugLog.newState.variables.extracted_texts.value;
-              extractedTexts = typeof responseValue === 'string' ? JSON.parse(responseValue) : responseValue;
-            }
-            
-            // Look for all_files
-            if (!allFiles && post.debugLog?.newState?.variables?.all_files?.value) {
-              console.log("✅ Found all_files in debugLog.newState.variables");
-              const responseValue = post.debugLog.newState.variables.all_files.value;
-              allFiles = typeof responseValue === 'string' ? JSON.parse(responseValue) : responseValue;
-            }
-            
-            // Look for user_context
-            if (!userContext && post.debugLog?.newState?.variables?.user_context?.value) {
-              console.log("✅ Found user_context in debugLog.newState.variables");
-              const responseValue = post.debugLog.newState.variables.user_context.value;
-              userContext = typeof responseValue === 'string' ? JSON.parse(responseValue) : responseValue;
-            }
-            
-            // Look for procedure_context
-            if (!procedureContext && post.debugLog?.newState?.variables?.procedure_context?.value) {
-              console.log("✅ Found procedure_context in debugLog.newState.variables");
-              const responseValue = post.debugLog.newState.variables.procedure_context.value;
-              procedureContext = typeof responseValue === 'string' ? JSON.parse(responseValue) : responseValue;
-            }
-          }
-        }
+        console.log("🔍 Parsing MindStudio response - new consistent structure");
         
-        // Secondary: Check thread variables for analysis_json and missing_info_struct
-        if (!parsedAnalysis && data.thread?.variables?.analysis_json?.value) {
-          console.log("✅ Found analysis_json in thread.variables.analysis_json.value");
-          const responseValue = data.thread.variables.analysis_json.value;
-          if (typeof responseValue === 'string') {
-            parsedAnalysis = JSON.parse(responseValue);
-          } else {
-            parsedAnalysis = responseValue;
+        // PRIMARY: Get all keys directly from data.result (new consistent format)
+        if (data.result) {
+          // analysis_json
+          if (data.result.analysis_json) {
+            const resultValue = data.result.analysis_json;
+            if (typeof resultValue === 'string' && !resultValue.includes('{{')) {
+              parsedAnalysis = JSON.parse(resultValue);
+            } else if (typeof resultValue === 'object') {
+              parsedAnalysis = resultValue;
+            }
+            console.log("✅ Found analysis_json in data.result");
           }
-        }
-        
-        if (!missingInfoStruct && data.thread?.variables?.missing_info_struct?.value) {
-          console.log("✅ Found missing_info_struct in thread.variables");
-          const responseValue = data.thread.variables.missing_info_struct.value;
-          if (typeof responseValue === 'string') {
-            missingInfoStruct = JSON.parse(responseValue);
-          } else {
-            missingInfoStruct = responseValue;
-          }
-        }
-        
-        // Tertiary: Check data.result.analysis_json and missing_info_struct (newer format)
-        // BUT skip if they contain unresolved MindStudio template strings like '{{analysis_json | json}}'
-        if (!parsedAnalysis && data.result && data.result.analysis_json) {
-          const resultValue = data.result.analysis_json;
-          // Skip if it's a MindStudio template string (contains {{ }})
-          if (typeof resultValue === 'string' && resultValue.includes('{{')) {
-            console.log("⏭️ Skipping data.result.analysis_json - contains unresolved MindStudio template");
-          } else {
-            console.log("✅ Found analysis_json in data.result.analysis_json (newer format)");
-            parsedAnalysis = typeof resultValue === 'string' 
-              ? JSON.parse(resultValue) 
-              : resultValue;
-          }
-        }
-        
-        if (!missingInfoStruct && data.result && data.result.missing_info_struct) {
-          const resultValue = data.result.missing_info_struct;
-          // Skip if it's a MindStudio template string (contains {{ }})
-          if (typeof resultValue === 'string' && resultValue.includes('{{')) {
-            console.log("⏭️ Skipping data.result.missing_info_struct - contains unresolved MindStudio template");
-          } else {
+          
+          // missing_info_struct
+          if (data.result.missing_info_struct) {
+            const resultValue = data.result.missing_info_struct;
+            if (typeof resultValue === 'string' && !resultValue.includes('{{')) {
+              missingInfoStruct = JSON.parse(resultValue);
+            } else if (typeof resultValue === 'object') {
+              missingInfoStruct = resultValue;
+            }
             console.log("✅ Found missing_info_struct in data.result");
-            missingInfoStruct = typeof resultValue === 'string' 
-              ? JSON.parse(resultValue) 
-              : resultValue;
+          }
+          
+          // extracted_texts (with summaries and bullets)
+          if (data.result.extracted_texts) {
+            const resultValue = data.result.extracted_texts;
+            extractedTexts = typeof resultValue === 'string' ? JSON.parse(resultValue) : resultValue;
+            console.log("✅ Found extracted_texts in data.result");
+          }
+          
+          // all_files
+          if (data.result.all_files) {
+            const resultValue = data.result.all_files;
+            allFiles = typeof resultValue === 'string' ? JSON.parse(resultValue) : resultValue;
+            console.log("✅ Found all_files in data.result");
+          }
+          
+          // user_context
+          if (data.result.user_context) {
+            const resultValue = data.result.user_context;
+            userContext = typeof resultValue === 'string' ? JSON.parse(resultValue) : resultValue;
+            console.log("✅ Found user_context in data.result");
+          }
+          
+          // procedure_context
+          if (data.result.procedure_context) {
+            const resultValue = data.result.procedure_context;
+            procedureContext = typeof resultValue === 'string' ? JSON.parse(resultValue) : resultValue;
+            console.log("✅ Found procedure_context in data.result");
+          }
+          
+          // flags (NEW)
+          if (data.result.flags) {
+            const resultValue = data.result.flags;
+            flags = typeof resultValue === 'string' ? JSON.parse(resultValue) : resultValue;
+            console.log("✅ Found flags in data.result");
+          }
+          
+          // go_nogo_advice (NEW)
+          if (data.result.go_nogo_advice) {
+            const resultValue = data.result.go_nogo_advice;
+            goNogoAdvice = typeof resultValue === 'string' ? JSON.parse(resultValue) : resultValue;
+            console.log("✅ Found go_nogo_advice in data.result");
+          }
+          
+          // ready_for_summons (NEW)
+          if (data.result.ready_for_summons !== undefined) {
+            readyForSummons = data.result.ready_for_summons;
+            console.log("✅ Found ready_for_summons in data.result:", readyForSummons);
+          }
+          
+          // case_id (for verification)
+          if (data.result.case_id) {
+            console.log("✅ Verified case_id in data.result:", data.result.case_id);
           }
         }
         
-        // Fallback: Check data.result.output (legacy format)
-        if (!parsedAnalysis && data.result && data.result.output) {
-          console.log("✅ Using legacy data.result.output format");
-          parsedAnalysis = typeof data.result.output === 'string' 
-            ? JSON.parse(data.result.output) 
-            : data.result.output;
+        // FALLBACK: Check legacy locations if not found in data.result
+        if (!parsedAnalysis && data.thread?.posts) {
+          console.log("⚠️ Using fallback - searching in thread posts (legacy)");
+          for (const post of data.thread.posts) {
+            if (!parsedAnalysis && post.debugLog?.newState?.variables?.analysis_json?.value) {
+              const responseValue = post.debugLog.newState.variables.analysis_json.value;
+              parsedAnalysis = typeof responseValue === 'string' ? JSON.parse(responseValue) : responseValue;
+              console.log("✅ Found analysis_json in debugLog (fallback)");
+              break;
+            }
+          }
         }
         
         if (parsedAnalysis) {
@@ -1218,11 +1191,14 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
         threadId: data.threadId,
         result: data.result,
         parsedAnalysis,  // analysis_json
-        extractedTexts,  // extracted_texts  
+        extractedTexts,  // extracted_texts (now with summaries and bullets)
         missingInfoStruct,  // missing_info_struct
         allFiles,  // all_files
         userContext,  // user_context (procedural role + legal role)
         procedureContext,  // procedure_context (kantonzaak, court, confidence)
+        flags,  // flags (NEW - facts_complete, evidence_complete, has_legal_basis)
+        goNogoAdvice,  // go_nogo_advice (NEW - proceed_now, reason, conditions, hitl_flag)
+        readyForSummons,  // ready_for_summons (NEW - boolean)
         rawText: JSON.stringify(data, null, 2),
         billingCost: data.billingCost
       };

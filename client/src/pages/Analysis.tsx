@@ -194,12 +194,22 @@ export default function Analysis() {
   let fullAnalysis = null;
   let userContext = null;
   let procedureContext = null;
+  let flags = null;
+  let goNogoAdvice = null;
+  let readyForSummons = null;
+  let extractedTexts = null;
+  let allFiles = null;
   
   try {
     if ((currentCase?.fullAnalysis as any)?.parsedAnalysis && typeof (currentCase.fullAnalysis as any).parsedAnalysis === 'object') {
       fullAnalysis = (currentCase.fullAnalysis as any).parsedAnalysis;
       userContext = (currentCase?.fullAnalysis as any)?.userContext || null;
       procedureContext = (currentCase?.fullAnalysis as any)?.procedureContext || null;
+      flags = (currentCase?.fullAnalysis as any)?.flags || null;
+      goNogoAdvice = (currentCase?.fullAnalysis as any)?.goNogoAdvice || null;
+      readyForSummons = (currentCase?.fullAnalysis as any)?.readyForSummons;
+      extractedTexts = (currentCase?.fullAnalysis as any)?.extractedTexts || null;
+      allFiles = (currentCase?.fullAnalysis as any)?.allFiles || null;
     } else if (currentCase?.fullAnalysis?.rawText) {
       const rawData = JSON.parse(currentCase.fullAnalysis.rawText);
       
@@ -208,28 +218,38 @@ export default function Analysis() {
         fullAnalysis = rawData.parsedAnalysis;
         userContext = rawData.userContext || null;
         procedureContext = rawData.procedureContext || null;
+        flags = rawData.flags || null;
+        goNogoAdvice = rawData.goNogoAdvice || null;
+        readyForSummons = rawData.readyForSummons;
+        extractedTexts = rawData.extractedTexts || null;
+        allFiles = rawData.allFiles || null;
       }
-      // Check in result.analysis_json
-      else if (rawData.result?.analysis_json) {
-        const analysisJson = rawData.result.analysis_json;
-        fullAnalysis = typeof analysisJson === 'string' ? JSON.parse(analysisJson) : analysisJson;
-        userContext = rawData.userContext || rawData.result?.user_context || null;
-        procedureContext = rawData.procedureContext || rawData.result?.procedure_context || null;
+      // Check in result (new consistent format)
+      else if (rawData.result) {
+        const result = rawData.result;
+        
+        if (result.analysis_json) {
+          fullAnalysis = typeof result.analysis_json === 'string' ? JSON.parse(result.analysis_json) : result.analysis_json;
+        }
+        userContext = result.user_context || null;
+        procedureContext = result.procedure_context || null;
+        flags = result.flags || null;
+        goNogoAdvice = result.go_nogo_advice || null;
+        readyForSummons = result.ready_for_summons;
+        extractedTexts = result.extracted_texts || null;
+        allFiles = result.all_files || null;
       }
-      // Check in thread posts (MindStudio format)
+      // Check in thread posts (old MindStudio format - fallback)
       else if (rawData.thread?.posts) {
         for (const post of rawData.thread.posts) {
-          // Look for analysis_json variable (correct name)
           if (post.debugLog?.newState?.variables?.analysis_json?.value) {
             const parsedValue = post.debugLog.newState.variables.analysis_json.value;
             fullAnalysis = typeof parsedValue === 'string' ? JSON.parse(parsedValue) : parsedValue;
           }
-          // Look for user_context
           if (post.debugLog?.newState?.variables?.user_context?.value) {
             const parsedValue = post.debugLog.newState.variables.user_context.value;
             userContext = typeof parsedValue === 'string' ? JSON.parse(parsedValue) : parsedValue;
           }
-          // Look for procedure_context
           if (post.debugLog?.newState?.variables?.procedure_context?.value) {
             const parsedValue = post.debugLog.newState.variables.procedure_context.value;
             procedureContext = typeof parsedValue === 'string' ? JSON.parse(parsedValue) : parsedValue;
