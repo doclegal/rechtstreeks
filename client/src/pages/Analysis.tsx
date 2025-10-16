@@ -600,6 +600,186 @@ export default function Analysis() {
         </Dialog>
       </div>
 
+      {/* READY FOR SUMMONS BANNER */}
+      {readyForSummons && (
+        <div className="bg-green-50 dark:bg-green-950/30 border-2 border-green-500 dark:border-green-700 rounded-lg p-4 mb-6" data-testid="banner-ready-for-summons">
+          <div className="flex items-start gap-3">
+            <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-1">
+                Klaar voor dagvaarding
+              </h3>
+              <p className="text-sm text-green-800 dark:text-green-200">
+                De zaak is compleet genoeg om een dagvaarding op te stellen. U kunt doorgaan naar de dagvaarding sectie.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ANALYSIS STATUS FLAGS */}
+      {flags && fullAnalysis && (
+        <Card className="mb-6" data-testid="card-analysis-status">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <CheckCircle className="h-5 w-5 text-primary" />
+              Analyse Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className={`p-4 rounded-lg border-2 ${flags.facts_complete ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-800' : 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  {flags.facts_complete ? (
+                    <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  )}
+                  <span className="font-semibold text-sm">Feiten</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {flags.facts_complete ? 'Voldoende feiten verzameld' : 'Meer feitelijke informatie nodig'}
+                </p>
+              </div>
+
+              <div className={`p-4 rounded-lg border-2 ${flags.evidence_complete ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-800' : 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  {flags.evidence_complete ? (
+                    <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  )}
+                  <span className="font-semibold text-sm">Bewijs</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {flags.evidence_complete ? 'Voldoende bewijs aanwezig' : 'Meer bewijsmateriaal gewenst'}
+                </p>
+              </div>
+
+              <div className={`p-4 rounded-lg border-2 ${flags.has_legal_basis ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-800' : 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  {flags.has_legal_basis ? (
+                    <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  )}
+                  <span className="font-semibold text-sm">Juridische grondslag</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {flags.has_legal_basis ? 'Juridische basis aanwezig' : 'Juridische basis onduidelijk'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* GO/NO-GO ADVICE PANEL */}
+      {goNogoAdvice && fullAnalysis && (
+        <Card className={`mb-6 border-2 ${goNogoAdvice.proceed_now ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-800' : 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800'}`} data-testid="card-go-nogo-advice">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              {goNogoAdvice.proceed_now ? (
+                <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+              ) : (
+                <AlertCircle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              )}
+              <span>Advies: {goNogoAdvice.proceed_now ? 'Doorgaan' : 'Nog niet doorgaan'}</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {goNogoAdvice.reason && (
+              <div>
+                <h4 className="font-semibold text-sm mb-2">Reden</h4>
+                <p className="text-sm" data-testid="text-gonogo-reason">{goNogoAdvice.reason}</p>
+              </div>
+            )}
+
+            {goNogoAdvice.conditions_to_proceed && goNogoAdvice.conditions_to_proceed.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-sm mb-2">Voorwaarden om door te gaan</h4>
+                <ul className="list-disc list-inside space-y-1">
+                  {goNogoAdvice.conditions_to_proceed.map((condition: string, idx: number) => (
+                    <li key={idx} className="text-sm text-muted-foreground">{condition}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {goNogoAdvice.hitl_flag && (
+              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-300 dark:border-blue-800 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                    Menselijke beoordeling aanbevolen
+                  </span>
+                </div>
+                <p className="text-xs text-blue-800 dark:text-blue-200 mt-1">
+                  Deze zaak heeft extra aandacht nodig van een juridisch expert voordat u doorgaat.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* EXTRACTED TEXTS SECTION */}
+      {extractedTexts && Array.isArray(extractedTexts) && extractedTexts.length > 0 && (
+        <Card className="mb-6" data-testid="card-extracted-texts">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Files className="h-5 w-5 text-primary" />
+              Document Samenvattingen
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {extractedTexts.map((doc: any, idx: number) => (
+                <div key={idx} className="border-b last:border-b-0 pb-4 last:pb-0">
+                  <h4 className="font-semibold text-sm mb-2 text-primary">
+                    {doc.filename || `Document ${idx + 1}`}
+                  </h4>
+                  
+                  {doc.summary && (
+                    <div className="mb-3">
+                      <p className="text-sm text-muted-foreground italic">
+                        {doc.summary}
+                      </p>
+                    </div>
+                  )}
+
+                  {doc.bullets && Array.isArray(doc.bullets) && doc.bullets.length > 0 && (
+                    <div>
+                      <h5 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+                        Belangrijkste punten
+                      </h5>
+                      <ul className="list-disc list-inside space-y-1">
+                        {doc.bullets.map((bullet: string, bulletIdx: number) => (
+                          <li key={bulletIdx} className="text-sm">{bullet}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* FALLBACK: No analysis or incomplete analysis */}
+      {!fullAnalysis && currentCase?.fullAnalysis && (
+        <Card className="mb-6 bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800" data-testid="card-incomplete-analysis">
+          <CardContent className="py-8 text-center">
+            <AlertCircle className="h-12 w-12 text-amber-600 dark:text-amber-400 mx-auto mb-3" />
+            <h3 className="font-semibold text-lg mb-2">Analyse onvolledig</h3>
+            <p className="text-sm text-muted-foreground">
+              De analyse is gestart maar er is nog geen resultaat beschikbaar. Controleer de documenten en eventuele ontbrekende informatie.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {fullAnalysis && (
         <Card className="mt-8">
           <CardHeader>

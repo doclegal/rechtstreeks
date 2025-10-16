@@ -76,12 +76,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let goNogoAdvice = null;
       let readyForSummons = null;
       
-      // Try to get parsedAnalysis if it already exists (new format)
+      // PRIMARY: Try to get all keys from top level (direct from aiService)
       if (data.parsedAnalysis && typeof data.parsedAnalysis === 'object') {
         parsedAnalysis = data.parsedAnalysis;
       }
-      
-      // Get new keys from response
       if (data.extractedTexts) extractedTexts = data.extractedTexts;
       if (data.allFiles) allFiles = data.allFiles;
       if (data.userContext) userContext = data.userContext;
@@ -89,6 +87,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (data.flags) flags = data.flags;
       if (data.goNogoAdvice) goNogoAdvice = data.goNogoAdvice;
       if (data.readyForSummons !== undefined) readyForSummons = data.readyForSummons;
+      
+      // SECONDARY: Try to get keys from data.result (new consistent MindStudio format)
+      if (data.result) {
+        if (!parsedAnalysis && data.result.analysis_json) {
+          const resultValue = data.result.analysis_json;
+          if (typeof resultValue === 'string' && !resultValue.includes('{{')) {
+            parsedAnalysis = JSON.parse(resultValue);
+          } else if (typeof resultValue === 'object') {
+            parsedAnalysis = resultValue;
+          }
+        }
+        if (!extractedTexts && data.result.extracted_texts) {
+          extractedTexts = typeof data.result.extracted_texts === 'string' 
+            ? JSON.parse(data.result.extracted_texts) 
+            : data.result.extracted_texts;
+        }
+        if (!allFiles && data.result.all_files) {
+          allFiles = typeof data.result.all_files === 'string' 
+            ? JSON.parse(data.result.all_files) 
+            : data.result.all_files;
+        }
+        if (!userContext && data.result.user_context) {
+          userContext = typeof data.result.user_context === 'string' 
+            ? JSON.parse(data.result.user_context) 
+            : data.result.user_context;
+        }
+        if (!procedureContext && data.result.procedure_context) {
+          procedureContext = typeof data.result.procedure_context === 'string' 
+            ? JSON.parse(data.result.procedure_context) 
+            : data.result.procedure_context;
+        }
+        if (!flags && data.result.flags) {
+          flags = typeof data.result.flags === 'string' 
+            ? JSON.parse(data.result.flags) 
+            : data.result.flags;
+        }
+        if (!goNogoAdvice && data.result.go_nogo_advice) {
+          goNogoAdvice = typeof data.result.go_nogo_advice === 'string' 
+            ? JSON.parse(data.result.go_nogo_advice) 
+            : data.result.go_nogo_advice;
+        }
+        if (readyForSummons === null && data.result.ready_for_summons !== undefined) {
+          readyForSummons = data.result.ready_for_summons;
+        }
+      }
       
       // FALLBACK: Extract from MindStudio response structure (old format)
       if (!parsedAnalysis && data.thread?.posts) {
