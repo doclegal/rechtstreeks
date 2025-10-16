@@ -164,6 +164,8 @@ export const summons = pgTable("summons", {
   userFieldsJson: jsonb("user_fields_json"), // User-filled fields (names, dates, amounts, etc.)
   aiFieldsJson: jsonb("ai_fields_json"), // AI-generated narrative sections
   dataJson: jsonb("data_json"), // Legacy: Complete SummonsV1 structure from MindStudio
+  readinessJson: jsonb("readiness_json"), // Readiness check result from DV_Questions.flow
+  userResponsesJson: jsonb("user_responses_json"), // User answers to missing items and clarifying questions
   html: text("html"),
   markdown: text("markdown"),
   pdfStorageKey: text("pdf_storage_key"),

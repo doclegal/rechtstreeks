@@ -3521,6 +3521,47 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
     }
   });
 
+  // Get saved readiness data for a case
+  app.get('/api/cases/:caseId/readiness', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { caseId } = req.params;
+      
+      // Verify case ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      // Find summons record with readiness data
+      const existingSummons = await storage.getSummonsByCase(caseId);
+      const summonsRecord = existingSummons.find(s => s.readinessJson);
+      
+      if (!summonsRecord || !summonsRecord.readinessJson) {
+        return res.json({ 
+          hasReadinessData: false,
+          readinessResult: null,
+          userResponses: null
+        });
+      }
+      
+      console.log("📋 Retrieved readiness data for case:", caseId);
+      
+      res.json({
+        hasReadinessData: true,
+        readinessResult: summonsRecord.readinessJson,
+        userResponses: summonsRecord.userResponsesJson || null
+      });
+      
+    } catch (error) {
+      console.error('Error fetching readiness data:', error);
+      res.status(500).json({ 
+        message: 'Failed to fetch readiness data',
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // Check case readiness with DV_Questions.flow
   app.post('/api/mindstudio/run-questions-flow', isAuthenticated, async (req: any, res) => {
     try {
@@ -3795,6 +3836,29 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         missingItemsCount: readinessResult.dv_missing_items.length,
         questionsCount: readinessResult.dv_clarifying_questions.length
       });
+      
+      // Save readiness data to summons record for persistence
+      // First find or create a draft summons for this case
+      const existingSummons = await storage.getSummonsByCase(caseId);
+      let summonsRecord = existingSummons.find(s => s.templateId === "official_model_dagvaarding" || s.status === "draft");
+      
+      if (!summonsRecord) {
+        // Create a draft summons record to store readiness data
+        summonsRecord = await storage.createSummons({
+          caseId,
+          templateId: "official_model_dagvaarding",
+          status: "draft",
+          readinessJson: readinessResult,
+          userResponsesJson: {}
+        });
+        console.log("📝 Created draft summons record for readiness data:", summonsRecord.id);
+      } else {
+        // Update existing summons with readiness data
+        await storage.updateSummons(summonsRecord.id, {
+          readinessJson: readinessResult
+        });
+        console.log("📝 Updated summons record with readiness data:", summonsRecord.id);
+      }
       
       res.json(readinessResult);
       
@@ -4111,6 +4175,33 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         stillMissingCount: readinessResult.dv_missing_items.length,
         stillQuestionsCount: readinessResult.dv_clarifying_questions.length
       });
+      
+      // Save updated readiness data AND user responses to summons record
+      const existingSummons = await storage.getSummonsByCase(caseId);
+      let summonsRecord = existingSummons.find(s => s.templateId === "official_model_dagvaarding" || s.status === "draft");
+      
+      const userResponsesData = {
+        missingItemResponses,
+        questionResponses,
+        selectedClaims
+      };
+      
+      if (!summonsRecord) {
+        summonsRecord = await storage.createSummons({
+          caseId,
+          templateId: "official_model_dagvaarding",
+          status: "draft",
+          readinessJson: readinessResult,
+          userResponsesJson: userResponsesData
+        });
+        console.log("📝 Created draft summons with user responses:", summonsRecord.id);
+      } else {
+        await storage.updateSummons(summonsRecord.id, {
+          readinessJson: readinessResult,
+          userResponsesJson: userResponsesData
+        });
+        console.log("📝 Updated summons with readiness data and user responses:", summonsRecord.id);
+      }
       
       res.json(readinessResult);
       

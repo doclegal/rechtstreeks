@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -102,6 +102,12 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
     },
     enabled: !!caseId,
   });
+  
+  // Fetch saved readiness data
+  const { data: savedReadinessData } = useQuery<any>({
+    queryKey: ["/api/cases", caseId, "readiness"],
+    enabled: !!caseId,
+  });
 
   // Extract summary info from analysis
   const caseOverview = analysis?.case_overview || {};
@@ -141,6 +147,22 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
     slot: "Slot",
     producties: "Producties",
   };
+  
+  // Restore saved readiness data when it loads
+  useEffect(() => {
+    if (savedReadinessData?.hasReadinessData) {
+      console.log("📋 Restoring saved readiness data");
+      setReadinessResult(savedReadinessData.readinessResult);
+      
+      // Restore user responses if available
+      if (savedReadinessData.userResponses) {
+        const { missingItemResponses, questionResponses, selectedClaims } = savedReadinessData.userResponses;
+        if (missingItemResponses) setMissingItemResponses(missingItemResponses);
+        if (questionResponses) setQuestionResponses(questionResponses);
+        if (selectedClaims) setSelectedClaims(new Set(selectedClaims));
+      }
+    }
+  }, [savedReadinessData]);
 
   // Upload mutation for both missing items and questions
   const uploadMutation = useMutation({
