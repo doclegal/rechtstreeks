@@ -3561,6 +3561,51 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       });
     }
   });
+  
+  // Auto-save user responses (PATCH endpoint)
+  app.patch('/api/cases/:caseId/readiness', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { caseId } = req.params;
+      const { userResponses, readinessResult } = req.body;
+      
+      // Verify case ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      // Find or create summons record
+      const existingSummons = await storage.getSummonsByCase(caseId);
+      let summonsRecord = existingSummons.find(s => s.templateId === "official_model_dagvaarding" || s.status === "draft");
+      
+      if (!summonsRecord) {
+        summonsRecord = await storage.createSummons({
+          caseId,
+          templateId: "official_model_dagvaarding",
+          status: "draft",
+          readinessJson: readinessResult,
+          userResponsesJson: userResponses
+        });
+        console.log("💾 Auto-save: Created draft summons:", summonsRecord.id);
+      } else {
+        await storage.updateSummons(summonsRecord.id, {
+          readinessJson: readinessResult,
+          userResponsesJson: userResponses
+        });
+        console.log("💾 Auto-save: Updated summons user responses:", summonsRecord.id);
+      }
+      
+      res.json({ success: true });
+      
+    } catch (error) {
+      console.error('Error auto-saving user responses:', error);
+      res.status(500).json({ 
+        message: 'Failed to auto-save user responses',
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
 
   // Check case readiness with DV_Questions.flow
   app.post('/api/mindstudio/run-questions-flow', isAuthenticated, async (req: any, res) => {

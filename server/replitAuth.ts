@@ -57,13 +57,22 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
-  await storage.upsertUser({
-    id: claims["sub"],
-    email: claims["email"],
-    firstName: claims["first_name"],
-    lastName: claims["last_name"],
-    profileImageUrl: claims["profile_image_url"],
-  });
+  try {
+    await storage.upsertUser({
+      id: claims["sub"],
+      email: claims["email"],
+      firstName: claims["first_name"],
+      lastName: claims["last_name"],
+      profileImageUrl: claims["profile_image_url"],
+    });
+  } catch (error: any) {
+    // Handle unique constraint violations gracefully
+    if (error?.code === '23505') { // Postgres unique violation code
+      console.warn('User upsert failed due to unique constraint, continuing with existing user:', error.detail);
+      return;
+    }
+    throw error;
+  }
 }
 
 export async function setupAuth(app: Express) {

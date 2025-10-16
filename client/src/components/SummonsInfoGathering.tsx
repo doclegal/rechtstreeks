@@ -163,6 +163,33 @@ export function SummonsInfoGathering({ caseId, templateId }: SummonsInfoGatherin
       }
     }
   }, [savedReadinessData]);
+  
+  // Auto-save user responses when they change (debounced)
+  useEffect(() => {
+    if (!readinessResult || readinessResult.ready_for_summons) return;
+    
+    const saveTimer = setTimeout(async () => {
+      try {
+        const userResponsesData = {
+          missingItemResponses,
+          questionResponses,
+          selectedClaims: Array.from(selectedClaims)
+        };
+        
+        // Auto-save to backend (method, url, data)
+        await apiRequest('PATCH', `/api/cases/${caseId}/readiness`, {
+          readinessResult,
+          userResponses: userResponsesData
+        });
+        
+        console.log("💾 Auto-saved user responses");
+      } catch (error) {
+        console.error("Failed to auto-save responses:", error);
+      }
+    }, 2000); // Save 2 seconds after user stops typing
+    
+    return () => clearTimeout(saveTimer);
+  }, [missingItemResponses, questionResponses, selectedClaims, readinessResult, caseId]);
 
   // Upload mutation for both missing items and questions
   const uploadMutation = useMutation({
