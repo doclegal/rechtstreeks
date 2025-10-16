@@ -32,12 +32,20 @@ export default function MissingInfo({
 }: MissingInfoProps) {
   const { toast } = useToast();
   const [answers, setAnswers] = useState<Map<string, Answer>>(new Map());
+  const [textValues, setTextValues] = useState<Map<string, string>>(new Map());
   const [showUploadForReq, setShowUploadForReq] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleTextAnswer = (reqId: string, value: string) => {
-    const newAnswers = new Map(answers);
+  const handleTextChange = (reqId: string, value: string) => {
+    const newTextValues = new Map(textValues);
+    newTextValues.set(reqId, value);
+    setTextValues(newTextValues);
+  };
+
+  const handleTextBlur = (reqId: string) => {
+    const value = textValues.get(reqId) || '';
     const trimmedValue = value.trim();
+    const newAnswers = new Map(answers);
     
     if (trimmedValue) {
       newAnswers.set(reqId, {
@@ -46,7 +54,20 @@ export default function MissingInfo({
         value: trimmedValue
       });
     } else {
-      // Remove answer if value is empty/whitespace
+      newAnswers.delete(reqId);
+    }
+    setAnswers(newAnswers);
+  };
+
+  const handleSelectAnswer = (reqId: string, value: string) => {
+    const newAnswers = new Map(answers);
+    if (value) {
+      newAnswers.set(reqId, {
+        requirementId: reqId,
+        kind: 'text',
+        value: value
+      });
+    } else {
       newAnswers.delete(reqId);
     }
     setAnswers(newAnswers);
@@ -194,7 +215,7 @@ export default function MissingInfo({
                   <div className="space-y-3 mt-3">
                     {/* Select dropdown for options (multiple_choice) */}
                     {req.options && req.options.length > 0 && req.inputKind === 'text' && (
-                      <Select onValueChange={(value) => handleTextAnswer(req.id, value)}>
+                      <Select onValueChange={(value) => handleSelectAnswer(req.id, value)}>
                         <SelectTrigger data-testid={`select-${req.id}`}>
                           <SelectValue placeholder="Kies een optie..." />
                         </SelectTrigger>
@@ -208,24 +229,15 @@ export default function MissingInfo({
                       </Select>
                     )}
                     
-                    {/* Text input - show for 'text' when NO options */}
-                    {req.inputKind === 'text' && (!req.options || req.options.length === 0) && (
+                    {/* Text input - show for 'text', 'document' (flexible), or undefined */}
+                    {(req.inputKind === 'text' || req.inputKind === 'document' || !req.inputKind) && (!req.options || req.options.length === 0) && (
                       <Textarea
                         placeholder="Typ hier uw antwoord..."
                         className="min-h-[80px]"
                         maxLength={req.maxLength}
-                        onChange={(e) => handleTextAnswer(req.id, e.target.value)}
-                        data-testid={`textarea-${req.id}`}
-                      />
-                    )}
-                    
-                    {/* Text input - show for undefined inputKind */}
-                    {!req.inputKind && (
-                      <Textarea
-                        placeholder="Typ hier uw antwoord..."
-                        className="min-h-[80px]"
-                        maxLength={req.maxLength}
-                        onChange={(e) => handleTextAnswer(req.id, e.target.value)}
+                        value={textValues.get(req.id) || ''}
+                        onChange={(e) => handleTextChange(req.id, e.target.value)}
+                        onBlur={() => handleTextBlur(req.id)}
                         data-testid={`textarea-${req.id}`}
                       />
                     )}
