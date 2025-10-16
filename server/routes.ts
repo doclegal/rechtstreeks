@@ -1185,6 +1185,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get missing info responses for a case
+  app.get('/api/cases/:id/missing-info/responses', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      // Verify case ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      // Get all missing_info_provided events for this case
+      const events = await storage.getEventsByCase(caseId);
+      const missingInfoEvents = events.filter((e: any) => e.type === 'missing_info_provided');
+      
+      if (missingInfoEvents.length === 0) {
+        return res.json({ responses: [] });
+      }
+      
+      // Get the most recent event (or merge all events)
+      // For now, let's get the most recent one
+      const latestEvent = missingInfoEvents[missingInfoEvents.length - 1];
+      const payloadJson = latestEvent.payloadJson as any;
+      const responses = payloadJson?.responses || [];
+      
+      // Enrich responses with document names
+      const enrichedResponses = await Promise.all(
+        responses.map(async (response: any) => {
+          if (response.kind === 'document' && response.documentId) {
+            const doc = await storage.getDocument(response.documentId);
+            return {
+              ...response,
+              documentName: doc?.filename || 'Onbekend document'
+            };
+          }
+          return response;
+        })
+      );
+      
+      res.json({ responses: enrichedResponses });
+      
+    } catch (error) {
+      console.error("Error fetching missing info responses:", error);
+      res.status(500).json({ message: "Fout bij ophalen van antwoorden" });
+    }
+  });
+
   // Missing info responses route - allows users to provide answers/documents for missing requirements
   app.post('/api/cases/:id/missing-info/responses', isAuthenticated, async (req: any, res) => {
     try {

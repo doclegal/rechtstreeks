@@ -4,9 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, Upload, Type, CheckCircle2, Send } from "lucide-react";
+import { AlertTriangle, Upload, Type, CheckCircle2, Send, Edit2, FileText, XCircle } from "lucide-react";
 import DocumentUpload from "./DocumentUpload";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { MissingRequirement } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -23,6 +24,7 @@ interface Answer {
   kind: 'document' | 'text' | 'not_available';
   value?: string;
   documentId?: string;
+  documentName?: string;
   notAvailable?: boolean;
 }
 
@@ -36,6 +38,30 @@ export default function MissingInfo({
   const [textValues, setTextValues] = useState<Map<string, string>>(new Map());
   const [showUploadForReq, setShowUploadForReq] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingReqId, setEditingReqId] = useState<string | null>(null);
+
+  // Fetch saved responses
+  const { data: savedResponsesData } = useQuery<{ responses: Answer[] }>({
+    queryKey: ['/api/cases', caseId, 'missing-info', 'responses'],
+    queryFn: async () => {
+      const res = await fetch(`/api/cases/${caseId}/missing-info/responses`);
+      if (!res.ok) throw new Error('Failed to fetch responses');
+      return res.json();
+    }
+  });
+
+  const savedResponses = savedResponsesData?.responses || [];
+
+  // Initialize answers with saved responses
+  useEffect(() => {
+    if (savedResponses.length > 0) {
+      const savedAnswersMap = new Map<string, Answer>();
+      savedResponses.forEach((response: Answer) => {
+        savedAnswersMap.set(response.requirementId, response);
+      });
+      setAnswers(savedAnswersMap);
+    }
+  }, [savedResponses]);
 
   const handleTextChange = (reqId: string, value: string) => {
     const newTextValues = new Map(textValues);
@@ -136,12 +162,15 @@ export default function MissingInfo({
         description: "Klik op 'Juridische Analyse' om een heranalyse te starten met de nieuwe informatie"
       });
 
-      // Clear answers
+      // Clear answers and editing state
       setAnswers(new Map());
+      setTextValues(new Map());
+      setEditingReqId(null);
       
       // Invalidate queries to refresh the UI
       queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId] });
       queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'missing-info', 'responses'] });
       
       onUpdated?.();
     } catch (error) {
@@ -290,42 +319,98 @@ export default function MissingInfo({
                   </div>
                 )}
 
-                {hasAnswer && (
+                {hasAnswer && editingReqId !== req.id && (
                   <div className="mt-3 p-3 bg-background rounded border">
-                    <div className="flex items-center gap-2 text-sm">
-                      {answer?.kind === 'text' && (
-                        <>
-                          <Type className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">Tekst antwoord:</span>
-                          <span className="font-medium">{answer.value?.substring(0, 100)}{(answer.value?.length || 0) > 100 ? '...' : ''}</span>
-                        </>
-                      )}
-                      {answer?.kind === 'document' && (
-                        <>
-                          <Upload className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">Document geüpload</span>
-                        </>
-                      )}
-                      {answer?.kind === 'not_available' && (
-                        <>
-                          <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground italic">Niet beschikbaar</span>
-                        </>
-                      )}
+                    <div className="flex items-start gap-2 text-sm">
+                      <div className="flex-1">
+                        {answer?.kind === 'text' && (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <Type className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-muted-foreground text-xs">Tekst antwoord:</span>
+                            </div>
+                            <p className="text-sm font-medium pl-6">{answer.value}</p>
+                          </div>
+                        )}
+                        {answer?.kind === 'document' && (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-muted-foreground text-xs">Document:</span>
+                            </div>
+                            <p className="text-sm font-medium pl-6">{answer.documentName || 'Geüpload document'}</p>
+                          </div>
+                        )}
+                        {answer?.kind === 'not_available' && (
+                          <div className="flex items-center gap-2">
+                            <XCircle className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground italic text-xs">Niet beschikbaar</span>
+                          </div>
+                        )}
+                      </div>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => {
+                          setEditingReqId(req.id);
                           const newAnswers = new Map(answers);
                           newAnswers.delete(req.id);
                           setAnswers(newAnswers);
                         }}
-                        className="ml-auto text-xs"
-                        data-testid={`button-remove-${req.id}`}
+                        className="text-xs flex items-center gap-1"
+                        data-testid={`button-edit-${req.id}`}
                       >
+                        <Edit2 className="h-3 w-3" />
                         Wijzigen
                       </Button>
                     </div>
+                  </div>
+                )}
+                
+                {hasAnswer && editingReqId === req.id && (
+                  <div className="space-y-3 mt-3">
+                    {/* Show input fields when editing */}
+                    {(req.inputKind === 'text' || req.inputKind === 'document' || !req.inputKind) && (!req.options || req.options.length === 0) && (
+                      <Textarea
+                        placeholder="Typ hier uw antwoord..."
+                        className="min-h-[80px]"
+                        maxLength={req.maxLength}
+                        value={textValues.get(req.id) || ''}
+                        onChange={(e) => handleTextChange(req.id, e.target.value)}
+                        onBlur={() => handleTextBlur(req.id)}
+                        data-testid={`textarea-edit-${req.id}`}
+                      />
+                    )}
+                    
+                    {(req.inputKind === 'document' || !req.inputKind) && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowUploadForReq(req.id)}
+                          data-testid={`button-upload-edit-${req.id}`}
+                        >
+                          <Upload className="mr-2 h-4 w-4" />
+                          {req.inputKind === 'document' ? 'Upload nieuw document' : 'Of upload document'}
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => handleNotAvailable(req.id)}
+                          className="text-xs text-muted-foreground hover:text-foreground underline"
+                          data-testid={`link-not-available-edit-${req.id}`}
+                        >
+                          Ik heb dit niet
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingReqId(null)}
+                          className="text-xs text-muted-foreground hover:text-foreground underline ml-auto"
+                          data-testid={`link-cancel-edit-${req.id}`}
+                        >
+                          Annuleren
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
