@@ -264,6 +264,22 @@ export default function Analysis() {
     console.error('Error parsing full analysis:', error);
   }
 
+  // DEBUG: Log fullAnalysis to help diagnose empty data issue
+  if (fullAnalysis) {
+    console.log('🔍 DEBUG fullAnalysis:', {
+      hasApplicableRules: !!fullAnalysis.applicable_rules,
+      applicableRulesLength: fullAnalysis.applicable_rules?.length,
+      hasFactsKnown: !!fullAnalysis.facts?.known,
+      factsKnownLength: fullAnalysis.facts?.known?.length,
+      hasEvidence: !!fullAnalysis.evidence,
+      evidenceProvidedLength: fullAnalysis.evidence?.provided?.length,
+      fullAnalysisKeys: Object.keys(fullAnalysis),
+      flags,
+      goNogoAdvice,
+      readyForSummons
+    });
+  }
+
   if (authLoading || casesLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -1013,40 +1029,26 @@ export default function Analysis() {
               </TabsContent>
 
               <TabsContent value="juridisch" className="space-y-6 pt-6">
-                {fullAnalysis.legal_analysis?.what_is_the_dispute && (
-                  <Card>
-                    <CardContent className="pt-6">
-                      <h4 className="font-semibold text-sm mb-2">Kern van het geschil</h4>
-                      <p className="text-sm text-foreground">
-                        {fullAnalysis.legal_analysis.what_is_the_dispute}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {fullAnalysis.legal_analysis?.legal_issues && fullAnalysis.legal_analysis.legal_issues.length > 0 && (
+                {/* Applicable Rules from new MindStudio structure */}
+                {fullAnalysis.applicable_rules && fullAnalysis.applicable_rules.length > 0 && (
                   <div>
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                       <Scale className="h-5 w-5 text-primary" />
-                      Juridische Kwesties
+                      Toepasselijke Wetsartikelen
                     </h3>
-                    <div className="space-y-4">
-                      {fullAnalysis.legal_analysis.legal_issues.map((issue: any, index: number) => (
-                        <Card key={index} data-testid={`legal-issue-${index}`}>
+                    <div className="space-y-3">
+                      {fullAnalysis.applicable_rules.map((rule: any, index: number) => (
+                        <Card key={index} data-testid={`applicable-rule-${index}`} className="border-l-4 border-blue-500">
                           <CardContent className="pt-6">
-                            <p className="text-sm text-foreground">
-                              {typeof issue === 'string' ? issue : issue.issue || JSON.stringify(issue)}
-                            </p>
-                            {typeof issue === 'object' && issue.relevance && (
-                              <p className="text-xs text-muted-foreground mt-2">
-                                <strong>Relevantie:</strong> {issue.relevance}
-                              </p>
-                            )}
-                            {typeof issue === 'object' && issue.related_facts && issue.related_facts.length > 0 && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                <strong>Gerelateerde feiten:</strong> {issue.related_facts.join(', ')}
-                              </p>
-                            )}
+                            <div className="flex items-start gap-3">
+                              <Badge variant="outline" className="border-blue-400">{rule.article || 'Art.'}</Badge>
+                              <div className="flex-1">
+                                <p className="font-semibold text-sm mb-1">{rule.label || 'Wetsartikel'}</p>
+                                {rule.notes && (
+                                  <p className="text-sm text-muted-foreground">{rule.notes}</p>
+                                )}
+                              </div>
+                            </div>
                           </CardContent>
                         </Card>
                       ))}
@@ -1054,49 +1056,114 @@ export default function Analysis() {
                   </div>
                 )}
 
-                {fullAnalysis.legal_analysis?.preliminary_assessment && (
-                  <div>
+                {/* Recommended Claims */}
+                {fullAnalysis.recommended_claims && fullAnalysis.recommended_claims.length > 0 && (
+                  <div className="mt-6">
                     <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                      <Scale className="h-5 w-5 text-primary" />
-                      Voorlopige Beoordeling
+                      <FileText className="h-5 w-5 text-primary" />
+                      Aanbevolen Vorderingen
                     </h3>
-                    <Card>
-                      <CardContent className="pt-6">
-                        <p className="text-sm text-foreground whitespace-pre-line" data-testid="text-legal-assessment">
-                          {fullAnalysis.legal_analysis.preliminary_assessment}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
-
-                {fullAnalysis.legal_analysis?.potential_defenses && fullAnalysis.legal_analysis.potential_defenses.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                      <Scale className="h-5 w-5 text-primary" />
-                      Mogelijke Verweren
-                    </h3>
-                    <ul className="space-y-3">
-                      {fullAnalysis.legal_analysis.potential_defenses.map((defense: any, index: number) => (
-                        <li key={index} className="flex gap-3">
-                          <span className="text-primary font-bold mt-0.5">&bull;</span>
-                          <div className="flex-1">
-                            <p className="text-sm text-foreground">
-                              {typeof defense === 'string' ? defense : defense.defense || JSON.stringify(defense)}
-                            </p>
-                            {typeof defense === 'object' && defense.strength_estimate && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                <strong>Sterkte:</strong> {defense.strength_estimate}
-                              </p>
-                            )}
-                          </div>
-                        </li>
+                    <div className="space-y-3">
+                      {fullAnalysis.recommended_claims.map((claim: any, index: number) => (
+                        <Card key={index} data-testid={`recommended-claim-${index}`} className="border-l-4 border-green-500">
+                          <CardContent className="pt-6">
+                            <div className="flex items-start gap-3">
+                              <Badge className="bg-green-600">#{claim.order || index + 1}</Badge>
+                              <div className="flex-1">
+                                <p className="font-semibold text-sm mb-1">{claim.label || 'Vordering'}</p>
+                                {claim.why && (
+                                  <p className="text-sm text-muted-foreground">{claim.why}</p>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 )}
 
-                {!fullAnalysis.legal_analysis && (
+                {/* Evidence Section */}
+                {fullAnalysis.evidence && (fullAnalysis.evidence.provided?.length > 0 || fullAnalysis.evidence.missing?.length > 0) && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                      <Files className="h-5 w-5 text-primary" />
+                      Bewijs
+                    </h3>
+                    
+                    {fullAnalysis.evidence.provided && fullAnalysis.evidence.provided.length > 0 && (
+                      <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30 mb-4">
+                        <CardContent className="pt-6">
+                          <h4 className="font-semibold text-sm mb-3 text-green-800 dark:text-green-200">Aanwezig Bewijs</h4>
+                          <ul className="space-y-2">
+                            {fullAnalysis.evidence.provided.map((ev: any, index: number) => (
+                              <li key={index} className="flex gap-3" data-testid={`evidence-provided-${index}`}>
+                                <span className="text-green-600 dark:text-green-400 font-bold mt-0.5">✓</span>
+                                <div className="flex-1">
+                                  <p className="text-sm text-green-900 dark:text-green-100 font-medium">
+                                    {ev.doc_name || ev.ref_document || 'Document'}
+                                  </p>
+                                  {ev.key_passages && ev.key_passages.length > 0 && (
+                                    <ul className="mt-1 ml-4 text-xs text-green-800 dark:text-green-200">
+                                      {ev.key_passages.map((passage: string, i: number) => (
+                                        <li key={i}>• {passage}</li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {fullAnalysis.evidence.missing && fullAnalysis.evidence.missing.length > 0 && (
+                      <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30">
+                        <CardContent className="pt-6">
+                          <h4 className="font-semibold text-sm mb-3 text-orange-800 dark:text-orange-200">Ontbrekend Bewijs</h4>
+                          <ul className="space-y-2">
+                            {fullAnalysis.evidence.missing.map((item: string, index: number) => (
+                              <li key={index} className="flex gap-3" data-testid={`evidence-missing-${index}`}>
+                                <span className="text-orange-600 dark:text-orange-400 font-bold mt-0.5">⚠</span>
+                                <p className="text-sm text-orange-900 dark:text-orange-100">{item}</p>
+                              </li>
+                            ))}
+                          </ul>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
+
+                {/* Missing Essentials */}
+                {fullAnalysis.missing_essentials && fullAnalysis.missing_essentials.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-amber-600" />
+                      Ontbrekende Essentiële Informatie
+                    </h3>
+                    <div className="space-y-3">
+                      {fullAnalysis.missing_essentials.map((item: any, index: number) => (
+                        <Card key={index} data-testid={`missing-essential-${index}`} className="border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30">
+                          <CardContent className="pt-6">
+                            <div className="flex items-start gap-3">
+                              <Badge variant="outline" className="border-amber-500">{item.priority || 'medium'}</Badge>
+                              <div className="flex-1">
+                                <p className="font-semibold text-sm mb-1">{item.item || 'Item'}</p>
+                                {item.why_needed && (
+                                  <p className="text-sm text-muted-foreground">{item.why_needed}</p>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {!fullAnalysis.applicable_rules && !fullAnalysis.recommended_claims && !fullAnalysis.evidence && (
                   <div className="text-center py-8 text-muted-foreground">
                     <Scale className="h-12 w-12 mx-auto mb-3 opacity-30" />
                     <p>Geen juridische informatie beschikbaar</p>

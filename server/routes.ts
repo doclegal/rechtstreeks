@@ -118,18 +118,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? JSON.parse(data.result.procedure_context) 
             : data.result.procedure_context;
         }
+        // Try top-level first, then check inside parsedAnalysis
         if (!flags && data.result.flags) {
           flags = typeof data.result.flags === 'string' 
             ? JSON.parse(data.result.flags) 
             : data.result.flags;
+        } else if (!flags && parsedAnalysis?.flags) {
+          flags = parsedAnalysis.flags;
         }
         if (!goNogoAdvice && data.result.go_nogo_advice) {
           goNogoAdvice = typeof data.result.go_nogo_advice === 'string' 
             ? JSON.parse(data.result.go_nogo_advice) 
             : data.result.go_nogo_advice;
+        } else if (!goNogoAdvice && parsedAnalysis?.go_nogo_advice) {
+          goNogoAdvice = parsedAnalysis.go_nogo_advice;
         }
         if (readyForSummons === null && data.result.ready_for_summons !== undefined) {
           readyForSummons = data.result.ready_for_summons;
+        } else if (readyForSummons === null && parsedAnalysis?.ready_for_summons !== undefined) {
+          readyForSummons = parsedAnalysis.ready_for_summons;
         }
       }
       
