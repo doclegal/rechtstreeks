@@ -1104,32 +1104,62 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
             console.log("✅ Found all_files in data.result");
           }
           
-          // user_context
+          // user_context - Handle both object and invalid "[object Object]" string
           if (data.result.user_context) {
             const resultValue = data.result.user_context;
-            userContext = typeof resultValue === 'string' ? JSON.parse(resultValue) : resultValue;
-            console.log("✅ Found user_context in data.result");
+            if (typeof resultValue === 'string' && resultValue === '[object Object]') {
+              console.log("⚠️ Skipping invalid '[object Object]' string for user_context - will use fallback");
+            } else if (typeof resultValue === 'string' && !resultValue.includes('{{')) {
+              userContext = JSON.parse(resultValue);
+              console.log("✅ Found user_context in data.result (parsed from string)");
+            } else if (typeof resultValue === 'object') {
+              userContext = resultValue;
+              console.log("✅ Found user_context in data.result (object)");
+            }
           }
           
-          // procedure_context
+          // procedure_context - Handle both object and invalid "[object Object]" string
           if (data.result.procedure_context) {
             const resultValue = data.result.procedure_context;
-            procedureContext = typeof resultValue === 'string' ? JSON.parse(resultValue) : resultValue;
-            console.log("✅ Found procedure_context in data.result");
+            if (typeof resultValue === 'string' && resultValue === '[object Object]') {
+              console.log("⚠️ Skipping invalid '[object Object]' string for procedure_context - will use fallback");
+            } else if (typeof resultValue === 'string' && !resultValue.includes('{{')) {
+              procedureContext = JSON.parse(resultValue);
+              console.log("✅ Found procedure_context in data.result (parsed from string)");
+            } else if (typeof resultValue === 'object') {
+              procedureContext = resultValue;
+              console.log("✅ Found procedure_context in data.result (object)");
+            }
           }
           
-          // flags (NEW)
+          // flags (NEW) - Handle both object and invalid "[object Object]" string
           if (data.result.flags) {
             const resultValue = data.result.flags;
-            flags = typeof resultValue === 'string' ? JSON.parse(resultValue) : resultValue;
-            console.log("✅ Found flags in data.result");
+            // Skip invalid "[object Object]" strings from MindStudio
+            if (typeof resultValue === 'string' && resultValue === '[object Object]') {
+              console.log("⚠️ Skipping invalid '[object Object]' string for flags - will use fallback");
+            } else if (typeof resultValue === 'string' && !resultValue.includes('{{')) {
+              flags = JSON.parse(resultValue);
+              console.log("✅ Found flags in data.result (parsed from string)");
+            } else if (typeof resultValue === 'object') {
+              flags = resultValue;
+              console.log("✅ Found flags in data.result (object)");
+            }
           }
           
-          // go_nogo_advice (NEW)
+          // go_nogo_advice (NEW) - Handle both object and invalid "[object Object]" string
           if (data.result.go_nogo_advice) {
             const resultValue = data.result.go_nogo_advice;
-            goNogoAdvice = typeof resultValue === 'string' ? JSON.parse(resultValue) : resultValue;
-            console.log("✅ Found go_nogo_advice in data.result");
+            // Skip invalid "[object Object]" strings from MindStudio
+            if (typeof resultValue === 'string' && resultValue === '[object Object]') {
+              console.log("⚠️ Skipping invalid '[object Object]' string for go_nogo_advice - will use fallback");
+            } else if (typeof resultValue === 'string' && !resultValue.includes('{{')) {
+              goNogoAdvice = JSON.parse(resultValue);
+              console.log("✅ Found go_nogo_advice in data.result (parsed from string)");
+            } else if (typeof resultValue === 'object') {
+              goNogoAdvice = resultValue;
+              console.log("✅ Found go_nogo_advice in data.result (object)");
+            }
           }
           
           // ready_for_summons (NEW)
