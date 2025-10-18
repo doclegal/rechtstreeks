@@ -49,6 +49,10 @@ export default function DocumentUpload({
       return response.json();
     },
     onSuccess: (data) => {
+      console.log('📤 Upload success - data received:', data);
+      console.log('📤 Is array?', Array.isArray(data));
+      console.log('📤 Calling onSuccess with:', Array.isArray(data) ? data : []);
+      
       queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] });
       queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'uploads'] });
       queryClient.invalidateQueries({ queryKey: ['/api/cases'] });

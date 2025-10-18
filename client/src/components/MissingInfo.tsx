@@ -509,13 +509,24 @@ export default function MissingInfo({
           onOpenChange={(open) => !open && setShowUploadForReq(null)}
           caseId={caseId}
           onSuccess={(documents) => {
+            console.log('🎯 MissingInfo onSuccess called with:', documents);
+            console.log('🎯 showUploadForReq:', showUploadForReq);
+            
             // Use the first uploaded document's ID and name
             if (documents && documents.length > 0) {
+              console.log('🎯 Calling handleDocumentUploaded with:', {
+                reqId: showUploadForReq,
+                docId: documents[0].id,
+                filename: documents[0].filename
+              });
+              
               handleDocumentUploaded(showUploadForReq, documents[0].id, documents[0].filename);
               toast({
                 title: "Document geüpload",
                 description: `${documents[0].filename} is toegevoegd aan uw antwoord`
               });
+            } else {
+              console.log('❌ No documents in response!');
             }
             setShowUploadForReq(null);
           }}
