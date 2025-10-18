@@ -96,6 +96,10 @@ export default function MissingInfo({
   };
 
   const handleDocumentUploaded = async (reqId: string, documentId: string, documentName: string) => {
+    console.log('🔧 handleDocumentUploaded START', { reqId, documentId, documentName });
+    console.log('🔧 Current draftAnswers size:', draftAnswers.size);
+    console.log('🔧 Current draftAnswers:', Array.from(draftAnswers.entries()));
+    
     const newAnswers = new Map(draftAnswers);
     newAnswers.set(reqId, {
       requirementId: reqId,
@@ -103,6 +107,10 @@ export default function MissingInfo({
       documentId,
       documentName
     });
+    
+    console.log('🔧 New draftAnswers size:', newAnswers.size);
+    console.log('🔧 New draftAnswers:', Array.from(newAnswers.entries()));
+    console.log('🔧 Calling setDraftAnswers...');
     setDraftAnswers(newAnswers);
     
     // Clear any previous text value that might have been entered
@@ -111,6 +119,7 @@ export default function MissingInfo({
     setTextValues(newTextValues);
     
     setShowUploadForReq(null);
+    console.log('🔧 handleDocumentUploaded COMPLETE');
   };
 
   const handleRemoveDraft = (reqId: string) => {
