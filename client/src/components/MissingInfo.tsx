@@ -252,6 +252,18 @@ export default function MissingInfo({
             const draftAnswer = draftAnswers.get(req.id);
             const isAnswered = isSubmitted || hasDraftAnswer;
             
+            // Debug logging for this requirement
+            if (req.id === 'legacy-0') {
+              console.log('🎨 RENDERING req legacy-0:', {
+                hasDraftAnswer,
+                isAnswered,
+                isSubmitted,
+                draftAnswer,
+                draftAnswersSize: draftAnswers.size,
+                allDraftAnswers: Array.from(draftAnswers.entries())
+              });
+            }
+            
             return (
               <div 
                 key={req.id}
