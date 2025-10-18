@@ -1279,9 +1279,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ responses: [] });
       }
       
-      // Get the most recent event (or merge all events)
-      // For now, let's get the most recent one
-      const latestEvent = missingInfoEvents[missingInfoEvents.length - 1];
+      // Get the most recent event by sorting by createdAt DESC
+      const latestEvent = missingInfoEvents.sort((a: any, b: any) => {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      })[0];
       const payloadJson = latestEvent.payloadJson as any;
       const responses = payloadJson?.responses || [];
       
