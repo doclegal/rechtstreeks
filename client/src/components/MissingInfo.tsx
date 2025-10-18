@@ -303,8 +303,8 @@ export default function MissingInfo({
                   </div>
                 </div>
 
-                {/* Draft answer preview (before submission) */}
-                {!isSubmitted && hasDraftAnswer && (
+                {/* Draft answer preview (show even if already submitted - allows updates) */}
+                {hasDraftAnswer && (
                   <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/20 rounded border border-amber-200 dark:border-amber-800">
                     <div className="flex items-start gap-2 text-sm">
                       <div className="flex-1">
