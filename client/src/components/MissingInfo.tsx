@@ -57,6 +57,14 @@ export default function MissingInfo({
   savedResponses.forEach((response: Answer) => {
     savedResponsesMap.set(response.requirementId, response);
   });
+  
+  // Debug: log saved responses
+  console.log('💾 Saved responses loaded:', {
+    count: savedResponses.length,
+    responses: savedResponses,
+    mapSize: savedResponsesMap.size,
+    mapEntries: Array.from(savedResponsesMap.entries())
+  });
 
   const handleTextChange = (reqId: string, value: string) => {
     const newTextValues = new Map(textValues);
