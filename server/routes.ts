@@ -1279,12 +1279,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ responses: [] });
       }
       
-      // Get the most recent event by sorting by createdAt DESC
-      const latestEvent = missingInfoEvents.sort((a: any, b: any) => {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      })[0];
-      const payloadJson = latestEvent.payloadJson as any;
-      const responses = payloadJson?.responses || [];
+      // Merge all events to get the complete set of responses
+      // Later events override earlier ones for the same requirementId
+      const responsesMap = new Map<string, any>();
+      
+      // Sort events by createdAt ASC so newer events override older ones
+      missingInfoEvents.sort((a: any, b: any) => {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      });
+      
+      // Process each event and merge responses
+      for (const event of missingInfoEvents) {
+        const payloadJson = event.payloadJson as any;
+        const eventResponses = payloadJson?.responses || [];
+        
+        for (const response of eventResponses) {
+          responsesMap.set(response.requirementId, response);
+        }
+      }
+      
+      // Convert map back to array
+      const responses = Array.from(responsesMap.values());
       
       // Enrich responses with document names
       const enrichedResponses = await Promise.all(
