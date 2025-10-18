@@ -539,7 +539,7 @@ export default function Analysis() {
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Files className="h-8 w-8 text-primary" />
                 </div>
-                <CardTitle className="text-center">Documenten</CardTitle>
+                <CardTitle className="text-center">Dossier</CardTitle>
               </CardHeader>
               <CardContent className="text-center">
                 <p className="text-2xl font-bold text-foreground">{docCount}</p>
