@@ -96,10 +96,6 @@ export default function MissingInfo({
   };
 
   const handleDocumentUploaded = async (reqId: string, documentId: string, documentName: string) => {
-    console.log('🔧 handleDocumentUploaded START', { reqId, documentId, documentName });
-    console.log('🔧 Current draftAnswers size:', draftAnswers.size);
-    console.log('🔧 Current draftAnswers:', Array.from(draftAnswers.entries()));
-    
     const newAnswers = new Map(draftAnswers);
     newAnswers.set(reqId, {
       requirementId: reqId,
@@ -107,10 +103,6 @@ export default function MissingInfo({
       documentId,
       documentName
     });
-    
-    console.log('🔧 New draftAnswers size:', newAnswers.size);
-    console.log('🔧 New draftAnswers:', Array.from(newAnswers.entries()));
-    console.log('🔧 Calling setDraftAnswers...');
     setDraftAnswers(newAnswers);
     
     // Clear any previous text value that might have been entered
@@ -119,7 +111,6 @@ export default function MissingInfo({
     setTextValues(newTextValues);
     
     setShowUploadForReq(null);
-    console.log('🔧 handleDocumentUploaded COMPLETE');
   };
 
   const handleRemoveDraft = (reqId: string) => {
@@ -251,18 +242,6 @@ export default function MissingInfo({
             const hasDraftAnswer = draftAnswers.has(req.id);
             const draftAnswer = draftAnswers.get(req.id);
             const isAnswered = isSubmitted || hasDraftAnswer;
-            
-            // Debug logging for this requirement
-            if (req.id === 'legacy-0') {
-              console.log('🎨 RENDERING req legacy-0:', {
-                hasDraftAnswer,
-                isAnswered,
-                isSubmitted,
-                draftAnswer,
-                draftAnswersSize: draftAnswers.size,
-                allDraftAnswers: Array.from(draftAnswers.entries())
-              });
-            }
             
             return (
               <div 
@@ -444,7 +423,20 @@ export default function MissingInfo({
                         variant="ghost"
                         size="sm"
                         onClick={() => {
+                          // Load the saved answer into draft state for editing
+                          if (!submittedAnswer) return;
+                          
                           setEditingReqId(req.id);
+                          const newDraftAnswers = new Map(draftAnswers);
+                          newDraftAnswers.set(req.id, submittedAnswer);
+                          setDraftAnswers(newDraftAnswers);
+                          
+                          // If it's a text answer, also populate textValues
+                          if (submittedAnswer.kind === 'text') {
+                            const newTextValues = new Map(textValues);
+                            newTextValues.set(req.id, submittedAnswer.value || '');
+                            setTextValues(newTextValues);
+                          }
                         }}
                         className="text-xs flex items-center gap-1"
                         data-testid={`button-edit-${req.id}`}
@@ -530,24 +522,13 @@ export default function MissingInfo({
           onOpenChange={(open) => !open && setShowUploadForReq(null)}
           caseId={caseId}
           onSuccess={(documents) => {
-            console.log('🎯 MissingInfo onSuccess called with:', documents);
-            console.log('🎯 showUploadForReq:', showUploadForReq);
-            
             // Use the first uploaded document's ID and name
             if (documents && documents.length > 0) {
-              console.log('🎯 Calling handleDocumentUploaded with:', {
-                reqId: showUploadForReq,
-                docId: documents[0].id,
-                filename: documents[0].filename
-              });
-              
               handleDocumentUploaded(showUploadForReq, documents[0].id, documents[0].filename);
               toast({
                 title: "Document geüpload",
                 description: `${documents[0].filename} is toegevoegd aan uw antwoord`
               });
-            } else {
-              console.log('❌ No documents in response!');
             }
             setShowUploadForReq(null);
           }}
