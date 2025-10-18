@@ -56,7 +56,8 @@ export default function DocumentUpload({
         title: "Upload voltooid",
         description: "Documenten zijn succesvol geüpload",
       });
-      onSuccess?.(data.documents || []);
+      // Backend returns array directly, not { documents: [] }
+      onSuccess?.(Array.isArray(data) ? data : []);
     },
     onError: (error) => {
       toast({
