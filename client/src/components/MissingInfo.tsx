@@ -104,6 +104,12 @@ export default function MissingInfo({
       documentName
     });
     setDraftAnswers(newAnswers);
+    
+    // Clear any previous text value that might have been entered
+    const newTextValues = new Map(textValues);
+    newTextValues.delete(reqId);
+    setTextValues(newTextValues);
+    
     setShowUploadForReq(null);
   };
 
