@@ -95,15 +95,27 @@ export default function MissingInfo({
     setDraftAnswers(newAnswers);
   };
 
-  const handleDocumentUploaded = (reqId: string, documentId: string) => {
+  const handleDocumentUploaded = async (reqId: string, documentId: string, documentName: string) => {
     const newAnswers = new Map(draftAnswers);
     newAnswers.set(reqId, {
       requirementId: reqId,
       kind: 'document',
-      documentId
+      documentId,
+      documentName
     });
     setDraftAnswers(newAnswers);
     setShowUploadForReq(null);
+  };
+
+  const handleRemoveDraft = (reqId: string) => {
+    const newAnswers = new Map(draftAnswers);
+    newAnswers.delete(reqId);
+    setDraftAnswers(newAnswers);
+    
+    // Also clear text value if exists
+    const newTextValues = new Map(textValues);
+    newTextValues.delete(reqId);
+    setTextValues(newTextValues);
   };
 
   const handleNotAvailable = (reqId: string) => {
@@ -220,24 +232,35 @@ export default function MissingInfo({
             const submittedAnswer = savedResponsesMap.get(req.id);
             const isEditing = editingReqId === req.id;
             
+            // Check if there's a draft answer for this requirement
+            const hasDraftAnswer = draftAnswers.has(req.id);
+            const draftAnswer = draftAnswers.get(req.id);
+            const isAnswered = isSubmitted || hasDraftAnswer;
+            
             return (
               <div 
                 key={req.id}
                 className={`p-4 rounded-lg border-2 transition-colors ${
-                  isSubmitted && !isEditing ? 'border-success bg-success/5' : 'border-muted bg-muted/50'
+                  isAnswered && !isEditing ? 'border-success bg-success/5' : 'border-muted bg-muted/50'
                 }`}
                 data-testid={`requirement-${req.id}`}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      {isSubmitted && !isEditing && <CheckCircle2 className="h-4 w-4 text-success" />}
-                      {(!isSubmitted || isEditing) && <AlertTriangle className="h-4 w-4 text-warning" />}
+                      {isAnswered && !isEditing && <CheckCircle2 className="h-4 w-4 text-success" />}
+                      {!isAnswered && !isEditing && <AlertTriangle className="h-4 w-4 text-warning" />}
+                      {isEditing && <AlertTriangle className="h-4 w-4 text-warning" />}
                       <span className="font-medium text-foreground">
                         {req.label}
                       </span>
                       {req.required && (
                         <Badge variant="outline" className="text-xs">Vereist</Badge>
+                      )}
+                      {hasDraftAnswer && !isSubmitted && (
+                        <Badge variant="secondary" className="text-xs bg-amber-100 dark:bg-amber-900 text-amber-900 dark:text-amber-100">
+                          Nog niet verstuurd
+                        </Badge>
                       )}
                     </div>
                     {req.description && (
@@ -253,7 +276,52 @@ export default function MissingInfo({
                   </div>
                 </div>
 
-                {!isSubmitted && (
+                {/* Draft answer preview (before submission) */}
+                {!isSubmitted && hasDraftAnswer && (
+                  <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/20 rounded border border-amber-200 dark:border-amber-800">
+                    <div className="flex items-start gap-2 text-sm">
+                      <div className="flex-1">
+                        {draftAnswer?.kind === 'text' && (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <Type className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+                              <span className="text-amber-700 dark:text-amber-300 text-xs font-medium">Uw antwoord (nog niet verstuurd):</span>
+                            </div>
+                            <p className="text-sm font-medium pl-6 text-foreground">{draftAnswer.value}</p>
+                          </div>
+                        )}
+                        {draftAnswer?.kind === 'document' && (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+                              <span className="text-amber-700 dark:text-amber-300 text-xs font-medium">Document geüpload (nog niet verstuurd):</span>
+                            </div>
+                            <p className="text-sm font-medium pl-6 text-foreground">{draftAnswer.documentName || 'Document'}</p>
+                          </div>
+                        )}
+                        {draftAnswer?.kind === 'not_available' && (
+                          <div className="flex items-center gap-2">
+                            <XCircle className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+                            <span className="text-amber-700 dark:text-amber-300 italic text-xs">Niet beschikbaar (nog niet verstuurd)</span>
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveDraft(req.id)}
+                        className="text-xs flex items-center gap-1 text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100"
+                        data-testid={`button-remove-draft-${req.id}`}
+                      >
+                        <XCircle className="h-3 w-3" />
+                        Verwijderen
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Input fields (only show if not answered OR not a draft) */}
+                {!isSubmitted && !hasDraftAnswer && (
                   <div className="space-y-3 mt-3">
                     {/* Select dropdown for options (multiple_choice) */}
                     {req.options && req.options.length > 0 && req.inputKind === 'text' && (
@@ -435,12 +503,12 @@ export default function MissingInfo({
           onOpenChange={(open) => !open && setShowUploadForReq(null)}
           caseId={caseId}
           onSuccess={(documents) => {
-            // Use the first uploaded document's ID
+            // Use the first uploaded document's ID and name
             if (documents && documents.length > 0) {
-              handleDocumentUploaded(showUploadForReq, documents[0].id);
+              handleDocumentUploaded(showUploadForReq, documents[0].id, documents[0].filename);
               toast({
                 title: "Document geüpload",
-                description: "Document is toegevoegd aan uw antwoord"
+                description: `${documents[0].filename} is toegevoegd aan uw antwoord`
               });
             }
             setShowUploadForReq(null);
