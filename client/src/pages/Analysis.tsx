@@ -55,8 +55,24 @@ export default function Analysis() {
     const dataSource = parsedAnalysis || analysis;
     if (!dataSource) return [];
     
-    if (dataSource?.missing_info_for_assessment && Array.isArray(dataSource.missing_info_for_assessment)) {
-      return dataSource.missing_info_for_assessment.map((item: any, index: number) => {
+    // Check for missing_info_for_assessment (new format) OR missing_essentials + clarifying_questions (alternative format)
+    let questionsArray = dataSource?.missing_info_for_assessment;
+    
+    if (!questionsArray || !Array.isArray(questionsArray)) {
+      // Try combining missing_essentials and clarifying_questions
+      const missing = dataSource?.missing_essentials || [];
+      const clarifying = dataSource?.clarifying_questions || [];
+      
+      if (Array.isArray(missing) || Array.isArray(clarifying)) {
+        questionsArray = [
+          ...(Array.isArray(missing) ? missing : []),
+          ...(Array.isArray(clarifying) ? clarifying : [])
+        ];
+      }
+    }
+    
+    if (questionsArray && Array.isArray(questionsArray) && questionsArray.length > 0) {
+      return questionsArray.map((item: any, index: number) => {
         let inputKind: 'text' | 'document' | 'both' = 'text';
         if (item.answer_type === 'file_upload') {
           inputKind = 'document';
