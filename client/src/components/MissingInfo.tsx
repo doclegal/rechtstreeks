@@ -17,6 +17,7 @@ interface MissingInfoProps {
   requirements: MissingRequirement[];
   caseId: string;
   onUpdated?: () => void;
+  caseDocuments?: Array<{ id: string; filename: string }>;
 }
 
 interface Answer {
@@ -31,7 +32,8 @@ interface Answer {
 export default function MissingInfo({ 
   requirements, 
   caseId, 
-  onUpdated 
+  onUpdated,
+  caseDocuments = []
 }: MissingInfoProps) {
   const { toast } = useToast();
   const [draftAnswers, setDraftAnswers] = useState<Map<string, Answer>>(new Map());
@@ -52,10 +54,24 @@ export default function MissingInfo({
 
   const savedResponses = savedResponsesData?.responses || [];
   
+  // Create a Set of valid document IDs for quick lookup
+  const validDocumentIds = new Set(caseDocuments.map(doc => doc.id));
+  
   // Create a Map of saved responses for easy lookup
+  // CRITICAL: Filter out document-responses where the document no longer exists
   const savedResponsesMap = new Map<string, Answer>();
   savedResponses.forEach((response: Answer) => {
-    savedResponsesMap.set(response.requirementId, response);
+    // If response is a document, validate that the document still exists
+    if (response.kind === 'document') {
+      if (response.documentId && validDocumentIds.has(response.documentId)) {
+        // Document exists - this is a valid response
+        savedResponsesMap.set(response.requirementId, response);
+      }
+      // else: Document was deleted - don't include this response
+    } else {
+      // Text or not_available responses are always valid
+      savedResponsesMap.set(response.requirementId, response);
+    }
   });
 
   const handleTextChange = (reqId: string, value: string) => {

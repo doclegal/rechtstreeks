@@ -687,6 +687,7 @@ export default function Analysis() {
               <MissingInfo 
                 requirements={missingRequirements}
                 caseId={currentCase?.id || ""}
+                caseDocuments={currentCase?.documents || []}
                 onUpdated={() => {
                   refetch();
                   setNogAanTeLeverenOpen(false);
