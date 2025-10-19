@@ -1,0 +1,92 @@
+DAGVAARDING – KANTONRECHTER
+
+T-01 – Algemene geldvordering (niet-consument gedaagde)
+
+1. Aanzegging verschijning
+
+Aan:
+{Naam of Bedrijfsnaam gedaagde:} [Nog invullen]
+{KvK of BSN gedaagde:} [Nog invullen]
+{Adres gedaagde (straat + nr):} [Nog invullen]
+{Postcode en plaats gedaagde:} [Nog invullen]
+
+U wordt gedagvaard om te verschijnen ter terechtzitting van de kantonrechter van:
+{Bevoegde rechtbank (locatie):} [Nog invullen]
+{Zittingsadres rechtbank:} [Nog invullen]
+{Zittingsdatum (dd-mm-jjjj):} [Nog invullen]
+{Zittingstijd (uu:mm):} [Nog invullen]
+
+Indien u niet verschijnt kan de rechter tegen u verstek verlenen en de vorderingen toewijzen.
+In kantonzaken is geen advocaat verplicht. U mag schriftelijk of mondeling verweer voeren volgens de aanwijzingen van de rechtbank.
+
+2. Partijen
+
+Eiser (opdrachtgever aan deurwaarder):
+{Naam of Bedrijfsnaam eiser:} [Nog invullen]
+{KvK of BSN eiser:} [Nog invullen]
+{Adres eiser (straat + nr):} [Nog invullen]
+{Postcode en plaats eiser:} [Nog invullen]
+{E-mailadres eiser:} [Nog invullen]
+{Telefoon eiser:} [Nog invullen]
+{Eventuele gemachtigde (naam/organisatie):} [Nog invullen]
+
+Gedaagde (niet-consument):
+{Naam of Bedrijfsnaam gedaagde (herhaling):} [Nog invullen]
+{KvK of BSN gedaagde (herhaling):} [Nog invullen]
+
+3. Bevoegdheid en relatieve competentie
+
+{Bevoegdheidsmotivering (kanton, art. 93 Rv; relatieve bevoegdheid op grond van woonplaats/plaats van uitvoering, forumkeuze indien van toepassing).}
+
+4. Kernparameters (door gebruiker, voor AI-invulling later)
+
+{Hoofdsom (EUR, cijfers):} [Nog invullen]
+{Korte omschrijving overeenkomst (bijv. koop/dienst):} [Nog invullen]
+{Factuurnummer(s) en datum/data:} [Nog invullen]
+{Vervaldatum / opeisbaar sinds (dd-mm-jjjj):} [Nog invullen]
+{Is aanmaning/ingebrekestelling verzonden? (ja/nee + datum):} [Nog invullen]
+{Rentevorm (wettelijk of handelsrente):} [Nog invullen]
+{Betalingsregeling geprobeerd? (ja/nee + toelichting):} [Nog invullen]
+{Forumkeuze of afwijkende afspraken? (ja/nee + tekst):} [Nog invullen]
+
+5. Feiten
+
+{Samenvatting van de relevante feiten en tijdlijn, inclusief overeenkomst, levering/prestatie, facturatie, aanmaningen en reactie gedaagde.}
+
+6. Vorderingen
+
+{Formuleer de volledige vorderingen, inclusief:
+– Betaling van de hoofdsom (met specificatie);
+– Rente (wettelijke of handelsrente) vanaf de juiste datum tot aan voldoening;
+– (Indien toepasselijk) buitengerechtelijke incassokosten conform toepasselijke staffel;
+– Proceskosten (griffierecht indien verschuldigd, explootkosten en salaris gemachtigde);
+– Eventuele nevenvorderingen (bijv. verklaring voor recht, nakoming specifieke verplichting);
+– Duidelijke, genummerde petitum-onderdelen, klaar voor uitspraak.}
+
+7. Rechtsgronden
+
+{Koppel de feiten aan de toepasselijke rechtsregels en werk per vordering de grondslag en toewijsbaarheid uit.}
+
+8. Rente en kosten (toelichting)
+
+{Werk uit waarom de gekozen rentevorm geldt (BW 6:119 of 6:119a), vanaf welke datum verzuim intrad, en onderbouw de buitengerechtelijke kosten conform staffel en vereisten.}
+
+9. Bewijsaanbod
+
+{Concreet bewijsaanbod: getuigen, stukken, deskundige (indien nodig), en verwijzing naar producties.}
+
+10. Producties
+
+{Genummerde opsomming van producties met korte duiding per productie (overeenkomst, facturen, aanmaningen, e-mailcorrespondentie, afleverbonnen, etc.).}
+
+11. Slot en aanzegging
+
+Gedaagde wordt aangezegd om te verschijnen zoals boven vermeld.
+Eiser verzoekt toewijzing van de vorderingen, met veroordeling van gedaagde in de kosten van het geding.
+
+12. Ondertekening
+
+{Plaats:} [Nog invullen]
+{Datum (dd-mm-jjjj):} [Nog invullen]
+{Naam eiser of gemachtigde:} [Nog invullen]
+{Handtekening:} [Nog invullen]
