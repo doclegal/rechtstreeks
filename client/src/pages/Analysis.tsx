@@ -43,9 +43,25 @@ export default function Analysis() {
   });
 
   const savedResponses = savedResponsesData?.responses || [];
+  
+  // Create a Set of valid document IDs for quick lookup
+  const validDocumentIds = new Set((currentCase?.documents || []).map((doc: any) => doc.id));
+  
+  // Create a Map of saved responses for easy lookup
+  // CRITICAL: Filter out document-responses where the document no longer exists
   const savedResponsesMap = new Map<string, any>();
   savedResponses.forEach((response: any) => {
-    savedResponsesMap.set(response.requirementId, response);
+    // If response is a document, validate that the document still exists
+    if (response.kind === 'document') {
+      if (response.documentId && validDocumentIds.has(response.documentId)) {
+        // Document exists - this is a valid response
+        savedResponsesMap.set(response.requirementId, response);
+      }
+      // else: Document was deleted - don't include this response
+    } else {
+      // Text or not_available responses are always valid
+      savedResponsesMap.set(response.requirementId, response);
+    }
   });
 
   const missingRequirements = useMemo(() => {
