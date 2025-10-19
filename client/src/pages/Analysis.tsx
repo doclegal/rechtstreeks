@@ -13,6 +13,7 @@ import { RIcon } from "@/components/RIcon";
 import { useActiveCase } from "@/contexts/CaseContext";
 import DocumentList from "@/components/DocumentList";
 import MissingInfo from "@/components/MissingInfo";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Analysis() {
   const { user, isLoading: authLoading } = useAuth();
@@ -29,6 +30,23 @@ export default function Analysis() {
 
   const analyzeMutation = useAnalyzeCase(caseId || "");
   const fullAnalyzeMutation = useFullAnalyzeCase(caseId || "");
+
+  // Fetch saved responses to determine which requirements are already answered
+  const { data: savedResponsesData } = useQuery({
+    queryKey: ['/api/cases', caseId, 'missing-info', 'responses'],
+    enabled: !!caseId,
+    queryFn: async () => {
+      const res = await fetch(`/api/cases/${caseId}/missing-info/responses`);
+      if (!res.ok) throw new Error('Failed to fetch responses');
+      return res.json();
+    }
+  });
+
+  const savedResponses = savedResponsesData?.responses || [];
+  const savedResponsesMap = new Map<string, any>();
+  savedResponses.forEach((response: any) => {
+    savedResponsesMap.set(response.requirementId, response);
+  });
 
   const missingRequirements = useMemo(() => {
     const fullAnalysis = currentCase?.fullAnalysis as any;
@@ -126,7 +144,13 @@ export default function Analysis() {
   }, [currentCase?.analysis, currentCase?.fullAnalysis]);
 
   const docCount = currentCase?.documents?.length || 0;
-  const requiredCount = missingRequirements.filter((r: any) => r.required).length;
+  
+  // Count only UNANSWERED required requirements
+  const requiredCount = missingRequirements.filter((r: any) => {
+    if (!r.required) return false;
+    // Check if this requirement has been answered
+    return !savedResponsesMap.has(r.id);
+  }).length;
 
   useEffect(() => {
     if (analyzeMutation.isSuccess && analyzeMutation.data) {
@@ -565,18 +589,37 @@ export default function Analysis() {
 
         <Dialog open={nogAanTeLeverenOpen} onOpenChange={setNogAanTeLeverenOpen}>
           <DialogTrigger asChild>
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow relative" data-testid="card-nog-aan-te-leveren-analysis">
+            <Card 
+              className={`cursor-pointer hover:shadow-lg transition-shadow relative ${
+                requiredCount === 0 && missingRequirements.length > 0 
+                  ? 'bg-green-50 dark:bg-green-950/30 border-2 border-green-500 dark:border-green-700' 
+                  : ''
+              }`}
+              data-testid="card-nog-aan-te-leveren-analysis"
+            >
               <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
               <CardHeader>
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="h-8 w-8 text-primary" />
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                  requiredCount === 0 && missingRequirements.length > 0
+                    ? 'bg-green-100 dark:bg-green-900/50'
+                    : 'bg-primary/10'
+                }`}>
+                  <CheckCircle className={`h-8 w-8 ${
+                    requiredCount === 0 && missingRequirements.length > 0
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-primary'
+                  }`} />
                 </div>
                 <CardTitle className="text-center">Nog aan te leveren</CardTitle>
               </CardHeader>
               <CardContent className="text-center">
                 {missingRequirements.length > 0 ? (
                   <>
-                    <p className="text-2xl font-bold text-foreground">{requiredCount}</p>
+                    <p className={`text-2xl font-bold ${
+                      requiredCount === 0
+                        ? 'text-green-700 dark:text-green-300'
+                        : 'text-foreground'
+                    }`}>{requiredCount}</p>
                     <p className="text-sm text-muted-foreground">
                       vereiste {requiredCount === 1 ? 'vraag' : 'vragen'}
                     </p>
