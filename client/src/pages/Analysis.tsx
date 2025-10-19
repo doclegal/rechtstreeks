@@ -58,7 +58,21 @@ export default function Analysis() {
     let questionsArray: any[] = [];
     
     // FIRST: Try new normalized structure: missing_info_struct.sections[].items[]
-    if (dataSource?.missing_info_struct?.sections && Array.isArray(dataSource.missing_info_struct.sections)) {
+    if (dataSource?.missing_info_struct && 
+        Array.isArray(dataSource.missing_info_struct) && 
+        dataSource.missing_info_struct.length > 0 &&
+        dataSource.missing_info_struct.some((s: any) => s.sections)) {
+      dataSource.missing_info_struct.forEach((struct: any) => {
+        if (struct.sections && Array.isArray(struct.sections)) {
+          struct.sections.forEach((section: any) => {
+            if (section.items && Array.isArray(section.items)) {
+              questionsArray.push(...section.items);
+            }
+          });
+        }
+      });
+    } else if (dataSource?.missing_info_struct?.sections && Array.isArray(dataSource.missing_info_struct.sections)) {
+      // Alternative structure: missing_info_struct is an object with sections property
       dataSource.missing_info_struct.sections.forEach((section: any) => {
         if (section.items && Array.isArray(section.items)) {
           questionsArray.push(...section.items);
@@ -66,12 +80,7 @@ export default function Analysis() {
       });
     }
     
-    // FALLBACK 1: Check for missing_info_for_assessment (old format)
-    if (questionsArray.length === 0 && dataSource?.missing_info_for_assessment && Array.isArray(dataSource.missing_info_for_assessment)) {
-      questionsArray = dataSource.missing_info_for_assessment;
-    }
-    
-    // FALLBACK 2: Try combining missing_essentials and clarifying_questions
+    // FALLBACK 1: Try combining missing_essentials and clarifying_questions
     if (questionsArray.length === 0) {
       const missing = dataSource?.missing_essentials || [];
       const clarifying = dataSource?.clarifying_questions || [];
@@ -82,6 +91,11 @@ export default function Analysis() {
           ...(Array.isArray(clarifying) ? clarifying : [])
         ];
       }
+    }
+    
+    // FALLBACK 2: Check for missing_info_for_assessment (old format)
+    if (questionsArray.length === 0 && dataSource?.missing_info_for_assessment && Array.isArray(dataSource.missing_info_for_assessment)) {
+      questionsArray = dataSource.missing_info_for_assessment;
     }
     
     if (questionsArray.length > 0) {
