@@ -611,25 +611,21 @@ export default function Analysis() {
                   }`} />
                 </div>
                 <CardTitle className="text-center">Nog aan te leveren</CardTitle>
+                {requiredCount === 0 && missingRequirements.length > 0 && (
+                  <p className="text-sm text-center text-green-700 dark:text-green-300 mt-2">
+                    Compleet
+                  </p>
+                )}
               </CardHeader>
               <CardContent className="text-center">
-                {missingRequirements.length > 0 ? (
-                  <>
-                    <p className={`text-2xl font-bold ${
-                      requiredCount === 0
-                        ? 'text-green-700 dark:text-green-300'
-                        : 'text-foreground'
-                    }`}>{requiredCount}</p>
-                    <p className="text-sm text-muted-foreground">
-                      vereiste {requiredCount === 1 ? 'vraag' : 'vragen'}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="h-12 w-12 text-success mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">Alles is compleet</p>
-                  </>
-                )}
+                <p className={`text-2xl font-bold ${
+                  requiredCount === 0
+                    ? 'text-green-700 dark:text-green-300'
+                    : 'text-foreground'
+                }`}>{requiredCount}</p>
+                <p className="text-sm text-muted-foreground">
+                  vereiste {requiredCount === 1 ? 'vraag' : 'vragen'}
+                </p>
               </CardContent>
             </Card>
           </DialogTrigger>
@@ -638,25 +634,14 @@ export default function Analysis() {
               <DialogTitle>Wat we nog nodig hebben</DialogTitle>
             </DialogHeader>
             <div className="mt-4">
-              {missingRequirements.length > 0 ? (
-                <MissingInfo 
-                  requirements={missingRequirements}
-                  caseId={currentCase?.id || ""}
-                  onUpdated={() => {
-                    refetch();
-                    setNogAanTeLeverenOpen(false);
-                  }}
-                />
-              ) : (
-                <Card>
-                  <CardContent className="text-center py-8">
-                    <CheckCircle className="h-12 w-12 text-success mx-auto mb-3" />
-                    <p className="text-sm text-muted-foreground">
-                      Er zijn momenteel geen openstaande vragen of documenten vereist.
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
+              <MissingInfo 
+                requirements={missingRequirements}
+                caseId={currentCase?.id || ""}
+                onUpdated={() => {
+                  refetch();
+                  setNogAanTeLeverenOpen(false);
+                }}
+              />
             </div>
           </DialogContent>
         </Dialog>
