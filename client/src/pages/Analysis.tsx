@@ -591,7 +591,7 @@ export default function Analysis() {
           <DialogTrigger asChild>
             <Card 
               className={`cursor-pointer hover:shadow-lg transition-all relative ${
-                requiredCount === 0 && missingRequirements.length > 0 
+                currentCase?.fullAnalysis && requiredCount === 0 
                   ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' 
                   : ''
               }`}
@@ -600,12 +600,12 @@ export default function Analysis() {
               <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
               <CardHeader>
                 <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                  requiredCount === 0 && missingRequirements.length > 0
+                  currentCase?.fullAnalysis && requiredCount === 0
                     ? 'bg-green-100 dark:bg-green-900/30'
                     : 'bg-primary/10'
                 }`}>
                   <CheckCircle className={`h-8 w-8 ${
-                    requiredCount === 0 && missingRequirements.length > 0
+                    currentCase?.fullAnalysis && requiredCount === 0
                       ? 'text-green-600 dark:text-green-400'
                       : 'text-primary'
                   }`} />
@@ -613,7 +613,7 @@ export default function Analysis() {
                 <CardTitle className="text-center">Nog aan te leveren</CardTitle>
               </CardHeader>
               <CardContent className="text-center">
-                {missingRequirements.length > 0 ? (
+                {currentCase?.fullAnalysis ? (
                   <>
                     {requiredCount === 0 && (
                       <Badge variant="default" className="mb-2 bg-green-600 dark:bg-green-700">
