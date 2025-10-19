@@ -197,9 +197,8 @@ export default function MissingInfo({
     }
   };
 
-  if (!requirements || requirements.length === 0) {
-    return null;
-  }
+  // Always render the dialog content, even if no requirements
+  // This allows users to see when analysis hasn't been run yet
 
   const requiredCount = requirements.filter(req => req.required).length;
   const requiredAnsweredCount = requirements.filter(req => req.required && savedResponsesMap.has(req.id)).length;
@@ -226,13 +225,21 @@ export default function MissingInfo({
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Alert>
-            <AlertDescription>
-              Beantwoord de vragen hieronder door <strong>tekst in te vullen</strong> of een <strong>document te uploaden</strong>. Klik daarna op "Versturen" om de informatie op te slaan.
-            </AlertDescription>
-          </Alert>
+          {requirements.length === 0 ? (
+            <Alert>
+              <AlertDescription>
+                Er zijn nog geen vragen beschikbaar. Voer eerst een juridische analyse uit.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              <Alert>
+                <AlertDescription>
+                  Beantwoord de vragen hieronder door <strong>tekst in te vullen</strong> of een <strong>document te uploaden</strong>. Klik daarna op "Versturen" om de informatie op te slaan.
+                </AlertDescription>
+              </Alert>
 
-          {requirements.map((req) => {
+              {requirements.map((req) => {
             // Check if this requirement has been SUBMITTED (not just drafted)
             const isSubmitted = savedResponsesMap.has(req.id);
             const submittedAnswer = savedResponsesMap.get(req.id);
@@ -498,20 +505,22 @@ export default function MissingInfo({
             );
           })}
 
-          <Button
-            onClick={handleSubmit}
-            disabled={draftAnswers.size === 0 || isSubmitting}
-            className="w-full"
-            data-testid="button-submit-missing-info"
-          >
-            <Send className="mr-2 h-4 w-4" />
-            {isSubmitting ? "Bezig met versturen..." : draftAnswers.size === 0 ? "Vul eerst antwoorden in" : `Versturen (${draftAnswers.size} ${draftAnswers.size === 1 ? 'antwoord' : 'antwoorden'})`}
-          </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={draftAnswers.size === 0 || isSubmitting}
+                className="w-full"
+                data-testid="button-submit-missing-info"
+              >
+                <Send className="mr-2 h-4 w-4" />
+                {isSubmitting ? "Bezig met versturen..." : draftAnswers.size === 0 ? "Vul eerst antwoorden in" : `Versturen (${draftAnswers.size} ${draftAnswers.size === 1 ? 'antwoord' : 'antwoorden'})`}
+              </Button>
 
-          {draftAnswers.size > 0 && (
-            <p className="text-xs text-muted-foreground text-center">
-              Na het versturen kunt u een heranalyse starten met de nieuwe informatie
-            </p>
+              {draftAnswers.size > 0 && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Na het versturen kunt u een heranalyse starten met de nieuwe informatie
+                </p>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

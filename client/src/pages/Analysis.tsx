@@ -55,11 +55,24 @@ export default function Analysis() {
     const dataSource = parsedAnalysis || analysis;
     if (!dataSource) return [];
     
-    // Check for missing_info_for_assessment (new format) OR missing_essentials + clarifying_questions (alternative format)
-    let questionsArray = dataSource?.missing_info_for_assessment;
+    let questionsArray: any[] = [];
     
-    if (!questionsArray || !Array.isArray(questionsArray)) {
-      // Try combining missing_essentials and clarifying_questions
+    // FIRST: Try new normalized structure: missing_info_struct.sections[].items[]
+    if (dataSource?.missing_info_struct?.sections && Array.isArray(dataSource.missing_info_struct.sections)) {
+      dataSource.missing_info_struct.sections.forEach((section: any) => {
+        if (section.items && Array.isArray(section.items)) {
+          questionsArray.push(...section.items);
+        }
+      });
+    }
+    
+    // FALLBACK 1: Check for missing_info_for_assessment (old format)
+    if (questionsArray.length === 0 && dataSource?.missing_info_for_assessment && Array.isArray(dataSource.missing_info_for_assessment)) {
+      questionsArray = dataSource.missing_info_for_assessment;
+    }
+    
+    // FALLBACK 2: Try combining missing_essentials and clarifying_questions
+    if (questionsArray.length === 0) {
       const missing = dataSource?.missing_essentials || [];
       const clarifying = dataSource?.clarifying_questions || [];
       
@@ -71,7 +84,7 @@ export default function Analysis() {
       }
     }
     
-    if (questionsArray && Array.isArray(questionsArray) && questionsArray.length > 0) {
+    if (questionsArray.length > 0) {
       return questionsArray.map((item: any, index: number) => {
         let inputKind: 'text' | 'document' | 'both' = 'text';
         if (item.answer_type === 'file_upload') {
