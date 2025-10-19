@@ -590,9 +590,9 @@ export default function Analysis() {
         <Dialog open={nogAanTeLeverenOpen} onOpenChange={setNogAanTeLeverenOpen}>
           <DialogTrigger asChild>
             <Card 
-              className={`cursor-pointer hover:shadow-lg transition-shadow relative ${
+              className={`cursor-pointer hover:shadow-lg transition-all relative ${
                 requiredCount === 0 && missingRequirements.length > 0 
-                  ? 'bg-green-50 dark:bg-green-950/30 border-2 border-green-500 dark:border-green-700' 
+                  ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' 
                   : ''
               }`}
               data-testid="card-nog-aan-te-leveren-analysis"
@@ -601,7 +601,7 @@ export default function Analysis() {
               <CardHeader>
                 <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
                   requiredCount === 0 && missingRequirements.length > 0
-                    ? 'bg-green-100 dark:bg-green-900/50'
+                    ? 'bg-green-100 dark:bg-green-900/30'
                     : 'bg-primary/10'
                 }`}>
                   <CheckCircle className={`h-8 w-8 ${
@@ -611,21 +611,28 @@ export default function Analysis() {
                   }`} />
                 </div>
                 <CardTitle className="text-center">Nog aan te leveren</CardTitle>
-                {requiredCount === 0 && missingRequirements.length > 0 && (
-                  <p className="text-sm text-center text-green-700 dark:text-green-300 mt-2">
-                    Compleet
-                  </p>
-                )}
               </CardHeader>
               <CardContent className="text-center">
-                <p className={`text-2xl font-bold ${
-                  requiredCount === 0
-                    ? 'text-green-700 dark:text-green-300'
-                    : 'text-foreground'
-                }`}>{requiredCount}</p>
-                <p className="text-sm text-muted-foreground">
-                  vereiste {requiredCount === 1 ? 'vraag' : 'vragen'}
-                </p>
+                {missingRequirements.length > 0 ? (
+                  <>
+                    {requiredCount === 0 && (
+                      <Badge variant="default" className="mb-2 bg-green-600 dark:bg-green-700">
+                        Compleet
+                      </Badge>
+                    )}
+                    <p className="text-2xl font-bold text-foreground">{requiredCount}</p>
+                    <p className="text-sm text-muted-foreground">
+                      vereiste {requiredCount === 1 ? 'vraag' : 'vragen'}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Nog niet geanalyseerd
+                    </p>
+                    <Badge variant="outline">Klik om te bekijken</Badge>
+                  </>
+                )}
               </CardContent>
             </Card>
           </DialogTrigger>
