@@ -1,0 +1,90 @@
+COURT RESOLVER (strict no-invent)
+
+Read the JSON that appears between the tags <ANALYSIS_JSON> and </ANALYSIS_JSON>.
+If the tags are missing or the content is not valid JSON: return ready=false with warning "analysis_json missing or invalid" and do nothing else.
+
+INPUT
+<ANALYSIS_JSON>
+{{$launchVariables->input_json}}
+</ANALYSIS_JSON>
+
+TASK
+
+Extract:
+
+gedaagde_city = analysis_json.parties.gedaagde_city (may be null)
+
+forum_clause_text = analysis_json.full_analysis.case_overview.forum_clause_text or analysis_json.case_overview.forum_clause_text (whichever exists)
+
+domain = first non-empty of:
+
+analysis_json.domain
+
+analysis_json.full_analysis.user_context.domain
+
+analysis_json.dispute_frame.domain
+
+is_kantonzaak = first non-empty of:
+
+analysis_json.is_kantonzaak
+
+analysis_json.full_analysis.procedure_context.is_kantonzaak
+
+Normaliseer steden (case-insensitive, trim). Voorbeelden die gelijk moeten worden getrokken:
+
+"den haag", "’s-gravenhage", "s-gravenhage" → Den Haag
+
+Bepaal bevoegdheid:
+
+Als geldige forumkeuze: basis = forumkeuze (kort motiveren, art. 108–110 Rv).
+
+Anders: art. 99 Rv op basis van gedaagde_city → koppel aan rechtbank + zittingsplaats (mapping bij benadering is toegestaan).
+
+Als gedaagde_city ontbreekt of niet te mappen: ready=false met duidelijke warning.
+
+### OFFICIAL COURT DISTRICT MAPPING (approximate)
+Use this table to map gedaagde_city → court + zittingsplaats.
+Matching is case-insensitive and accent-agnostic.
+If city not listed, leave empty and add warning.
+
+Amsterdam, Amstelveen, Zaanstad, Haarlemmermeer → Rechtbank Amsterdam (zp Amsterdam)
+Rotterdam, Dordrecht, Gouda, Spijkenisse → Rechtbank Rotterdam (zp Rotterdam)
+Den Haag, 's-Gravenhage, s-Gravenhage, Leiden, Delft → Rechtbank Den Haag (zp Den Haag)
+Utrecht, Amersfoort, Nieuwegein, Zeist → Rechtbank Midden-Nederland (zp Utrecht)
+Eindhoven, Helmond, Tilburg → Rechtbank Oost-Brabant (zp Eindhoven)
+'s-Hertogenbosch, Den Bosch → Rechtbank Oost-Brabant (zp ’s-Hertogenbosch)
+Arnhem, Nijmegen, Apeldoorn → Rechtbank Gelderland (zp Arnhem/Nijmegen)
+Zwolle, Enschede, Almelo, Deventer → Rechtbank Overijssel (zp Zwolle/Almelo)
+Leeuwarden, Groningen, Assen → Rechtbank Noord-Nederland (zp Leeuwarden/Groningen)
+Maastricht, Roermond, Heerlen, Sittard → Rechtbank Limburg (zp Maastricht/Roermond)
+
+When multiple cities map to the same court, prefer the first listed zittingsplaats.
+
+OUTPUT (return ONLY this JSON)
+{
+"court_info": {
+"ready": true,
+"warnings": [],
+"derived_from": {
+"gedaagde_city": "",
+"forum_clause_text": "",
+"domain": "",
+"is_kantonzaak": false
+},
+"competence_basis": "",
+"chosen_court": "",
+"zittingsplaats": "",
+"kanton_or_civiel": "",
+"motivation": "",
+"citations": ["art. 99 Rv"],
+"trace": { "confidence": 0, "notes": "" }
+}
+}
+
+MISSING DATA POLICY
+
+Als <ANALYSIS_JSON> leeg/ongeldig: warning "analysis_json missing or invalid", ready=false.
+
+Als gedaagde_city leeg: warning "Woonplaats gedaagde onbekend; relatieve competentie nog niet bepaalbaar.", ready=false.
+
+Response formatting: Return only the JSON object, nothing else.
