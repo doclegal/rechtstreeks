@@ -2667,12 +2667,15 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
               if (textValues.length > 0) {
                 generatedText = textValues.join('\n\n');
               } else {
-                generatedText = JSON.stringify(sectionResult, null, 2);
+                // User-friendly error message instead of JSON
+                const warnings = sectionResult.warnings || [];
+                generatedText = `⚠️ **Sectie kon niet worden gegenereerd**\n\nDe AI heeft onvoldoende gegevens ontvangen om deze sectie te schrijven.\n\n**Mogelijke oorzaken:**\n${warnings.length > 0 ? warnings.map(w => `- ${w}`).join('\n') : '- Ontbrekende woonplaatsgegevens\n- Ontbrekend claimbedrag\n- MindStudio flow leest verkeerde variabelen'}\n\n**Wat te doen:**\n1. Controleer of alle vereiste gegevens zijn ingevuld (woonplaats eiser en gedaagde)\n2. Controleer de MindStudio flow configuratie\n3. Neem contact op met support als het probleem blijft bestaan`;
               }
             }
           } else {
-            // Fallback to full JSON if structure is different
-            generatedText = JSON.stringify(sectionResult, null, 2);
+            // User-friendly error message for missing content
+            const warnings = sectionResult.warnings || [];
+            generatedText = `⚠️ **Sectie kon niet worden gegenereerd**\n\nDe AI-response bevat geen content.\n\n**Mogelijke oorzaken:**\n${warnings.length > 0 ? warnings.map(w => `- ${w}`).join('\n') : '- MindStudio flow retourneert lege content\n- Variabelen worden niet correct doorgegeven'}\n\n**Wat te doen:**\n1. Vul alle verplichte velden in bij de zaakgegevens\n2. Controleer de MindStudio flow configuratie`;
           }
           
           // Log warnings if any
