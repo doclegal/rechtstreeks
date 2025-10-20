@@ -2503,16 +2503,19 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         user_feedback: userFeedback || ""
       };
       
-      // Call MindStudio flow
+      // Call MindStudio flow using Apps API
       const mindstudioApiKey = process.env.MINDSTUDIO_API_KEY;
-      const mindstudioWorkerId = process.env.MINDSTUDIO_WORKER_ID;
+      const mindstudioAppId = process.env.MS_AGENT_APP_ID;
       const useMock = process.env.USE_MINDSTUDIO_SUMMONS_MOCK === 'true';
       
-      if (useMock || !mindstudioApiKey || !mindstudioWorkerId) {
+      // Strip .flow extension from workflow name if present
+      const workflowName = flowName?.replace(/\.flow$/i, '') || '';
+      
+      if (useMock || !mindstudioApiKey || !mindstudioAppId) {
         // Return mock response for development
-        console.log(`🧪 [MOCK] Generating section ${section.sectionName} with flow ${flowName}`);
+        console.log(`🧪 [MOCK] Generating section ${section.sectionName} with workflow ${workflowName}`);
         
-        const mockText = `[MOCK] Gegenereerde tekst voor sectie ${section.sectionName}.\n\nDit is een placeholder tekst die door MindStudio zou worden gegenereerd.\n\nIn productie wordt hier de echte ${flowName} aangeroepen met:\n- Case ID: ${caseId}\n- Prior sections: ${priorSections.length}\n- User feedback: ${userFeedback ? 'Ja' : 'Nee'}`;
+        const mockText = `[MOCK] Gegenereerde tekst voor sectie ${section.sectionName}.\n\nDit is een placeholder tekst die door MindStudio zou worden gegenereerd.\n\nIn productie wordt hier de echte ${workflowName} workflow aangeroepen met:\n- Case ID: ${caseId}\n- Prior sections: ${priorSections.length}\n- User feedback: ${userFeedback ? 'Ja' : 'Nee'}`;
         
         await storage.updateSummonsSection(section.id, {
           status: "draft",
@@ -2525,25 +2528,22 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         return res.json(updatedSection);
       }
       
-      // Real MindStudio v2 API call (same pattern as analysis)
-      console.log(`🔄 Calling MindStudio flow ${flowName} for section ${section.sectionName}`);
+      // Real MindStudio Apps API call
+      console.log(`🔄 Calling MindStudio Apps API for section ${section.sectionName}`);
+      console.log(`📦 App ID: ${mindstudioAppId}, Workflow: ${workflowName}`);
       console.log(`📦 Context: ${priorSections.length} prior sections, analysis available: ${!!analysis.analysisJson}`);
-      console.log(`🏭 Worker ID: ${mindstudioWorkerId}`);
       
       const requestBody = {
-        workerId: mindstudioWorkerId,
-        variables: { 
-          webhookParams: contextPayload
-        },
-        workflow: flowName,
-        includeBillingCost: true
+        appId: mindstudioAppId,
+        workflow: workflowName,
+        variables: contextPayload
       };
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes
       
       try {
-        const mindstudioResponse = await fetch('https://v1.mindstudio-api.com/developer/v2/agents/run', {
+        const mindstudioResponse = await fetch('https://api.mindstudio.ai/developer/v2/apps/run', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -2560,17 +2560,17 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
           throw new Error(`MindStudio API error: ${mindstudioResponse.status} ${errorText}`);
         }
         
-        const result = await mindstudioResponse.json();
+        const response = await mindstudioResponse.json();
         
         console.log(`✅ MindStudio response received for section ${section.sectionName}`);
         
-        // Extract section_result from MindStudio response
-        // Expected structure: { section_result: { section, ready, warnings, content, trace } }
+        // Extract section_result from response.result (Apps API returns result object)
+        // Expected structure: { result: { section_result: { section, ready, warnings, content, trace } } }
         let generatedText = '';
         let sectionResult = null;
         
-        if (result.section_result) {
-          sectionResult = result.section_result;
+        if (response.result && response.result.section_result) {
+          sectionResult = response.result.section_result;
           
           // Format the content for display
           if (sectionResult.content && sectionResult.content.reasoning_paragraph) {
@@ -2591,7 +2591,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
           }
         } else {
           // Fallback extraction
-          generatedText = result.text || result.output || JSON.stringify(result, null, 2);
+          generatedText = response.result?.text || response.result?.output || JSON.stringify(response.result || response, null, 2);
         }
         
         // Update section with generated text
