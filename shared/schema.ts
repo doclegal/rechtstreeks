@@ -65,11 +65,20 @@ export const cases = pgTable("cases", {
   category: varchar("category"),
   description: text("description"),
   claimAmount: decimal("claim_amount", { precision: 10, scale: 2 }),
+  
+  // Claimant (eiser) information
+  claimantName: text("claimant_name"),
+  claimantAddress: text("claimant_address"),
+  claimantCity: varchar("claimant_city"),
+  
+  // Counterparty (gedaagde) information
   counterpartyType: varchar("counterparty_type"), // individual, company
   counterpartyName: text("counterparty_name"),
   counterpartyEmail: varchar("counterparty_email"),
   counterpartyPhone: varchar("counterparty_phone"),
   counterpartyAddress: text("counterparty_address"),
+  counterpartyCity: varchar("counterparty_city"),
+  
   userRole: userRoleEnum("user_role").default("EISER").notNull(), // Who is the user? Default: claimant (for dagvaarding)
   status: caseStatusEnum("status").default("NEW_INTAKE"),
   currentStep: varchar("current_step"),
