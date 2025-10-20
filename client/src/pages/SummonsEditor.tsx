@@ -7,11 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
 
 export default function SummonsEditor() {
-  console.log('[SummonsEditor] Component loaded');
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
-  
-  console.log('[SummonsEditor] Auth state:', { user: user?.email, authLoading });
 
   useEffect(() => {
     if (!authLoading && !user) {
