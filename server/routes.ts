@@ -2626,7 +2626,14 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
             || response.result.evidence_result
             || response.result.claims_result
             || response.result.exhibits_result;
-          console.log(`🔍 Found sectionResult:`, sectionResult ? 'YES' : 'NO');
+          
+          // If not found in a wrapper, check if response.result IS the section data directly
+          if (!sectionResult && response.result.content && response.result.ready !== undefined) {
+            sectionResult = response.result;
+            console.log(`🔍 Found sectionResult: YES (direct in result)`);
+          } else {
+            console.log(`🔍 Found sectionResult:`, sectionResult ? 'YES (in wrapper)' : 'NO');
+          }
         }
         
         if (sectionResult) {
