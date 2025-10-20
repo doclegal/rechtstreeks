@@ -2010,6 +2010,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create section records for each section in sectionsConfig
         for (let i = 0; i < (template!.sectionsConfig as any[]).length; i++) {
           const sectionConfig = (template!.sectionsConfig as any[])[i];
+          
+          // Aanzegging section is fixed and should be auto-approved
+          const isAanzegging = sectionConfig.sectionKey?.toLowerCase() === "aanzegging";
+          const aanzeggingText = `AANZEGGING
+
+Op verzoek van: [Naam eiser]
+Wonende te: [Adres eiser]
+
+Hierbij verzoek ik u te verschijnen voor de kantonrechter van de rechtbank [Naam rechtbank] op: [Datum zitting] om [Tijd zitting]
+ten aanzien van de zaak tegen:
+
+[Naam gedaagde]
+Wonende te: [Adres gedaagde]
+
+De gedaagde wordt verzocht op de hierboven genoemde datum en tijd te verschijnen teneinde te worden gehoord over de tegen hem/haar ingestelde vordering.
+
+Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering zonder dienst/haar tegenspraak worden toegewezen.`;
+          
           await storage.createSummonsSection({
             summonsId: summons.id,
             sectionKey: sectionConfig.sectionKey,
@@ -2017,10 +2035,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             stepOrder: i + 1,
             flowName: sectionConfig.flowName || null,
             feedbackVariableName: sectionConfig.feedbackVariableName || null,
-            status: "pending",
-            generatedText: null,
+            status: isAanzegging ? "approved" : "pending",
+            generatedText: isAanzegging ? aanzeggingText : null,
             userFeedback: null,
-            generationCount: 0
+            generationCount: isAanzegging ? 1 : 0
           });
         }
         
