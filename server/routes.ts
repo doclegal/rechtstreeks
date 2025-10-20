@@ -2670,6 +2670,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
             
             // Combine all parts with double newlines
             generatedText = parts.join('\n\n');
+            console.log(`📝 Assembled ${parts.length} text parts into generatedText (${generatedText.length} chars)`);
             
             // Final fallback: if still no text, look for any string values in content
             if (!generatedText.trim()) {
@@ -2699,6 +2700,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         }
         
         // Update section with generated text
+        console.log(`💾 Saving section ${section.sectionName} with status=draft and ${generatedText.length} chars of text`);
         await storage.updateSummonsSection(section.id, {
           status: "draft",
           generatedText,
@@ -2707,6 +2709,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         });
         
         const updatedSection = await storage.getSummonsSection(section.id);
+        console.log(`✅ Section updated and retrieved, status=${updatedSection?.status}, text length=${updatedSection?.generatedText?.length || 0}`);
         res.json(updatedSection);
       } catch (error) {
         clearTimeout(timeoutId);
