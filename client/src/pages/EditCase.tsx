@@ -18,11 +18,15 @@ const editCaseSchema = z.object({
   description: z.string().min(10, "Beschrijving moet minimaal 10 karakters bevatten"),
   category: z.string().min(1, "Selecteer een categorie"),
   claimAmount: z.string().optional(),
+  claimantName: z.string().optional(),
+  claimantAddress: z.string().optional(),
+  claimantCity: z.string().min(1, "Woonplaats is verplicht voor het bepalen van bevoegdheid"),
   counterpartyType: z.enum(["individual", "company"]),
   counterpartyName: z.string().min(1, "Naam wederpartij is verplicht"),
   counterpartyEmail: z.string().email("Ongeldig emailadres").optional().or(z.literal("")),
   counterpartyPhone: z.string().optional(),
   counterpartyAddress: z.string().optional(),
+  counterpartyCity: z.string().min(1, "Woonplaats/vestigingsplaats is verplicht voor het bepalen van bevoegdheid"),
 });
 
 type EditCaseFormData = z.infer<typeof editCaseSchema>;
@@ -43,11 +47,15 @@ export default function EditCase() {
       description: "",
       category: "",
       claimAmount: "",
+      claimantName: "",
+      claimantAddress: "",
+      claimantCity: "",
       counterpartyType: "individual",
       counterpartyName: "",
       counterpartyEmail: "",
       counterpartyPhone: "",
       counterpartyAddress: "",
+      counterpartyCity: "",
     },
   });
 
@@ -59,11 +67,15 @@ export default function EditCase() {
         description: caseData.description || "",
         category: caseData.category || "",
         claimAmount: caseData.claimAmount || "",
+        claimantName: caseData.claimantName || "",
+        claimantAddress: caseData.claimantAddress || "",
+        claimantCity: caseData.claimantCity || "",
         counterpartyType: caseData.counterpartyType || "individual",
         counterpartyName: caseData.counterpartyName || "",
         counterpartyEmail: caseData.counterpartyEmail || "",
         counterpartyPhone: caseData.counterpartyPhone || "",
         counterpartyAddress: caseData.counterpartyAddress || "",
+        counterpartyCity: caseData.counterpartyCity || "",
       });
     }
   }, [caseData, form]);
@@ -216,6 +228,41 @@ export default function EditCase() {
                 />
               </div>
             </div>
+
+            <div>
+              <Label htmlFor="claimantName">Naam</Label>
+              <Input
+                id="claimantName"
+                {...form.register("claimantName")}
+                placeholder="Voor- en achternaam"
+                data-testid="input-claimant-name"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="claimantAddress">Adres</Label>
+              <Input
+                id="claimantAddress"
+                {...form.register("claimantAddress")}
+                placeholder="Straat 123, 1234 AB"
+                data-testid="input-claimant-address"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="claimantCity">Woonplaats *</Label>
+              <Input
+                id="claimantCity"
+                {...form.register("claimantCity")}
+                placeholder="Amsterdam"
+                data-testid="input-claimant-city"
+              />
+              {form.formState.errors.claimantCity && (
+                <p className="text-sm text-destructive mt-1">
+                  {form.formState.errors.claimantCity.message}
+                </p>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -291,10 +338,27 @@ export default function EditCase() {
               <Textarea
                 id="counterpartyAddress"
                 {...form.register("counterpartyAddress")}
-                placeholder="Straat 123, 1234 AB Stad"
+                placeholder="Straat 123, 1234 AB"
                 rows={2}
                 data-testid="textarea-counterparty-address"
               />
+            </div>
+
+            <div>
+              <Label htmlFor="counterpartyCity">
+                {form.watch("counterpartyType") === "company" ? "Vestigingsplaats *" : "Woonplaats *"}
+              </Label>
+              <Input
+                id="counterpartyCity"
+                {...form.register("counterpartyCity")}
+                placeholder="Rotterdam"
+                data-testid="input-counterparty-city"
+              />
+              {form.formState.errors.counterpartyCity && (
+                <p className="text-sm text-destructive mt-1">
+                  {form.formState.errors.counterpartyCity.message}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
