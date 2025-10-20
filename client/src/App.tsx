@@ -13,7 +13,6 @@ import MyCase from "@/pages/MyCase";
 import Analysis from "@/pages/Analysis";
 import FullAnalysis from "@/pages/FullAnalysis";
 import Letters from "@/pages/Letters";
-import Summons from "@/pages/Summons";
 import SummonsEditor from "@/pages/SummonsEditor";
 import Help from "@/pages/Help";
 import NewCase from "@/pages/NewCase";
@@ -48,7 +47,6 @@ function Router() {
           <Route path="/analysis" component={Analysis} />
           <Route path="/analysis/:id/full" component={FullAnalysis} />
           <Route path="/letters" component={Letters} />
-          <Route path="/summons-old" component={Summons} />
           <Route path="/summons" component={SummonsEditor} />
           <Route path="/edit-case/:id" component={EditCase} />
           <Route path="/step/:stepId" component={StepView} />
