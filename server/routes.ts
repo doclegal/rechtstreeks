@@ -2609,6 +2609,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         
         console.log(`✅ MindStudio response received for section ${section.sectionName}`);
         console.log(`🔍 Response structure:`, JSON.stringify(response, null, 2).substring(0, 500));
+        console.log(`🔍 Response.result keys:`, response.result ? Object.keys(response.result) : 'NO RESULT');
         
         // Extract section data from response.result (Apps API returns result object)
         // Expected structure: { result: { jurisdiction_result/section_result/[key]_result: { section, ready, warnings, content, trace } } }
@@ -2625,6 +2626,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
             || response.result.evidence_result
             || response.result.claims_result
             || response.result.exhibits_result;
+          console.log(`🔍 Found sectionResult:`, sectionResult ? 'YES' : 'NO');
         }
         
         if (sectionResult) {
