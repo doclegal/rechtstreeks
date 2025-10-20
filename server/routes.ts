@@ -2515,10 +2515,10 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         case_title: caseData.title,
         amount_eur: Number(caseData.claimAmount) || 0,
         parties: {
-          eiser_name: userName,
-          eiser_city: parsedAnalysis?.parties?.claimant?.city || null,
+          eiser_name: caseData.claimantName || userName,
+          eiser_city: caseData.claimantCity || parsedAnalysis?.parties?.claimant?.city || null,
           gedaagde_name: caseData.counterpartyName || 'Onbekend',
-          gedaagde_city: parsedAnalysis?.parties?.respondent?.city || parsedAnalysis?.parties?.defendant?.city || null
+          gedaagde_city: caseData.counterpartyCity || parsedAnalysis?.parties?.respondent?.city || parsedAnalysis?.parties?.defendant?.city || null
         },
         is_kantonzaak: parsedAnalysis?.procedure?.is_kantonzaak || false,
         court_info: parsedAnalysis?.procedure?.court || null,
