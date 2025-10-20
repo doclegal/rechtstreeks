@@ -2505,16 +2505,10 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       
       // Call MindStudio flow
       const mindstudioApiKey = process.env.MINDSTUDIO_API_KEY;
+      const mindstudioWorkerId = process.env.MINDSTUDIO_WORKER_ID;
       const useMock = process.env.USE_MINDSTUDIO_SUMMONS_MOCK === 'true';
       
-      // Get worker ID based on section key
-      let workerId = '';
-      if (sectionKey === 'JURISDICTION' || sectionKey === 'bevoegdheid_rechtbank') {
-        workerId = process.env.MS_FLOW_BEVOEGDHEID_ID || '';
-      }
-      // Add more worker IDs for other sections as they are configured
-      
-      if (useMock || !mindstudioApiKey || !workerId) {
+      if (useMock || !mindstudioApiKey || !mindstudioWorkerId) {
         // Return mock response for development
         console.log(`🧪 [MOCK] Generating section ${section.sectionName} with flow ${flowName}`);
         
@@ -2531,12 +2525,13 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         return res.json(updatedSection);
       }
       
-      // Real MindStudio v2 API call
+      // Real MindStudio v2 API call (same pattern as analysis)
       console.log(`🔄 Calling MindStudio flow ${flowName} for section ${section.sectionName}`);
       console.log(`📦 Context: ${priorSections.length} prior sections, analysis available: ${!!analysis.analysisJson}`);
+      console.log(`🏭 Worker ID: ${mindstudioWorkerId}`);
       
       const requestBody = {
-        workerId: workerId,
+        workerId: mindstudioWorkerId,
         variables: { 
           webhookParams: contextPayload
         },
