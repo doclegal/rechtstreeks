@@ -2498,7 +2498,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const mockText = `[MOCK] Gegenereerde tekst voor sectie ${section.sectionName}.\n\nDit is een placeholder tekst die door MindStudio zou worden gegenereerd.\n\nIn productie wordt hier de echte ${flowName} aangeroepen.`;
         
         await storage.updateSummonsSection(section.id, {
-          status: "ready_for_review",
+          status: "draft",
           generatedText: mockText,
           generationCount: (section.generationCount || 0) + 1,
           userFeedback: userFeedback || null
@@ -2532,7 +2532,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update section with generated text
       await storage.updateSummonsSection(section.id, {
-        status: "ready_for_review",
+        status: "draft",
         generatedText,
         generationCount: (section.generationCount || 0) + 1,
         userFeedback: userFeedback || null
@@ -2602,9 +2602,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Section not found" });
       }
       
-      // Update section status to rejected with feedback
+      // Update section status to needs_changes with feedback
       await storage.updateSummonsSection(section.id, {
-        status: "rejected",
+        status: "needs_changes",
         userFeedback: feedback
       });
       

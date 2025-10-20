@@ -151,9 +151,9 @@ export const letters = pgTable("letters", {
 export const summonsSectionStatusEnum = pgEnum("summons_section_status", [
   "pending",
   "generating",
-  "ready_for_review",
-  "approved",
-  "rejected"
+  "draft",
+  "needs_changes",
+  "approved"
 ]);
 
 export const summons = pgTable("summons", {
