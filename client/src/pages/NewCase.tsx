@@ -20,7 +20,7 @@ const newCaseSchema = z.object({
   claimAmount: z.string().optional(),
   claimantName: z.string().optional(),
   claimantAddress: z.string().optional(),
-  claimantCity: z.string().optional(),
+  claimantCity: z.string().min(1, "Woonplaats is verplicht voor het bepalen van bevoegdheid"),
   userRole: z.enum(["EISER", "GEDAAGDE"], {
     required_error: "Selecteer uw rol in deze zaak",
   }),
@@ -29,7 +29,7 @@ const newCaseSchema = z.object({
   counterpartyEmail: z.string().email("Ongeldig emailadres").optional().or(z.literal("")),
   counterpartyPhone: z.string().optional(),
   counterpartyAddress: z.string().optional(),
-  counterpartyCity: z.string().optional(),
+  counterpartyCity: z.string().min(1, "Woonplaats/vestigingsplaats is verplicht voor het bepalen van bevoegdheid"),
 });
 
 type NewCaseFormData = z.infer<typeof newCaseSchema>;
@@ -198,13 +198,18 @@ export default function NewCase() {
             </div>
 
             <div>
-              <Label htmlFor="claimantCity">Woonplaats</Label>
+              <Label htmlFor="claimantCity">Woonplaats *</Label>
               <Input
                 id="claimantCity"
                 {...form.register("claimantCity")}
                 placeholder="Amsterdam"
                 data-testid="input-claimant-city"
               />
+              {form.formState.errors.claimantCity && (
+                <p className="text-sm text-destructive mt-1">
+                  {form.formState.errors.claimantCity.message}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -359,7 +364,7 @@ export default function NewCase() {
 
             <div>
               <Label htmlFor="counterpartyCity">
-                {form.watch("counterpartyType") === "company" ? "Vestigingsplaats" : "Woonplaats"}
+                {form.watch("counterpartyType") === "company" ? "Vestigingsplaats *" : "Woonplaats *"}
               </Label>
               <Input
                 id="counterpartyCity"
@@ -367,6 +372,11 @@ export default function NewCase() {
                 placeholder="Rotterdam"
                 data-testid="input-counterparty-city"
               />
+              {form.formState.errors.counterpartyCity && (
+                <p className="text-sm text-destructive mt-1">
+                  {form.formState.errors.counterpartyCity.message}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

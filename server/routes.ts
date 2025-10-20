@@ -2509,6 +2509,22 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       // Extract user name from request (caseData already loaded above)
       const userName = req.user.name || req.user.email || 'Gebruiker';
       
+      // Extract city values with fallback chain: database -> analysis -> null
+      const eiserCity = caseData.claimantCity || parsedAnalysis?.parties?.claimant?.city || null;
+      const gedaagdeCity = caseData.counterpartyCity || parsedAnalysis?.parties?.respondent?.city || parsedAnalysis?.parties?.defendant?.city || null;
+      
+      // Defensive validation: For jurisdiction sections, require city data
+      if (sectionKey === 'JURISDICTION' && (!eiserCity || !gedaagdeCity)) {
+        const missingFields = [];
+        if (!eiserCity) missingFields.push('woonplaats eiser');
+        if (!gedaagdeCity) missingFields.push('woonplaats gedaagde');
+        
+        return res.status(400).json({ 
+          message: `Kan bevoegdheid niet bepalen zonder ${missingFields.join(' en ')}. Vul eerst de ontbrekende gegevens aan bij de zaakgegevens.`,
+          missingFields
+        });
+      }
+      
       // Build flattened input object that matches MindStudio's expected schema
       const inputData = {
         case_id: caseId,
@@ -2516,9 +2532,9 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         amount_eur: Number(caseData.claimAmount) || 0,
         parties: {
           eiser_name: caseData.claimantName || userName,
-          eiser_city: caseData.claimantCity || parsedAnalysis?.parties?.claimant?.city || null,
+          eiser_city: eiserCity,
           gedaagde_name: caseData.counterpartyName || 'Onbekend',
-          gedaagde_city: caseData.counterpartyCity || parsedAnalysis?.parties?.respondent?.city || parsedAnalysis?.parties?.defendant?.city || null
+          gedaagde_city: gedaagdeCity
         },
         is_kantonzaak: parsedAnalysis?.procedure?.is_kantonzaak || false,
         court_info: parsedAnalysis?.procedure?.court || null,
@@ -2558,6 +2574,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       console.log(`🔄 Calling MindStudio Apps API for section ${section.sectionName}`);
       console.log(`📦 App ID: ${mindstudioAppId}, Workflow: ${workflowName}`);
       console.log(`📦 Input: ${priorSections.length} prior sections, amount: €${inputData.amount_eur}, parties: ${inputData.parties.eiser_name} vs ${inputData.parties.gedaagde_name}`);
+      console.log(`🏙️ Cities: Eiser=${inputData.parties.eiser_city}, Gedaagde=${inputData.parties.gedaagde_city}`);
       
       const requestBody = {
         appId: mindstudioAppId,
