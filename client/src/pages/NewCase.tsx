@@ -18,6 +18,9 @@ const newCaseSchema = z.object({
   description: z.string().min(10, "Beschrijving moet minimaal 10 karakters bevatten"),
   category: z.string().min(1, "Selecteer een categorie"),
   claimAmount: z.string().optional(),
+  claimantName: z.string().optional(),
+  claimantAddress: z.string().optional(),
+  claimantCity: z.string().optional(),
   userRole: z.enum(["EISER", "GEDAAGDE"], {
     required_error: "Selecteer uw rol in deze zaak",
   }),
@@ -26,6 +29,7 @@ const newCaseSchema = z.object({
   counterpartyEmail: z.string().email("Ongeldig emailadres").optional().or(z.literal("")),
   counterpartyPhone: z.string().optional(),
   counterpartyAddress: z.string().optional(),
+  counterpartyCity: z.string().optional(),
 });
 
 type NewCaseFormData = z.infer<typeof newCaseSchema>;
@@ -42,12 +46,16 @@ export default function NewCase() {
       description: "",
       category: "",
       claimAmount: "",
+      claimantName: "",
+      claimantAddress: "",
+      claimantCity: "",
       userRole: "EISER", // Default to claimant (required for dagvaarding)
       counterpartyType: "individual",
       counterpartyName: "",
       counterpartyEmail: "",
       counterpartyPhone: "",
       counterpartyAddress: "",
+      counterpartyCity: "",
     },
   });
 
@@ -167,6 +175,36 @@ export default function NewCase() {
                   data-testid="input-claim-amount"
                 />
               </div>
+            </div>
+
+            <div>
+              <Label htmlFor="claimantName">Naam</Label>
+              <Input
+                id="claimantName"
+                {...form.register("claimantName")}
+                placeholder="Voor- en achternaam"
+                data-testid="input-claimant-name"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="claimantAddress">Adres</Label>
+              <Input
+                id="claimantAddress"
+                {...form.register("claimantAddress")}
+                placeholder="Straat 123, 1234 AB"
+                data-testid="input-claimant-address"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="claimantCity">Woonplaats</Label>
+              <Input
+                id="claimantCity"
+                {...form.register("claimantCity")}
+                placeholder="Amsterdam"
+                data-testid="input-claimant-city"
+              />
             </div>
           </CardContent>
         </Card>
@@ -313,9 +351,21 @@ export default function NewCase() {
               <Textarea
                 id="counterpartyAddress"
                 {...form.register("counterpartyAddress")}
-                placeholder="Straat 123, 1234 AB Stad"
+                placeholder="Straat 123, 1234 AB"
                 rows={2}
                 data-testid="textarea-counterparty-address"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="counterpartyCity">
+                {form.watch("counterpartyType") === "company" ? "Vestigingsplaats" : "Woonplaats"}
+              </Label>
+              <Input
+                id="counterpartyCity"
+                {...form.register("counterpartyCity")}
+                placeholder="Rotterdam"
+                data-testid="input-counterparty-city"
               />
             </div>
           </CardContent>
