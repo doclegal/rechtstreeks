@@ -116,16 +116,28 @@ export default function SummonsEditor() {
         setIsInitializing(true);
 
         // First, check if a multi-step summons already exists for this case
-        const checkResponse = await fetch(`/api/cases/${selectedCaseId}`);
-        if (checkResponse.ok) {
-          const caseData = await checkResponse.json();
+        const listResponse = await fetch(`/api/cases/${selectedCaseId}/summons-v2`);
+        if (listResponse.ok) {
+          const summonsList = await listResponse.json();
           
-          // Try to find existing multi-step summons
-          // This would require adding an endpoint to get summons by case
-          // For now, we'll always create a new one if summonsId is not set
+          // Find most recent in-progress or completed multi-step summons (templateVersion v4-multistep or v5-*)
+          const existingSummons = summonsList.find((s: any) => 
+            s.templateVersion && (
+              s.templateVersion.startsWith('v4-') || 
+              s.templateVersion.startsWith('v5-')
+            )
+          );
+          
+          if (existingSummons) {
+            console.log('✅ Found existing summons, reusing:', existingSummons.id);
+            setSummonsId(existingSummons.id);
+            setIsInitializing(false);
+            return;
+          }
         }
 
-        // Initialize new summons with the template
+        // No existing summons found, create a new one
+        console.log('📝 No existing summons found, creating new one');
         const response = await fetch(`/api/cases/${selectedCaseId}/summons-v2/generate`, {
           method: 'POST',
           headers: {
