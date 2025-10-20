@@ -1,0 +1,88 @@
+Title: Deprecate current Summons UI and prepare blank “Summons Editor” page (keep all other features working)
+
+Goal
+We’re changing how the summons is generated. For now, completely remove the existing Summons editor UI and leave a clean, empty “Summons Editor” page as a placeholder. Do not break any other areas of the app.
+
+Scope (what to do)
+
+Remove/disable the current Summons UI
+
+Hide and remove all components, buttons and blocks under the Summons area, including:
+
+Procedurepositie
+
+Dagvaarding template
+
+Template details
+
+Hoe werkt het
+
+The current fillable summons document/editor
+
+Remove associated state, handlers, and dead routes for these components.
+
+Keep the rest fully working
+
+“Mijn zaak / My Case”, “Analyse / Analysis”, and “Brieven / Letters” must remain 100% functional.
+
+Do not remove shared utilities, stores, or API calls used by those sections.
+
+Leave a blank placeholder page
+
+Keep the route/menu item “Dagvaarding Editor”.
+
+Render a minimal placeholder (title + short note: “Coming soon”).
+
+No actions, no forms.
+
+Code cleanup
+
+Remove dead imports, unused hooks/state, and orphaned styles related to the old Summons editor.
+
+Delete obsolete helper functions and constants that are not used outside the Summons area.
+
+If a helper is shared, keep it and move it to a neutral/shared location.
+
+Feature flag (defensive)
+
+Add a simple feature flag (e.g., SUMMONS_UI_ENABLED=false) so the old UI cannot reappear by accident.
+
+Ensure the placeholder page shows regardless of the flag; the flag only controls legacy code paths (which should be removed now, but keep the flag guard for safety in case of cache/rollback).
+
+QA & non-regression
+
+Verify navigation still works and there are no console errors.
+
+Confirm environment variables and API clients are unchanged.
+
+Run existing tests; add a smoke test that navigates to “Dagvaarding Editor” and sees the placeholder text.
+
+Check that “Analyse” can still call MindStudio and render responses.
+
+Check that “Brieven” still creates, previews, and saves letters.
+
+Out of scope (don’t do now)
+
+Do not add the new section-by-section summons builder.
+
+Do not change any MindStudio flows or API schemas.
+
+Acceptance criteria
+
+The old Summons editor UI and all its controls are gone.
+
+The “Dagvaarding Editor” route renders a clean placeholder only.
+
+“Mijn zaak / My Case”, “Analyse / Analysis”, and “Brieven / Letters” behave exactly as before (no regressions).
+
+No unused imports or dead code from the legacy Summons UI remain.
+
+No new TypeScript/JS/console errors or failing tests.
+
+Feature flag present and set to false by default.
+
+Rollback plan
+
+Create a branch before removal. If anything breaks outside Summons, revert quickly to that branch.
+
+Keep a copy of the removed components in a legacy/ folder in the branch (not in main) for reference if needed later.
