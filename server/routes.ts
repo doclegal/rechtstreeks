@@ -2480,40 +2480,45 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       const analysis = await storage.getLatestAnalysis(caseId);
       const documents = await storage.getDocumentsByCase(caseId);
       
-      // Build launch variables for MindStudio
-      const launchVariables: any = {
-        ...userFields,
-        ...previousSections,
-        case_id: caseId,
-        summons_id: summonsId,
-        section_key: sectionKey
-      };
-      
-      // Add user feedback if provided (for regeneration)
-      if (userFeedback) {
-        launchVariables[feedbackVariableName] = userFeedback;
+      if (!analysis) {
+        return res.status(400).json({ message: "Case must be analyzed first before generating summons sections" });
       }
       
-      // Add analysis context if available
-      if (analysis?.analysisJson) {
-        launchVariables.analysis = analysis.analysisJson;
-      }
-      
-      // Add document context
-      if (documents.length > 0) {
-        launchVariables.documents = documents.map(d => ({
-          filename: d.filename,
-          text: d.extractedText?.substring(0, 5000) // Limit text length
+      // Get all prior approved sections to provide context
+      const allSections = await storage.getSummonsSections(summonsId);
+      const priorSections = allSections
+        .filter(s => s.stepOrder < section.stepOrder && s.status === "approved")
+        .sort((a, b) => a.stepOrder - b.stepOrder)
+        .map(s => ({
+          sectionKey: s.sectionKey,
+          sectionName: s.sectionName,
+          content: s.generatedText || ""
         }));
-      }
+      
+      // Build complete context payload for MindStudio
+      const contextPayload = {
+        case_id: caseId,
+        analysis_json: analysis.analysisJson,
+        prior_sections: priorSections,
+        user_feedback: userFeedback || ""
+      };
       
       // Call MindStudio flow
       const mindstudioApiKey = process.env.MINDSTUDIO_API_KEY;
       const useMock = process.env.USE_MINDSTUDIO_SUMMONS_MOCK === 'true';
       
-      if (useMock || !mindstudioApiKey) {
+      // Get worker ID based on section key
+      let workerId = '';
+      if (sectionKey === 'JURISDICTION' || sectionKey === 'bevoegdheid_rechtbank') {
+        workerId = process.env.MS_FLOW_BEVOEGDHEID_ID || '';
+      }
+      // Add more worker IDs for other sections as they are configured
+      
+      if (useMock || !mindstudioApiKey || !workerId) {
         // Return mock response for development
-        const mockText = `[MOCK] Gegenereerde tekst voor sectie ${section.sectionName}.\n\nDit is een placeholder tekst die door MindStudio zou worden gegenereerd.\n\nIn productie wordt hier de echte ${flowName} aangeroepen.`;
+        console.log(`🧪 [MOCK] Generating section ${section.sectionName} with flow ${flowName}`);
+        
+        const mockText = `[MOCK] Gegenereerde tekst voor sectie ${section.sectionName}.\n\nDit is een placeholder tekst die door MindStudio zou worden gegenereerd.\n\nIn productie wordt hier de echte ${flowName} aangeroepen met:\n- Case ID: ${caseId}\n- Prior sections: ${priorSections.length}\n- User feedback: ${userFeedback ? 'Ja' : 'Nee'}`;
         
         await storage.updateSummonsSection(section.id, {
           status: "draft",
@@ -2526,38 +2531,88 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         return res.json(updatedSection);
       }
       
-      // Real MindStudio call
-      const mindstudioResponse = await fetch(`https://api.mindstudio.ai/v1/workflows/${flowName}/run`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${mindstudioApiKey}`
+      // Real MindStudio v2 API call
+      console.log(`🔄 Calling MindStudio flow ${flowName} for section ${section.sectionName}`);
+      console.log(`📦 Context: ${priorSections.length} prior sections, analysis available: ${!!analysis.analysisJson}`);
+      
+      const requestBody = {
+        workerId: workerId,
+        variables: { 
+          webhookParams: contextPayload
         },
-        body: JSON.stringify({
-          variables: launchVariables
-        })
-      });
+        workflow: flowName,
+        includeBillingCost: true
+      };
       
-      if (!mindstudioResponse.ok) {
-        throw new Error(`MindStudio API error: ${mindstudioResponse.statusText}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes
+      
+      try {
+        const mindstudioResponse = await fetch('https://v1.mindstudio-api.com/developer/v2/agents/run', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${mindstudioApiKey}`
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!mindstudioResponse.ok) {
+          const errorText = await mindstudioResponse.text();
+          throw new Error(`MindStudio API error: ${mindstudioResponse.status} ${errorText}`);
+        }
+        
+        const result = await mindstudioResponse.json();
+        
+        console.log(`✅ MindStudio response received for section ${section.sectionName}`);
+        
+        // Extract section_result from MindStudio response
+        // Expected structure: { section_result: { section, ready, warnings, content, trace } }
+        let generatedText = '';
+        let sectionResult = null;
+        
+        if (result.section_result) {
+          sectionResult = result.section_result;
+          
+          // Format the content for display
+          if (sectionResult.content && sectionResult.content.reasoning_paragraph) {
+            generatedText = sectionResult.content.reasoning_paragraph;
+            
+            // Add forum clause if present
+            if (sectionResult.content.forum_clause_used && sectionResult.content.forum_clause_text) {
+              generatedText += `\n\n${sectionResult.content.forum_clause_text}`;
+            }
+          } else {
+            // Fallback to full JSON if structure is different
+            generatedText = JSON.stringify(sectionResult, null, 2);
+          }
+          
+          // Log warnings if any
+          if (sectionResult.warnings && sectionResult.warnings.length > 0) {
+            console.log(`⚠️ Warnings for section ${section.sectionName}:`, sectionResult.warnings);
+          }
+        } else {
+          // Fallback extraction
+          generatedText = result.text || result.output || JSON.stringify(result, null, 2);
+        }
+        
+        // Update section with generated text
+        await storage.updateSummonsSection(section.id, {
+          status: "draft",
+          generatedText,
+          generationCount: (section.generationCount || 0) + 1,
+          userFeedback: userFeedback || null
+        });
+        
+        const updatedSection = await storage.getSummonsSection(section.id);
+        res.json(updatedSection);
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
       }
-      
-      const result = await mindstudioResponse.json();
-      
-      // Extract generated text from result based on section config
-      const aiFieldKey = sectionConfig.aiFieldKey || sectionKey;
-      const generatedText = result[aiFieldKey] || result.text || result.output || '';
-      
-      // Update section with generated text
-      await storage.updateSummonsSection(section.id, {
-        status: "draft",
-        generatedText,
-        generationCount: (section.generationCount || 0) + 1,
-        userFeedback: userFeedback || null
-      });
-      
-      const updatedSection = await storage.getSummonsSection(section.id);
-      res.json(updatedSection);
     } catch (error) {
       console.error("Error generating section:", error);
       res.status(500).json({ message: (error as Error).message || "Failed to generate section" });
