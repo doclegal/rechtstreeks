@@ -2495,13 +2495,43 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
           content: s.generatedText || ""
         }));
       
-      // Build complete context payload for MindStudio
-      const contextPayload = {
+      // Parse analysis JSON to extract required fields for MindStudio
+      let parsedAnalysis: any = {};
+      try {
+        parsedAnalysis = typeof analysis.analysisJson === 'string' 
+          ? JSON.parse(analysis.analysisJson) 
+          : analysis.analysisJson || {};
+      } catch (e) {
+        console.error('Failed to parse analysis JSON:', e);
+        parsedAnalysis = {};
+      }
+      
+      // Extract user name from request (caseData already loaded above)
+      const userName = req.user.name || req.user.email || 'Gebruiker';
+      
+      // Build flattened input object that matches MindStudio's expected schema
+      const inputData = {
         case_id: caseId,
-        analysis_json: analysis.analysisJson,
+        case_title: caseData.title,
+        amount_eur: Number(caseData.claimAmount) || 0,
+        parties: {
+          eiser_name: userName,
+          eiser_city: parsedAnalysis?.parties?.claimant?.city || null,
+          gedaagde_name: caseData.counterpartyName || 'Onbekend',
+          gedaagde_city: parsedAnalysis?.parties?.respondent?.city || parsedAnalysis?.parties?.defendant?.city || null
+        },
+        is_kantonzaak: parsedAnalysis?.procedure?.is_kantonzaak || false,
+        court_info: parsedAnalysis?.procedure?.court || null,
+        facts: parsedAnalysis?.facts || null,
+        legal_analysis: parsedAnalysis?.legal_analysis || null,
         prior_sections: priorSections,
-        user_feedback: userFeedback || ""
+        user_feedback: userFeedback || "",
+        // Include full analysis for any additional fields the flow might need
+        full_analysis: parsedAnalysis
       };
+      
+      // Serialize as JSON string for input_json variable
+      const inputJsonString = JSON.stringify(inputData);
       
       // Call MindStudio flow using Apps API
       const mindstudioApiKey = process.env.MINDSTUDIO_API_KEY;
@@ -2512,7 +2542,6 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       const workflowName = flowName || '';
       
       if (useMock || !mindstudioApiKey || !mindstudioAppId) {
-        // Return mock response for development
         console.log(`🧪 [MOCK] Generating section ${section.sectionName} with workflow ${workflowName}`);
         
         const mockText = `[MOCK] Gegenereerde tekst voor sectie ${section.sectionName}.\n\nDit is een placeholder tekst die door MindStudio zou worden gegenereerd.\n\nIn productie wordt hier de echte ${workflowName} workflow aangeroepen met:\n- Case ID: ${caseId}\n- Prior sections: ${priorSections.length}\n- User feedback: ${userFeedback ? 'Ja' : 'Nee'}`;
@@ -2531,12 +2560,14 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       // Real MindStudio Apps API call
       console.log(`🔄 Calling MindStudio Apps API for section ${section.sectionName}`);
       console.log(`📦 App ID: ${mindstudioAppId}, Workflow: ${workflowName}`);
-      console.log(`📦 Context: ${priorSections.length} prior sections, analysis available: ${!!analysis.analysisJson}`);
+      console.log(`📦 Input: ${priorSections.length} prior sections, amount: €${inputData.amount_eur}, parties: ${inputData.parties.eiser_name} vs ${inputData.parties.gedaagde_name}`);
       
       const requestBody = {
         appId: mindstudioAppId,
         workflow: workflowName,
-        variables: contextPayload
+        variables: {
+          input_json: inputJsonString
+        }
       };
       
       const controller = new AbortController();
