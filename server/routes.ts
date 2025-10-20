@@ -2572,13 +2572,38 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         if (response.result && response.result.section_result) {
           sectionResult = response.result.section_result;
           
-          // Format the content for display
-          if (sectionResult.content && sectionResult.content.reasoning_paragraph) {
-            generatedText = sectionResult.content.reasoning_paragraph;
+          // Format the content for display - combine all sub-paragraphs into one continuous text
+          if (sectionResult.content) {
+            const parts: string[] = [];
+            const content = sectionResult.content;
+            
+            // For jurisdiction section with multiple sub-paragraphs
+            if (content.kanton_competence && content.kanton_competence.paragraph) {
+              parts.push(content.kanton_competence.paragraph);
+            }
+            if (content.relative_competence && content.relative_competence.paragraph) {
+              parts.push(content.relative_competence.paragraph);
+            }
+            if (content.conclusion_paragraph) {
+              parts.push(content.conclusion_paragraph);
+            }
+            
+            // Fallback to reasoning_paragraph if sub-paragraphs not found
+            if (parts.length === 0 && content.reasoning_paragraph) {
+              parts.push(content.reasoning_paragraph);
+            }
             
             // Add forum clause if present
-            if (sectionResult.content.forum_clause_used && sectionResult.content.forum_clause_text) {
-              generatedText += `\n\n${sectionResult.content.forum_clause_text}`;
+            if (content.forum_clause_used && content.forum_clause_text) {
+              parts.push(content.forum_clause_text);
+            }
+            
+            // Combine all parts with double newlines
+            generatedText = parts.join('\n\n');
+            
+            // Fallback to full JSON if no content extracted
+            if (!generatedText.trim()) {
+              generatedText = JSON.stringify(sectionResult, null, 2);
             }
           } else {
             // Fallback to full JSON if structure is different
