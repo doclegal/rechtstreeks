@@ -2530,9 +2530,6 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         full_analysis: parsedAnalysis
       };
       
-      // Serialize as JSON string for input_json variable
-      const inputJsonString = JSON.stringify(inputData);
-      
       // Call MindStudio flow using Apps API
       const mindstudioApiKey = process.env.MINDSTUDIO_API_KEY;
       const mindstudioAppId = process.env.MS_AGENT_APP_ID;
@@ -2566,7 +2563,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         appId: mindstudioAppId,
         workflow: workflowName,
         variables: {
-          input_json: inputJsonString
+          input_json: inputData  // Send as object, not string
         }
       };
       
