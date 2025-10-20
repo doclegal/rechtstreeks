@@ -1,18 +1,17 @@
 import { useAuth } from "@/hooks/useAuth";
-import { useCases } from "@/hooks/useCase";
-import { useActiveCase } from "@/contexts/CaseContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
-import { Scale, PlusCircle, Construction } from "lucide-react";
+import { Scale, Construction } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
 
 export default function SummonsEditor() {
+  console.log('[SummonsEditor] Component loaded');
   const { user, isLoading: authLoading } = useAuth();
-  const { isLoading: casesLoading } = useCases();
   const { toast } = useToast();
-  const currentCase = useActiveCase();
+  
+  console.log('[SummonsEditor] Auth state:', { user: user?.email, authLoading });
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -27,31 +26,12 @@ export default function SummonsEditor() {
     }
   }, [user, authLoading, toast]);
 
-  if (authLoading || casesLoading) {
+  if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Laden...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!currentCase) {
-    return (
-      <div className="text-center py-12">
-        <div className="max-w-md mx-auto">
-          <h2 className="text-2xl font-bold text-foreground mb-4">Geen actieve zaak</h2>
-          <p className="text-muted-foreground mb-6">
-            U heeft nog geen zaak aangemaakt. Begin met het opstarten van uw eerste juridische zaak.
-          </p>
-          <Button asChild size="lg" data-testid="button-create-first-case">
-            <Link href="/new-case">
-              <PlusCircle className="mr-2 h-5 w-5" />
-              Eerste zaak starten
-            </Link>
-          </Button>
         </div>
       </div>
     );
