@@ -2594,6 +2594,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         const response = await mindstudioResponse.json();
         
         console.log(`✅ MindStudio response received for section ${section.sectionName}`);
+        console.log(`🔍 Response structure:`, JSON.stringify(response, null, 2).substring(0, 500));
         
         // Extract section_result from response.result (Apps API returns result object)
         // Expected structure: { result: { section_result: { section, ready, warnings, content, trace } } }
@@ -2602,6 +2603,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         
         if (response.result && response.result.section_result) {
           sectionResult = response.result.section_result;
+          console.log(`🔍 Section result content keys:`, Object.keys(sectionResult.content || {}));
           
           // Format the content for display - combine all sub-paragraphs into one continuous text
           if (sectionResult.content) {
@@ -2624,17 +2626,35 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
               parts.push(content.reasoning_paragraph);
             }
             
+            // Check for other common paragraph fields
+            if (parts.length === 0 && content.paragraph) {
+              parts.push(content.paragraph);
+            }
+            
+            // Check for text field
+            if (parts.length === 0 && content.text) {
+              parts.push(content.text);
+            }
+            
             // Add forum clause if present
-            if (content.forum_clause_used && content.forum_clause_text) {
+            if (content.forum_clause && content.forum_clause.text) {
+              parts.push(content.forum_clause.text);
+            } else if (content.forum_clause_used && content.forum_clause_text) {
               parts.push(content.forum_clause_text);
             }
             
             // Combine all parts with double newlines
             generatedText = parts.join('\n\n');
             
-            // Fallback to full JSON if no content extracted
+            // Final fallback: if still no text, look for any string values in content
             if (!generatedText.trim()) {
-              generatedText = JSON.stringify(sectionResult, null, 2);
+              console.log('⚠️ No standard paragraph fields found, searching for text in content...');
+              const textValues = Object.values(content).filter(v => typeof v === 'string' && v.trim().length > 10);
+              if (textValues.length > 0) {
+                generatedText = textValues.join('\n\n');
+              } else {
+                generatedText = JSON.stringify(sectionResult, null, 2);
+              }
             }
           } else {
             // Fallback to full JSON if structure is different
