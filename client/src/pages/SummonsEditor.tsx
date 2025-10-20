@@ -427,6 +427,9 @@ export default function SummonsEditor() {
                 // Dynamic sections
                 const isDisabled = !canGenerateSection(section.stepOrder);
 
+                const isGenerating = generateMutation.isPending && 
+                                    generateMutation.variables?.sectionKey === section.sectionKey;
+                
                 return (
                   <SectionBlock
                     key={section.id}
@@ -437,6 +440,7 @@ export default function SummonsEditor() {
                     generatedText={section.generatedText}
                     userFeedback={section.userFeedback}
                     disabled={isDisabled}
+                    isGenerating={isGenerating}
                     onGenerate={async () => {
                       await generateMutation.mutateAsync({ 
                         sectionKey: section.sectionKey 

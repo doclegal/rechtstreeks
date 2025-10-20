@@ -18,6 +18,7 @@ interface SectionBlockProps {
   warnings?: string[];
   disabled?: boolean;
   isReadOnly?: boolean;
+  isGenerating?: boolean;
   onGenerate: () => Promise<void>;
   onApprove: () => Promise<void>;
   onNeedsChanges: () => void;
@@ -34,6 +35,7 @@ export function SectionBlock({
   warnings = [],
   disabled = false,
   isReadOnly = false,
+  isGenerating = false,
   onGenerate,
   onApprove,
   onNeedsChanges,
@@ -161,11 +163,20 @@ export function SectionBlock({
           {status === "pending" && (
             <Button
               onClick={onGenerate}
-              disabled={disabled}
+              disabled={disabled || isGenerating}
               data-testid={`button-generate-${sectionKey}`}
             >
-              <Sparkles className="w-4 h-4 mr-2" />
-              Genereer
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Genereren...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Genereer
+                </>
+              )}
             </Button>
           )}
           
@@ -185,7 +196,7 @@ export function SectionBlock({
                 onClick={onApprove}
                 variant="default"
                 className="bg-green-600 hover:bg-green-700"
-                disabled={disabled}
+                disabled={disabled || isGenerating}
                 data-testid={`button-approve-${sectionKey}`}
               >
                 <CheckCircle2 className="w-4 h-4 mr-2" />
@@ -196,7 +207,7 @@ export function SectionBlock({
                 <Button
                   onClick={handleNeedsChangesClick}
                   variant="outline"
-                  disabled={disabled}
+                  disabled={disabled || isGenerating}
                   data-testid={`button-needs-changes-${sectionKey}`}
                 >
                   <XCircle className="w-4 h-4 mr-2" />
@@ -207,11 +218,20 @@ export function SectionBlock({
               <Button
                 onClick={onGenerate}
                 variant="outline"
-                disabled={disabled}
+                disabled={disabled || isGenerating}
                 data-testid={`button-regenerate-${sectionKey}`}
               >
-                <Sparkles className="w-4 h-4 mr-2" />
-                Opnieuw genereren
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Genereren...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Opnieuw genereren
+                  </>
+                )}
               </Button>
             </>
           )}
@@ -220,11 +240,20 @@ export function SectionBlock({
             <Button
               onClick={onGenerate}
               variant="outline"
-              disabled={disabled}
+              disabled={disabled || isGenerating}
               data-testid={`button-reopen-${sectionKey}`}
             >
-              <Sparkles className="w-4 h-4 mr-2" />
-              Heropenen
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Genereren...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Heropenen
+                </>
+              )}
             </Button>
           )}
         </div>
