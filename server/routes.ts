@@ -2610,13 +2610,24 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         console.log(`✅ MindStudio response received for section ${section.sectionName}`);
         console.log(`🔍 Response structure:`, JSON.stringify(response, null, 2).substring(0, 500));
         
-        // Extract section_result from response.result (Apps API returns result object)
-        // Expected structure: { result: { section_result: { section, ready, warnings, content, trace } } }
+        // Extract section data from response.result (Apps API returns result object)
+        // Expected structure: { result: { jurisdiction_result/section_result/[key]_result: { section, ready, warnings, content, trace } } }
         let generatedText = '';
         let sectionResult = null;
         
-        if (response.result && response.result.section_result) {
-          sectionResult = response.result.section_result;
+        // Try multiple possible keys for the section data
+        if (response.result) {
+          sectionResult = response.result.section_result 
+            || response.result.jurisdiction_result 
+            || response.result.facts_result
+            || response.result.legal_grounds_result
+            || response.result.defenses_result
+            || response.result.evidence_result
+            || response.result.claims_result
+            || response.result.exhibits_result;
+        }
+        
+        if (sectionResult) {
           console.log(`🔍 Section result content keys:`, Object.keys(sectionResult.content || {}));
           
           // Format the content for display - combine all sub-paragraphs into one continuous text
