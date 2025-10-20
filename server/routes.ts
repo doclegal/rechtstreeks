@@ -2508,12 +2508,19 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       const mindstudioAppId = process.env.MS_AGENT_APP_ID;
       const useMock = process.env.USE_MINDSTUDIO_SUMMONS_MOCK === 'true';
       
-      // Strip .flow extension from workflow name if present
-      const workflowName = flowName?.replace(/\.flow$/i, '') || '';
+      // Use workflow name as-is (should include .flow extension like FullAnalysis.flow)
+      const workflowName = flowName || '';
+      
+      // Debug logging
+      console.log(`🔍 DEBUG: useMock=${useMock}, hasApiKey=${!!mindstudioApiKey}, hasAppId=${!!mindstudioAppId}`);
+      console.log(`🔍 DEBUG: API Key length: ${mindstudioApiKey?.length || 0}, App ID length: ${mindstudioAppId?.length || 0}`);
       
       if (useMock || !mindstudioApiKey || !mindstudioAppId) {
         // Return mock response for development
-        console.log(`🧪 [MOCK] Generating section ${section.sectionName} with workflow ${workflowName}`);
+        const reason = useMock ? 'USE_MINDSTUDIO_SUMMONS_MOCK=true' : 
+                       !mindstudioApiKey ? 'Missing MINDSTUDIO_API_KEY' :
+                       !mindstudioAppId ? 'Missing MS_AGENT_APP_ID' : 'Unknown';
+        console.log(`🧪 [MOCK] Generating section ${section.sectionName} with workflow ${workflowName} (Reason: ${reason})`);
         
         const mockText = `[MOCK] Gegenereerde tekst voor sectie ${section.sectionName}.\n\nDit is een placeholder tekst die door MindStudio zou worden gegenereerd.\n\nIn productie wordt hier de echte ${workflowName} workflow aangeroepen met:\n- Case ID: ${caseId}\n- Prior sections: ${priorSections.length}\n- User feedback: ${userFeedback ? 'Ja' : 'Nee'}`;
         
