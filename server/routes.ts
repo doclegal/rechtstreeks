@@ -2616,6 +2616,18 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         }
       };
       
+      // Log what we're sending to MindStudio
+      console.log(`📤 Sending to MindStudio - top-level input_json keys:`, Object.keys(inputData));
+      console.log(`📤 Context summary:`, JSON.stringify({
+        has_previous_version: !!inputData.previous_version,
+        previous_version_length: inputData.previous_version?.length || 0,
+        has_user_feedback: !!inputData.user_feedback,
+        user_feedback_length: inputData.user_feedback?.length || 0,
+        is_regeneration: inputData.is_regeneration,
+        facts_known_count: inputData.facts?.known?.length || 0,
+        prior_sections_count: inputData.prior_sections?.length || 0
+      }, null, 2));
+      
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes
       
