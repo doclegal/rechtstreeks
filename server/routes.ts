@@ -2756,6 +2756,27 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
               console.log(`📝 Assembled FACTS section with ${parts.length} parts`);
             }
             
+            // Special handling for DEFENSES section (Verweer en weerlegging)
+            if (parts.length === 0 && (content.introduction || content.defenses)) {
+              if (content.introduction) {
+                parts.push(content.introduction);
+              }
+              
+              if (Array.isArray(content.defenses)) {
+                content.defenses.forEach((defense: any) => {
+                  if (defense.defense_claim && defense.rebuttal) {
+                    parts.push(`**Verweer ${defense.defense_number}:**\n${defense.defense_claim}\n\n**Weerlegging:**\n${defense.rebuttal}`);
+                  }
+                });
+              }
+              
+              if (content.conclusion) {
+                parts.push(content.conclusion);
+              }
+              
+              console.log(`📝 Assembled DEFENSES section with ${parts.length} parts`);
+            }
+            
             // For jurisdiction section with multiple sub-paragraphs
             if (parts.length === 0 && content.kanton_competence && content.kanton_competence.paragraph) {
               parts.push(content.kanton_competence.paragraph);

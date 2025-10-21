@@ -279,10 +279,10 @@ export default function SummonsEditor() {
       return factsSection?.status === "approved" && claimsSection?.status === "approved";
     }
     
-    // Special workflow: DEFENSES (5) can be generated after CLAIMS (7)
+    // Special workflow: DEFENSES (5) can be generated after LEGAL_GROUNDS (4)
     if (sectionKey === "DEFENSES") {
-      const claimsSection = sections.find(s => s.sectionKey === "CLAIMS");
-      return claimsSection?.status === "approved";
+      const legalGroundsSection = sections.find(s => s.sectionKey === "LEGAL_GROUNDS");
+      return legalGroundsSection?.status === "approved";
     }
     
     // Special workflow: EVIDENCE (6) can be generated after DEFENSES (5)
