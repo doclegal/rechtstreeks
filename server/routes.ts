@@ -2525,6 +2525,11 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         });
       }
       
+      // Format prior sections as readable text for MindStudio prompt
+      const priorSectionsText = priorSections.map(s => 
+        `=== ${s.sectionName.toUpperCase()} ===\n${s.content}`
+      ).join('\n\n');
+      
       // Build flattened input object that matches MindStudio's expected schema
       const inputData = {
         case_id: caseId,
@@ -2540,7 +2545,8 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         court_info: parsedAnalysis?.procedure?.court || null,
         facts: parsedAnalysis?.facts || null,
         legal_analysis: parsedAnalysis?.legal_analysis || null,
-        prior_sections: priorSections,
+        prior_sections: priorSections,  // Array of objects (for structured access)
+        prior_sections_text: priorSectionsText,  // Formatted string (for prompt)
         user_feedback: userFeedback || "",
         // Include full analysis for any additional fields the flow might need
         full_analysis: parsedAnalysis
