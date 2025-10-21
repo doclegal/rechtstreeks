@@ -2576,6 +2576,14 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       console.log(`📦 Input: ${priorSections.length} prior sections, amount: €${inputData.amount_eur}, parties: ${inputData.parties.eiser_name} vs ${inputData.parties.gedaagde_name}`);
       console.log(`🏙️ Cities: Eiser=${inputData.parties.eiser_city}, Gedaagde=${inputData.parties.gedaagde_city}`);
       
+      // Log prior sections for debugging
+      if (priorSections.length > 0) {
+        console.log(`📋 Prior sections being sent:`);
+        priorSections.forEach((ps, idx) => {
+          console.log(`   ${idx + 1}. ${ps.sectionName} (${ps.sectionKey}): ${ps.content.substring(0, 100)}...`);
+        });
+      }
+      
       const requestBody = {
         appId: mindstudioAppId,
         workflow: workflowName,
