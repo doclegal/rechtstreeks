@@ -1,0 +1,311 @@
+{
+case_id: "2121405a-528a-4c9c-903f-08fc0042d0fc"
+case_title: "Keuken niet geleverd"
+amount_eur: 17500
+parties: {
+eiser_name: "Gebruiker"
+eiser_city: "Bakel"
+gedaagde_name: "Argwa Keukens"
+gedaagde_city: "Den haag"
+}
+is_kantonzaak: false
+court_info: null
+facts: {
+known: [
+0: "Koopovereenkomst keuken gesloten op 1 mei 2025"
+1: "Overeengekomen leveringsdatum uiterlijk 31 mei 2025"
+2: "Volledige koopsom €12.450 betaald"
+3: "Keuken niet geleverd per 30 juni 2025"
+4: "Ingebrekestelling verzonden met 14 dagen termijn"
+]
+unclear: [
+0: "Inhoud algemene voorwaarden over levertermijnen"
+1: "Werkelijke oorzaak vertraging"
+]
+disputed: [
+0: "Telefonische afspraak over nieuwe leverdatum eind juli"
+1: "Overmacht wegens productieproblemen fabrikant"
+]
+}
+legal_analysis: {
+risks: [
+0: "Bewijslast exacte afspraken zonder getekend contract"
+]
+legal_basis: [
+0: {
+law: "BW"
+note: "Leveringsverplichting verkoper"
+article: "7:9"
+}
+]
+legal_issues: [
+0: "Verzuim"
+1: "Overmacht"
+]
+next_actions: [
+0: "Verkrijg getekende koopovereenkomst"
+1: "Wacht reactietermijn ingebrekestelling af"
+]
+potential_defenses: [
+0: "Overmacht wegens productieproblemen"
+]
+what_is_the_dispute: "Niet-nakoming leveringsverplichting keuken"
+preliminary_assessment: "Sterke zaak voor eiser gezien duidelijke niet-nakoming"
+}
+prior_sections: [
+0: {
+sectionKey: "AANZEGGING"
+sectionName: "Aanzegging / Notice of appearance"
+content: "AANZEGGING Op verzoek van: [Naam eiser] Wonende te: [Adres eiser] Hierbij verzoek ik u te verschijnen voor de kantonrechter van de rechtbank [Naam rechtbank] op: [Datum zitting] om [Tijd zitting] ten aanzien van de zaak tegen: [Naam gedaagde] Wonende te: [Adres gedaagde] De gedaagde wordt verzocht op de hierboven genoemde datum en tijd te verschijnen teneinde te worden gehoord over de tegen hem/haar ingestelde vordering. Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering zonder dienst/haar tegenspraak worden toegewezen."
+}
+1: {
+sectionKey: "JURISDICTION"
+sectionName: "Bevoegdheid en relatieve competentie"
+content: "De rechtbank is absoluut bevoegd om van deze zaak kennis te nemen. De onderhavige vordering betreft een geldvordering van € 17.500, hetgeen de competentiegrens van € 25.000 zoals genoemd in artikel 93 lid 1 sub a Rv overschrijdt. Er is geen sprake van een arbeidsgeschil, huurovereenkomst of consumentenkoop als bedoeld in artikel 93 lid 1 sub b tot en met d Rv. Voorts zijn er geen andere gronden aanwezig die de absolute bevoegdheid van de kantonrechter zouden kunnen vestigen. Derhalve dient deze zaak door de rechtbank te worden behandeld. De Rechtbank Den Haag is relatief bevoegd van deze zaak kennis te nemen. Ingevolge artikel 99 Rv is bevoegd de rechter van de woonplaats van de gedaagde. Nu gedaagde, Argwa Keukens, woonplaats heeft te Den Haag, is de Rechtbank Den Haag bevoegd. Er zijn geen aanwijzingen dat partijen een afwijkende forumkeuze zijn overeengekomen, zodat de hoofdregel van artikel 99 Rv onverkort van toepassing is. De keuze voor deze rechtbank waarborgt een behandeling in..."
+}
+2: {
+sectionKey: "FACTS"
+sectionName: "Feiten"
+content: "1. Op 1 mei 2025 hebben partijen, te weten eiser en gedaagde Argwa Keukens, een koopovereenkomst gesloten voor de levering van een complete keuken voor een totaalbedrag van € 12.450. 2. Eiser heeft op 1 mei 2025 de volledige koopsom van € 12.450 aan gedaagde voldaan door overboeking, conform de overeengekomen betalingsvoorwaarden. 3. In de overeenkomst werd uitdrukkelijk bepaald dat de keuken uiterlijk op 31 mei 2025 zou worden geleverd en geïnstalleerd op het adres van eiser. 4. Per 30 juni 2025 had gedaagde de keuken nog steeds niet geleverd, waarmee gedaagde aantoonbaar tekort is geschoten in haar leveringsverplichting. 5. Eiser heeft gedaagde vervolgens een ingebrekestelling gezonden, waarbij een hersteltermijn van 14 dagen werd gegund om alsnog aan haar verplichtingen te voldoen. 6. Gedaagde heeft verweer gevoerd door te stellen dat er sprake zou zijn van overmacht wegens productieproblemen bij de fabrikant, alsmede door te wijzen op een vermeende telefonische afspraak voor leveri..."
+}
+3: {
+sectionKey: "LEGAL_GROUNDS"
+sectionName: "Juridisch kader & Rechtsgronden"
+content: "De onderhavige vordering vindt haar grondslag in het Nederlands verbintenissen- en kooprecht, meer specifiek de wettelijke bepalingen omtrent de nakoming van koopovereenkomsten en de rechtsgevolgen van het niet nakomen daarvan. De casus betreft een consumentenkoop waarbij gedaagde is tekortgeschoten in haar leveringsverplichting. **7:9 BW - Leveringsplicht verkoper** Op grond van artikel 7:9 BW rust op de verkoper de verplichting om de verkochte zaak met toebehoren in eigendom over te dragen en af te leveren. Gedaagde heeft deze kernverplichting geschonden door de overeengekomen keuken niet te leveren, ondanks volledige betaling door eiser. **6:74 BW - Schadevergoeding bij tekortkoming** Artikel 6:74 BW bepaalt dat iedere tekortkoming in de nakoming van een verbintenis de schuldenaar verplicht de schade te vergoeden, tenzij de tekortkoming hem niet kan worden toegerekend. Nu gedaagde zonder geldige reden niet heeft geleverd, is zij schadeplichtig. **7:21 BW - Conformiteit bij consument..."
+}
+]
+user_feedback: "Ze hebben ook nog gezegd dat ze niet konden leveren omdat ik verkeerde maten zou hebben doorgegeven, maar dat is niet zo en dan nog zou je gewoon moeten leveren natruulijk"
+full_analysis: {
+facts: {
+known: [
+0: "Koopovereenkomst keuken gesloten op 1 mei 2025"
+1: "Overeengekomen leveringsdatum uiterlijk 31 mei 2025"
+2: "Volledige koopsom €12.450 betaald"
+3: "Keuken niet geleverd per 30 juni 2025"
+4: "Ingebrekestelling verzonden met 14 dagen termijn"
+]
+unclear: [
+0: "Inhoud algemene voorwaarden over levertermijnen"
+1: "Werkelijke oorzaak vertraging"
+]
+disputed: [
+0: "Telefonische afspraak over nieuwe leverdatum eind juli"
+1: "Overmacht wegens productieproblemen fabrikant"
+]
+}
+flags: {
+facts_complete: false
+has_legal_basis: true
+evidence_complete: false
+}
+summary: {
+facts_brief: "Koper heeft op 1 mei 2025 een keuken gekocht voor €12.450 met levering uiterlijk 31 mei 2025. Volledige betaling is voldaan, maar levering is uitgebleven."
+legal_brief: "Niet-nakoming koopovereenkomst, verzuim na ingebrekestelling"
+claims_brief: "Primair nakoming van de leveringsverplichting, subsidiair ontbinding met terugbetaling en schadevergoeding"
+defenses_brief: "Verkoper beroept zich op overmacht wegens productieproblemen bij Duitse fabrikant"
+}
+evidence: {
+missing: [
+0: "Getekende koopovereenkomst"
+1: "Algemene voorwaarden"
+]
+provided: [
+0: {
+source: "document"
+doc_url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/60bc2986-869e-401d-942a-c237cec587c5/download"
+doc_name: "Betalingsbewijs"
+key_passages: [
+0: "Totaalprijs € 12.450"
+1: "Levering gepland op 31-05-2025"
+]
+ref_document: "betalingsbewijs_pieter.pdf"
+}
+]
+}
+per_document: [
+0: {
+url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/60bc2986-869e-401d-942a-c237cec587c5/download"
+name: "betalingsbewijs_pieter.pdf"
+type: "application/pdf"
+summary: "Betalingsbewijs voor keuken bij Keukenwereld B.V. met totaalprijs €12.450 en geplande levering 31-05-2025"
+extracted_points: [
+0: "Totaalprijs: €12.450"
+1: "Aanbetaling €6.000 op 20-03-2025"
+2: "Restant €6.450 voor 15-05-2025"
+3: "Leverdatum 31-05-2025"
+]
+}
+]
+user_context: {
+domain: "consumentenkoop"
+party_role: "koper"
+procedural_role: "eiser"
+needs_disambiguation: false
+disambiguation_question: ""
+}
+case_overview: {
+case_id: "2121405a-528a-4c9c-903f-08fc0042d0fc"
+parties: [
+0: {
+name: "Pieter"
+role: "claimant"
+type: "individual"
+}
+1: {
+name: "Argwa Keukens"
+role: "respondent"
+type: "company"
+}
+]
+amount_eur: 17500
+is_kantonzaak: true
+contract_present: true
+forum_clause_text: ""
+}
+dispute_frame: {
+type: "niet-levering keuken"
+domain: "consumentenkoop"
+user_is: "koper"
+kanton_reason: "Consumentenkoop onder €25.000"
+user_party_type: "consument"
+counterparty_type: "bedrijf"
+kanton_competence: true
+}
+evidence_plan: [
+0: {
+core: [
+0: "Koopovereenkomst"
+1: "Betalingsbewijs"
+2: "Ingebrekestelling"
+]
+optional: [
+0: "Communicatie over vertraging"
+]
+for_claim: "Nakoming"
+}
+]
+interest_type: "wettelijk"
+bgk_applicable: true
+go_nogo_advice: {
+reason: "Essentiële documenten ontbreken nog"
+hitl_flag: false
+proceed_now: false
+conditions_to_proceed: [
+0: "Verkrijg getekende koopovereenkomst"
+1: "Wacht reactietermijn ingebrekestelling af"
+]
+}
+legal_analysis: {
+risks: [
+0: "Bewijslast exacte afspraken zonder getekend contract"
+]
+legal_basis: [
+0: {
+law: "BW"
+note: "Leveringsverplichting verkoper"
+article: "7:9"
+}
+]
+legal_issues: [
+0: "Verzuim"
+1: "Overmacht"
+]
+next_actions: [
+0: "Verkrijg getekende koopovereenkomst"
+1: "Wacht reactietermijn ingebrekestelling af"
+]
+potential_defenses: [
+0: "Overmacht wegens productieproblemen"
+]
+what_is_the_dispute: "Niet-nakoming leveringsverplichting keuken"
+preliminary_assessment: "Sterke zaak voor eiser gezien duidelijke niet-nakoming"
+}
+applicable_rules: [
+0: {
+label: "Nakoming koopovereenkomst"
+article: "BW 7:9"
+}
+1: {
+label: "Verzuim na ingebrekestelling"
+article: "BW 6:82"
+}
+2: {
+label: "Ontbinding bij tekortkoming"
+article: "BW 6:265"
+}
+]
+counterarguments: [
+0: {
+reply: "Verkoper draagt risico van zijn leveranciers"
+to_defense: "Overmacht wegens productieproblemen"
+}
+]
+remedies_catalog: [
+0: {
+label: "Nakoming levering keuken"
+article: "BW 3:296"
+elements: [
+0: "Geldige koopovereenkomst"
+1: "Niet-nakoming leveringsverplichting"
+2: "Verzuim"
+]
+dependencies: [
+0: "Ingebrekestelling"
+]
+feasibility_user: 0.8
+feasibility_on_law: 0.9
+evidence_needed_core: [
+0: "Koopovereenkomst"
+1: "Betalingsbewijs"
+2: "Ingebrekestelling"
+]
+evidence_nice_to_have: [
+0: "Communicatie over vertraging"
+]
+}
+]
+template_variant: "consumentenkoop_niet_levering"
+defenses_expected: [
+0: {
+label: "Overmacht wegens productieproblemen"
+counterparty_support: [
+0: "Brief over productieproblemen fabrikant"
+]
+}
+]
+procedure_context: {
+court_type: "kantonrecht"
+is_kantonzaak: true
+estimated_confidence: 0.95
+}
+ready_for_summons: false
+missing_essentials: [
+0: {
+id: "MIS-001"
+item: "Getekende koopovereenkomst"
+priority: "high"
+why_needed: "Bewijs van exacte afspraken en voorwaarden"
+}
+]
+recommended_claims: [
+0: {
+why: "Primaire vordering gezien duidelijke niet-nakoming"
+label: "Nakoming leveringsverplichting"
+order: 1
+}
+]
+clarifying_questions: [
+0: {
+reason: "Nodig voor bewijs van exacte afspraken"
+category: "evidence"
+question: "Heeft u de getekende koopovereenkomst beschikbaar?"
+expected_evidence: [
+0: "Koopovereenkomst"
+]
+covers_missing_ids: [
+0: "MIS-001"
+]
+}
+]
+}
+}
