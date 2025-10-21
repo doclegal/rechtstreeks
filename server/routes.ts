@@ -2701,8 +2701,29 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
               console.log(`📝 Assembled CLAIMS section with ${parts.length} claim parts`);
             }
             
+            // Special handling for DEFENSES section (Verweer en weerlegging) - CHECK FIRST before LEGAL_GROUNDS
+            if (parts.length === 0 && content.defenses !== undefined) {
+              if (content.introduction) {
+                parts.push(content.introduction);
+              }
+              
+              if (Array.isArray(content.defenses)) {
+                content.defenses.forEach((defense: any) => {
+                  if (defense.defense_claim && defense.rebuttal) {
+                    parts.push(`**Verweer ${defense.defense_number}:**\n${defense.defense_claim}\n\n**Weerlegging:**\n${defense.rebuttal}`);
+                  }
+                });
+              }
+              
+              if (content.conclusion) {
+                parts.push(content.conclusion);
+              }
+              
+              console.log(`📝 Assembled DEFENSES section with ${parts.length} parts (${content.defenses?.length || 0} defenses)`);
+            }
+            
             // Special handling for LEGAL_GROUNDS section (Juridisch kader)
-            if (parts.length === 0 && (content.introduction || content.applicable_law || content.legal_reasoning)) {
+            if (parts.length === 0 && (content.applicable_law || content.legal_reasoning)) {
               if (content.introduction) {
                 parts.push(content.introduction);
               }
@@ -2754,27 +2775,6 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
               }
               
               console.log(`📝 Assembled FACTS section with ${parts.length} parts`);
-            }
-            
-            // Special handling for DEFENSES section (Verweer en weerlegging)
-            if (parts.length === 0 && (content.introduction || content.defenses)) {
-              if (content.introduction) {
-                parts.push(content.introduction);
-              }
-              
-              if (Array.isArray(content.defenses)) {
-                content.defenses.forEach((defense: any) => {
-                  if (defense.defense_claim && defense.rebuttal) {
-                    parts.push(`**Verweer ${defense.defense_number}:**\n${defense.defense_claim}\n\n**Weerlegging:**\n${defense.rebuttal}`);
-                  }
-                });
-              }
-              
-              if (content.conclusion) {
-                parts.push(content.conclusion);
-              }
-              
-              console.log(`📝 Assembled DEFENSES section with ${parts.length} parts`);
             }
             
             // For jurisdiction section with multiple sub-paragraphs
