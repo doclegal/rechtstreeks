@@ -279,6 +279,24 @@ export default function SummonsEditor() {
       return factsSection?.status === "approved" && claimsSection?.status === "approved";
     }
     
+    // Special workflow: DEFENSES (5) can be generated after CLAIMS (7)
+    if (sectionKey === "DEFENSES") {
+      const claimsSection = sections.find(s => s.sectionKey === "CLAIMS");
+      return claimsSection?.status === "approved";
+    }
+    
+    // Special workflow: EVIDENCE (6) can be generated after DEFENSES (5)
+    if (sectionKey === "EVIDENCE") {
+      const defensesSection = sections.find(s => s.sectionKey === "DEFENSES");
+      return defensesSection?.status === "approved";
+    }
+    
+    // Special workflow: EXHIBITS (8) can be generated after EVIDENCE (6)
+    if (sectionKey === "EXHIBITS") {
+      const evidenceSection = sections.find(s => s.sectionKey === "EVIDENCE");
+      return evidenceSection?.status === "approved";
+    }
+    
     // Default: sequential workflow (section N requires section N-1)
     const previousSection = sections.find(s => s.stepOrder === stepOrder - 1);
     return previousSection?.status === "approved";
