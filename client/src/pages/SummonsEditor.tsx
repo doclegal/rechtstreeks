@@ -263,9 +263,23 @@ export default function SummonsEditor() {
   };
 
   // Check if a section can be generated (gating logic)
-  const canGenerateSection = (stepOrder: number) => {
+  const canGenerateSection = (sectionKey: string, stepOrder: number) => {
     if (!sections || stepOrder === 1) return true; // First section (Aanzegging) is always available
     
+    // Special workflow: CLAIMS (7) can be generated after FACTS (3)
+    if (sectionKey === "CLAIMS") {
+      const factsSection = sections.find(s => s.sectionKey === "FACTS");
+      return factsSection?.status === "approved";
+    }
+    
+    // Special workflow: LEGAL_GROUNDS (4) requires BOTH FACTS (3) AND CLAIMS (7)
+    if (sectionKey === "LEGAL_GROUNDS") {
+      const factsSection = sections.find(s => s.sectionKey === "FACTS");
+      const claimsSection = sections.find(s => s.sectionKey === "CLAIMS");
+      return factsSection?.status === "approved" && claimsSection?.status === "approved";
+    }
+    
+    // Default: sequential workflow (section N requires section N-1)
     const previousSection = sections.find(s => s.stepOrder === stepOrder - 1);
     return previousSection?.status === "approved";
   };
@@ -437,7 +451,7 @@ export default function SummonsEditor() {
                 }
 
                 // Dynamic sections
-                const isDisabled = !canGenerateSection(section.stepOrder);
+                const isDisabled = !canGenerateSection(section.sectionKey, section.stepOrder);
 
                 const isGenerating = generateMutation.isPending && 
                                     generateMutation.variables?.sectionKey === section.sectionKey;
