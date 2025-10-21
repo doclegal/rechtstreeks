@@ -41,9 +41,12 @@ export function SectionBlock({
   onNeedsChanges,
   onRevise
 }: SectionBlockProps) {
-  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [showFeedbackForm, setShowFeedbackForm] = useState(!!userFeedback); // Show if there's existing feedback
   const [feedbackText, setFeedbackText] = useState(userFeedback || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Check if feedback has been submitted (saved to database)
+  const isFeedbackSubmitted = userFeedback && userFeedback === feedbackText;
 
   const getStatusBadge = () => {
     switch (status) {
@@ -91,8 +94,10 @@ export function SectionBlock({
     setIsSubmitting(true);
     try {
       await onRevise(feedbackText);
-      setShowFeedbackForm(false);
-      setFeedbackText("");
+      // Don't hide the form - keep it visible to show submitted feedback
+      // setShowFeedbackForm(false);
+      // Don't clear the text - keep it to show what was submitted
+      // setFeedbackText("");
     } finally {
       setIsSubmitting(false);
     }
@@ -260,10 +265,22 @@ export function SectionBlock({
 
         {/* Feedback Form */}
         {showFeedbackForm && (
-          <div className="mt-4 p-4 border rounded bg-yellow-50 dark:bg-yellow-950" data-testid={`feedback-form-${sectionKey}`}>
-            <label className="block text-sm font-medium mb-2">
-              Wat moet er worden aangepast?
-            </label>
+          <div 
+            className={`mt-4 p-4 border rounded transition-colors ${
+              isFeedbackSubmitted 
+                ? 'bg-green-50 dark:bg-green-950 border-green-300 dark:border-green-700' 
+                : 'bg-yellow-50 dark:bg-yellow-950 border-yellow-300 dark:border-yellow-700'
+            }`}
+            data-testid={`feedback-form-${sectionKey}`}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              {isFeedbackSubmitted && (
+                <CheckCircle2 className="w-4 h-4 text-green-600" />
+              )}
+              <label className="block text-sm font-medium">
+                {isFeedbackSubmitted ? 'Toegevoegde context (verzonden)' : 'Wat moet er worden aangepast?'}
+              </label>
+            </div>
             <Textarea
               value={feedbackText}
               onChange={(e) => setFeedbackText(e.target.value)}
@@ -271,33 +288,48 @@ export function SectionBlock({
               className="mb-3"
               rows={4}
               data-testid={`textarea-feedback-${sectionKey}`}
+              disabled={!!isFeedbackSubmitted}
             />
             <div className="flex gap-2">
-              <Button
-                onClick={handleReviseClick}
-                disabled={!feedbackText.trim() || isSubmitting}
-                data-testid={`button-revise-${sectionKey}`}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Reviseren...
-                  </>
-                ) : (
-                  "Reviseer met feedback"
-                )}
-              </Button>
-              <Button
-                onClick={() => {
-                  setShowFeedbackForm(false);
-                  setFeedbackText("");
-                }}
-                variant="outline"
-                disabled={isSubmitting}
-                data-testid={`button-cancel-feedback-${sectionKey}`}
-              >
-                Annuleer
-              </Button>
+              {!isFeedbackSubmitted && (
+                <>
+                  <Button
+                    onClick={handleReviseClick}
+                    disabled={!feedbackText.trim() || isSubmitting}
+                    data-testid={`button-revise-${sectionKey}`}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Reviseren...
+                      </>
+                    ) : (
+                      "Reviseer met feedback"
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowFeedbackForm(false);
+                      setFeedbackText(userFeedback || "");
+                    }}
+                    variant="outline"
+                    disabled={isSubmitting}
+                    data-testid={`button-cancel-feedback-${sectionKey}`}
+                  >
+                    Annuleer
+                  </Button>
+                </>
+              )}
+              {isFeedbackSubmitted && (
+                <Button
+                  onClick={() => setFeedbackText("")}
+                  variant="outline"
+                  size="sm"
+                  data-testid={`button-edit-feedback-${sectionKey}`}
+                >
+                  Wijzig feedback
+                </Button>
+              )}
             </div>
           </div>
         )}
