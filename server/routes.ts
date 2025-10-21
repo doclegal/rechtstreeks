@@ -2564,8 +2564,12 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       const mindstudioAppId = process.env.MS_AGENT_APP_ID;
       const useMock = process.env.USE_MINDSTUDIO_SUMMONS_MOCK === 'true';
       
-      // Use workflow name as-is (should include .flow extension like FullAnalysis.flow)
-      const workflowName = flowName || '';
+      // Use feedback-specific flow if user provided feedback for DEFENSES section
+      let workflowName = flowName || '';
+      if (sectionKey === 'DEFENSES' && userFeedback && userFeedback.trim()) {
+        workflowName = 'DV_Verweer_feedback.flow';
+        console.log(`🔄 Using feedback flow: ${workflowName} (user provided feedback)`);
+      }
       
       if (useMock || !mindstudioApiKey || !mindstudioAppId) {
         console.log(`🧪 [MOCK] Generating section ${section.sectionName} with workflow ${workflowName}`);
