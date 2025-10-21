@@ -1,0 +1,93 @@
+1. Structuur en volgorde van de vorderingen
+
+Primair: wat eiser in eerste instantie wil bereiken.
+→ Altijd gebaseerd op de hoofdrechtsverhouding (nakoming, levering, betaling, herstel, etc.).
+
+Subsidiair: alternatief voor het geval de primaire vordering wordt afgewezen.
+→ Bijvoorbeeld ontbinding, schadevergoeding, vervangende levering, prijsvermindering.
+
+Meer subsidiair: nog een verdere terugvaloptie (bijv. gedeeltelijke vergoeding).
+👉 De AI moet juridisch logisch rangschikken: sterkste rechtsgrond eerst, vangnetvorderingen daarna.
+
+2. Keuze: nakoming of schadevergoeding
+
+Nakoming (art. 3:296 BW): als de prestatie nog mogelijk en zinvol is (bijv. levering, herstel, betaling).
+
+Schadevergoeding (art. 6:74 BW): als nakoming onmogelijk of niet meer zinvol is.
+
+Vervangende schadevergoeding (art. 6:87 BW): na ingebrekestelling, bij blijvende niet-nakoming.
+
+Aanvullende schadevergoeding: naast nakoming, voor gevolgschade (bijv. vertraging).
+👉 De AI moet dus:
+
+toetsen of de verbintenis nog uitvoerbaar is,
+
+nagaan of ingebrekestelling heeft plaatsgevonden,
+
+en dan kiezen tussen nakoming, vervangende of aanvullende schadevergoeding.
+
+3. Ontbinding of vernietiging
+
+Ontbinding (art. 6:265 BW): bij tekortkoming, tenzij gering.
+
+Vernietiging: bij wilsgebreken of nietigheid (dwaling, misbruik, bedrog).
+👉 De AI gebruikt deze alleen als de overeenkomst zelf moet verdwijnen.
+
+4. Rente
+
+Wettelijke rente (art. 6:119 BW): tussen particulieren of consument-zaken.
+
+Handelsrente (art. 6:119a BW): bij handelsovereenkomsten tussen ondernemingen.
+👉 De AI bepaalt:
+
+het juiste rente-type op basis van hoedanigheid van partijen,
+
+de startdatum (meestal verzuimdatum / ingebrekestelling).
+
+5. Buitengerechtelijke incassokosten
+
+Alleen bij geldvorderingen en bij verzuim van gedaagde.
+
+Volgens Wet Incassokosten (WIK) en Besluit vergoeding voor buitengerechtelijke incassokosten.
+👉 De AI berekent:
+
+percentage over hoofdsom volgens staffel,
+
+vermeldt dat correct berekend is o.g.v. WIK.
+
+6. Proceskosten
+
+Altijd vorderen, ook bij kleine zaken (art. 237 Rv).
+
+Bestaan uit: griffierecht, explootkosten, salaris gemachtigde.
+👉 De AI voegt standaard toe:
+
+“Met veroordeling van gedaagde in de kosten van deze procedure, inclusief nakosten, te vermeerderen met wettelijke rente bij niet-betaling binnen veertien dagen na betekening van het vonnis.”
+
+7. Dwangsom
+
+Alleen vorderen bij verplichtingen tot doen/nalaten (art. 611a Rv).
+👉 De AI overweegt dit alleen als er een concrete nakomingsplicht is (bijv. levering, ontruiming, verwijdering).
+
+8. Uitvoerbaar bij voorraad
+
+Bij geldvorderingen of duidelijke aanspraken (art. 233 Rv).
+👉 AI voegt toe als het zinvol is (om direct te kunnen executeren).
+
+9. Specifieke context per type zaak
+Zaaktype	Mogelijke vorderingen	Wat AI moet overwegen
+Consumentenkoop / non-conformiteit	Primair: herstel of vervanging; subsidiair: prijsvermindering of ontbinding + schadevergoeding.	Toepassing art. 7:17-7:22 BW; bewijs van klachtplicht, redelijke termijn.
+Arbeidsrecht (loonvordering)	Betaling loon + wettelijke verhoging (art. 7:625 BW) + rente + proceskosten.	Check arbeidsovereenkomst, periode, loonstroken, beëindigingsdatum.
+Huur – verhuurder	Primair: ontbinding + ontruiming + huurachterstand + schade + rente.	Toepassing art. 6:265 BW en huurrecht (7:231-7:261 BW).
+Huur – huurder	Primair: herstel gebreken of huurprijsvermindering; subsidiair: schadevergoeding.	Toepassing art. 7:204-7:210 BW.
+Geldlening / incasso	Betaling hoofdsom + rente + incassokosten + proceskosten.	Check verzuim, aanmaning, juiste berekening WIK.
+Arbeidsontslag / transitievergoeding	Primair: verklaring nietigheid ontslag of herstel; subsidiair: transitievergoeding.	Toepassing art. 7:681-7:683 BW.
+10. Logische consistentie
+
+De AI moet altijd controleren:
+
+Zijn de vorderingen onderling verenigbaar? (geen tegenstrijdigheid tussen nakoming en ontbinding zonder subsidiair verband).
+
+Sluit de volgorde van primair → subsidiair aan bij de rechtsgrond en bewijspositie.
+
+Is het totaal juridisch en feitelijk coherent met de casus?
