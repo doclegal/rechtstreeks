@@ -2644,8 +2644,120 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
             const parts: string[] = [];
             const content = sectionResult.content;
             
+            // Special handling for CLAIMS section (Vorderingen)
+            if (content.primary_claims || content.subsidiary_claims || content.more_subsidiary_claims) {
+              // Primary claims
+              if (Array.isArray(content.primary_claims)) {
+                content.primary_claims.forEach((claim: any) => {
+                  if (claim.description) {
+                    parts.push(`${claim.claim_number}. ${claim.description}`);
+                  }
+                });
+              }
+              
+              // Subsidiary claims
+              if (Array.isArray(content.subsidiary_claims)) {
+                content.subsidiary_claims.forEach((claim: any) => {
+                  if (claim.description) {
+                    parts.push(`${claim.claim_number}. ${claim.description}`);
+                  }
+                });
+              }
+              
+              // More subsidiary claims
+              if (Array.isArray(content.more_subsidiary_claims)) {
+                content.more_subsidiary_claims.forEach((claim: any) => {
+                  if (claim.description) {
+                    parts.push(`${claim.claim_number}. ${claim.description}`);
+                  }
+                });
+              }
+              
+              // Interest
+              if (content.interest?.description) {
+                parts.push(content.interest.description);
+              }
+              
+              // Extrajudicial costs
+              if (content.extrajudicial_costs?.applicable && content.extrajudicial_costs?.description) {
+                parts.push(content.extrajudicial_costs.description);
+              }
+              
+              // Court costs
+              if (content.court_costs?.description) {
+                parts.push(content.court_costs.description);
+              }
+              
+              // Penalty (dwangsom)
+              if (content.penalty?.applicable && content.penalty?.description) {
+                parts.push(content.penalty.description);
+              }
+              
+              // Provisional enforcement
+              if (content.provisional_enforcement?.applicable && content.provisional_enforcement?.description) {
+                parts.push(content.provisional_enforcement.description);
+              }
+              
+              console.log(`📝 Assembled CLAIMS section with ${parts.length} claim parts`);
+            }
+            
+            // Special handling for LEGAL_GROUNDS section (Juridisch kader)
+            if (parts.length === 0 && (content.introduction || content.applicable_law || content.legal_reasoning)) {
+              if (content.introduction) {
+                parts.push(content.introduction);
+              }
+              
+              if (Array.isArray(content.applicable_law)) {
+                content.applicable_law.forEach((law: any) => {
+                  if (law.article && law.title && law.explanation) {
+                    parts.push(`**${law.article} - ${law.title}**\n${law.explanation}`);
+                  }
+                });
+              }
+              
+              if (content.legal_reasoning) {
+                parts.push(content.legal_reasoning);
+              }
+              
+              if (content.conclusion) {
+                parts.push(content.conclusion);
+              }
+              
+              console.log(`📝 Assembled LEGAL_GROUNDS section with ${parts.length} parts`);
+            }
+            
+            // Special handling for FACTS section (Feiten)
+            if (parts.length === 0 && (content.introduction_facts || content.known_facts || content.narrative_paragraph)) {
+              if (content.introduction_facts) {
+                parts.push(content.introduction_facts);
+              }
+              
+              if (content.narrative_paragraph) {
+                parts.push(content.narrative_paragraph);
+              }
+              
+              if (Array.isArray(content.known_facts)) {
+                const factsText = content.known_facts.map((fact: string, idx: number) => `${idx + 1}. ${fact}`).join('\n');
+                parts.push(factsText);
+              }
+              
+              if (Array.isArray(content.disputed_facts) && content.disputed_facts.length > 0) {
+                parts.push("**Betwiste feiten:**");
+                const disputedText = content.disputed_facts.map((fact: string, idx: number) => `${idx + 1}. ${fact}`).join('\n');
+                parts.push(disputedText);
+              }
+              
+              if (Array.isArray(content.unclear_facts) && content.unclear_facts.length > 0) {
+                parts.push("**Onduidelijke feiten:**");
+                const unclearText = content.unclear_facts.map((fact: string, idx: number) => `${idx + 1}. ${fact}`).join('\n');
+                parts.push(unclearText);
+              }
+              
+              console.log(`📝 Assembled FACTS section with ${parts.length} parts`);
+            }
+            
             // For jurisdiction section with multiple sub-paragraphs
-            if (content.kanton_competence && content.kanton_competence.paragraph) {
+            if (parts.length === 0 && content.kanton_competence && content.kanton_competence.paragraph) {
               parts.push(content.kanton_competence.paragraph);
             }
             if (content.relative_competence && content.relative_competence.paragraph) {
