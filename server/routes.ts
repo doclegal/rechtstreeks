@@ -2530,6 +2530,10 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         `=== ${s.sectionName.toUpperCase()} ===\n${s.content}`
       ).join('\n\n');
       
+      // Include previous version of THIS section if regenerating
+      const previousVersion = section.generatedText || null;
+      const isRegeneration = section.generationCount > 0;
+      
       // Build flattened input object that matches MindStudio's expected schema
       const inputData = {
         case_id: caseId,
@@ -2548,6 +2552,9 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         prior_sections: priorSections,  // Array of objects (for structured access)
         prior_sections_text: priorSectionsText,  // Formatted string (for prompt)
         user_feedback: userFeedback || "",
+        // Include previous generation of THIS section for context
+        previous_version: previousVersion,
+        is_regeneration: isRegeneration,
         // Include full analysis for any additional fields the flow might need
         full_analysis: parsedAnalysis
       };
@@ -2581,6 +2588,17 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       console.log(`📦 App ID: ${mindstudioAppId}, Workflow: ${workflowName}`);
       console.log(`📦 Input: ${priorSections.length} prior sections, amount: €${inputData.amount_eur}, parties: ${inputData.parties.eiser_name} vs ${inputData.parties.gedaagde_name}`);
       console.log(`🏙️ Cities: Eiser=${inputData.parties.eiser_city}, Gedaagde=${inputData.parties.gedaagde_city}`);
+      
+      // Log regeneration context
+      if (isRegeneration) {
+        console.log(`🔄 REGENERATION (generation #${section.generationCount + 1})`);
+        if (userFeedback) {
+          console.log(`💬 User feedback: "${userFeedback.substring(0, 100)}${userFeedback.length > 100 ? '...' : ''}"`);
+        }
+        if (previousVersion) {
+          console.log(`📄 Previous version length: ${previousVersion.length} chars`);
+        }
+      }
       
       // Log prior sections for debugging
       if (priorSections.length > 0) {
