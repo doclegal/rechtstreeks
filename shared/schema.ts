@@ -101,6 +101,8 @@ export const caseDocuments = pgTable("case_documents", {
   extractedText: text("extracted_text"),
   publicUrl: text("public_url"), // Add public URL for object storage
   uploadedByUserId: varchar("uploaded_by_user_id").notNull().references(() => users.id),
+  documentAnalysis: jsonb("document_analysis"), // AI analysis: summary, tags, type, readability, belongs_to_case, note
+  analysisStatus: varchar("analysis_status").default("pending"), // pending, analyzing, completed, failed
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("idx_documents_case").on(table.caseId),

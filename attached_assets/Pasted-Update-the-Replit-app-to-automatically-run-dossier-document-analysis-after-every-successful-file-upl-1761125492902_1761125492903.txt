@@ -1,0 +1,51 @@
+Update the Replit app to automatically run dossier document analysis after every successful file upload.
+
+Requirements:
+
+When a file upload succeeds, the app must immediately trigger a Run-API (on-demand) call to MindStudio, executing the flow Dossier_check.flow (instead of the use of button Controleer dossier).
+
+Use the same authentication method (credentials/secrets) as configured in the existing Analyse flow, but now call Dossier_check.flow.
+
+Always include the case data (Zaakgegevens) in the payload so MindStudio can evaluate each uploaded document in the context of that case.
+
+The returned JSON from MindStudio must be rendered directly under the corresponding document card in the UI as follows:
+
+Summary: one or two short lines summarizing the document.
+
+Tags: displayed as visual chips.
+
+Optional note/warning: shown only if present in the JSON output.
+
+Replace the current manual “Controleer dossier” step with this automatic analysis.
+
+While the analysis is running, show a loading state on the document card: “Analyzing…”.
+
+Also:
+Replit must generate both the prompt text and an Example JSON schema for the MindStudio Agent that will be used in Dossier_check.flow.
+
+The Agent’s task in Mindstudio:
+
+Read and interpret each uploaded document.
+
+Check whether the document is readable, legible, and complete.
+
+Identify the type of document (e.g., invoice, agreement, proof of payment, correspondence, etc.).
+
+Evaluate whether the document logically belongs to the current case (using the full case data sent from Replit).
+
+If the document appears unrelated or inconsistent with the case, the Agent must note this briefly in an “observation” field.
+
+Output structure (Example JSON):
+
+{
+  "document_name": "",
+  "document_type": "",
+  "is_readable": true,
+  "belongs_to_case": true,
+  "summary": "Short 1–2 line description of document contents.",
+  "tags": ["invoice", "payment", "contract"],
+  "note": "Optional short warning or observation (e.g., 'Document seems unrelated to this case.')"
+}
+
+
+The output JSON must be returned to the Replit app and displayed immediately under the document card using the UI rules above.
