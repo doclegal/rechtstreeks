@@ -193,9 +193,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const analysis = await storage.getLatestAnalysis(caseData.id);
           const kantonAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-kanton-check');
           let fullAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-full-analysis');
+          const rkosOnlyAnalysis = await storage.getAnalysisByType(caseData.id, 'rkos-only');
           
           // Enrich fullAnalysis with parsedAnalysis from rawText
           fullAnalysis = enrichFullAnalysis(fullAnalysis);
+          
+          // Merge RKOS data if it exists (prioritize fullAnalysis, then kantonAnalysis, then rkos-only)
+          if (fullAnalysis && !fullAnalysis.succesKansAnalysis) {
+            if (kantonAnalysis?.succesKansAnalysis) {
+              fullAnalysis.succesKansAnalysis = kantonAnalysis.succesKansAnalysis;
+            } else if (rkosOnlyAnalysis?.succesKansAnalysis) {
+              fullAnalysis.succesKansAnalysis = rkosOnlyAnalysis.succesKansAnalysis;
+            }
+          }
           
           const letters = await storage.getLettersByCase(caseData.id);
           const summons = await storage.getSummonsByCase(caseData.id);
@@ -239,9 +249,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const analysis = await storage.getLatestAnalysis(caseData.id);
       const kantonAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-kanton-check');
       let fullAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-full-analysis');
+      const rkosOnlyAnalysis = await storage.getAnalysisByType(caseData.id, 'rkos-only');
       
       // Enrich fullAnalysis with parsedAnalysis from rawText
       fullAnalysis = enrichFullAnalysis(fullAnalysis);
+      
+      // Merge RKOS data if it exists (prioritize fullAnalysis, then kantonAnalysis, then rkos-only)
+      if (fullAnalysis && !fullAnalysis.succesKansAnalysis) {
+        if (kantonAnalysis?.succesKansAnalysis) {
+          fullAnalysis.succesKansAnalysis = kantonAnalysis.succesKansAnalysis;
+        } else if (rkosOnlyAnalysis?.succesKansAnalysis) {
+          fullAnalysis.succesKansAnalysis = rkosOnlyAnalysis.succesKansAnalysis;
+        }
+      }
       
       const letters = await storage.getLettersByCase(caseData.id);
       const summons = await storage.getSummonsByCase(caseData.id);
@@ -1432,14 +1452,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           confidence_level: rkosResult.confidence_level
         });
 
-        // Update the full analysis record with success chance data (if it exists)
-        if (fullAnalysisRecord) {
-          await storage.updateAnalysis(fullAnalysisRecord.id, {
+        // ALWAYS save success chance analysis to database
+        // First try to find an existing analysis record (full or kanton)
+        let analysisRecordToUpdate = fullAnalysisRecord || await storage.getAnalysisByType(caseId, 'kanton-check');
+        
+        if (analysisRecordToUpdate) {
+          // Update existing analysis with RKOS data
+          await storage.updateAnalysis(analysisRecordToUpdate.id, {
             succesKansAnalysis: rkosResult
           });
-          console.log('✅ Success chance analysis saved to database');
+          console.log(`✅ Success chance saved to existing ${analysisRecordToUpdate.model} analysis`);
         } else {
-          console.log('ℹ️ Success chance analysis returned (not saved - no full analysis yet)');
+          // Create new analysis record specifically for RKOS
+          const newAnalysis = await storage.createAnalysis({
+            caseId,
+            version: 1,
+            model: 'rkos-only',
+            rawText: JSON.stringify({ rkos: rkosResult }),
+            succesKansAnalysis: rkosResult
+          });
+          console.log('✅ Success chance saved to new RKOS-only analysis record');
         }
 
         res.json({ 
