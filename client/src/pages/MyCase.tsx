@@ -22,7 +22,6 @@ export default function MyCase() {
   const [v2Analysis, setV2Analysis] = useState<any>(null);
   
   const [zaakgegevensOpen, setZaakgegevensOpen] = useState(false);
-  const [documentenOpen, setDocumentenOpen] = useState(false);
   
   const currentCase = useActiveCase();
   const caseId = currentCase?.id;
@@ -228,37 +227,23 @@ export default function MyCase() {
           </DialogContent>
         </Dialog>
 
-        <Dialog open={documentenOpen} onOpenChange={setDocumentenOpen}>
-          <DialogTrigger asChild>
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow relative" data-testid="card-documenten">
-              <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
-              <CardHeader>
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Files className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle className="text-center">Dossier</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-2xl font-bold text-foreground">{docCount}</p>
-                <p className="text-sm text-muted-foreground">
-                  {docCount === 1 ? 'document' : 'documenten'} geüpload
-                </p>
-              </CardContent>
-            </Card>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Geüploade documenten</DialogTitle>
-            </DialogHeader>
-            <div className="mt-4">
-              <DocumentList 
-                documents={currentCase.documents || []}
-                caseId={currentCase.id}
-                onDocumentUploaded={() => refetch()}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Link href="/dossier">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow relative" data-testid="card-documenten">
+            <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+            <CardHeader>
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Files className="h-8 w-8 text-primary" />
+              </div>
+              <CardTitle className="text-center">Dossier</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p className="text-2xl font-bold text-foreground">{docCount}</p>
+              <p className="text-sm text-muted-foreground">
+                {docCount === 1 ? 'document' : 'documenten'} geüpload
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <div className="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 pt-8 border-t border-border">
