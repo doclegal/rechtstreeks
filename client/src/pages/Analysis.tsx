@@ -21,7 +21,6 @@ export default function Analysis() {
   const { toast } = useToast();
   const [kantonCheckResult, setKantonCheckResult] = useState<any>(null);
   const [kantonDialogOpen, setKantonDialogOpen] = useState(false);
-  const [documentenOpen, setDocumentenOpen] = useState(false);
   const [nogAanTeLeverenOpen, setNogAanTeLeverenOpen] = useState(false);
   const [location, setLocation] = useLocation();
   
@@ -614,37 +613,23 @@ export default function Analysis() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Dialog open={documentenOpen} onOpenChange={setDocumentenOpen}>
-          <DialogTrigger asChild>
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow relative" data-testid="card-documenten-analysis">
-              <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
-              <CardHeader>
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Files className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle className="text-center">Dossier</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-2xl font-bold text-foreground">{docCount}</p>
-                <p className="text-sm text-muted-foreground">
-                  {docCount === 1 ? 'document' : 'documenten'} geüpload
-                </p>
-              </CardContent>
-            </Card>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Geüploade documenten</DialogTitle>
-            </DialogHeader>
-            <div className="mt-4">
-              <DocumentList 
-                documents={currentCase?.documents || []}
-                caseId={currentCase?.id || ""}
-                onDocumentUploaded={() => refetch()}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Link href="/dossier">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow relative" data-testid="card-documenten-analysis">
+            <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+            <CardHeader>
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Files className="h-8 w-8 text-primary" />
+              </div>
+              <CardTitle className="text-center">Dossier</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p className="text-2xl font-bold text-foreground">{docCount}</p>
+              <p className="text-sm text-muted-foreground">
+                {docCount === 1 ? 'document' : 'documenten'} geüpload
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
         <Dialog open={nogAanTeLeverenOpen} onOpenChange={setNogAanTeLeverenOpen}>
           <DialogTrigger asChild>
