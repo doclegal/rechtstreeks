@@ -1432,14 +1432,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           confidence_level: rkosResult.confidence_level
         });
 
-        // Update the full analysis record with success chance data (if it exists)
+        // Save or update the success chance data
         if (fullAnalysisRecord) {
+          // Update existing full analysis record with success chance data
           await storage.updateAnalysis(fullAnalysisRecord.id, {
             succesKansAnalysis: rkosResult
           });
-          console.log('✅ Success chance analysis saved to database');
+          console.log('✅ Success chance analysis saved to existing fullAnalysis record');
         } else {
-          console.log('ℹ️ Success chance analysis returned (not saved - no full analysis yet)');
+          // Create a new fullAnalysis record with only success chance data
+          await storage.createAnalysis({
+            caseId: caseId,
+            type: 'mindstudio-full-analysis',
+            rawText: JSON.stringify({ success: true }),
+            succesKansAnalysis: rkosResult
+          });
+          console.log('✅ Success chance analysis saved to new fullAnalysis record');
         }
 
         res.json({ 
