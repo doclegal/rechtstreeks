@@ -1,0 +1,115 @@
+un Started
+41 ms
+1
+Action started on AgentDispatcher
+Instance ID: c78n7
+ at Oct 22, 2025 12:23:22.524 PM GMT+2
+2
+ New run with ID "1276956f-f97c-458d-80a7-359b4836afc1"
+3
+ Preparing launch variables
+4
+ Running workflow Dossier_check.flow
+5
+ Initializing {{currentDate}} with value "Oct 22, 2025 10:23:22 AM"
+6
+ Initializing {{global.userId}} with value "cea0889c-9c7e-46fb-ba63-0a5f3bfc9de2"
+7
+ Initializing {{global.threadId}} with value "1276956f-f97c-458d-80a7-359b4836afc1"
+8
+ Initializing {{global.username}} with value "Pieter D."
+9
+ Initializing {{global.userEmail}} with value "pdelaat@gmail.com"
+10
+ Initializing {{global.companyName}} with value "Notforlawyers"
+11
+ Dispatching run request to Agent Runner
+12
+ Action completed
+Generate Text - Background Message
+5,18 s
+1
+Action started on CloudRunner
+Instance ID: 5lcwg
+ at Oct 22, 2025 12:23:25.131 PM GMT+2
+2
+ Sending message: "TASK
+
+Read and interpret the document...."
+3
+ Loading message history
+4
+ Preparing to query 
+GPT-4o at 0.2° with a maximum response size of 1,100 tokens
+5
+ Resolving variables
+6
+ Sending resolved message: "TASK
+
+Read and interpret the document...."
+7
+ Waiting for model response...
+8
+ Received first response token
+9
+ Received full result: 1,446 tokens (1,332 sent, 114 received) at 37.736 tokens/second
+10
+ Received result: JSON
+{
+document_name: "koopcontract_auto.pdf"
+document_type: "koopovereenkomst"
+is_readable: true
+belongs_to_case: true
+summary: "Koopovereenkomst tussen koper Jan Jansen en Auto Centrum BV voor Mercedes C200 voor €18.500, gedateerd 1 februari 2024. Document bevat garantiebepalingen."
+tags: [
+0: "contract"
+1: "koopovereenkomst"
+2: "auto"
+3: "garantie"
+4: "bewijs"
+]
+note: null
+}
+11
+ Saving result to variable {{result}}
+12
+ Action completed
+Billing Events
+gpt-4o-llm_inference-prompt
+(1.332 units at $0,000002500 per unit)
+$0,003330000
+gpt-4o-llm_inference-response
+(114 units at $0,000010000 per unit)
+$0,001140000
+Action Total
+$0,004470000
+Sending Output
+227 ms
+1
+Action started on CloudRunner
+Instance ID: 5lcwg
+ at Oct 22, 2025 12:23:30.800 PM GMT+2
+2
+ Sending JSON: JSON
+{
+result: "{{result}}"
+}
+3
+ Resolving variables
+4
+ Sending message: JSON
+{
+result: {
+document_name: "koopcontract_auto.pdf"
+document_type: "koopovereenkomst"
+is_readable: true
+belongs_to_case: true
+summary: "Koopovereenkomst tussen koper Jan Jansen en Auto Centrum BV voor Mercedes C200 voor €18.500, gedateerd 1 februari 2024. Document bevat garantiebepalingen."
+tags: []
+note: null
+}
+}
+5
+ Action completed
+Run Completed
+5,444 s
