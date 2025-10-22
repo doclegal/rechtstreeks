@@ -1347,11 +1347,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Full analysis sections (may be empty/null - MindStudio handles this)
           summary: parsedAnalysis?.summary || '',
-          parties: parsedAnalysis?.parties || {},
-          facts: parsedAnalysis?.facts || [],
+          parties: parsedAnalysis?.case_overview?.parties || [],
+          facts: parsedAnalysis?.facts || {},
           legal_analysis: parsedAnalysis?.legal_analysis || {},
           risk_assessment: parsedAnalysis?.risk_assessment || {},
-          recommendations: parsedAnalysis?.recommendations || [],
+          recommendations: parsedAnalysis?.recommended_claims || [],
           applicable_rules: parsedAnalysis?.applicable_rules || [],
           
           // Dossier documents
@@ -1369,8 +1369,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('📤 Sending context to RKOS.flow:', {
           case_id: contextPayload.case_id,
           has_summary: !!contextPayload.summary,
-          has_parties: !!contextPayload.parties,
-          facts_count: contextPayload.facts?.length || 0,
+          has_parties: contextPayload.parties?.length > 0,
+          facts_count: (parsedAnalysis?.facts?.known?.length || 0) + (parsedAnalysis?.facts?.disputed?.length || 0) + (parsedAnalysis?.facts?.unclear?.length || 0),
           docs_count: contextPayload.dossier.document_count
         });
 
