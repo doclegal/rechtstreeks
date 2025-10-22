@@ -348,7 +348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
       
-      // Prepare input for MindStudio
+      // Prepare input for MindStudio - include ALL case context
       const inputData = {
         document: {
           filename: document.filename,
@@ -362,8 +362,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           description: caseData.description || '',
           category: caseData.category || 'general',
           claim_amount: Number(caseData.claimAmount) || 0,
-          counterparty_name: caseData.counterpartyName || 'Onbekend',
-          counterparty_type: caseData.counterpartyType || 'unknown'
+          user_role: caseData.userRole || 'EISER',
+          
+          // Claimant (eiser) information
+          claimant: {
+            name: caseData.claimantName || '',
+            address: caseData.claimantAddress || '',
+            city: caseData.claimantCity || ''
+          },
+          
+          // Counterparty (gedaagde/wederpartij) information
+          counterparty: {
+            type: caseData.counterpartyType || 'unknown',
+            name: caseData.counterpartyName || 'Onbekend',
+            email: caseData.counterpartyEmail || '',
+            phone: caseData.counterpartyPhone || '',
+            address: caseData.counterpartyAddress || '',
+            city: caseData.counterpartyCity || ''
+          }
         }
       };
       
