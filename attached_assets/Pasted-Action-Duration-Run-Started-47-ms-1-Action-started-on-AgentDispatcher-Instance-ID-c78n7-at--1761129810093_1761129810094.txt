@@ -1,0 +1,144 @@
+Action
+Duration
+Run Started
+47 ms
+1
+Action started on AgentDispatcher
+Instance ID: c78n7
+ at Oct 22, 2025 12:42:18.807 PM GMT+2
+2
+ New run with ID "5aa09957-f88a-4956-b2b5-36981545da16"
+3
+ Preparing launch variables
+4
+ Running workflow Dossier_check.flow
+5
+ Initializing {{currentDate}} with value "Oct 22, 2025 10:42:18 AM"
+6
+ Initializing {{global.userId}} with value "cea0889c-9c7e-46fb-ba63-0a5f3bfc9de2"
+7
+ Initializing {{global.threadId}} with value "5aa09957-f88a-4956-b2b5-36981545da16"
+8
+ Initializing {{global.username}} with value "Pieter D."
+9
+ Initializing {{global.userEmail}} with value "pdelaat@gmail.com"
+10
+ Initializing {{global.companyName}} with value "Notforlawyers"
+11
+ Initializing {{$launchVariables->input_json}} with value JSON
+{
+document: {
+filename: "Koopovereenkomst auto tillycars.txt"
+type: "text/plain"
+size: 2548
+text: "Prima, Pieter. Hier is een realistisch ogend **koopovereenkomst-document** dat je kunt gebruiken als **AI-dummy-dossierstuk** voor deze casus *“Verborgen gebrek auto”*. Het bevat genoeg inhoud en juridische aanknopingspunten om een flow te testen (analyse, verweer, dagvaarding, enz.), maar is volledig fictief en veilig als testdata. --- **KOOPOVEREENKOMST TWEEDEHANDS AUTO** **Partijen:** 1. **Garage TillyCars B.V.**, gevestigd te Tilburg, aan de Nijverheidsweg 7 (hierna: *verkoper*), en 2. **De heer P. de Laat**, wonende te Helmond (hierna: *koper*). --- **Artikel 1 – Omschrijving van het voertuig** Verkoper verkoopt en levert aan koper de volgende gebruikte auto: * Merk/type: **Volvo Corsa 1.4i** * Bouwjaar: **2007** * Kilometerstand: **ca. 150.000 km** * Kenteken: **AB-123-C** * Kleur: **zilvergrijs** --- **Artikel 2 – Koopprijs en betaling** De koopprijs bedraagt **€ 3.250,00** (zegge: drieduizend tweehonderdvijftig euro). Koper heeft dit bedrag voldaan per bankoverschrijving d.d. *..."
+}
+case_context: {
+case_id: "5620f909-b23e-4c89-9d47-bc0997df2a0d"
+title: "Verborgen gebrek auto"
+description: "
+Begin maart 1925 heb ik bij een garage in Tilburg een tweedehands Volvo Corsa gekocht (bouwjaar 2007, ongeveer 150.000 km op de teller). De verkoper zei dat de auto “technisch goed in orde” was en dat er “geen garantie op zat vanwege de leeftijd”, maar dat hij altijd netjes was onderhouden.
+
+Nu, ongeveer twee maanden later, begon de motor te haperen en kwam er blauwe rook uit de uitlaat. Ik ben naar een andere garage gegaan en die zegt dat de koppakking kapot is en dat de radiator waarschijnlijk ook lekt. Reparatie zou meer dan €1200 kosten.
+
+Ik heb meteen contact opgenomen met de verkoper, maar die zegt dat het mijn probleem is omdat ik geen garantie heb. Hij wil niks vergoeden en verwijst me naar de kleine lettertjes op de factuur.
+
+Ik voel me best belazerd, want ik heb de auto netjes behandeld en verwachtte niet dat er zoiets groots kapot zou gaan binnen een paar maanden. Kan ik hier nog iets mee juridisch? Heb ik recht op geld terug of op een vergoeding voor de reparatie?"
+category: "Contractrecht"
+claim_amount: 1500
+counterparty_name: "Garage TillyCars"
+counterparty_type: "company"
+}
+}
+12
+ Dispatching run request to Agent Runner
+13
+ Action completed
+Generate Text - Background Message
+2,53 s
+1
+Action started on CloudRunner
+Instance ID: fljvk
+ at Oct 22, 2025 12:42:19.002 PM GMT+2
+2
+ Sending message: "ANALYZE THE FOLLOWING DOCUMENT (provided as JSON input):
+
+{{input_json}}..."
+3
+ Loading message history
+4
+ Preparing to query 
+GPT-4o at 0.2° with a maximum response size of 1,100 tokens
+5
+ Resolving variables
+6
+ Sending resolved message: "ANALYZE THE FOLLOWING DOCUMENT (provided as JSON input):
+
+{
+  "document": {..."
+7
+ Waiting for model response...
+8
+ Received first response token
+9
+ Received full result: 2,723 tokens (2,605 sent, 118 received) at 47.967 tokens/second
+10
+ Received result: JSON
+{
+document_name: "Koopovereenkomst auto tillycars.txt"
+document_type: "contract"
+is_readable: true
+belongs_to_case: true
+summary: "Dit is een koopovereenkomst voor een tweedehands Volvo Corsa, waarin staat dat de auto 'technisch goed in orde' is, maar zonder garantie vanwege de leeftijd."
+tags: [
+0: "koopovereenkomst"
+1: "tweedehands auto"
+2: "garantie"
+3: "verborgen gebrek"
+4: "contractrecht"
+]
+note: null
+}
+11
+ Saving result to variable {{result}}
+12
+ Action completed
+Billing Events
+gpt-4o-llm_inference-prompt
+(2.605 units at $0,000002500 per unit)
+$0,006512500
+gpt-4o-llm_inference-response
+(118 units at $0,000010000 per unit)
+$0,001180000
+Action Total
+$0,007692500
+Sending Output
+18 ms
+1
+Action started on CloudRunner
+Instance ID: fljvk
+ at Oct 22, 2025 12:42:21.577 PM GMT+2
+2
+ Sending JSON: JSON
+{
+result: "{{result}}"
+}
+3
+ Resolving variables
+4
+ Sending message: JSON
+{
+result: {
+document_name: "Koopovereenkomst auto tillycars.txt"
+document_type: "contract"
+is_readable: true
+belongs_to_case: true
+summary: "Dit is een koopovereenkomst voor een tweedehands Volvo Corsa, waarin staat dat de auto 'technisch goed in orde' is, maar zonder garantie vanwege de leeftijd."
+tags: []
+note: null
+}
+}
+5
+ Action completed
+Run Completed
+2,599 s
