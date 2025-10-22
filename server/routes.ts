@@ -313,6 +313,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to analyze a single document using Dossier_check.flow
+  async function analyzeDocumentWithMindStudio(documentId: string, caseId: string) {
+    try {
+      console.log(`🔍 Starting document analysis for document ${documentId}`);
+      
+      // Get document and case data
+      const document = await storage.getDocument(documentId);
+      const caseData = await storage.getCase(caseId);
+      
+      if (!document || !caseData) {
+        console.error(`❌ Document or case not found for analysis`);
+        return;
+      }
+      
+      // Update status to analyzing
+      await storage.updateDocument(documentId, { analysisStatus: 'analyzing' });
+      
+      // Check if MindStudio is configured
+      if (!process.env.MINDSTUDIO_API_KEY || !process.env.MS_AGENT_APP_ID) {
+        console.warn('⚠️ MindStudio not configured, skipping document analysis');
+        await storage.updateDocument(documentId, { 
+          analysisStatus: 'completed',
+          documentAnalysis: {
+            document_name: document.filename,
+            document_type: 'unknown',
+            is_readable: !!document.extractedText,
+            belongs_to_case: true,
+            summary: 'Automatische analyse niet beschikbaar (MindStudio niet geconfigureerd)',
+            tags: [],
+            note: null
+          }
+        });
+        return;
+      }
+      
+      // Prepare input for MindStudio
+      const inputData = {
+        document: {
+          filename: document.filename,
+          type: document.mimetype,
+          size: document.sizeBytes,
+          text: document.extractedText || '[Tekst kon niet worden geëxtraheerd]'
+        },
+        case_context: {
+          case_id: caseId,
+          title: caseData.title || 'Zonder titel',
+          description: caseData.description || '',
+          category: caseData.category || 'general',
+          claim_amount: Number(caseData.claimAmount) || 0,
+          counterparty_name: caseData.counterpartyName || 'Onbekend',
+          counterparty_type: caseData.counterpartyType || 'unknown'
+        }
+      };
+      
+      console.log('📤 Calling MindStudio Dossier_check.flow for single document');
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 1 minute timeout
+      
+      const response = await fetch('https://v1.mindstudio-api.com/developer/v2/agents/run', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+        },
+        body: JSON.stringify({
+          appId: process.env.MS_AGENT_APP_ID,
+          inputs: {
+            input_json: JSON.stringify(inputData)
+          },
+          workflow: 'Dossier_check.flow',
+          includeBillingCost: true
+        }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ MindStudio API error:", errorText);
+        await storage.updateDocument(documentId, { 
+          analysisStatus: 'failed',
+          documentAnalysis: {
+            document_name: document.filename,
+            document_type: 'unknown',
+            is_readable: !!document.extractedText,
+            belongs_to_case: true,
+            summary: 'Analyse mislukt. Probeer het later opnieuw.',
+            tags: [],
+            note: 'MindStudio API error'
+          }
+        });
+        return;
+      }
+      
+      const result = await response.json();
+      console.log('✅ MindStudio document analysis result:', result);
+      
+      // Extract analysis from result
+      let analysis = null;
+      if (result.outputs?.result) {
+        try {
+          analysis = typeof result.outputs.result === 'string' 
+            ? JSON.parse(result.outputs.result) 
+            : result.outputs.result;
+        } catch (e) {
+          console.error('Failed to parse MindStudio result:', e);
+        }
+      }
+      
+      // Save analysis to database
+      if (analysis) {
+        await storage.updateDocument(documentId, {
+          analysisStatus: 'completed',
+          documentAnalysis: analysis
+        });
+        console.log(`✅ Document analysis saved for ${document.filename}`);
+      } else {
+        await storage.updateDocument(documentId, { 
+          analysisStatus: 'completed',
+          documentAnalysis: {
+            document_name: document.filename,
+            document_type: 'unknown',
+            is_readable: !!document.extractedText,
+            belongs_to_case: true,
+            summary: 'Document geüpload',
+            tags: [],
+            note: null
+          }
+        });
+      }
+    } catch (error) {
+      console.error(`❌ Error analyzing document ${documentId}:`, error);
+      try {
+        await storage.updateDocument(documentId, { 
+          analysisStatus: 'failed',
+          documentAnalysis: {
+            document_name: 'Unknown',
+            document_type: 'unknown',
+            is_readable: false,
+            belongs_to_case: true,
+            summary: 'Analyse mislukt wegens technische fout',
+            tags: [],
+            note: 'Internal error'
+          }
+        });
+      } catch (updateError) {
+        console.error('Failed to update document with error status:', updateError);
+      }
+    }
+  }
+
   // Document upload routes
   app.post('/api/cases/:id/uploads', isAuthenticated, upload.array('files'), async (req: any, res) => {
     try {
@@ -357,6 +510,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         uploadedDocs.push(document);
+        
+        // Trigger automatic document analysis (async, don't wait)
+        analyzeDocumentWithMindStudio(document.id, caseId).catch(err => {
+          console.error(`Failed to analyze document ${document.id}:`, err);
+        });
       }
       
       // Update case status if this is first upload
