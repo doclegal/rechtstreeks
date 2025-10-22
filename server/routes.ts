@@ -1119,6 +1119,164 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dossier check route - check document completeness using Dossier_check.flow
+  app.post('/api/cases/:id/dossier-check', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      // Get case data and verify ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      // Get documents for dossier check
+      const documents = await storage.getDocumentsByCase(caseId);
+      
+      if (documents.length === 0) {
+        return res.status(400).json({ 
+          message: "Geen documenten gevonden. Upload eerst documenten om het dossier te controleren." 
+        });
+      }
+      
+      console.log(`🔍 Running dossier check for case ${caseId} with ${documents.length} documents`);
+      
+      // Call MindStudio Dossier_check.flow
+      if (process.env.MINDSTUDIO_API_KEY && process.env.MS_AGENT_APP_ID) {
+        try {
+          // Prepare documents with extracted text
+          const documentsSummary = documents.map(doc => ({
+            filename: doc.filename,
+            type: doc.mimetype,
+            size: doc.sizeBytes,
+            text: doc.extractedText || '[Tekst kon niet worden geëxtraheerd]'
+          }));
+          
+          // Prepare input payload for Dossier_check.flow
+          const inputData = {
+            case_id: caseId,
+            case_title: caseData.title || 'Zonder titel',
+            case_description: caseData.description || '',
+            category: caseData.category || 'general',
+            claim_amount: Number(caseData.claimAmount) || 0,
+            document_count: documents.length,
+            documents: documentsSummary,
+            counterparty: {
+              name: caseData.counterpartyName,
+              type: caseData.counterpartyType,
+              email: caseData.counterpartyEmail,
+              phone: caseData.counterpartyPhone,
+              address: caseData.counterpartyAddress
+            }
+          };
+          
+          console.log("📤 Calling MindStudio Dossier_check.flow");
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes timeout
+          
+          const response = await fetch('https://v1.mindstudio-api.com/developer/v2/agents/run', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+            },
+            body: JSON.stringify({
+              appId: process.env.MS_AGENT_APP_ID,
+              inputs: {
+                input_json: JSON.stringify(inputData)
+              },
+              workflow: 'Dossier_check.flow',
+              includeBillingCost: true
+            }),
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("❌ MindStudio API error:", errorText);
+            throw new Error(`MindStudio API error: ${response.status}`);
+          }
+          
+          const result = await response.json();
+          console.log("✅ Dossier check completed");
+          
+          // Extract result from MindStudio response
+          let checkResult: any = {};
+          
+          try {
+            // Try to parse the output JSON
+            if (result.outputs?.output_json) {
+              checkResult = JSON.parse(result.outputs.output_json);
+            } else if (result.outputs?.result) {
+              checkResult = result.outputs.result;
+            } else {
+              checkResult = result.outputs || {};
+            }
+          } catch (e) {
+            console.error("Failed to parse dossier check result:", e);
+            checkResult = { 
+              raw_result: result.outputs,
+              message: "Dossiercontrole voltooid maar resultaat kon niet worden geparseerd"
+            };
+          }
+          
+          // Log event
+          await storage.createEvent({
+            caseId,
+            actorUserId: userId,
+            type: "dossier_check_completed",
+            payloadJson: { 
+              document_count: documents.length,
+              completeness: checkResult.completeness || 'onbekend'
+            },
+          });
+          
+          return res.json({
+            success: true,
+            ...checkResult,
+            document_count: documents.length
+          });
+          
+        } catch (error) {
+          console.error("Dossier check failed:", error);
+          
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          if (errorMsg.includes('abort') || errorMsg.includes('timeout')) {
+            return res.status(504).json({ 
+              message: "Dossiercontrole duurt te lang (timeout). Probeer het opnieuw met minder documenten." 
+            });
+          }
+          
+          return res.status(503).json({ 
+            message: "Sorry, de dossiercontrole lukt niet. MindStudio AI is niet beschikbaar." 
+          });
+        }
+      } else {
+        // Mock response when MindStudio is not configured
+        console.log("🧪 [MOCK] Dossier check - MindStudio not configured");
+        return res.json({
+          success: true,
+          completeness: "75%",
+          missing_documents: [
+            "Aankoopbevestiging",
+            "Bewijs van betaling"
+          ],
+          recommendations: "Upload de ontbrekende documenten voor een compleet dossier. Dit verhoogt uw kansen op succes.",
+          document_count: documents.length,
+          mock: true
+        });
+      }
+      
+    } catch (error) {
+      console.error("Error running dossier check:", error);
+      res.status(500).json({ message: "Dossiercontrole mislukt. Probeer het opnieuw." });
+    }
+  });
+
   // Second Run Analysis - refine analysis with missing info answers
   app.post('/api/cases/:id/second-run', isAuthenticated, async (req: any, res) => {
     try {
