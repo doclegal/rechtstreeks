@@ -822,50 +822,6 @@ export default function Analysis() {
         </Card>
       )}
 
-      {/* EXTRACTED TEXTS SECTION */}
-      {extractedTexts && Array.isArray(extractedTexts) && extractedTexts.length > 0 && (
-        <Card className="mb-6" data-testid="card-extracted-texts">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Files className="h-5 w-5 text-primary" />
-              Document Samenvattingen
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              {extractedTexts.map((doc: any, idx: number) => (
-                <div key={idx} className="border-b last:border-b-0 pb-4 last:pb-0">
-                  <h4 className="font-semibold text-sm mb-2 text-primary">
-                    {doc.filename || `Document ${idx + 1}`}
-                  </h4>
-                  
-                  {doc.summary && (
-                    <div className="mb-3">
-                      <p className="text-sm text-muted-foreground italic">
-                        {doc.summary}
-                      </p>
-                    </div>
-                  )}
-
-                  {doc.bullets && Array.isArray(doc.bullets) && doc.bullets.length > 0 && (
-                    <div>
-                      <h5 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
-                        Belangrijkste punten
-                      </h5>
-                      <ul className="list-disc list-inside space-y-1">
-                        {doc.bullets.map((bullet: string, bulletIdx: number) => (
-                          <li key={bulletIdx} className="text-sm">{bullet}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* FALLBACK: No analysis or incomplete analysis */}
       {!fullAnalysis && currentCase?.fullAnalysis && (
         <Card className="mb-6 bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800" data-testid="card-incomplete-analysis">
