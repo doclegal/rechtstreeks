@@ -1739,6 +1739,206 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Success chance assessment (RKOS - Redelijke Kans Op Succes)
+  app.post('/api/cases/:id/success-chance', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      // Verify case ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      // Get fullAnalysis - must exist
+      const fullAnalysis = await storage.getAnalysisByType(caseId, 'mindstudio-full-analysis');
+      if (!fullAnalysis || !fullAnalysis.analysisJson) {
+        return res.status(400).json({ message: "Voer eerst een volledige analyse uit voordat u de kans op succes kunt beoordelen" });
+      }
+      
+      // Get all case documents
+      const documents = await storage.getDocumentsByCase(caseId);
+      
+      // Parse fullAnalysis to get all structured data
+      let analysisData: any = {};
+      try {
+        analysisData = typeof fullAnalysis.analysisJson === 'string' 
+          ? JSON.parse(fullAnalysis.analysisJson) 
+          : fullAnalysis.analysisJson;
+      } catch (error) {
+        console.error("Error parsing fullAnalysis:", error);
+        return res.status(400).json({ message: "Analyse data is ongeldig" });
+      }
+      
+      // Get userContext and procedureContext
+      const userContext = fullAnalysis.userContext || {};
+      const procedureContext = fullAnalysis.procedureContext || {};
+      
+      // Prepare comprehensive input for RKOS.flow
+      const inputData: any = {
+        // User role and case info
+        user_role: userContext.procedural_role || "onbekend",
+        case_info: {
+          title: caseData.caseTitle || "Onbekend",
+          claimant_name: caseData.claimantName,
+          claimant_address: caseData.claimantAddress,
+          claimant_city: caseData.claimantCity,
+          counterparty_name: caseData.counterpartyName,
+          counterparty_type: caseData.counterpartyType,
+          counterparty_email: caseData.counterpartyEmail,
+          counterparty_phone: caseData.counterpartyPhone,
+          counterparty_address: caseData.counterpartyAddress,
+          counterparty_city: caseData.counterpartyCity,
+        },
+        
+        // Domain classification
+        domain: userContext.legal_role || procedureContext.domain || "onbekend",
+        
+        // Amount claimed or disputed
+        amount_eur: analysisData.claims?.total_amount || analysisData.amount || 0,
+        
+        // Complete analysis data from all tabs
+        summary: analysisData.summary || null,
+        parties: analysisData.parties || null,
+        facts_known: analysisData.facts?.known || [],
+        facts_disputed: analysisData.facts?.disputed || [],
+        facts_unclear: analysisData.facts?.unclear || [],
+        
+        // Legal arguments/defenses
+        arguments_or_defenses: {
+          applicable_rules: analysisData.applicable_rules || [],
+          legal_grounds: analysisData.legal_grounds || [],
+          defenses: analysisData.defenses || [],
+        },
+        
+        // Evidence
+        evidence_full: {
+          provided: analysisData.evidence?.provided || [],
+          missing: analysisData.evidence?.missing || [],
+        },
+        
+        // Risks and recommendations
+        risks: analysisData.risks || [],
+        recommendations: analysisData.recommendations || [],
+        
+        // All documents summary (from Dossier)
+        all_documents: documents.map((doc: any) => ({
+          filename: doc.filename,
+          extracted_text: doc.extractedText || '',
+          document_analysis: doc.documentAnalysis || null,
+        })),
+      };
+      
+      console.log("🎯 Calling RKOS.flow for success chance assessment...");
+      console.log("📊 Input summary:", {
+        user_role: inputData.user_role,
+        domain: inputData.domain,
+        amount_eur: inputData.amount_eur,
+        facts_count: inputData.facts_known.length,
+        documents_count: inputData.all_documents.length,
+      });
+      
+      // Call MindStudio RKOS.flow
+      const mindstudioAppId = process.env.MS_AGENT_APP_ID;
+      const mindstudioFlowId = process.env.MS_FLOW_BEVOEGDHEID_ID; // Using same API key
+      
+      if (!mindstudioAppId || !mindstudioFlowId) {
+        console.error("❌ MindStudio credentials not configured");
+        return res.status(503).json({ 
+          message: "MindStudio is niet correct geconfigureerd. Neem contact op met de beheerder." 
+        });
+      }
+      
+      const requestBody = {
+        appId: mindstudioAppId,
+        workflow: "RKOS.flow",
+        variables: {
+          input_json: inputData
+        }
+      };
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3 * 60 * 1000); // 3 minutes timeout
+      
+      try {
+        const mindstudioResponse = await fetch('https://api.mindstudio.ai/developer/v2/apps/run', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${mindstudioFlowId}`
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!mindstudioResponse.ok) {
+          const errorText = await mindstudioResponse.text();
+          console.error(`❌ MindStudio API error: ${mindstudioResponse.status}`, errorText);
+          return res.status(500).json({ message: `MindStudio fout: ${mindstudioResponse.status}` });
+        }
+        
+        const response = await mindstudioResponse.json();
+        console.log("✅ RKOS.flow response received");
+        
+        // Extract rkos data from response.result
+        let rkosData = null;
+        if (response.result && response.result.rkos) {
+          rkosData = typeof response.result.rkos === 'string' 
+            ? JSON.parse(response.result.rkos) 
+            : response.result.rkos;
+        } else if (response.result) {
+          // Fallback: check if result itself is the RKOS data
+          rkosData = response.result;
+        }
+        
+        if (!rkosData) {
+          console.error("❌ No RKOS data in MindStudio response:", JSON.stringify(response).substring(0, 500));
+          return res.status(500).json({ message: "Geen succeskans data ontvangen van AI" });
+        }
+        
+        console.log("📊 RKOS result:", {
+          chance_of_success: rkosData.chance_of_success,
+          confidence_level: rkosData.confidence_level,
+        });
+        
+        // Update the fullAnalysis record with succesKansAnalysis
+        await storage.updateAnalysis(fullAnalysis.id, {
+          succesKansAnalysis: rkosData
+        });
+        
+        // Log event
+        await storage.createEvent({
+          caseId,
+          actorUserId: userId,
+          type: "success_chance_assessed",
+          payloadJson: { result: rkosData },
+        });
+        
+        res.json({
+          success: true,
+          result: rkosData
+        });
+        
+      } catch (error: any) {
+        clearTimeout(timeoutId);
+        console.error("❌ Error calling RKOS.flow:", error);
+        
+        if (error.name === 'AbortError') {
+          return res.status(504).json({ message: "De beoordeling duurde te lang. Probeer het later opnieuw." });
+        }
+        
+        res.status(500).json({ message: "Fout bij het beoordelen van de kans op succes" });
+      }
+      
+    } catch (error) {
+      console.error("Error in success chance assessment:", error);
+      res.status(500).json({ message: "Fout bij het uitvoeren van de succeskans beoordeling" });
+    }
+  });
+
   // Letter generation routes
   app.post('/api/cases/:id/letter', isAuthenticated, async (req: any, res) => {
     try {

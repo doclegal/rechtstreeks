@@ -57,6 +57,7 @@ export interface IStorage {
   createAnalysis(analysisData: InsertAnalysis): Promise<Analysis>;
   getLatestAnalysis(caseId: string): Promise<Analysis | undefined>;
   getAnalysisByType(caseId: string, model: string): Promise<Analysis | undefined>;
+  updateAnalysis(id: string, updates: Partial<InsertAnalysis>): Promise<Analysis>;
   
   // Letter operations
   createLetter(letterData: InsertLetter): Promise<Letter>;
@@ -248,6 +249,15 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(analyses.createdAt))
       .limit(1);
     return analysis;
+  }
+
+  async updateAnalysis(id: string, updates: Partial<InsertAnalysis>): Promise<Analysis> {
+    const [updatedAnalysis] = await db
+      .update(analyses)
+      .set(updates)
+      .where(eq(analyses.id, id))
+      .returning();
+    return updatedAnalysis;
   }
 
   async getAnalysesByCase(caseId: string): Promise<Analysis[]> {

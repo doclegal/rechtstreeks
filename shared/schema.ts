@@ -137,6 +137,9 @@ export const analyses = pgTable("analyses", {
   prevAnalysisId: varchar("prev_analysis_id"), // Link to previous version (self-reference)
   missingInfoAnswers: jsonb("missing_info_answers"), // User answers to missing info questions
   
+  // Success chance assessment (RKOS - Redelijke Kans Op Succes)
+  succesKansAnalysis: jsonb("succes_kans_analysis"), // RKOS evaluation result
+  
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("idx_analyses_case").on(table.caseId),

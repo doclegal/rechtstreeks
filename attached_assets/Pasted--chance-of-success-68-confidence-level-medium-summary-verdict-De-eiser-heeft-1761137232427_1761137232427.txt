@@ -1,0 +1,50 @@
+{
+  "chance_of_success": 68,
+  "confidence_level": "medium",
+  "summary_verdict": "De eiser heeft een redelijke maar niet zekere kans van slagen. De kern van de vordering is goed onderbouwd, maar de bewijslast voor het gebrek en de ingebrekestelling is nog zwak.",
+  "strengths": [
+    {
+      "point": "Schriftelijke koopovereenkomst aanwezig",
+      "why_it_matters": "Toont aan dat partijen gebonden zijn aan duidelijke afspraken over prijs, levering en product."
+    },
+    {
+      "point": "Klachten kort na levering gemeld",
+      "why_it_matters": "Ondersteunt de stelling dat het gebrek al bij aflevering aanwezig was."
+    },
+    {
+      "point": "Verkoper erkent in e-mail mogelijke gebreken",
+      "why_it_matters": "Verhoogt aannemelijkheid van non-conformiteit."
+    }
+  ],
+  "weaknesses": [
+    {
+      "point": "Geen onafhankelijk deskundigenrapport",
+      "why_it_matters": "Rechter kan twijfelen of het gebrek daadwerkelijk ernstig genoeg is voor ontbinding of schadevergoeding."
+    },
+    {
+      "point": "Geen schriftelijke ingebrekestelling",
+      "why_it_matters": "Zonder formele aanmaning is verzuim niet vast te stellen, wat de toewijsbaarheid van rente en kosten beperkt."
+    },
+    {
+      "point": "Verkoper kan zich beroepen op ouderdomsclausule",
+      "why_it_matters": "Beperkt mogelijk de aansprakelijkheid en leidt tot gedeeltelijke afwijzing van de vordering."
+    }
+  ],
+  "missing_elements": [
+    {
+      "item": "Kopie van factuur met leverdatum",
+      "why_needed": "Nodig om aan te tonen wanneer het product geleverd is en of de klacht binnen bekwame tijd is gedaan."
+    },
+    {
+      "item": "Deskundigenrapport over technische staat auto",
+      "why_needed": "Versterkt bewijs dat het gebrek niet door de koper is veroorzaakt."
+    },
+    {
+      "item": "Ingebrekestelling of 14-dagenbrief",
+      "why_needed": "Vereist om verzuim aan te tonen en aanspraak te maken op schadevergoeding of ontbinding."
+    }
+  ],
+  "advice_for_user": "Verzamel en upload de ontbrekende stukken, met name een schriftelijke ingebrekestelling en een onafhankelijk rapport. Als dat lukt, stijgt de kans op succes naar circa 80%.",
+  "role_considered": "eiser",
+  "domain": "consumentenkoop / verborgen gebrek"
+}
