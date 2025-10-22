@@ -62,6 +62,30 @@ export default function DocumentList({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Generate consistent color for each tag based on tag name
+  const getTagColor = (tag: string) => {
+    const colors = [
+      { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-800 dark:text-blue-300' },
+      { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-800 dark:text-purple-300' },
+      { bg: 'bg-pink-100 dark:bg-pink-900/30', text: 'text-pink-800 dark:text-pink-300' },
+      { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-800 dark:text-orange-300' },
+      { bg: 'bg-teal-100 dark:bg-teal-900/30', text: 'text-teal-800 dark:text-teal-300' },
+      { bg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-800 dark:text-indigo-300' },
+      { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-800 dark:text-emerald-300' },
+      { bg: 'bg-cyan-100 dark:bg-cyan-900/30', text: 'text-cyan-800 dark:text-cyan-300' },
+      { bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-800 dark:text-rose-300' },
+      { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-800 dark:text-amber-300' },
+    ];
+    
+    // Simple hash function to get consistent color for same tag
+    let hash = 0;
+    for (let i = 0; i < tag.length; i++) {
+      hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
+  };
+
   // Auto-refresh while documents are being analyzed
   useEffect(() => {
     const hasAnalyzing = documents.some(doc => 
@@ -278,17 +302,20 @@ export default function DocumentList({
                     {/* Tags */}
                     {document.documentAnalysis.tags && document.documentAnalysis.tags.length > 0 && (
                       <div className="flex items-center flex-wrap gap-2 mb-3">
-                        <Tag className="h-3 w-3 text-green-700 dark:text-green-300" />
-                        {document.documentAnalysis.tags.map((tag, index) => (
-                          <Badge 
-                            key={index} 
-                            variant="secondary" 
-                            className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                            data-testid={`tag-${document.id}-${index}`}
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
+                        <Tag className="h-3 w-3 text-muted-foreground" />
+                        {document.documentAnalysis.tags.map((tag, index) => {
+                          const tagColor = getTagColor(tag);
+                          return (
+                            <Badge 
+                              key={index} 
+                              variant="secondary" 
+                              className={`${tagColor.bg} ${tagColor.text} border-0`}
+                              data-testid={`tag-${document.id}-${index}`}
+                            >
+                              {tag}
+                            </Badge>
+                          );
+                        })}
                       </div>
                     )}
 
