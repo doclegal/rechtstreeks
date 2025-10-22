@@ -501,3 +501,40 @@ export function useUpdateCase(caseId: string) {
     },
   });
 }
+
+export function useDossierCheck(caseId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/cases/${caseId}/dossier-check`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId] });
+      toast({
+        title: "Dossiercontrole voltooid",
+        description: "Uw dossier is gecontroleerd",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Controle mislukt",
+        description: "Er is een fout opgetreden bij het controleren van het dossier",
+        variant: "destructive",
+      });
+    },
+  });
+}
