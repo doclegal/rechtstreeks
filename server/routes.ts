@@ -1313,14 +1313,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Case not found" });
       }
 
-      // Check if case has been fully analyzed
-      let fullAnalysisRecord = await storage.getAnalysisByType(caseId, 'mindstudio-full-analysis');
-      if (!fullAnalysisRecord) {
-        return res.status(400).json({ 
-          message: "Case must have a full analysis first. Please run full analysis first." 
-        });
-      }
-
       // Verify MindStudio is available
       if (!process.env.MINDSTUDIO_API_KEY || !process.env.MS_AGENT_APP_ID) {
         return res.status(503).json({ 
@@ -1331,35 +1323,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         console.log(`📊 Running success chance assessment for case ${caseId}`);
         
-        // Enrich full analysis to extract parsedAnalysis
-        const fullAnalysisData = enrichFullAnalysis(fullAnalysisRecord);
-        const parsedAnalysis = fullAnalysisData?.parsedAnalysis;
-
-        if (!parsedAnalysis) {
-          return res.status(400).json({ 
-            message: "Geen volledige analyse gevonden. Voer eerst een volledige analyse uit." 
-          });
+        // Try to get full analysis (optional - MindStudio will handle missing data)
+        let fullAnalysisRecord = await storage.getAnalysisByType(caseId, 'mindstudio-full-analysis');
+        let parsedAnalysis = null;
+        
+        if (fullAnalysisRecord) {
+          const fullAnalysisData = enrichFullAnalysis(fullAnalysisRecord);
+          parsedAnalysis = fullAnalysisData?.parsedAnalysis;
         }
 
         // Get all documents for the case (dossier)
         const documents = await storage.getDocumentsByCase(caseId);
         console.log(`📄 Found ${documents.length} documents for success chance assessment`);
+        console.log(`📋 Full analysis available: ${parsedAnalysis ? 'YES' : 'NO'}`);
 
-        // Build comprehensive context for RKOS assessment
+        // Build context for RKOS assessment
+        // If parsedAnalysis is missing, MindStudio will return fallback response
         const contextPayload = {
           case_id: caseId,
           case_title: caseData.title || 'Zonder titel',
           case_description: caseData.description || '',
           claim_amount: Number(caseData.claimAmount) || 0,
           
-          // Full analysis sections
-          summary: parsedAnalysis.summary || '',
-          parties: parsedAnalysis.parties || {},
-          facts: parsedAnalysis.facts || [],
-          legal_analysis: parsedAnalysis.legal_analysis || {},
-          risk_assessment: parsedAnalysis.risk_assessment || {},
-          recommendations: parsedAnalysis.recommendations || [],
-          applicable_rules: parsedAnalysis.applicable_rules || [],
+          // Full analysis sections (may be empty/null - MindStudio handles this)
+          summary: parsedAnalysis?.summary || '',
+          parties: parsedAnalysis?.parties || {},
+          facts: parsedAnalysis?.facts || [],
+          legal_analysis: parsedAnalysis?.legal_analysis || {},
+          risk_assessment: parsedAnalysis?.risk_assessment || {},
+          recommendations: parsedAnalysis?.recommendations || [],
+          applicable_rules: parsedAnalysis?.applicable_rules || [],
           
           // Dossier documents
           dossier: {
@@ -1416,12 +1409,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           confidence_level: rkosResult.confidence_level
         });
 
-        // Update the full analysis record with success chance data
-        await storage.updateAnalysis(fullAnalysisRecord.id, {
-          succesKansAnalysis: rkosResult
-        });
-
-        console.log('✅ Success chance analysis saved to database');
+        // Update the full analysis record with success chance data (if it exists)
+        if (fullAnalysisRecord) {
+          await storage.updateAnalysis(fullAnalysisRecord.id, {
+            succesKansAnalysis: rkosResult
+          });
+          console.log('✅ Success chance analysis saved to database');
+        } else {
+          console.log('ℹ️ Success chance analysis returned (not saved - no full analysis yet)');
+        }
 
         res.json({ 
           success: true,

@@ -34,9 +34,8 @@ export default function Analysis() {
   // Success chance assessment mutation
   const successChanceMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/cases/${caseId}/success-chance`, {
-        method: 'POST',
-      });
+      const response = await apiRequest('POST', `/api/cases/${caseId}/success-chance`);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] });
