@@ -421,11 +421,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Extract analysis from result (MindStudio returns result.result for workflows)
       let analysis = null;
-      if (result.result) {
+      if (result.result?.result) {
+        // Extract the nested result.result which contains the actual analysis
         try {
-          analysis = typeof result.result === 'string' 
-            ? JSON.parse(result.result) 
-            : result.result;
+          analysis = typeof result.result.result === 'string' 
+            ? JSON.parse(result.result.result) 
+            : result.result.result;
         } catch (e) {
           console.error('Failed to parse MindStudio result:', e);
         }
