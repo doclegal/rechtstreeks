@@ -1375,30 +1375,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         // Call MindStudio RKOS.flow
-        const flowResult = await aiService.callMindstudioFlow(
-          'RKOS.flow',
-          contextPayload
-        );
+        const flowResult = await aiService.runRKOS(contextPayload);
+
+        if (flowResult.error) {
+          console.error('❌ RKOS call failed:', flowResult.error);
+          return res.status(500).json({ 
+            message: "RKOS analyse mislukt. Probeer het opnieuw.",
+            error: flowResult.error
+          });
+        }
 
         console.log('✅ RKOS.flow response received');
 
         // Parse the response
         let rkosResult = null;
+        
+        // Try result.rkos (new format)
         if (flowResult.result?.rkos) {
           rkosResult = flowResult.result.rkos;
-        } else if (flowResult.thread?.posts) {
-          // Fallback: check thread posts for rkos variable
+          console.log('📊 Found rkos in result.rkos');
+        }
+        // Try thread posts (legacy format)
+        else if (flowResult.thread?.posts) {
+          console.log('🔍 Checking thread posts for rkos variable...');
           for (const post of flowResult.thread.posts) {
             if (post.debugLog?.newState?.variables?.rkos?.value) {
               const value = post.debugLog.newState.variables.rkos.value;
               rkosResult = typeof value === 'string' ? JSON.parse(value) : value;
+              console.log('📊 Found rkos in thread posts');
               break;
             }
           }
         }
+        // Try thread variables (alternative legacy format)
+        else if (flowResult.thread?.variables?.rkos) {
+          const value = flowResult.thread.variables.rkos.value || flowResult.thread.variables.rkos;
+          rkosResult = typeof value === 'string' ? JSON.parse(value) : value;
+          console.log('📊 Found rkos in thread variables');
+        }
 
         if (!rkosResult) {
-          console.error('❌ No RKOS result in response:', flowResult);
+          console.error('❌ No RKOS result in response');
+          console.log('Response structure:', {
+            has_result: !!flowResult.result,
+            has_thread: !!flowResult.thread,
+            result_keys: flowResult.result ? Object.keys(flowResult.result) : [],
+            thread_keys: flowResult.thread ? Object.keys(flowResult.thread) : []
+          });
           return res.status(500).json({ 
             message: "RKOS analyse heeft geen resultaat opgeleverd." 
           });

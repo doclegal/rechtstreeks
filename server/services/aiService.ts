@@ -2286,6 +2286,72 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       };
     }
   }
+
+  // RKOS - Redelijke Kans Op Succes (Reasonable Chance of Success) Assessment
+  async runRKOS(input_json: any): Promise<{ result?: any; thread?: any; error?: string }> {
+    console.log("📊 Calling MindStudio RKOS.flow...");
+
+    const variables = {
+      input_json: JSON.stringify(input_json)
+    };
+
+    console.log("📤 RKOS variables:", {
+      case_id: input_json.case_id,
+      has_summary: !!input_json.summary,
+      has_parties: !!input_json.parties,
+      facts_count: input_json.facts?.length || 0,
+      docs_count: input_json.dossier?.document_count || 0
+    });
+
+    const requestBody = {
+      workerId: process.env.MS_AGENT_APP_ID,
+      variables,
+      workflow: "RKOS.flow",
+      includeBillingCost: true
+    };
+
+    // Set timeout to 3 minutes for RKOS assessment
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3 * 60 * 1000);
+
+    try {
+      const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error("❌ MindStudio RKOS error:", errorData);
+        return {
+          error: `MindStudio API error: ${response.status} ${response.statusText}`
+        };
+      }
+
+      const data = await response.json();
+      console.log("📥 RKOS raw response received");
+
+      // Return the full data - let the caller parse it
+      return {
+        result: data.output?.results || data.result,
+        thread: data.thread
+      };
+
+    } catch (error) {
+      clearTimeout(timeoutId);
+      console.error("❌ Error calling MindStudio RKOS:", error);
+      return {
+        error: `Failed to call RKOS: ${error}`
+      };
+    }
+  }
 }
 
 export const aiService = new AIService();
