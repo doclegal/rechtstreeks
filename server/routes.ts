@@ -412,13 +412,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await response.json();
       console.log('✅ MindStudio document analysis result:', result);
       
-      // Extract analysis from result
+      // Extract analysis from result (MindStudio returns result.result for workflows)
       let analysis = null;
-      if (result.outputs?.result) {
+      if (result.result) {
         try {
-          analysis = typeof result.outputs.result === 'string' 
-            ? JSON.parse(result.outputs.result) 
-            : result.outputs.result;
+          analysis = typeof result.result === 'string' 
+            ? JSON.parse(result.result) 
+            : result.result;
         } catch (e) {
           console.error('Failed to parse MindStudio result:', e);
         }
