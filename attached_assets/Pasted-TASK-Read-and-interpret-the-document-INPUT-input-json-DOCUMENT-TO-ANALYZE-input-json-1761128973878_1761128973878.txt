@@ -1,0 +1,169 @@
+TASK
+
+Read and interpret the document.
+
+INPUT:{{input_json}}
+DOCUMENT TO ANALYZE:
+{{input_json}}
+
+---
+
+TASK
+
+Read and interpret {{input_json}} provided.
+Determine if the document is readable and complete.
+
+Identify the document type (e.g., factuur, contract, bewijs van betaling, correspondentie, rapport, foto, etc.).
+
+Evaluate whether the document logically belongs to the case, based on:
+
+The content of the document
+
+The case title and description
+
+The counterparty’s name
+
+The claim amount and case category
+
+Provide a short summary (1–2 sentences) in Dutch.
+
+Select 3–6 relevant tags (Dutch words).
+
+If the document appears irrelevant, corrupted, or suspicious, add a short note (warning or observation).
+
+OUTPUT FORMAT (strict JSON)
+{
+  "document_name": "[filename from input]",
+  "document_type": "[factuur|contract|bewijs|correspondentie|rapport|foto|etc.]",
+  "is_readable": true,
+  "belongs_to_case": true,
+  "summary": "[1–2 sentence summary in Dutch]",
+  "tags": ["tag1", "tag2", "tag3"],
+  "note": null
+}
+
+RULES
+
+Summary: Always in Dutch, max. 2 sentences.
+
+Tags: Dutch words, 3–6 per document.
+
+Note: Only fill in when:
+
+Document seems unrelated to the case
+
+Document is unreadable or corrupted
+
+Document date is clearly outside the relevant timeframe
+
+Content seems incomplete or suspicious
+
+If everything seems fine → note = null.
+
+Do not be overly cautious — if the document appears relevant, set belongs_to_case = true.
+
+EXAMPLES
+
+## Voorbeelden
+
+### Voorbeeld 1: Relevante Factuur
+
+**Input:**
+```json
+{
+  "document": {
+    "filename": "garage_factuur_maart_2024.pdf",
+    "type": "application/pdf",
+    "size": 123456,
+    "text": "FACTUUR\nAuto Reparatie Centrum\nDatum: 15-03-2024\n\nReparatie motorschade\nTotaal: € 1.250,00\n\nBetreft: Mercedes C-Klasse, Kenteken XX-123-YY"
+  },
+  "case_context": {
+    "title": "Geschil autodealer over verborgen gebreken Mercedes",
+    "claim_amount": 5000,
+    "counterparty_name": "Auto Dealer XYZ"
+  }
+}
+```
+
+**Expected Output:**
+```json
+{
+  "document_name": "garage_factuur_maart_2024.pdf",
+  "document_type": "factuur",
+  "is_readable": true,
+  "belongs_to_case": true,
+  "summary": "Reparatiefactuur van Auto Reparatie Centrum voor motorschade aan Mercedes C-Klasse voor €1.250. Document ondersteunt de claim over verborgen gebreken.",
+  "tags": ["factuur", "reparatie", "motorschade", "bewijs", "kosten"],
+  "note": null
+}
+```
+
+### Voorbeeld 2: Niet-gerelateerd Document
+
+**Input:**
+```json
+{
+  "document": {
+    "filename": "vakantie_foto.jpg",
+    "type": "image/jpeg",
+    "size": 2456789,
+    "text": "[Tekst kon niet worden geëxtraheerd]"
+  },
+  "case_context": {
+    "title": "Huurgeschil met verhuurder over achterstallig onderhoud",
+    "category": "huurrecht"
+  }
+}
+```
+
+**Expected Output:**
+```json
+{
+  "document_name": "vakantie_foto.jpg",
+  "document_type": "foto",
+  "is_readable": false,
+  "belongs_to_case": false,
+  "summary": "Afbeeldingsbestand zonder relevante tekst of context voor deze zaak.",
+  "tags": ["foto", "afbeelding"],
+  "note": "Document lijkt niet gerelateerd aan deze huurzaak. Controleer of dit het juiste bestand is."
+}
+```
+
+### Voorbeeld 3: Koopovereenkomst
+
+**Input:**
+```json
+{
+  "document": {
+    "filename": "koopcontract_auto.pdf",
+    "type": "application/pdf",
+    "text": "KOOPOVEREENKOMST AUTO\n\nKoper: Jan Jansen\nVerkoper: Auto Centrum BV\nObject: Mercedes C200, bouwjaar 2019\nKoopprijs: € 18.500\nDatum: 1 februari 2024\n\nVerkoper garandeert dat de auto vrij is van gebreken..."
+  },
+  "case_context": {
+    "title": "Geschil met autodealer over verborgen gebreken",
+    "counterparty_name": "Auto Centrum BV",
+    "claim_amount": 5000
+  }
+}
+```
+
+**Expected Output:**
+```json
+{
+  "document_name": "koopcontract_auto.pdf",
+  "document_type": "koopovereenkomst",
+  "is_readable": true,
+  "belongs_to_case": true,
+  "summary": "Koopovereenkomst tussen koper Jan Jansen en Auto Centrum BV voor Mercedes C200 voor €18.500, gedateerd 1 februari 2024. Document bevat garantiebepalingen.",
+  "tags": ["contract", "koopovereenkomst", "auto", "garantie", "bewijs"],
+  "note": null
+}
+```
+
+CONTEXT USE
+
+Compare the document contents with the case description.
+Check if names match the counterparty.
+Evaluate whether amounts mentioned are relevant to the claim amount.
+Check whether the document’s timeline logically fits the case.
+```
