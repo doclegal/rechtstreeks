@@ -1301,6 +1301,154 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Success Chance (RKOS - Redelijke Kans Op Succes) Assessment
+  app.post('/api/cases/:id/success-chance', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      // Get case data and verify ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+
+      // Check if case has been fully analyzed
+      let fullAnalysisRecord = await storage.getAnalysisByType(caseId, 'mindstudio-full-analysis');
+      if (!fullAnalysisRecord) {
+        return res.status(400).json({ 
+          message: "Case must have a full analysis first. Please run full analysis first." 
+        });
+      }
+
+      // Verify MindStudio is available
+      if (!process.env.MINDSTUDIO_API_KEY || !process.env.MS_AGENT_APP_ID) {
+        return res.status(503).json({ 
+          message: "Sorry, de kans op succes beoordeling lukt niet. Mindstudio AI is niet beschikbaar." 
+        });
+      }
+
+      try {
+        console.log(`📊 Running success chance assessment for case ${caseId}`);
+        
+        // Enrich full analysis to extract parsedAnalysis
+        const fullAnalysisData = enrichFullAnalysis(fullAnalysisRecord);
+        const parsedAnalysis = fullAnalysisData?.parsedAnalysis;
+
+        if (!parsedAnalysis) {
+          return res.status(400).json({ 
+            message: "Geen volledige analyse gevonden. Voer eerst een volledige analyse uit." 
+          });
+        }
+
+        // Get all documents for the case (dossier)
+        const documents = await storage.getDocumentsByCase(caseId);
+        console.log(`📄 Found ${documents.length} documents for success chance assessment`);
+
+        // Build comprehensive context for RKOS assessment
+        const contextPayload = {
+          case_id: caseId,
+          case_title: caseData.title || 'Zonder titel',
+          case_description: caseData.description || '',
+          claim_amount: Number(caseData.claimAmount) || 0,
+          
+          // Full analysis sections
+          summary: parsedAnalysis.summary || '',
+          parties: parsedAnalysis.parties || {},
+          facts: parsedAnalysis.facts || [],
+          legal_analysis: parsedAnalysis.legal_analysis || {},
+          risk_assessment: parsedAnalysis.risk_assessment || {},
+          recommendations: parsedAnalysis.recommendations || [],
+          applicable_rules: parsedAnalysis.applicable_rules || [],
+          
+          // Dossier documents
+          dossier: {
+            document_count: documents.length,
+            documents: documents.map(doc => ({
+              filename: doc.filename,
+              type: doc.mimetype,
+              extracted_text: doc.extractedText || '[Tekst niet beschikbaar]',
+              size_bytes: doc.sizeBytes
+            }))
+          }
+        };
+
+        console.log('📤 Sending context to RKOS.flow:', {
+          case_id: contextPayload.case_id,
+          has_summary: !!contextPayload.summary,
+          has_parties: !!contextPayload.parties,
+          facts_count: contextPayload.facts?.length || 0,
+          docs_count: contextPayload.dossier.document_count
+        });
+
+        // Call MindStudio RKOS.flow
+        const flowResult = await aiService.callMindstudioFlow(
+          'RKOS.flow',
+          contextPayload
+        );
+
+        console.log('✅ RKOS.flow response received');
+
+        // Parse the response
+        let rkosResult = null;
+        if (flowResult.result?.rkos) {
+          rkosResult = flowResult.result.rkos;
+        } else if (flowResult.thread?.posts) {
+          // Fallback: check thread posts for rkos variable
+          for (const post of flowResult.thread.posts) {
+            if (post.debugLog?.newState?.variables?.rkos?.value) {
+              const value = post.debugLog.newState.variables.rkos.value;
+              rkosResult = typeof value === 'string' ? JSON.parse(value) : value;
+              break;
+            }
+          }
+        }
+
+        if (!rkosResult) {
+          console.error('❌ No RKOS result in response:', flowResult);
+          return res.status(500).json({ 
+            message: "RKOS analyse heeft geen resultaat opgeleverd." 
+          });
+        }
+
+        console.log('📊 RKOS result:', {
+          chance_of_success: rkosResult.chance_of_success,
+          confidence_level: rkosResult.confidence_level
+        });
+
+        // Update the full analysis record with success chance data
+        await storage.updateAnalysis(fullAnalysisRecord.id, {
+          succesKansAnalysis: rkosResult
+        });
+
+        console.log('✅ Success chance analysis saved to database');
+
+        res.json({ 
+          success: true,
+          successChance: rkosResult
+        });
+
+      } catch (error) {
+        console.error("Success chance assessment failed:", error);
+        
+        // Check if it's a timeout error
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        if (errorMsg.includes('524') || errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
+          return res.status(504).json({ 
+            message: "De kans op succes beoordeling duurt te lang (timeout). Probeer het opnieuw." 
+          });
+        }
+        
+        return res.status(503).json({ 
+          message: "Sorry, de kans op succes beoordeling lukt niet. Mindstudio AI is niet beschikbaar." 
+        });
+      }
+    } catch (error) {
+      console.error("Error running success chance assessment:", error);
+      res.status(500).json({ message: "Kans op succes beoordeling mislukt. Probeer het opnieuw." });
+    }
+  });
+
   // Dossier check route - check document completeness using Dossier_check.flow
   app.post('/api/cases/:id/dossier-check', isAuthenticated, async (req: any, res) => {
     try {
