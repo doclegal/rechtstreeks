@@ -1692,11 +1692,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Build supplemental context from responses
       const supplementalContext: any = {
         providedAnswers: [],
-        providedDocuments: []
+        providedDocuments: [],
+        notAvailable: []
       };
       
       for (const response of responses) {
-        if (response.kind === 'document' && response.documentId) {
+        if (response.kind === 'not_available') {
+          // User indicated this information is not available
+          supplementalContext.notAvailable.push({
+            requirementId: response.requirementId
+          });
+        } else if (response.kind === 'document' && response.documentId) {
           // Get document details
           const doc = await storage.getDocument(response.documentId);
           if (doc && doc.extractedText) {
