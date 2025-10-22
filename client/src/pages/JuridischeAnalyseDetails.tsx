@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useFullAnalyzeCase } from "@/hooks/useCase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,7 @@ import { useActiveCase } from "@/contexts/CaseContext";
 export default function JuridischeAnalyseDetails() {
   const { user, isLoading: authLoading } = useAuth();
   const currentCase = useActiveCase();
+  const fullAnalyzeMutation = useFullAnalyzeCase(currentCase?.id || "");
 
   if (authLoading) {
     return (
@@ -49,20 +51,52 @@ export default function JuridischeAnalyseDetails() {
 
   if (!fullAnalysis) {
     return (
-      <div className="text-center py-12">
-        <div className="max-w-md mx-auto">
-          <AlertCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-foreground mb-4">Geen volledige analyse beschikbaar</h2>
-          <p className="text-muted-foreground mb-6">
-            Er is nog geen volledige juridische analyse uitgevoerd voor deze zaak.
-          </p>
-          <Button asChild size="lg" variant="outline" data-testid="button-back-to-analysis">
-            <Link href="/analysis">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Terug naar overzicht
-            </Link>
-          </Button>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <Button variant="ghost" asChild className="mb-2" data-testid="button-back-to-analysis">
+              <Link href="/analysis">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Terug naar overzicht
+              </Link>
+            </Button>
+            <h2 className="text-2xl font-bold text-foreground">Volledige Juridische Analyse</h2>
+            <p className="text-muted-foreground">Gedetailleerde analyse van uw zaak</p>
+          </div>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileSearch className="h-6 w-6 text-primary" />
+              Volledige Juridische Analyse
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-12">
+              <FileSearch className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">Nog niet uitgevoerd</h3>
+              <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
+                Start de volledige juridische analyse om een gedetailleerd overzicht te krijgen van feiten, partijen, juridische grondslag en aanbevelingen.
+              </p>
+              <Button
+                onClick={() => fullAnalyzeMutation.mutate()}
+                disabled={fullAnalyzeMutation.isPending}
+                size="lg"
+                data-testid="button-start-full-analysis"
+              >
+                {fullAnalyzeMutation.isPending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
+                    Analyseren...
+                  </>
+                ) : (
+                  'Start volledige analyse'
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
