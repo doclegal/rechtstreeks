@@ -368,6 +368,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       console.log('📤 Calling MindStudio Dossier_check.flow for single document');
+      console.log('📋 Document filename:', document.filename);
+      console.log('📋 Input data preview:', JSON.stringify(inputData).substring(0, 200) + '...');
+      
+      const requestBody = {
+        appId: process.env.MS_AGENT_APP_ID,
+        inputs: {
+          input_json: JSON.stringify(inputData)
+        },
+        workflow: 'Dossier_check.flow',
+        includeBillingCost: true
+      };
+      
+      console.log('📤 Request body:', JSON.stringify(requestBody, null, 2));
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000); // 1 minute timeout
@@ -378,14 +391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
         },
-        body: JSON.stringify({
-          appId: process.env.MS_AGENT_APP_ID,
-          inputs: {
-            input_json: JSON.stringify(inputData)
-          },
-          workflow: 'Dossier_check.flow',
-          includeBillingCost: true
-        }),
+        body: JSON.stringify(requestBody),
         signal: controller.signal
       });
       

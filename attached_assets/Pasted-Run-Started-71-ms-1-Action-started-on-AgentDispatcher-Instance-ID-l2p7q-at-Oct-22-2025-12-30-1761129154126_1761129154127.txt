@@ -1,0 +1,128 @@
+Run Started
+71 ms
+1
+Action started on AgentDispatcher
+Instance ID: l2p7q
+ at Oct 22, 2025 12:30:56.347 PM GMT+2
+2
+ New run with ID "9d4b80e6-16be-409e-bc1b-0195cea77f99"
+3
+ Preparing launch variables
+4
+ Running workflow Dossier_check.flow
+5
+ Initializing {{currentDate}} with value "Oct 22, 2025 10:30:56 AM"
+6
+ Initializing {{global.userId}} with value "cea0889c-9c7e-46fb-ba63-0a5f3bfc9de2"
+7
+ Initializing {{global.threadId}} with value "9d4b80e6-16be-409e-bc1b-0195cea77f99"
+8
+ Initializing {{global.username}} with value "Pieter D."
+9
+ Initializing {{global.userEmail}} with value "pdelaat@gmail.com"
+10
+ Initializing {{global.companyName}} with value "Notforlawyers"
+11
+ Dispatching run request to Agent Runner
+12
+ Action completed
+Generate Text - Background Message
+22,20 s
+1
+Action started on CloudRunner
+Instance ID: wrnsv
+ at Oct 22, 2025 12:30:56.625 PM GMT+2
+2
+ Sending message: "ANALYZE THE FOLLOWING DOCUMENT (provided as JSON input):
+
+{{input_json}}..."
+3
+ Loading message history
+4
+ Preparing to query 
+GPT-4o at 0.2° with a maximum response size of 1,100 tokens
+5
+ Resolving variables
+6
+ Sending resolved message: "ANALYZE THE FOLLOWING DOCUMENT (provided as JSON input):
+
+undefined..."
+7
+ Waiting for model response...
+8
+ Received full result: 672 tokens (643 sent, 29 received) at 9.493 tokens/second
+9
+ Model did not return valid JSON, attempting to autoheal
+10
+ Autoheal failed, converting to JSON using LLM
+11
+ Successfully converted model response to valid JSON using LLM conversion. Consider lowering your model temperature or choosing a different model to produce more reliable JSON.
+12
+ Received result: JSON
+{
+document_name: "garage_factuur_maart_2024.pdf"
+document_type: "factuur"
+is_readable: true
+belongs_to_case: true
+summary: "Reparatiefactuur van Auto Reparatie Centrum voor motorschade aan een Mercedes C-Klasse voor €1.250. Document ondersteunt de claim over verborgen gebreken."
+tags: [
+0: "factuur"
+1: "reparatie"
+2: "motorschade"
+3: "bewijs"
+4: "kosten"
+]
+note: null
+}
+13
+ Saving result to variable {{result}}
+14
+ Action completed
+Billing Events
+gpt-4o-llm_inference-prompt
+(643 units at $0,000002500 per unit)
+$0,001607500
+gpt-4o-llm_inference-response
+(29 units at $0,000010000 per unit)
+$0,000290000
+Action Total
+$0,001897500
+Sending Output
+30 ms
+1
+Action started on CloudRunner
+Instance ID: wrnsv
+ at Oct 22, 2025 12:31:18.967 PM GMT+2
+2
+ Sending JSON: JSON
+{
+result: "{{result}}"
+}
+3
+ Resolving variables
+4
+ Sending message: JSON
+{
+result: {
+document_name: "garage_factuur_maart_2024.pdf"
+document_type: "factuur"
+is_readable: true
+belongs_to_case: true
+summary: "Reparatiefactuur van Auto Reparatie Centrum voor motorschade aan een Mercedes C-Klasse voor €1.250. Document ondersteunt de claim over verborgen gebreken."
+tags: []
+note: null
+}
+}
+5
+ Action completed
+Run Completed
+22,299 s
+Billing Events
+gpt-4o-llm_inference-prompt
+(643 units at $0,000002500 per unit)
+$0,001607500
+gpt-4o-llm_inference-response
+(29 units at $0,000010000 per unit)
+$0,000290000
+Run Total
+$0,001897500
