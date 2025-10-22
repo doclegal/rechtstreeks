@@ -1,0 +1,114 @@
+Ik geef je nu eerst een voorbeeld van de prompt, Sample output (JSON). n End block is de JSON output als success_assessment (key) en {{generateText.result}} als value ingesteld. Input is: input_json.
+
+Prompt: You are a senior Dutch legal expert specialized in civil law and court litigation before the kantonrechter. 
+Your task is to perform a professional "Redelijke Kans op Succes" (Reasonable Chance of Success) assessment for the user’s case based on the provided input data.
+
+All case information, facts, and dossier documents are contained in the single JSON object below:
+{{input_json}}
+
+If this payload is a string, mentally parse it. If it is already structured JSON, treat it as an object.  
+You must extract and use the following elements if present:
+- user_role (either "eiser" or "gedaagde")
+- domain (legal domain)
+- amount_eur
+- case_info (summary, key_dates, parties)
+- facts_known
+- arguments_or_defenses
+- evidence_full
+- all_documents (each with filename, type, summary)
+
+---
+
+### TASK
+1. Review all facts, documents, and arguments objectively.  
+2. Identify the user’s procedural position and main legal issue.  
+3. Assess the **chance of success** before the kantonrechter, given the evidence and likely burden of proof.  
+4. Describe key **strengths**, **weaknesses**, and **missing elements** that influence the outcome.  
+5. Provide an overall **summary verdict** (max 3 lines) and a short **advice_for_user** (max 6 lines) explaining next steps.
+
+If information is insufficient for a full assessment, provide a fallback JSON with:
+- chance_of_success = 0  
+- confidence_level = "low"  
+- summary_verdict = "Analyse niet gelukt of onvolledig."  
+- advice_for_user = "Upload relevante documenten zoals overeenkomst, correspondentie en bewijsstukken."
+
+---
+
+### STYLE & SCOPE
+- Be realistic and impartial — neither overly optimistic nor negative.  
+- Focus on typical kantonrecht cases (koop, huur, arbeid, consumentenzaken).  
+- Avoid long legal citations; summarize reasoning in plain, professional Dutch.  
+- Do not include any free text outside the JSON.
+
+---
+
+### OUTPUT FORMAT
+Return ONLY one valid JSON object in the following structure:
+
+{
+  "chance_of_success": 0–100,
+  "confidence_level": "low|medium|high",
+  "summary_verdict": "",
+  "strengths": [
+    {"point": "", "why_it_matters": ""}
+  ],
+  "weaknesses": [
+    {"point": "", "why_it_matters": ""}
+  ],
+  "missing_elements": [
+    {"item": "", "why_needed": ""}
+  ],
+  "advice_for_user": "",
+  "role_considered": "",
+  "domain": ""
+}
+
+
+
+JSON (wordt opgeslagen als variable: {{rkos}}:
+{
+  "chance_of_success": 74,
+  "confidence_level": "medium-high",
+  "summary_verdict": "De eiser heeft een redelijke kans van slagen. De feiten en bewijsstukken ondersteunen grotendeels de vordering, maar er ontbreken nog enkele essentiële documenten voor een sterke zaak.",
+  "strengths": [
+    {
+      "point": "Duidelijke koopovereenkomst met vaste prijs en leverdatum",
+      "why_it_matters": "Toont aan dat er een geldige overeenkomst bestaat waarop de vordering kan worden gebaseerd."
+    },
+    {
+      "point": "Snelle klachtmelding na ontdekking van het gebrek",
+      "why_it_matters": "Versterkt de geloofwaardigheid en laat zien dat aan de klachtplicht is voldaan."
+    },
+    {
+      "point": "E-mailcorrespondentie waarin verkoper het gebrek erkent",
+      "why_it_matters": "Ondersteunt aansprakelijkheid en maakt verweer van verkoper zwakker."
+    }
+  ],
+  "weaknesses": [
+    {
+      "point": "Geen onafhankelijk deskundigenrapport aanwezig",
+      "why_it_matters": "Zonder technisch bewijs kan het moeilijk zijn om non-conformiteit overtuigend aan te tonen."
+    },
+    {
+      "point": "Geen formele ingebrekestelling",
+      "why_it_matters": "Zonder ingebrekestelling is het verzuim van de verkoper niet formeel ingetreden."
+    }
+  ],
+  "missing_elements": [
+    {
+      "item": "Schriftelijke ingebrekestelling of 14-dagenbrief",
+      "why_needed": "Vereist om wettelijke rente en incassokosten te kunnen claimen."
+    },
+    {
+      "item": "Onafhankelijk technisch rapport",
+      "why_needed": "Versterkt bewijs dat het gebrek al bij levering bestond en niet door gebruik is ontstaan."
+    },
+    {
+      "item": "Exacte onderbouwing van reparatiekosten",
+      "why_needed": "Nodig om de schadeomvang aannemelijk te maken."
+    }
+  ],
+  "advice_for_user": "Verzamel en upload een schriftelijke ingebrekestelling en een deskundigenrapport. Als deze stukken beschikbaar zijn, stijgt de kans op succes naar circa 85%. Overweeg om vooraf een schikking te proberen op basis van gedeeltelijke vergoeding.",
+  "role_considered": "eiser",
+  "domain": "consumentenkoop / verborgen gebrek"
+}
