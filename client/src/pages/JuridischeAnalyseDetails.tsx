@@ -118,10 +118,27 @@ export default function JuridischeAnalyseDetails() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileSearch className="h-6 w-6 text-primary" />
-            Volledige Juridische Analyse
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <FileSearch className="h-6 w-6 text-primary" />
+              Volledige Juridische Analyse
+            </CardTitle>
+            <Button
+              onClick={() => fullAnalyzeMutation.mutate()}
+              disabled={fullAnalyzeMutation.isPending}
+              variant="outline"
+              data-testid="button-reanalyze"
+            >
+              {fullAnalyzeMutation.isPending ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                  Analyseren...
+                </>
+              ) : (
+                'Opnieuw analyseren'
+              )}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="samenvatting" className="w-full">
