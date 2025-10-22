@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +61,22 @@ export default function DocumentList({
   const [showUpload, setShowUpload] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Auto-refresh while documents are being analyzed
+  useEffect(() => {
+    const hasAnalyzing = documents.some(doc => 
+      doc.analysisStatus === 'analyzing' || doc.analysisStatus === 'pending'
+    );
+
+    if (hasAnalyzing) {
+      const interval = setInterval(() => {
+        queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] });
+        queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
+      }, 3000); // Refresh every 3 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [documents, caseId, queryClient]);
 
   const getFileIcon = (mimetype: string) => {
     if (mimetype === "application/pdf") {
