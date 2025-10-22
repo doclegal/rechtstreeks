@@ -43,11 +43,39 @@ export default function JuridischeAnalyseDetails() {
     );
   }
 
-  const fullAnalysis = currentCase?.fullAnalysis ? 
-    (typeof currentCase.fullAnalysis === 'string' ? 
-      JSON.parse(currentCase.fullAnalysis).parsedAnalysis : 
-      (currentCase.fullAnalysis as any)?.parsedAnalysis || currentCase.fullAnalysis) : 
-    null;
+  let fullAnalysis = null;
+  
+  try {
+    if ((currentCase?.fullAnalysis as any)?.parsedAnalysis && typeof (currentCase.fullAnalysis as any).parsedAnalysis === 'object') {
+      fullAnalysis = (currentCase.fullAnalysis as any).parsedAnalysis;
+    } else if (currentCase?.fullAnalysis?.rawText) {
+      const rawData = JSON.parse(currentCase.fullAnalysis.rawText);
+      
+      // Check if parsedAnalysis exists at top level
+      if (rawData.parsedAnalysis && typeof rawData.parsedAnalysis === 'object') {
+        fullAnalysis = rawData.parsedAnalysis;
+      }
+      // Check in result (new consistent format)
+      else if (rawData.result) {
+        const result = rawData.result;
+        
+        if (result.analysis_json) {
+          fullAnalysis = typeof result.analysis_json === 'string' ? JSON.parse(result.analysis_json) : result.analysis_json;
+        }
+      }
+      // Check in thread posts (old MindStudio format - fallback)
+      else if (rawData.thread?.posts) {
+        for (const post of rawData.thread.posts) {
+          if (post.debugLog?.newState?.variables?.analysis_json?.value) {
+            const parsedValue = post.debugLog.newState.variables.analysis_json.value;
+            fullAnalysis = typeof parsedValue === 'string' ? JSON.parse(parsedValue) : parsedValue;
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error parsing full analysis:', error);
+  }
 
   if (!fullAnalysis) {
     return (
