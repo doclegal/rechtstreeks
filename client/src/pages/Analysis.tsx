@@ -23,6 +23,7 @@ export default function Analysis() {
   const [kantonCheckResult, setKantonCheckResult] = useState<any>(null);
   const [kantonDialogOpen, setKantonDialogOpen] = useState(false);
   const [nogAanTeLeverenOpen, setNogAanTeLeverenOpen] = useState(false);
+  const [successChanceResult, setSuccessChanceResult] = useState<any>(null);
   const [location, setLocation] = useLocation();
   
   const currentCase = useActiveCase();
@@ -37,7 +38,11 @@ export default function Analysis() {
       const response = await apiRequest('POST', `/api/cases/${caseId}/success-chance`);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Save the success chance result in state (so it persists even without full analysis in DB)
+      if (data.successChance) {
+        setSuccessChanceResult(data.successChance);
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] });
       queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
       toast({
@@ -54,6 +59,11 @@ export default function Analysis() {
       });
     },
   });
+
+  // Reset success chance state when case changes
+  useEffect(() => {
+    setSuccessChanceResult(null);
+  }, [caseId]);
 
   // Fetch saved responses to determine which requirements are already answered
   const { data: savedResponsesData } = useQuery({
@@ -319,7 +329,8 @@ export default function Analysis() {
       readyForSummons = (currentCase?.fullAnalysis as any)?.readyForSummons ?? fullAnalysis?.ready_for_summons;
       extractedTexts = (currentCase?.fullAnalysis as any)?.extractedTexts || null;
       allFiles = (currentCase?.fullAnalysis as any)?.allFiles || null;
-      succesKansAnalysis = (currentCase?.fullAnalysis as any)?.succesKansAnalysis || null;
+      // Use state fallback if database doesn't have it (happens when no full analysis exists yet)
+      succesKansAnalysis = (currentCase?.fullAnalysis as any)?.succesKansAnalysis || successChanceResult || null;
     } else if (currentCase?.fullAnalysis?.rawText) {
       const rawData = JSON.parse(currentCase.fullAnalysis.rawText);
       
@@ -371,6 +382,11 @@ export default function Analysis() {
     }
   } catch (error) {
     console.error('Error parsing full analysis:', error);
+  }
+
+  // Final fallback for success chance if not in database (e.g., before full analysis exists)
+  if (!succesKansAnalysis && successChanceResult) {
+    succesKansAnalysis = successChanceResult;
   }
 
   // DEBUG: Log fullAnalysis to help diagnose empty data issue
