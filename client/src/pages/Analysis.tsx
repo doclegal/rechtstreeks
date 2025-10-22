@@ -615,44 +615,56 @@ export default function Analysis() {
           </DialogContent>
         </Dialog>
 
-        <Card 
-          className="relative"
-          data-testid="card-juridische-analyse"
-        >
-          <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
-          <CardHeader>
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FileSearch className="h-8 w-8 text-primary" />
-            </div>
-            <CardTitle className="text-center">Juridische analyse</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center">
-            {fullAnalysis ? (
-              <>
+        {fullAnalysis ? (
+          <Link href="/analyse-details">
+            <Card 
+              className="relative cursor-pointer hover:shadow-lg transition-shadow"
+              data-testid="card-juridische-analyse"
+            >
+              <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+              <CardHeader>
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FileSearch className="h-8 w-8 text-primary" />
+                </div>
+                <CardTitle className="text-center">Juridische analyse</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <CheckCircle className="h-5 w-5 text-green-600" />
                   <span className="text-sm font-medium">Analyse compleet</span>
                 </div>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Bekijk details hieronder
+                  Klik voor volledige details
                 </p>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Nog niet uitgevoerd
-                </p>
-                <Button
-                  onClick={() => fullAnalyzeMutation.mutate()}
-                  disabled={fullAnalyzeMutation.isPending}
-                  data-testid="button-start-full-analysis"
-                >
-                  {fullAnalyzeMutation.isPending ? 'Analyseren...' : 'Start analyse'}
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </Link>
+        ) : (
+          <Card 
+            className="relative"
+            data-testid="card-juridische-analyse"
+          >
+            <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+            <CardHeader>
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileSearch className="h-8 w-8 text-primary" />
+              </div>
+              <CardTitle className="text-center">Juridische analyse</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p className="text-sm text-muted-foreground mb-4">
+                Nog niet uitgevoerd
+              </p>
+              <Button
+                onClick={() => fullAnalyzeMutation.mutate()}
+                disabled={fullAnalyzeMutation.isPending}
+                data-testid="button-start-full-analysis"
+              >
+                {fullAnalyzeMutation.isPending ? 'Analyseren...' : 'Start analyse'}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
