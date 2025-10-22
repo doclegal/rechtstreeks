@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveCase } from "@/contexts/CaseContext";
+import { useDossierCheck } from "@/hooks/useCase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -16,40 +17,18 @@ export default function Dossier() {
   const [, setLocation] = useLocation();
   const currentCase = useActiveCase();
   const [checkResult, setCheckResult] = useState<any>(null);
-  const [isChecking, setIsChecking] = useState(false);
+  
+  const dossierCheckMutation = useDossierCheck(currentCase?.id || "");
 
   const handleDossierCheck = async () => {
     if (!currentCase?.id) return;
-
-    setIsChecking(true);
+    
     try {
-      const response = await fetch(`/api/cases/${currentCase.id}/dossier-check`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Dossiercontrole mislukt');
-      }
-
-      const data = await response.json();
-      setCheckResult(data);
-      
-      toast({
-        title: "Dossiercontrole voltooid",
-        description: "Uw dossier is gecontroleerd",
-      });
+      const result = await dossierCheckMutation.mutateAsync();
+      setCheckResult(result);
     } catch (error) {
       console.error('Dossier check error:', error);
-      toast({
-        title: "Controle mislukt",
-        description: (error as Error).message || "Er is een fout opgetreden",
-        variant: "destructive",
-      });
-    } finally {
-      setIsChecking(false);
+      // Error toast is already shown by the mutation hook
     }
   };
 
@@ -155,10 +134,10 @@ export default function Dossier() {
             </CardTitle>
             <Button 
               onClick={handleDossierCheck}
-              disabled={isChecking || docCount === 0}
+              disabled={dossierCheckMutation.isPending || docCount === 0}
               data-testid="button-check-dossier"
             >
-              {isChecking ? (
+              {dossierCheckMutation.isPending ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   Controleren...
