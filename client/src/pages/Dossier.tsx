@@ -1,14 +1,12 @@
-import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveCase } from "@/contexts/CaseContext";
-import { useDossierCheck } from "@/hooks/useCase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import DocumentList from "@/components/DocumentList";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, FileCheck, FileText, AlertCircle, CheckCircle } from "lucide-react";
+import { ArrowLeft, FileText, AlertCircle, Sparkles } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 
 export default function Dossier() {
@@ -16,21 +14,6 @@ export default function Dossier() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const currentCase = useActiveCase();
-  const [checkResult, setCheckResult] = useState<any>(null);
-  
-  const dossierCheckMutation = useDossierCheck(currentCase?.id || "");
-
-  const handleDossierCheck = async () => {
-    if (!currentCase?.id) return;
-    
-    try {
-      const result = await dossierCheckMutation.mutateAsync();
-      setCheckResult(result);
-    } catch (error) {
-      console.error('Dossier check error:', error);
-      // Error toast is already shown by the mutation hook
-    }
-  };
 
   if (authLoading) {
     return (
@@ -93,63 +76,26 @@ export default function Dossier() {
         <RIcon size="md" className="opacity-10" />
       </div>
 
-      {/* Dossier Check Result */}
-      {checkResult && (
-        <Alert className="border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800">
-          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-          <AlertDescription className="text-green-800 dark:text-green-200">
-            <div className="space-y-2">
-              <p className="font-semibold">Dossiercontrole resultaat:</p>
-              {checkResult.completeness && (
-                <p>Volledigheid: {checkResult.completeness}</p>
-              )}
-              {checkResult.missing_documents && checkResult.missing_documents.length > 0 && (
-                <div>
-                  <p className="font-medium">Ontbrekende documenten:</p>
-                  <ul className="list-disc list-inside ml-2">
-                    {checkResult.missing_documents.map((doc: string, idx: number) => (
-                      <li key={idx}>{doc}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {checkResult.recommendations && (
-                <div>
-                  <p className="font-medium">Aanbevelingen:</p>
-                  <p className="whitespace-pre-wrap">{checkResult.recommendations}</p>
-                </div>
-              )}
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* Info Alert */}
+      <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
+        <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        <AlertDescription className="text-blue-800 dark:text-blue-200">
+          <div className="space-y-1">
+            <p className="font-semibold">Automatische documentanalyse</p>
+            <p className="text-sm">
+              Elk document wordt automatisch geanalyseerd na upload. U ziet direct onder elk document de AI-analyse met een samenvatting, tags en eventuele opmerkingen.
+            </p>
+          </div>
+        </AlertDescription>
+      </Alert>
 
       {/* Documents Summary Card */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Documenten ({docCount})
-            </CardTitle>
-            <Button 
-              onClick={handleDossierCheck}
-              disabled={dossierCheckMutation.isPending || docCount === 0}
-              data-testid="button-check-dossier"
-            >
-              {dossierCheckMutation.isPending ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Controleren...
-                </>
-              ) : (
-                <>
-                  <FileCheck className="mr-2 h-4 w-4" />
-                  Controleer dossier
-                </>
-              )}
-            </Button>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Documenten ({docCount})
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {docCount === 0 ? (
@@ -175,8 +121,8 @@ export default function Dossier() {
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          Upload alle relevante documenten voor uw zaak. De dossiercontrole analyseert of uw
-          dossier compleet is en geeft aanbevelingen voor ontbrekende stukken.
+          Upload alle relevante documenten voor uw zaak. Elk document wordt automatisch geanalyseerd
+          om het type, inhoud en relevantie te bepalen. Dit helpt u te zorgen dat uw dossier compleet is.
         </AlertDescription>
       </Alert>
     </div>
