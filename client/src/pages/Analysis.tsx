@@ -8,12 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useLocation } from "wouter";
-import { PlusCircle, FileSearch, Scale, CheckCircle, XCircle, ArrowRight, FileText, Users, AlertTriangle, AlertCircle, Files } from "lucide-react";
+import { PlusCircle, FileSearch, Scale, CheckCircle, XCircle, ArrowRight, FileText, Users, AlertTriangle, AlertCircle, Files, TrendingUp, Info } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 import { useActiveCase } from "@/contexts/CaseContext";
 import DocumentList from "@/components/DocumentList";
 import MissingInfo from "@/components/MissingInfo";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function Analysis() {
   const { user, isLoading: authLoading } = useAuth();
@@ -29,6 +30,31 @@ export default function Analysis() {
 
   const analyzeMutation = useAnalyzeCase(caseId || "");
   const fullAnalyzeMutation = useFullAnalyzeCase(caseId || "");
+
+  // Success chance assessment mutation
+  const successChanceMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest(`/api/cases/${caseId}/success-chance`, {
+        method: 'POST',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
+      toast({
+        title: "Kans op succes beoordeeld",
+        description: "De AI heeft uw zaak beoordeeld",
+      });
+      refetch();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout bij beoordeling",
+        description: error.message || "Kon kans op succes niet beoordelen",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Fetch saved responses to determine which requirements are already answered
   const { data: savedResponsesData } = useQuery({
@@ -281,6 +307,7 @@ export default function Analysis() {
   let readyForSummons = null;
   let extractedTexts = null;
   let allFiles = null;
+  let succesKansAnalysis = null;
   
   try {
     if ((currentCase?.fullAnalysis as any)?.parsedAnalysis && typeof (currentCase.fullAnalysis as any).parsedAnalysis === 'object') {
@@ -293,6 +320,7 @@ export default function Analysis() {
       readyForSummons = (currentCase?.fullAnalysis as any)?.readyForSummons ?? fullAnalysis?.ready_for_summons;
       extractedTexts = (currentCase?.fullAnalysis as any)?.extractedTexts || null;
       allFiles = (currentCase?.fullAnalysis as any)?.allFiles || null;
+      succesKansAnalysis = (currentCase?.fullAnalysis as any)?.succesKansAnalysis || null;
     } else if (currentCase?.fullAnalysis?.rawText) {
       const rawData = JSON.parse(currentCase.fullAnalysis.rawText);
       
@@ -773,50 +801,148 @@ export default function Analysis() {
         </Card>
       )}
 
-      {/* GO/NO-GO ADVICE PANEL */}
-      {goNogoAdvice && fullAnalysis && (
-        <Card className={`mb-6 border-2 ${goNogoAdvice.proceed_now ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-800' : 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800'}`} data-testid="card-go-nogo-advice">
+      {/* SUCCESS CHANCE PANEL (RKOS - Redelijke Kans Op Succes) */}
+      {fullAnalysis && (
+        <Card className={`mb-6 border-2 ${
+          succesKansAnalysis 
+            ? (succesKansAnalysis.chance_of_success >= 70 
+                ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-800' 
+                : succesKansAnalysis.chance_of_success >= 40
+                  ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800'
+                  : 'bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-800')
+            : 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800'
+        }`} data-testid="card-success-chance">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              {goNogoAdvice.proceed_now ? (
-                <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
-              ) : (
-                <AlertCircle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-              )}
-              <span>Advies: {goNogoAdvice.proceed_now ? 'Doorgaan' : 'Nog niet doorgaan'}</span>
+              <TrendingUp className="h-6 w-6 text-primary" />
+              <span>Kans op succes</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {goNogoAdvice.reason && (
-              <div>
-                <h4 className="font-semibold text-sm mb-2">Reden</h4>
-                <p className="text-sm" data-testid="text-gonogo-reason">{goNogoAdvice.reason}</p>
-              </div>
-            )}
-
-            {goNogoAdvice.conditions_to_proceed && goNogoAdvice.conditions_to_proceed.length > 0 && (
-              <div>
-                <h4 className="font-semibold text-sm mb-2">Voorwaarden om door te gaan</h4>
-                <ul className="list-disc list-inside space-y-1">
-                  {goNogoAdvice.conditions_to_proceed.map((condition: string, idx: number) => (
-                    <li key={idx} className="text-sm text-muted-foreground">{condition}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {goNogoAdvice.hitl_flag && (
-              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-300 dark:border-blue-800 rounded-lg p-3">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  <span className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-                    Menselijke beoordeling aanbevolen
-                  </span>
-                </div>
-                <p className="text-xs text-blue-800 dark:text-blue-200 mt-1">
-                  Deze zaak heeft extra aandacht nodig van een juridisch expert voordat u doorgaat.
+            {!succesKansAnalysis ? (
+              <div className="text-center py-4">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Laat de AI uw kans op succes beoordelen op basis van de volledige analyse en alle documenten.
                 </p>
+                <Button 
+                  onClick={() => successChanceMutation.mutate()}
+                  disabled={successChanceMutation.isPending}
+                  data-testid="button-check-success-chance"
+                >
+                  {successChanceMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Aan het beoordelen...
+                    </>
+                  ) : (
+                    <>
+                      <TrendingUp className="mr-2 h-4 w-4" />
+                      Check mijn kans op succes
+                    </>
+                  )}
+                </Button>
               </div>
+            ) : (
+              <>
+                {/* Main Success Percentage */}
+                <div className="text-center py-4 border-b">
+                  <div className="text-5xl font-bold mb-2">
+                    {succesKansAnalysis.chance_of_success}%
+                  </div>
+                  <Badge variant={succesKansAnalysis.confidence_level === 'high' ? 'default' : succesKansAnalysis.confidence_level === 'medium' ? 'secondary' : 'outline'}>
+                    {succesKansAnalysis.confidence_level === 'high' ? 'Hoog vertrouwen' : succesKansAnalysis.confidence_level === 'medium' ? 'Gemiddeld vertrouwen' : 'Laag vertrouwen'}
+                  </Badge>
+                </div>
+
+                {/* Summary Verdict */}
+                {succesKansAnalysis.summary_verdict && (
+                  <div className="bg-white/50 dark:bg-black/20 rounded-lg p-4">
+                    <h4 className="font-semibold text-sm mb-2">Beoordeling</h4>
+                    <p className="text-sm" data-testid="text-verdict">{succesKansAnalysis.summary_verdict}</p>
+                  </div>
+                )}
+
+                {/* Strengths */}
+                {succesKansAnalysis.strengths && succesKansAnalysis.strengths.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      Sterke punten
+                    </h4>
+                    <div className="space-y-2">
+                      {succesKansAnalysis.strengths.map((strength: any, idx: number) => (
+                        <div key={idx} className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3">
+                          <p className="text-sm font-medium mb-1">{strength.point}</p>
+                          <p className="text-xs text-muted-foreground">{strength.why_it_matters}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Weaknesses */}
+                {succesKansAnalysis.weaknesses && succesKansAnalysis.weaknesses.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      Zwakke punten
+                    </h4>
+                    <div className="space-y-2">
+                      {succesKansAnalysis.weaknesses.map((weakness: any, idx: number) => (
+                        <div key={idx} className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3">
+                          <p className="text-sm font-medium mb-1">{weakness.point}</p>
+                          <p className="text-xs text-muted-foreground">{weakness.why_it_matters}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Missing Elements */}
+                {succesKansAnalysis.missing_elements && succesKansAnalysis.missing_elements.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                      <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      Ontbrekende elementen
+                    </h4>
+                    <div className="space-y-2">
+                      {succesKansAnalysis.missing_elements.map((element: any, idx: number) => (
+                        <div key={idx} className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3">
+                          <p className="text-sm font-medium mb-1">{element.item}</p>
+                          <p className="text-xs text-muted-foreground">{element.why_needed}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Advice for User */}
+                {succesKansAnalysis.advice_for_user && (
+                  <div className="bg-primary/5 dark:bg-primary/10 rounded-lg p-4 border border-primary/20">
+                    <h4 className="font-semibold text-sm mb-2">Advies</h4>
+                    <p className="text-sm">{succesKansAnalysis.advice_for_user}</p>
+                  </div>
+                )}
+
+                {/* Refresh Button */}
+                <div className="text-center pt-2">
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={() => successChanceMutation.mutate()}
+                    disabled={successChanceMutation.isPending}
+                  >
+                    {successChanceMutation.isPending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary mr-2"></div>
+                        Opnieuw beoordelen...
+                      </>
+                    ) : (
+                      'Opnieuw beoordelen'
+                    )}
+                  </Button>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
