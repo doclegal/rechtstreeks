@@ -1,0 +1,114 @@
+
+Action
+Duration
+Run Started
+43 ms
+1
+Action started on AgentDispatcher
+Instance ID: c78n7
+ at Oct 22, 2025 12:37:34.852 PM GMT+2
+2
+ New run with ID "078fcb87-c7e0-4450-98c5-875c352f9e67"
+3
+ Preparing launch variables
+4
+ Running workflow Dossier_check.flow
+5
+ Initializing {{currentDate}} with value "Oct 22, 2025 10:37:34 AM"
+6
+ Initializing {{global.userId}} with value "cea0889c-9c7e-46fb-ba63-0a5f3bfc9de2"
+7
+ Initializing {{global.threadId}} with value "078fcb87-c7e0-4450-98c5-875c352f9e67"
+8
+ Initializing {{global.username}} with value "Pieter D."
+9
+ Initializing {{global.userEmail}} with value "pdelaat@gmail.com"
+10
+ Initializing {{global.companyName}} with value "Notforlawyers"
+11
+ Dispatching run request to Agent Runner
+12
+ Action completed
+Generate Text - Background Message
+3,44 s
+1
+Action started on CloudRunner
+Instance ID: fljvk
+ at Oct 22, 2025 12:37:36.934 PM GMT+2
+2
+ Sending message: "ANALYZE THE FOLLOWING DOCUMENT (provided as JSON input):
+
+{{input_json}}..."
+3
+ Loading message history
+4
+ Preparing to query 
+GPT-4o at 0.2° with a maximum response size of 1,100 tokens
+5
+ Resolving variables
+6
+ Sending resolved message: "ANALYZE THE FOLLOWING DOCUMENT (provided as JSON input):
+
+undefined..."
+7
+ Waiting for model response...
+8
+ Received first response token
+9
+ Received full result: 604 tokens (524 sent, 80 received) at 31.447 tokens/second
+10
+ Received result: JSON
+{
+document_name: "undefined"
+document_type: "onbekend"
+is_readable: false
+belongs_to_case: false
+summary: "Document kan niet worden geanalyseerd omdat het niet is gedefinieerd."
+tags: [
+0: "onbekend"
+]
+note: "Document is niet beschikbaar of leesbaar."
+}
+11
+ Saving result to variable {{result}}
+12
+ Action completed
+Billing Events
+gpt-4o-llm_inference-prompt
+(524 units at $0,000002500 per unit)
+$0,001310000
+gpt-4o-llm_inference-response
+(80 units at $0,000010000 per unit)
+$0,000800000
+Action Total
+$0,002110000
+Sending Output
+53 ms
+1
+Action started on CloudRunner
+Instance ID: fljvk
+ at Oct 22, 2025 12:37:40.445 PM GMT+2
+2
+ Sending JSON: JSON
+{
+result: "{{result}}"
+}
+3
+ Resolving variables
+4
+ Sending message: JSON
+{
+result: {
+document_name: "undefined"
+document_type: "onbekend"
+is_readable: false
+belongs_to_case: false
+summary: "Document kan niet worden geanalyseerd omdat het niet is gedefinieerd."
+tags: []
+note: "Document is niet beschikbaar of leesbaar."
+}
+}
+5
+ Action completed
+Run Completed
+3,536 s
