@@ -7,7 +7,7 @@ import { A4Layout, A4Page, SectionHeading, SectionBody } from "@/components/A4La
 import { SectionBlock } from "@/components/SectionBlock";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Scale, FileText, Download, Loader2, AlertTriangle } from "lucide-react";
+import { Scale, FileText, Download, Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 // Define the 8 sections in strict order
@@ -365,6 +365,19 @@ export default function SummonsEditor() {
 
   return (
     <div className="space-y-6">
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        asChild 
+        className="mb-2"
+        data-testid="button-back-to-dashboard"
+      >
+        <a href="/dashboard">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Terug
+        </a>
+      </Button>
+      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
