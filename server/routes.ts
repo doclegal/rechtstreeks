@@ -171,7 +171,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           procedureContext,
           flags,
           goNogoAdvice,
-          readyForSummons
+          readyForSummons,
+          succesKansAnalysis: fullAnalysis.succesKansAnalysis
         };
       }
     } catch (error) {
@@ -1443,7 +1444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Create a new fullAnalysis record with only success chance data
           await storage.createAnalysis({
             caseId: caseId,
-            type: 'mindstudio-full-analysis',
+            model: 'mindstudio-full-analysis',
             rawText: JSON.stringify({ success: true }),
             succesKansAnalysis: rkosResult
           });
