@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
-import { FileText, PlusCircle, Download, Mail } from "lucide-react";
+import { FileText, PlusCircle, Download, Mail, ArrowLeft } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -159,6 +159,19 @@ export default function Letters() {
 
   return (
     <div className="space-y-6">
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        asChild 
+        className="mb-2"
+        data-testid="button-back-to-dashboard"
+      >
+        <Link href="/dashboard">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Terug
+        </Link>
+      </Button>
+      
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
