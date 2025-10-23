@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCases, useAnalyzeCase, useFullAnalyzeCase } from "@/hooks/useCase";
 import { useToast } from "@/hooks/use-toast";
@@ -12,7 +12,6 @@ import { PlusCircle, FileSearch, Scale, CheckCircle, XCircle, ArrowRight, FileTe
 import { RIcon } from "@/components/RIcon";
 import { useActiveCase } from "@/contexts/CaseContext";
 import DocumentList from "@/components/DocumentList";
-import MissingInfo from "@/components/MissingInfo";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -22,7 +21,6 @@ export default function Analysis() {
   const { toast } = useToast();
   const [kantonCheckResult, setKantonCheckResult] = useState<any>(null);
   const [kantonDialogOpen, setKantonDialogOpen] = useState(false);
-  const [nogAanTeLeverenOpen, setNogAanTeLeverenOpen] = useState(false);
   const [successChanceResult, setSuccessChanceResult] = useState<any>(null);
   const [location, setLocation] = useLocation();
   
@@ -65,185 +63,7 @@ export default function Analysis() {
     setSuccessChanceResult(null);
   }, [caseId]);
 
-  // Fetch saved responses to determine which requirements are already answered
-  const { data: savedResponsesData } = useQuery({
-    queryKey: ['/api/cases', caseId, 'missing-info', 'responses'],
-    enabled: !!caseId,
-    queryFn: async () => {
-      const res = await fetch(`/api/cases/${caseId}/missing-info/responses`);
-      if (!res.ok) throw new Error('Failed to fetch responses');
-      return res.json();
-    }
-  });
-
-  const savedResponses = savedResponsesData?.responses || [];
-  
-  // Create a Set of valid document IDs for quick lookup
-  const validDocumentIds = new Set((currentCase?.documents || []).map((doc: any) => doc.id));
-  
-  // Create a Map of saved responses for easy lookup
-  // CRITICAL: Filter out document-responses where the document no longer exists
-  const savedResponsesMap = new Map<string, any>();
-  savedResponses.forEach((response: any) => {
-    // If response is a document, validate that the document still exists
-    if (response.kind === 'document') {
-      if (response.documentId && validDocumentIds.has(response.documentId)) {
-        // Document exists - this is a valid response
-        savedResponsesMap.set(response.requirementId, response);
-      }
-      // else: Document was deleted - don't include this response
-    } else {
-      // Text or not_available responses are always valid
-      savedResponsesMap.set(response.requirementId, response);
-    }
-  });
-
-  const missingRequirements = useMemo(() => {
-    const fullAnalysis = currentCase?.fullAnalysis as any;
-    const parsedAnalysis = fullAnalysis?.parsedAnalysis;
-    const analysis = currentCase?.analysis as any;
-    const dataSource = parsedAnalysis || analysis;
-    if (!dataSource) return [];
-    
-    let questionsArray: any[] = [];
-    
-    // FIRST: Try new normalized structure: missing_info_struct.sections[].items[]
-    if (dataSource?.missing_info_struct && 
-        Array.isArray(dataSource.missing_info_struct) && 
-        dataSource.missing_info_struct.length > 0 &&
-        dataSource.missing_info_struct.some((s: any) => s.sections)) {
-      dataSource.missing_info_struct.forEach((struct: any) => {
-        if (struct.sections && Array.isArray(struct.sections)) {
-          struct.sections.forEach((section: any) => {
-            if (section.items && Array.isArray(section.items)) {
-              questionsArray.push(...section.items);
-            }
-          });
-        }
-      });
-    } else if (dataSource?.missing_info_struct?.sections && Array.isArray(dataSource.missing_info_struct.sections)) {
-      // Alternative structure: missing_info_struct is an object with sections property
-      dataSource.missing_info_struct.sections.forEach((section: any) => {
-        if (section.items && Array.isArray(section.items)) {
-          questionsArray.push(...section.items);
-        }
-      });
-    }
-    
-    // FALLBACK 1: Try combining missing_essentials and clarifying_questions
-    if (questionsArray.length === 0) {
-      const missing = dataSource?.missing_essentials || [];
-      const clarifying = dataSource?.clarifying_questions || [];
-      
-      if (Array.isArray(missing) || Array.isArray(clarifying)) {
-        questionsArray = [
-          ...(Array.isArray(missing) ? missing : []),
-          ...(Array.isArray(clarifying) ? clarifying : [])
-        ];
-      }
-    }
-    
-    // FALLBACK 2: Check for missing_info_for_assessment (old format)
-    if (questionsArray.length === 0 && dataSource?.missing_info_for_assessment && Array.isArray(dataSource.missing_info_for_assessment)) {
-      questionsArray = dataSource.missing_info_for_assessment;
-    }
-    
-    if (questionsArray.length > 0) {
-      return questionsArray.map((item: any, index: number) => {
-        let inputKind: 'text' | 'document' | 'both' = 'text';
-        if (item.answer_type === 'file_upload') {
-          inputKind = 'document';
-        } else if (item.answer_type === 'text') {
-          inputKind = 'text';
-        } else if (item.answer_type === 'multiple_choice') {
-          inputKind = 'text';
-        }
-        
-        let description: string | undefined;
-        let options: Array<{value: string, label: string}> | undefined;
-        
-        if (typeof item.expected === 'string') {
-          description = item.expected;
-        } else if (Array.isArray(item.expected)) {
-          options = item.expected.map((opt: string) => ({
-            value: opt,
-            label: opt
-          }));
-          description = 'Kies een optie uit de lijst';
-        }
-        
-        return {
-          id: item.id || `req-${index}`,
-          key: item.key || item.id || `requirement-${index}`,
-          label: item.question || item.label || 'Vraag zonder label',
-          description: description || item.description || undefined,
-          required: item.required !== false,
-          inputKind: inputKind,
-          acceptMimes: item.accept_mimes || item.acceptMimes || undefined,
-          maxLength: item.max_length || item.maxLength || undefined,
-          options: options || item.options || undefined,
-          examples: typeof item.expected === 'string' ? [item.expected] : item.examples || undefined,
-        };
-      });
-    }
-    
-    if (dataSource?.evidence?.missing && Array.isArray(dataSource.evidence.missing)) {
-      return dataSource.evidence.missing.map((item: any, index: number) => {
-        if (typeof item === 'string') {
-          return {
-            id: `evidence-${index}`,
-            key: `evidence-requirement-${index}`,
-            label: item,
-            description: 'Upload het gevraagde document om uw zaak te versterken',
-            required: false,
-            inputKind: 'document' as const,
-            acceptMimes: undefined,
-            maxLength: undefined,
-            options: undefined,
-            examples: undefined,
-          };
-        }
-        return {
-          id: item.id || `evidence-${index}`,
-          key: item.key || item.id || `evidence-requirement-${index}`,
-          label: item.label || item.name || item.description || 'Ontbrekend bewijs',
-          description: item.description || item.reason || 'Upload het gevraagde document',
-          required: item.required !== false,
-          inputKind: item.input_kind || item.inputKind || 'document' as const,
-          acceptMimes: item.accept_mimes || item.acceptMimes || undefined,
-          maxLength: item.max_length || item.maxLength || undefined,
-          options: item.options || undefined,
-          examples: item.examples || undefined,
-        };
-      });
-    }
-    
-    if (dataSource?.missingDocsJson && Array.isArray(dataSource.missingDocsJson)) {
-      return dataSource.missingDocsJson.map((label: string, index: number) => ({
-        id: `legacy-${index}`,
-        key: `legacy-requirement-${index}`,
-        label: label,
-        description: undefined,
-        required: true,
-        inputKind: 'document' as const,
-        acceptMimes: undefined,
-        maxLength: undefined,
-        options: undefined,
-        examples: undefined,
-      }));
-    }
-    
-    return [];
-  }, [currentCase?.analysis, currentCase?.fullAnalysis]);
-
   const docCount = currentCase?.documents?.length || 0;
-  
-  // Count only UNANSWERED required requirements
-  const requiredCount = missingRequirements.filter((r: any) => {
-    if (!r.required) return false;
-    // Check if this requirement has been answered
-    return !savedResponsesMap.has(r.id);
-  }).length;
 
   useEffect(() => {
     if (analyzeMutation.isSuccess && analyzeMutation.data) {
@@ -683,8 +503,8 @@ export default function Analysis() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Link href="/dossier">
+      <div className="mb-8">
+        <Link href="/dossier" className="block max-w-md mx-auto">
           <Card className="cursor-pointer hover:shadow-lg transition-shadow relative" data-testid="card-documenten-analysis">
             <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
             <CardHeader>
@@ -701,73 +521,6 @@ export default function Analysis() {
             </CardContent>
           </Card>
         </Link>
-
-        <Dialog open={nogAanTeLeverenOpen} onOpenChange={setNogAanTeLeverenOpen}>
-          <DialogTrigger asChild>
-            <Card 
-              className={`cursor-pointer hover:shadow-lg transition-all relative ${
-                currentCase?.fullAnalysis && requiredCount === 0 
-                  ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' 
-                  : ''
-              }`}
-              data-testid="card-nog-aan-te-leveren-analysis"
-            >
-              <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
-              <CardHeader>
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                  currentCase?.fullAnalysis && requiredCount === 0
-                    ? 'bg-green-100 dark:bg-green-900/30'
-                    : 'bg-primary/10'
-                }`}>
-                  <CheckCircle className={`h-8 w-8 ${
-                    currentCase?.fullAnalysis && requiredCount === 0
-                      ? 'text-green-600 dark:text-green-400'
-                      : 'text-primary'
-                  }`} />
-                </div>
-                <CardTitle className="text-center">Nog aan te leveren</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                {currentCase?.fullAnalysis ? (
-                  <>
-                    {requiredCount === 0 && (
-                      <Badge variant="default" className="mb-2 bg-green-600 dark:bg-green-700">
-                        Compleet
-                      </Badge>
-                    )}
-                    <p className="text-2xl font-bold text-foreground">{requiredCount}</p>
-                    <p className="text-sm text-muted-foreground">
-                      vereiste {requiredCount === 1 ? 'vraag' : 'vragen'}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Nog niet geanalyseerd
-                    </p>
-                    <Badge variant="outline">Klik om te bekijken</Badge>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Wat we nog nodig hebben</DialogTitle>
-            </DialogHeader>
-            <div className="mt-4">
-              <MissingInfo 
-                requirements={missingRequirements}
-                caseId={currentCase?.id || ""}
-                caseDocuments={currentCase?.documents || []}
-                onUpdated={() => {
-                  refetch();
-                  setNogAanTeLeverenOpen(false);
-                }}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
 
       {/* READY FOR SUMMONS BANNER */}
