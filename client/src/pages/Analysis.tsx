@@ -280,12 +280,12 @@ export default function Analysis() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         
         <Dialog open={kantonDialogOpen} onOpenChange={setKantonDialogOpen}>
           <DialogTrigger asChild>
             <Card 
-              className={`cursor-pointer hover:shadow-lg transition-all relative ${
+              className={`cursor-pointer hover:shadow-lg transition-all relative h-full ${
                 kantonSuitable ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' : 
                 kantonNotSuitable ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800' : 
                 ''
@@ -294,41 +294,39 @@ export default function Analysis() {
             >
               <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
               <CardHeader>
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                  kantonSuitable ? 'bg-green-100 dark:bg-green-900/30' : 
-                  kantonNotSuitable ? 'bg-red-100 dark:bg-red-900/30' : 
-                  'bg-primary/10'
-                }`}>
+                <CardTitle className="flex items-center gap-3">
                   {kantonSuitable ? (
-                    <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+                    <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                   ) : kantonNotSuitable ? (
-                    <XCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
+                    <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
                   ) : (
-                    <Scale className="h-8 w-8 text-primary" />
+                    <Scale className="h-6 w-6 text-primary" />
                   )}
-                </div>
-                <CardTitle className="text-center">Kantonzaak check</CardTitle>
+                  Kantonzaak check
+                </CardTitle>
               </CardHeader>
-              <CardContent className="text-center">
+              <CardContent>
                 {parsedKantonCheck ? (
-                  <>
-                    <Badge 
-                      variant={kantonSuitable ? "default" : "destructive"}
-                      className="mb-2"
-                    >
-                      {kantonSuitable ? 'Geschikt' : 'Niet geschikt'}
-                    </Badge>
-                    <p className="text-sm text-muted-foreground">
+                  <div className="space-y-2 text-sm">
+                    <div>
+                      <Badge 
+                        variant={kantonSuitable ? "default" : "destructive"}
+                        className="mb-2"
+                      >
+                        {kantonSuitable ? 'Geschikt' : 'Niet geschikt'}
+                      </Badge>
+                    </div>
+                    <p className="text-muted-foreground">
                       {parsedKantonCheck.summary || parsedKantonCheck.decision || 'Klik voor details'}
                     </p>
-                  </>
+                  </div>
                 ) : (
-                  <>
-                    <p className="text-sm text-muted-foreground mb-2">
+                  <div className="space-y-2 text-sm">
+                    <p className="text-muted-foreground mb-2">
                       Nog niet gecontroleerd
                     </p>
                     <Badge variant="outline">Klik om te starten</Badge>
-                  </>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -454,70 +452,90 @@ export default function Analysis() {
         {fullAnalysis ? (
           <Link href="/analyse-details">
             <Card 
-              className="relative cursor-pointer hover:shadow-lg transition-shadow"
+              className="relative cursor-pointer hover:shadow-lg transition-shadow h-full"
               data-testid="card-juridische-analyse"
             >
               <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
               <CardHeader>
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FileSearch className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle className="text-center">Juridische analyse</CardTitle>
+                <CardTitle className="flex items-center gap-3">
+                  <FileSearch className="h-6 w-6 text-primary" />
+                  Juridische analyse
+                </CardTitle>
               </CardHeader>
-              <CardContent className="text-center">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="text-sm font-medium">Analyse compleet</span>
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <Badge variant="default" className="mb-2 bg-green-600 dark:bg-green-700">
+                      Analyse compleet
+                    </Badge>
+                  </div>
+                  <p className="text-muted-foreground">
+                    Klik voor volledige details
+                  </p>
                 </div>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Klik voor volledige details
-                </p>
               </CardContent>
             </Card>
           </Link>
         ) : (
           <Card 
-            className="relative"
+            className="relative h-full"
             data-testid="card-juridische-analyse"
           >
             <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
             <CardHeader>
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FileSearch className="h-8 w-8 text-primary" />
-              </div>
-              <CardTitle className="text-center">Juridische analyse</CardTitle>
+              <CardTitle className="flex items-center gap-3">
+                <FileSearch className="h-6 w-6 text-primary" />
+                Juridische analyse
+              </CardTitle>
             </CardHeader>
-            <CardContent className="text-center">
-              <p className="text-sm text-muted-foreground mb-4">
-                Nog niet uitgevoerd
-              </p>
-              <Button
-                onClick={() => fullAnalyzeMutation.mutate()}
-                disabled={fullAnalyzeMutation.isPending}
-                data-testid="button-start-full-analysis"
-              >
-                {fullAnalyzeMutation.isPending ? 'Analyseren...' : 'Start analyse'}
-              </Button>
+            <CardContent>
+              <div className="space-y-2 text-sm">
+                <p className="text-muted-foreground mb-4">
+                  Nog niet uitgevoerd
+                </p>
+                <Button
+                  onClick={() => fullAnalyzeMutation.mutate()}
+                  disabled={fullAnalyzeMutation.isPending}
+                  data-testid="button-start-full-analysis"
+                >
+                  {fullAnalyzeMutation.isPending ? 'Analyseren...' : 'Start analyse'}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
-      </div>
 
-      <div className="mb-8">
-        <Link href="/dossier" className="block max-w-md mx-auto">
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow relative" data-testid="card-documenten-analysis">
+        <Link href="/dossier">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow relative h-full" data-testid="card-documenten-analysis">
             <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
             <CardHeader>
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Files className="h-8 w-8 text-primary" />
-              </div>
-              <CardTitle className="text-center">Dossier</CardTitle>
+              <CardTitle className="flex items-center gap-3">
+                <Files className="h-6 w-6 text-primary" />
+                Dossier
+              </CardTitle>
             </CardHeader>
-            <CardContent className="text-center">
-              <p className="text-2xl font-bold text-foreground">{docCount}</p>
-              <p className="text-sm text-muted-foreground">
-                {docCount === 1 ? 'document' : 'documenten'} geüpload
-              </p>
+            <CardContent>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Status:</span>{" "}
+                  <span className="font-medium" data-testid="summary-dossier-status">
+                    {docCount > 0 
+                      ? `${docCount} document${docCount > 1 ? 'en' : ''} geüpload`
+                      : "Nog geen documenten"}
+                  </span>
+                </div>
+                {docCount > 0 && (
+                  <div>
+                    <span className="text-muted-foreground">Documenten:</span>{" "}
+                    <span className="font-medium" data-testid="summary-doc-count">{docCount}</span>
+                  </div>
+                )}
+                <p className="text-muted-foreground pt-2">
+                  {docCount > 0 
+                    ? "Bekijk documenten en controleer uw dossier"
+                    : "Upload documenten voor uw zaak"}
+                </p>
+              </div>
             </CardContent>
           </Card>
         </Link>
