@@ -21,6 +21,7 @@ export default function Analysis() {
   const { toast } = useToast();
   const [kantonCheckResult, setKantonCheckResult] = useState<any>(null);
   const [kantonDialogOpen, setKantonDialogOpen] = useState(false);
+  const [successChanceDialogOpen, setSuccessChanceDialogOpen] = useState(false);
   const [successChanceResult, setSuccessChanceResult] = useState<any>(null);
   const [location, setLocation] = useLocation();
   
@@ -280,6 +281,7 @@ export default function Analysis() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         
+        {/* KANTONZAAK CHECK CARD */}
         <Dialog open={kantonDialogOpen} onOpenChange={setKantonDialogOpen}>
           <DialogTrigger asChild>
             <Card 
@@ -447,6 +449,7 @@ export default function Analysis() {
           </DialogContent>
         </Dialog>
 
+        {/* JURIDISCHE ANALYSE CARD */}
         {fullAnalysis ? (
           <Link href="/analyse-details">
             <Card 
@@ -502,6 +505,218 @@ export default function Analysis() {
             </CardContent>
           </Card>
         )}
+
+        {/* KANS OP SUCCES CARD */}
+        <Dialog open={successChanceDialogOpen} onOpenChange={setSuccessChanceDialogOpen}>
+          <DialogTrigger asChild>
+            <Card 
+              className={`cursor-pointer hover:shadow-lg transition-all relative h-full ${
+                fullAnalysis 
+                  ? (succesKansAnalysis 
+                      ? (succesKansAnalysis.chance_of_success >= 70 
+                          ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' 
+                          : succesKansAnalysis.chance_of_success >= 40
+                            ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800'
+                            : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800')
+                      : '')
+                  : ''
+              }`}
+              data-testid="card-success-chance"
+            >
+              <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  <TrendingUp className="h-6 w-6 text-primary" />
+                  Kans op succes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {fullAnalysis ? (
+                  succesKansAnalysis ? (
+                    <div className="space-y-2 text-sm">
+                      <div className="text-4xl font-bold mb-1">
+                        {succesKansAnalysis.chance_of_success}%
+                      </div>
+                      <Badge variant={succesKansAnalysis.confidence_level === 'high' ? 'default' : succesKansAnalysis.confidence_level === 'medium' ? 'secondary' : 'outline'}>
+                        {succesKansAnalysis.confidence_level === 'high' ? 'Hoog vertrouwen' : succesKansAnalysis.confidence_level === 'medium' ? 'Gemiddeld vertrouwen' : 'Laag vertrouwen'}
+                      </Badge>
+                      <p className="text-muted-foreground mt-2">
+                        Klik voor volledige analyse
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 text-sm">
+                      <p className="text-muted-foreground mb-2">
+                        Nog niet beoordeeld
+                      </p>
+                      <Badge variant="outline">Klik om te beoordelen</Badge>
+                    </div>
+                  )
+                ) : (
+                  <div className="space-y-2 text-sm">
+                    <p className="text-muted-foreground">
+                      Eerst juridische analyse uitvoeren
+                    </p>
+                    <Badge variant="outline">Niet beschikbaar</Badge>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Kans op succes</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              {fullAnalysis ? (
+                !succesKansAnalysis ? (
+                  <div className="text-center py-4">
+                    <TrendingUp className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Nog niet beoordeeld</h3>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Laat de AI uw kans op succes beoordelen op basis van de volledige analyse en alle documenten.
+                    </p>
+                    <Button 
+                      onClick={() => successChanceMutation.mutate()}
+                      disabled={successChanceMutation.isPending}
+                      data-testid="button-check-success-chance"
+                    >
+                      {successChanceMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Aan het beoordelen...
+                        </>
+                      ) : (
+                        <>
+                          <TrendingUp className="mr-2 h-4 w-4" />
+                          Check mijn kans op succes
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    {/* Main Success Percentage */}
+                    <div className="text-center py-4 border-b">
+                      <div className="text-5xl font-bold mb-2">
+                        {succesKansAnalysis.chance_of_success}%
+                      </div>
+                      <Badge variant={succesKansAnalysis.confidence_level === 'high' ? 'default' : succesKansAnalysis.confidence_level === 'medium' ? 'secondary' : 'outline'}>
+                        {succesKansAnalysis.confidence_level === 'high' ? 'Hoog vertrouwen' : succesKansAnalysis.confidence_level === 'medium' ? 'Gemiddeld vertrouwen' : 'Laag vertrouwen'}
+                      </Badge>
+                    </div>
+
+                    {/* Summary Verdict */}
+                    {succesKansAnalysis.summary_verdict && (
+                      <div className="bg-white/50 dark:bg-black/20 rounded-lg p-4">
+                        <h4 className="font-semibold text-sm mb-2">Beoordeling</h4>
+                        <p className="text-sm" data-testid="text-verdict">{succesKansAnalysis.summary_verdict}</p>
+                      </div>
+                    )}
+
+                    {/* Strengths */}
+                    {succesKansAnalysis.strengths && succesKansAnalysis.strengths.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                          Sterke punten
+                        </h4>
+                        <div className="space-y-2">
+                          {succesKansAnalysis.strengths.map((strength: any, idx: number) => (
+                            <div key={idx} className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3">
+                              <p className="text-sm font-medium mb-1">{strength.point}</p>
+                              <p className="text-xs text-muted-foreground">{strength.why_it_matters}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Weaknesses */}
+                    {succesKansAnalysis.weaknesses && succesKansAnalysis.weaknesses.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                          Zwakke punten
+                        </h4>
+                        <div className="space-y-2">
+                          {succesKansAnalysis.weaknesses.map((weakness: any, idx: number) => (
+                            <div key={idx} className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3">
+                              <p className="text-sm font-medium mb-1">{weakness.point}</p>
+                              <p className="text-xs text-muted-foreground">{weakness.why_it_matters}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Missing Elements */}
+                    {succesKansAnalysis.missing_elements && succesKansAnalysis.missing_elements.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                          <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          Ontbrekende elementen
+                        </h4>
+                        <div className="space-y-2">
+                          {succesKansAnalysis.missing_elements.map((element: any, idx: number) => (
+                            <div key={idx} className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3">
+                              <p className="text-sm font-medium mb-1">{element.item}</p>
+                              <p className="text-xs text-muted-foreground">{element.why_needed}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Advice for User */}
+                    {succesKansAnalysis.advice_for_user && (
+                      <div className="bg-primary/5 dark:bg-primary/10 rounded-lg p-4 border border-primary/20">
+                        <h4 className="font-semibold text-sm mb-2">Advies</h4>
+                        <p className="text-sm">{succesKansAnalysis.advice_for_user}</p>
+                      </div>
+                    )}
+
+                    {/* Refresh Button */}
+                    <div className="text-center pt-2">
+                      <Button 
+                        variant="outline"
+                        size="sm"
+                        onClick={() => successChanceMutation.mutate()}
+                        disabled={successChanceMutation.isPending}
+                        data-testid="button-recheck-success-chance"
+                      >
+                        {successChanceMutation.isPending ? (
+                          <>
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary mr-2"></div>
+                            Opnieuw beoordelen...
+                          </>
+                        ) : (
+                          'Opnieuw beoordelen'
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                )
+              ) : (
+                <div className="text-center py-8">
+                  <FileSearch className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Juridische analyse vereist</h3>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    U moet eerst een juridische analyse uitvoeren voordat de kans op succes kan worden beoordeeld.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      setSuccessChanceDialogOpen(false);
+                    }}
+                    variant="outline"
+                  >
+                    Sluiten
+                  </Button>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* READY FOR SUMMONS BANNER */}
@@ -519,154 +734,6 @@ export default function Analysis() {
             </div>
           </div>
         </div>
-      )}
-
-
-      {/* SUCCESS CHANCE PANEL (RKOS - Redelijke Kans Op Succes) */}
-      {fullAnalysis && (
-        <Card className={`mb-6 border-2 ${
-          succesKansAnalysis 
-            ? (succesKansAnalysis.chance_of_success >= 70 
-                ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-800' 
-                : succesKansAnalysis.chance_of_success >= 40
-                  ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800'
-                  : 'bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-800')
-            : 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800'
-        }`} data-testid="card-success-chance">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-6 w-6 text-primary" />
-              <span>Kans op succes</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {!succesKansAnalysis ? (
-              <div className="text-center py-4">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Laat de AI uw kans op succes beoordelen op basis van de volledige analyse en alle documenten.
-                </p>
-                <Button 
-                  onClick={() => successChanceMutation.mutate()}
-                  disabled={successChanceMutation.isPending}
-                  data-testid="button-check-success-chance"
-                >
-                  {successChanceMutation.isPending ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Aan het beoordelen...
-                    </>
-                  ) : (
-                    <>
-                      <TrendingUp className="mr-2 h-4 w-4" />
-                      Check mijn kans op succes
-                    </>
-                  )}
-                </Button>
-              </div>
-            ) : (
-              <>
-                {/* Main Success Percentage */}
-                <div className="text-center py-4 border-b">
-                  <div className="text-5xl font-bold mb-2">
-                    {succesKansAnalysis.chance_of_success}%
-                  </div>
-                  <Badge variant={succesKansAnalysis.confidence_level === 'high' ? 'default' : succesKansAnalysis.confidence_level === 'medium' ? 'secondary' : 'outline'}>
-                    {succesKansAnalysis.confidence_level === 'high' ? 'Hoog vertrouwen' : succesKansAnalysis.confidence_level === 'medium' ? 'Gemiddeld vertrouwen' : 'Laag vertrouwen'}
-                  </Badge>
-                </div>
-
-                {/* Summary Verdict */}
-                {succesKansAnalysis.summary_verdict && (
-                  <div className="bg-white/50 dark:bg-black/20 rounded-lg p-4">
-                    <h4 className="font-semibold text-sm mb-2">Beoordeling</h4>
-                    <p className="text-sm" data-testid="text-verdict">{succesKansAnalysis.summary_verdict}</p>
-                  </div>
-                )}
-
-                {/* Strengths */}
-                {succesKansAnalysis.strengths && succesKansAnalysis.strengths.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                      Sterke punten
-                    </h4>
-                    <div className="space-y-2">
-                      {succesKansAnalysis.strengths.map((strength: any, idx: number) => (
-                        <div key={idx} className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3">
-                          <p className="text-sm font-medium mb-1">{strength.point}</p>
-                          <p className="text-xs text-muted-foreground">{strength.why_it_matters}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Weaknesses */}
-                {succesKansAnalysis.weaknesses && succesKansAnalysis.weaknesses.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                      Zwakke punten
-                    </h4>
-                    <div className="space-y-2">
-                      {succesKansAnalysis.weaknesses.map((weakness: any, idx: number) => (
-                        <div key={idx} className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3">
-                          <p className="text-sm font-medium mb-1">{weakness.point}</p>
-                          <p className="text-xs text-muted-foreground">{weakness.why_it_matters}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Missing Elements */}
-                {succesKansAnalysis.missing_elements && succesKansAnalysis.missing_elements.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                      <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      Ontbrekende elementen
-                    </h4>
-                    <div className="space-y-2">
-                      {succesKansAnalysis.missing_elements.map((element: any, idx: number) => (
-                        <div key={idx} className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3">
-                          <p className="text-sm font-medium mb-1">{element.item}</p>
-                          <p className="text-xs text-muted-foreground">{element.why_needed}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Advice for User */}
-                {succesKansAnalysis.advice_for_user && (
-                  <div className="bg-primary/5 dark:bg-primary/10 rounded-lg p-4 border border-primary/20">
-                    <h4 className="font-semibold text-sm mb-2">Advies</h4>
-                    <p className="text-sm">{succesKansAnalysis.advice_for_user}</p>
-                  </div>
-                )}
-
-                {/* Refresh Button */}
-                <div className="text-center pt-2">
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    onClick={() => successChanceMutation.mutate()}
-                    disabled={successChanceMutation.isPending}
-                  >
-                    {successChanceMutation.isPending ? (
-                      <>
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary mr-2"></div>
-                        Opnieuw beoordelen...
-                      </>
-                    ) : (
-                      'Opnieuw beoordelen'
-                    )}
-                  </Button>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
       )}
 
     </div>
