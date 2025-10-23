@@ -66,12 +66,16 @@ export default function Layout({ children }: LayoutProps) {
               </Link>
               
               {currentCase && (
-                <div className="hidden lg:flex items-center gap-3 px-3 py-1.5 rounded-md bg-muted border border-border">
+                <Link 
+                  href="/dashboard" 
+                  className="hidden lg:flex items-center gap-3 px-3 py-1.5 rounded-md bg-muted border border-border hover:bg-muted/80 transition-colors cursor-pointer"
+                  data-testid="link-dashboard"
+                >
                   <Briefcase className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium text-foreground max-w-[200px] truncate" data-testid="text-selected-case">
                     {currentCase.title}
                   </span>
-                </div>
+                </Link>
               )}
               
               <nav className="hidden md:flex items-center space-x-6">

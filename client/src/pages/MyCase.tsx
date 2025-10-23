@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import DocumentList from "@/components/DocumentList";
 import DeadlineWarning from "@/components/DeadlineWarning";
 import { Link, useLocation } from "wouter";
-import { PlusCircle, Headset, MessageSquare, FileText, CheckCircle, Files } from "lucide-react";
+import { PlusCircle, Headset, MessageSquare, FileText, CheckCircle, Files, ArrowLeft } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 import { useActiveCase } from "@/contexts/CaseContext";
 
@@ -107,6 +107,19 @@ export default function MyCase() {
   return (
     <div className="space-y-6">
       <DeadlineWarning caseId={currentCase.id} />
+      
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        asChild 
+        className="mb-2"
+        data-testid="button-back-to-dashboard"
+      >
+        <Link href="/dashboard">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Terug
+        </Link>
+      </Button>
       
       <div className="flex items-center justify-between mb-6">
         <div>
