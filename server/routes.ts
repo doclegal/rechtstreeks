@@ -1436,19 +1436,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Save or update the success chance data
         if (fullAnalysisRecord) {
           // Update existing full analysis record with success chance data
-          await storage.updateAnalysis(fullAnalysisRecord.id, {
+          console.log('🔄 Updating fullAnalysis ID:', fullAnalysisRecord.id);
+          console.log('🔄 With succesKansAnalysis:', JSON.stringify(rkosResult));
+          const updatedRecord = await storage.updateAnalysis(fullAnalysisRecord.id, {
             succesKansAnalysis: rkosResult
           });
           console.log('✅ Success chance analysis saved to existing fullAnalysis record');
+          console.log('✅ Updated record succesKansAnalysis:', updatedRecord.succesKansAnalysis);
         } else {
           // Create a new fullAnalysis record with only success chance data
-          await storage.createAnalysis({
+          console.log('🆕 Creating new fullAnalysis with succesKansAnalysis');
+          const newRecord = await storage.createAnalysis({
             caseId: caseId,
             model: 'mindstudio-full-analysis',
             rawText: JSON.stringify({ success: true }),
             succesKansAnalysis: rkosResult
           });
           console.log('✅ Success chance analysis saved to new fullAnalysis record');
+          console.log('✅ New record ID:', newRecord.id, 'succesKansAnalysis:', newRecord.succesKansAnalysis);
         }
 
         res.json({ 

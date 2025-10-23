@@ -318,6 +318,11 @@ export default function Analysis() {
   let allFiles = null;
   let succesKansAnalysis = null;
   
+  // ALWAYS check for succesKansAnalysis first, even if there's no parsedAnalysis
+  if ((currentCase?.fullAnalysis as any)?.succesKansAnalysis) {
+    succesKansAnalysis = (currentCase.fullAnalysis as any).succesKansAnalysis;
+  }
+  
   try {
     if ((currentCase?.fullAnalysis as any)?.parsedAnalysis && typeof (currentCase.fullAnalysis as any).parsedAnalysis === 'object') {
       fullAnalysis = (currentCase.fullAnalysis as any).parsedAnalysis;
@@ -329,8 +334,6 @@ export default function Analysis() {
       readyForSummons = (currentCase?.fullAnalysis as any)?.readyForSummons ?? fullAnalysis?.ready_for_summons;
       extractedTexts = (currentCase?.fullAnalysis as any)?.extractedTexts || null;
       allFiles = (currentCase?.fullAnalysis as any)?.allFiles || null;
-      // Use state fallback if database doesn't have it (happens when no full analysis exists yet)
-      succesKansAnalysis = (currentCase?.fullAnalysis as any)?.succesKansAnalysis || successChanceResult || null;
     } else if (currentCase?.fullAnalysis?.rawText) {
       const rawData = JSON.parse(currentCase.fullAnalysis.rawText);
       
