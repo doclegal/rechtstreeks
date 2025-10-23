@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useLocation } from "wouter";
-import { PlusCircle, FileSearch, Scale, CheckCircle, XCircle, ArrowRight, FileText, Users, AlertTriangle, AlertCircle, Files, TrendingUp, Info, ArrowLeft } from "lucide-react";
+import { PlusCircle, FileSearch, Scale, CheckCircle, XCircle, ArrowRight, FileText, Users, AlertTriangle, AlertCircle, TrendingUp, Info, ArrowLeft } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 import { useActiveCase } from "@/contexts/CaseContext";
 import DocumentList from "@/components/DocumentList";
@@ -62,8 +62,6 @@ export default function Analysis() {
   useEffect(() => {
     setSuccessChanceResult(null);
   }, [caseId]);
-
-  const docCount = currentCase?.documents?.length || 0;
 
   useEffect(() => {
     if (analyzeMutation.isSuccess && analyzeMutation.data) {
@@ -504,41 +502,6 @@ export default function Analysis() {
             </CardContent>
           </Card>
         )}
-
-        <Link href="/dossier">
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow relative h-full" data-testid="card-documenten-analysis">
-            <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <Files className="h-6 w-6 text-primary" />
-                Dossier
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Status:</span>{" "}
-                  <span className="font-medium" data-testid="summary-dossier-status">
-                    {docCount > 0 
-                      ? `${docCount} document${docCount > 1 ? 'en' : ''} geüpload`
-                      : "Nog geen documenten"}
-                  </span>
-                </div>
-                {docCount > 0 && (
-                  <div>
-                    <span className="text-muted-foreground">Documenten:</span>{" "}
-                    <span className="font-medium" data-testid="summary-doc-count">{docCount}</span>
-                  </div>
-                )}
-                <p className="text-muted-foreground pt-2">
-                  {docCount > 0 
-                    ? "Bekijk documenten en controleer uw dossier"
-                    : "Upload documenten voor uw zaak"}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
       </div>
 
       {/* READY FOR SUMMONS BANNER */}
@@ -558,62 +521,6 @@ export default function Analysis() {
         </div>
       )}
 
-      {/* ANALYSIS STATUS FLAGS */}
-      {flags && fullAnalysis && (
-        <Card className="mb-6" data-testid="card-analysis-status">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <CheckCircle className="h-5 w-5 text-primary" />
-              Analyse Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className={`p-4 rounded-lg border-2 ${flags.facts_complete ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-800' : 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800'}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  {flags.facts_complete ? (
-                    <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  ) : (
-                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                  )}
-                  <span className="font-semibold text-sm">Feiten</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {flags.facts_complete ? 'Voldoende feiten verzameld' : 'Meer feitelijke informatie nodig'}
-                </p>
-              </div>
-
-              <div className={`p-4 rounded-lg border-2 ${flags.evidence_complete ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-800' : 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800'}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  {flags.evidence_complete ? (
-                    <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  ) : (
-                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                  )}
-                  <span className="font-semibold text-sm">Bewijs</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {flags.evidence_complete ? 'Voldoende bewijs aanwezig' : 'Meer bewijsmateriaal gewenst'}
-                </p>
-              </div>
-
-              <div className={`p-4 rounded-lg border-2 ${flags.has_legal_basis ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-800' : 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800'}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  {flags.has_legal_basis ? (
-                    <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  ) : (
-                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                  )}
-                  <span className="font-semibold text-sm">Juridische grondslag</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {flags.has_legal_basis ? 'Juridische basis aanwezig' : 'Juridische basis onduidelijk'}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* SUCCESS CHANCE PANEL (RKOS - Redelijke Kans Op Succes) */}
       {fullAnalysis && (
