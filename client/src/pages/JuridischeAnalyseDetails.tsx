@@ -146,10 +146,137 @@ export default function JuridischeAnalyseDetails() {
     );
   }
 
+  // Render advisory_text format (single text field from MindStudio)
+  const renderAdvisoryText = (advisoryText: string) => {
+    const handleCopy = () => {
+      navigator.clipboard.writeText(advisoryText);
+      toast({
+        title: "Gekopieerd",
+        description: "Het juridische advies is naar het klembord gekopieerd",
+      });
+    };
+
+    const handleDownload = () => {
+      const blob = new Blob([advisoryText], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `juridisch-advies-${currentCase.title || 'zaak'}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({
+        title: "Gedownload",
+        description: "Het juridische advies is gedownload",
+      });
+    };
+
+    return (
+      <div className="min-h-screen bg-background">
+        {/* Header with actions */}
+        <div className="border-b bg-card">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Button variant="ghost" size="sm" asChild data-testid="button-back-to-analysis">
+                  <Link href="/analysis">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Terug
+                  </Link>
+                </Button>
+                <div>
+                  <h1 className="text-2xl font-bold">Juridisch Advies</h1>
+                  <p className="text-sm text-muted-foreground">
+                    {currentCase.title || 'Uw zaak'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopy}
+                  data-testid="button-copy-advice"
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Kopiëren
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownload}
+                  data-testid="button-download-advice"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Downloaden
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => generateAdviceMutation.mutate()}
+                  disabled={generateAdviceMutation.isPending}
+                  data-testid="button-regenerate-advice"
+                >
+                  {generateAdviceMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                      Genereren...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Opnieuw genereren
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* A4 Layout Content */}
+        <A4Layout>
+          <A4Page pageNumber={1}>
+            <SectionHeading level={1}>JURIDISCH ADVIES</SectionHeading>
+            
+            {/* Case info */}
+            <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                <p><strong>Zaak:</strong> {currentCase.title || 'Onbekend'}</p>
+                <p><strong>Datum:</strong> {new Date().toLocaleDateString('nl-NL', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}</p>
+              </div>
+            </div>
+
+            {/* Advisory text content */}
+            <SectionBody>
+              <div 
+                className="whitespace-pre-wrap text-sm leading-relaxed"
+                data-testid="text-advisory-content"
+              >
+                {advisoryText}
+              </div>
+            </SectionBody>
+          </A4Page>
+        </A4Layout>
+      </div>
+    );
+  };
+
   // Render NEW JSON format advice
   const renderJsonAdvice = () => {
     if (!legalAdviceJson) return null;
 
+    // Handle advisory_text format (MindStudio returns single text field)
+    if (legalAdviceJson.advisory_text && !legalAdviceJson.het_geschil) {
+      return renderAdvisoryText(legalAdviceJson.advisory_text);
+    }
+
+    // Handle structured sections format
     const sections = [
       { key: 'samenvatting_advies', title: 'Samenvatting Advies', isSummary: true },
       { key: 'het_geschil', title: '1. Het Geschil' },
