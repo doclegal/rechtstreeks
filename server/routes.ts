@@ -1670,13 +1670,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`🔍 Running missing info check for case ${caseId}`);
         
         // Get full analysis to extract missing_elements (from RKOS.flow)
-        let fullAnalysisRecord = await storage.getAnalysisByType(caseId, 'mindstudio-full-analysis');
-        let parsedAnalysis = null;
+        const fullAnalysisRecord = await storage.getAnalysisByType(caseId, 'mindstudio-full-analysis');
         
-        if (fullAnalysisRecord) {
-          const fullAnalysisData = enrichFullAnalysis(fullAnalysisRecord);
-          parsedAnalysis = fullAnalysisData?.parsedAnalysis;
+        if (!fullAnalysisRecord) {
+          return res.status(400).json({ 
+            message: "Er moet eerst een analyse worden uitgevoerd voordat een dossier controle kan worden gedaan." 
+          });
         }
+
+        const fullAnalysisData = enrichFullAnalysis(fullAnalysisRecord);
+        const parsedAnalysis = fullAnalysisData?.parsedAnalysis;
 
         if (!parsedAnalysis) {
           return res.status(400).json({ 
@@ -1689,7 +1692,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`📋 Found ${missingElements.length} missing_elements from RKOS.flow`);
 
         // Extract ontbrekend_bewijs from Create_advice.flow (legal advice)
-        const ontbrekendBewijs = fullAnalysisRecord.legalAdviceJson?.ontbrekend_bewijs || [];
+        const legalAdvice = fullAnalysisRecord.legalAdviceJson as any;
+        const ontbrekendBewijs = legalAdvice?.ontbrekend_bewijs || [];
         console.log(`📋 Found ${Array.isArray(ontbrekendBewijs) ? ontbrekendBewijs.length : 0} ontbrekend_bewijs items from Create_advice.flow`);
 
         // Build payload for missing_info.flow

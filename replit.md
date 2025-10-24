@@ -83,6 +83,25 @@ The database schema supports a complete legal case lifecycle with document versi
 - **Timeout**: 5-minute timeout for longer AI-generated text output
 - **Error Handling**: Comprehensive error messages for missing analysis, service unavailability, and timeouts
 
+### Missing Information Check (Dossier Controle)
+- **MindStudio Integration**: AI-powered missing information consolidation via missing_info.flow
+- **Purpose**: Consolidates missing information from multiple analysis sources into a unified checklist
+- **Input Sources**:
+  - `missing_elements` from RKOS.flow (initial case analysis)
+  - `ontbrekend_bewijs` from Create_advice.flow (legal advice missing evidence)
+- **Output Format**: Array of `{item, why_needed}` objects
+- **Storage**: Results saved in analyses.missingInformation field (JSONB)
+- **API Endpoint**: POST /api/cases/:id/missing-info-check
+- **UI Integration**: 
+  - "Dossier controle" button on Dossier page (visible when fullAnalysis exists)
+  - Results displayed in existing "Ontbrekende Informatie" UI
+  - Supports text input, document upload, and "ik heb dit niet" option per item
+- **Persistence**: Results survive page reload and take priority over legacy missing_info_struct
+- **Fallback Chain**: Fresh check → Saved missingInformation → Legacy missing_info_struct → Evidence.missing
+- **Prerequisites**: Requires existing full analysis and optionally legal advice for complete consolidation
+- **Timeout**: 2-minute timeout
+- **Error Handling**: Comprehensive error messages for missing analysis, service unavailability, and timeouts
+
 ### Authentication & Authorization
 - **Primary Auth**: Replit Auth with OpenID Connect
 - **Session Management**: PostgreSQL-backed sessions with connect-pg-simple
