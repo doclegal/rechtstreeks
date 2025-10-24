@@ -7,20 +7,70 @@ import DocumentList from "@/components/DocumentList";
 import MissingInfo from "@/components/MissingInfo";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, FileText, AlertCircle, Sparkles, AlertTriangle } from "lucide-react";
+import { ArrowLeft, FileText, AlertCircle, Sparkles, AlertTriangle, CheckCircle } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { MissingRequirement } from "@shared/schema";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 export default function Dossier() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const currentCase = useActiveCase();
+  const [checkedMissingInfo, setCheckedMissingInfo] = useState<any[] | null>(null);
   
+  // Mutation to run missing info check
+  const missingInfoCheckMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentCase) throw new Error("No case selected");
+      return await apiRequest("POST", `/api/cases/${currentCase.id}/missing-info-check`, {});
+    },
+    onSuccess: (data: any) => {
+      console.log("✅ Missing info check completed:", data);
+      if (data.missingInformation && Array.isArray(data.missingInformation)) {
+        setCheckedMissingInfo(data.missingInformation);
+        toast({
+          title: "Dossier controle voltooid",
+          description: `${data.missingInformation.length} ontbrekende ${data.missingInformation.length === 1 ? 'item' : 'items'} gevonden`
+        });
+      } else {
+        setCheckedMissingInfo([]);
+        toast({
+          title: "Dossier controle voltooid",
+          description: "Geen ontbrekende informatie gevonden"
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/cases", currentCase?.id] });
+    },
+    onError: (error: any) => {
+      console.error("❌ Missing info check failed:", error);
+      toast({
+        title: "Dossier controle mislukt",
+        description: error.message || "Er is een fout opgetreden bij de dossier controle",
+        variant: "destructive"
+      });
+    }
+  });
+
   // Extract missing requirements from case analysis (using same logic as Dashboard)
   const missingRequirements = useMemo(() => {
+    // If we have fresh checked missing info, use that first
+    if (checkedMissingInfo && checkedMissingInfo.length > 0) {
+      return checkedMissingInfo.map((item: any, index: number) => ({
+        id: item.id || `checked-${index}`,
+        key: `missing-info-${index}`,
+        label: item.item || item.question || 'Ontbrekende informatie',
+        description: item.why_needed || item.reason || undefined,
+        required: true,
+        inputKind: 'both' as const,
+        acceptMimes: undefined,
+        maxLength: undefined,
+        options: undefined,
+        examples: undefined,
+      }));
+    }
     const fullAnalysis = currentCase?.fullAnalysis as any;
     const parsedAnalysis = fullAnalysis?.parsedAnalysis;
     const analysis = currentCase?.analysis as any;
@@ -158,7 +208,7 @@ export default function Dossier() {
     }
     
     return [];
-  }, [currentCase?.analysis, currentCase?.fullAnalysis]);
+  }, [currentCase?.analysis, currentCase?.fullAnalysis, checkedMissingInfo]);
 
   if (authLoading) {
     return (
@@ -261,6 +311,43 @@ export default function Dossier() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dossier Controle Button */}
+      {currentCase.fullAnalysis && (
+        <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+          <CardContent className="pt-6">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">Dossier Controle</h3>
+                </div>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
+                  Voer een automatische controle uit om ontbrekende informatie te identificeren op basis van uw analyse en juridisch advies.
+                </p>
+                <Button
+                  onClick={() => missingInfoCheckMutation.mutate()}
+                  disabled={missingInfoCheckMutation.isPending}
+                  data-testid="button-run-missing-info-check"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {missingInfoCheckMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                      Bezig met controleren...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Start Dossier Controle
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Ontbrekende Informatie Section */}
       {missingRequirements.length > 0 && (
