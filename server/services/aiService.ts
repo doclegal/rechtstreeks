@@ -2423,9 +2423,12 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
   async runMissingInfo(input_json: any): Promise<{ result?: any; thread?: any; error?: string }> {
     console.log("🔍 Calling MindStudio Missing_info.flow...");
 
-    // Send as actual JSON object instead of stringified (MindStudio will handle serialization)
+    // Send individual fields as separate variables (MindStudio doesn't handle nested objects well)
     const variables = {
-      input_json: input_json  // Send as object, not string
+      case_id: input_json.case_id,
+      case_title: input_json.case_title,
+      missing_elements: JSON.stringify(input_json.missing_elements || []),
+      ontbrekend_bewijs: JSON.stringify(input_json.ontbrekend_bewijs || [])
     };
 
     console.log("📤 Missing Info variables:", {
@@ -2434,7 +2437,7 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       ontbrekend_bewijs_count: input_json.ontbrekend_bewijs?.length || 0
     });
     
-    console.log("🔍 DEBUG sending ontbrekend_bewijs items:", JSON.stringify(input_json.ontbrekend_bewijs?.slice(0, 1)));
+    console.log("🔍 DEBUG ontbrekend_bewijs as string:", variables.ontbrekend_bewijs.substring(0, 300));
 
     const requestBody = {
       workerId: process.env.MS_AGENT_APP_ID,
