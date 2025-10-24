@@ -4,16 +4,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import DocumentList from "@/components/DocumentList";
+import MissingInfo from "@/components/MissingInfo";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, FileText, AlertCircle, Sparkles } from "lucide-react";
+import { ArrowLeft, FileText, AlertCircle, Sparkles, AlertTriangle } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
+import { useQuery } from "@tanstack/react-query";
+import type { MissingRequirement } from "@shared/schema";
 
 export default function Dossier() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const currentCase = useActiveCase();
+  
+  // Extract missing requirements from case fullAnalysis
+  const missingRequirements: MissingRequirement[] = currentCase?.fullAnalysis?.missingRequirements || [];
 
   if (authLoading) {
     return (
@@ -116,6 +122,28 @@ export default function Dossier() {
           )}
         </CardContent>
       </Card>
+
+      {/* Ontbrekende Informatie Section */}
+      {missingRequirements.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-warning" />
+            <h3 className="text-lg font-semibold">Ontbrekende Informatie</h3>
+          </div>
+          
+          <MissingInfo
+            requirements={missingRequirements}
+            caseId={currentCase.id}
+            caseDocuments={currentCase.documents || []}
+            onUpdated={() => {
+              toast({
+                title: "Informatie opgeslagen",
+                description: "De antwoorden zijn succesvol opgeslagen. Start een nieuwe analyse om deze informatie te verwerken."
+              });
+            }}
+          />
+        </div>
+      )}
 
       {/* Help text */}
       <Alert>
