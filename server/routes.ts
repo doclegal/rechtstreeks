@@ -1647,6 +1647,153 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Missing Info Check - Consolidate missing information using missing_info.flow
+  app.post('/api/cases/:id/missing-info-check', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      // Get case data and verify ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+
+      // Verify MindStudio is available
+      if (!process.env.MINDSTUDIO_API_KEY || !process.env.MS_AGENT_APP_ID) {
+        return res.status(503).json({ 
+          message: "Sorry, de dossier controle kan niet worden uitgevoerd. Mindstudio AI is niet beschikbaar." 
+        });
+      }
+
+      try {
+        console.log(`🔍 Running missing info check for case ${caseId}`);
+        
+        // Get full analysis to extract missing_elements (from RKOS.flow)
+        let fullAnalysisRecord = await storage.getAnalysisByType(caseId, 'mindstudio-full-analysis');
+        let parsedAnalysis = null;
+        
+        if (fullAnalysisRecord) {
+          const fullAnalysisData = enrichFullAnalysis(fullAnalysisRecord);
+          parsedAnalysis = fullAnalysisData?.parsedAnalysis;
+        }
+
+        if (!parsedAnalysis) {
+          return res.status(400).json({ 
+            message: "Er moet eerst een analyse worden uitgevoerd voordat een dossier controle kan worden gedaan." 
+          });
+        }
+
+        // Extract missing_elements from RKOS.flow analysis
+        const missingElements = parsedAnalysis?.missing_elements || [];
+        console.log(`📋 Found ${missingElements.length} missing_elements from RKOS.flow`);
+
+        // Extract ontbrekend_bewijs from Create_advice.flow (legal advice)
+        const ontbrekendBewijs = fullAnalysisRecord.legalAdviceJson?.ontbrekend_bewijs || [];
+        console.log(`📋 Found ${Array.isArray(ontbrekendBewijs) ? ontbrekendBewijs.length : 0} ontbrekend_bewijs items from Create_advice.flow`);
+
+        // Build payload for missing_info.flow
+        const missingInfoPayload = {
+          case_id: caseId,
+          case_title: caseData.title || 'Zonder titel',
+          missing_elements: missingElements,
+          ontbrekend_bewijs: Array.isArray(ontbrekendBewijs) ? ontbrekendBewijs : []
+        };
+
+        console.log('📤 Calling missing_info.flow with:', {
+          case_id: missingInfoPayload.case_id,
+          missing_elements_count: missingInfoPayload.missing_elements.length,
+          ontbrekend_bewijs_count: missingInfoPayload.ontbrekend_bewijs.length
+        });
+
+        // Call MindStudio missing_info.flow
+        const flowResult = await aiService.runMissingInfo(missingInfoPayload);
+
+        if (flowResult.error) {
+          console.error('❌ missing_info.flow call failed:', flowResult.error);
+          return res.status(500).json({ 
+            message: "Dossier controle mislukt. Probeer het opnieuw.",
+            error: flowResult.error
+          });
+        }
+
+        console.log('✅ missing_info.flow response received');
+
+        // Parse the response
+        let missingInformation = null;
+        
+        // Try result.missing_information
+        if (flowResult.result?.missing_information) {
+          missingInformation = flowResult.result.missing_information;
+          console.log('📄 Found missing_information in result');
+        }
+        // Try thread posts
+        else if (flowResult.thread?.posts) {
+          console.log('🔍 Checking thread posts for missing_information variable...');
+          for (const post of flowResult.thread.posts) {
+            if (post.debugLog?.newState?.variables?.missing_information?.value) {
+              const value = post.debugLog.newState.variables.missing_information.value;
+              missingInformation = typeof value === 'string' ? JSON.parse(value) : value;
+              console.log('📄 Found missing_information in thread posts');
+              break;
+            }
+          }
+        }
+        // Try thread variables
+        else if (flowResult.thread?.variables?.missing_information) {
+          const value = flowResult.thread.variables.missing_information.value || flowResult.thread.variables.missing_information;
+          missingInformation = typeof value === 'string' ? JSON.parse(value) : value;
+          console.log('📄 Found missing_information in thread variables');
+        }
+
+        if (!missingInformation) {
+          console.error('❌ No missing_information in response');
+          console.log('Response structure:', {
+            has_result: !!flowResult.result,
+            has_thread: !!flowResult.thread,
+            result_keys: flowResult.result ? Object.keys(flowResult.result) : [],
+            thread_keys: flowResult.thread ? Object.keys(flowResult.thread) : []
+          });
+          return res.status(500).json({ 
+            message: "Dossier controle heeft geen resultaat opgeleverd." 
+          });
+        }
+
+        console.log(`📄 Found ${Array.isArray(missingInformation) ? missingInformation.length : 0} missing_information items`);
+
+        // Update the fullAnalysis record with missing_information
+        console.log('🔄 Updating fullAnalysis ID:', fullAnalysisRecord.id);
+        const updatedRecord = await storage.updateAnalysis(fullAnalysisRecord.id, {
+          missingInformation: missingInformation
+        });
+        console.log('✅ Missing information saved to fullAnalysis record');
+
+        res.json({ 
+          success: true,
+          missingInformation: missingInformation
+        });
+
+      } catch (error) {
+        console.error("Missing info check failed:", error);
+        
+        // Check if it's a timeout error
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        if (errorMsg.includes('524') || errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
+          return res.status(504).json({ 
+            message: "De dossier controle duurt te lang (timeout). Probeer het opnieuw." 
+          });
+        }
+        
+        return res.status(503).json({ 
+          message: "Sorry, de dossier controle kan niet worden uitgevoerd. Mindstudio AI is niet beschikbaar." 
+        });
+      }
+    } catch (error) {
+      console.error("Error running missing info check:", error);
+      res.status(500).json({ message: "Dossier controle mislukt. Probeer het opnieuw." });
+    }
+  });
+
   // Dossier check route - check document completeness using Dossier_check.flow
   app.post('/api/cases/:id/dossier-check', isAuthenticated, async (req: any, res) => {
     try {
