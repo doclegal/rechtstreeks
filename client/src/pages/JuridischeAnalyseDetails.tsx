@@ -455,6 +455,41 @@ export default function JuridischeAnalyseDetails() {
                 const content = legalAdviceJson[section.key];
                 if (!content) return null;
 
+                // Helper function to render content (handles both strings and arrays of objects)
+                const renderContent = (content: any) => {
+                  // If it's an array of {item, why_needed} objects
+                  if (Array.isArray(content) && content.length > 0 && typeof content[0] === 'object' && 'item' in content[0]) {
+                    return (
+                      <div className="space-y-3">
+                        {content.map((entry: any, index: number) => (
+                          <div key={index} className="pl-4 border-l-2 border-gray-300 dark:border-gray-600">
+                            <div className="font-medium text-gray-900 dark:text-white">{entry.item}</div>
+                            {entry.why_needed && (
+                              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                {entry.why_needed}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
+                  // If it's a regular array of strings
+                  else if (Array.isArray(content)) {
+                    return (
+                      <ul className="list-disc list-inside space-y-1">
+                        {content.map((item: string, index: number) => (
+                          <li key={index}>{item}</li>
+                        ))}
+                      </ul>
+                    );
+                  }
+                  // If it's a string
+                  else {
+                    return content;
+                  }
+                };
+
                 return (
                   <div key={section.key} className="mb-6">
                     {section.isSummary ? (
@@ -465,7 +500,7 @@ export default function JuridischeAnalyseDetails() {
                           <Badge variant="secondary" className="ml-2">Kernpunten</Badge>
                         </h2>
                         <SectionBody className="text-gray-700 dark:text-gray-300">
-                          {content}
+                          {renderContent(content)}
                         </SectionBody>
                       </div>
                     ) : (
@@ -475,7 +510,7 @@ export default function JuridischeAnalyseDetails() {
                           {section.title}
                         </div>
                         <SectionBody>
-                          {content}
+                          {renderContent(content)}
                         </SectionBody>
                       </div>
                     )}
