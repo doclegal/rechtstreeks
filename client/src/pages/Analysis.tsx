@@ -128,6 +128,7 @@ export default function Analysis() {
   const kantonNotSuitable = parsedKantonCheck?.ok === false;
 
   let fullAnalysis = null;
+  let legalAdviceFull = null;
   let userContext = null;
   let procedureContext = null;
   let flags = null;
@@ -156,7 +157,14 @@ export default function Analysis() {
     } else if (currentCase?.fullAnalysis?.rawText) {
       const rawData = JSON.parse(currentCase.fullAnalysis.rawText);
       
-      // Check if parsedAnalysis exists at top level
+      // NEW FORMAT: Check for legal_advice_full first
+      if (rawData.legal_advice_full) {
+        legalAdviceFull = rawData.legal_advice_full;
+      } else if (rawData.result?.legal_advice_full) {
+        legalAdviceFull = rawData.result.legal_advice_full;
+      }
+      
+      // OLD FORMAT: Check if parsedAnalysis exists at top level
       if (rawData.parsedAnalysis && typeof rawData.parsedAnalysis === 'object') {
         fullAnalysis = rawData.parsedAnalysis;
         userContext = rawData.userContext || null;
@@ -450,7 +458,7 @@ export default function Analysis() {
         </Dialog>
 
         {/* JURIDISCHE ANALYSE CARD */}
-        {fullAnalysis ? (
+        {(fullAnalysis || legalAdviceFull) ? (
           <Link href="/analyse-details">
             <Card 
               className="relative cursor-pointer hover:shadow-lg transition-shadow h-full"
@@ -460,18 +468,18 @@ export default function Analysis() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-3">
                   <FileSearch className="h-6 w-6 text-primary" />
-                  Juridische analyse
+                  Juridisch advies
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 text-sm">
                   <div>
                     <Badge variant="default" className="mb-2 bg-green-600 dark:bg-green-700">
-                      Analyse compleet
+                      Advies beschikbaar
                     </Badge>
                   </div>
                   <p className="text-muted-foreground">
-                    Klik voor volledige details
+                    Klik voor volledig advies
                   </p>
                 </div>
               </CardContent>
@@ -486,20 +494,20 @@ export default function Analysis() {
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
                 <FileSearch className="h-6 w-6 text-primary" />
-                Juridische analyse
+                Juridisch advies
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2 text-sm">
                 <p className="text-muted-foreground mb-4">
-                  Nog niet uitgevoerd
+                  Nog niet opgesteld
                 </p>
                 <Button
                   onClick={() => fullAnalyzeMutation.mutate()}
                   disabled={fullAnalyzeMutation.isPending}
                   data-testid="button-start-full-analysis"
                 >
-                  {fullAnalyzeMutation.isPending ? 'Analyseren...' : 'Start analyse'}
+                  {fullAnalyzeMutation.isPending ? 'Adviseren...' : 'Stel advies op'}
                 </Button>
               </div>
             </CardContent>
@@ -511,7 +519,7 @@ export default function Analysis() {
           <DialogTrigger asChild>
             <Card 
               className={`cursor-pointer hover:shadow-lg transition-all relative h-full ${
-                fullAnalysis 
+                (fullAnalysis || legalAdviceFull) 
                   ? (succesKansAnalysis 
                       ? (succesKansAnalysis.chance_of_success >= 70 
                           ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' 
@@ -531,7 +539,7 @@ export default function Analysis() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {fullAnalysis ? (
+                {(fullAnalysis || legalAdviceFull) ? (
                   succesKansAnalysis ? (
                     <div className="space-y-2 text-sm">
                       <div className="text-4xl font-bold mb-1">
@@ -568,7 +576,7 @@ export default function Analysis() {
               <DialogTitle>Kans op succes</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 mt-4">
-              {fullAnalysis ? (
+              {(fullAnalysis || legalAdviceFull) ? (
                 !succesKansAnalysis ? (
                   <div className="text-center py-4">
                     <TrendingUp className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
