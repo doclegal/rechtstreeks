@@ -2432,6 +2432,8 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       missing_elements_count: input_json.missing_elements?.length || 0,
       ontbrekend_bewijs_count: input_json.ontbrekend_bewijs?.length || 0
     });
+    
+    console.log("🔍 DEBUG input_json stringified (first 500 chars):", variables.input_json.substring(0, 500));
 
     const requestBody = {
       workerId: process.env.MS_AGENT_APP_ID,
