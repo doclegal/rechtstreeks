@@ -457,7 +457,7 @@ export default function JuridischeAnalyseDetails() {
 
                 // Helper function to render content (handles both strings and arrays of objects)
                 const renderContent = (content: any) => {
-                  // If it's an array of {item, why_needed} objects
+                  // If it's an array of {item, why_needed} objects (ontbrekend_bewijs)
                   if (Array.isArray(content) && content.length > 0 && typeof content[0] === 'object' && 'item' in content[0]) {
                     return (
                       <div className="space-y-3">
@@ -472,6 +472,18 @@ export default function JuridischeAnalyseDetails() {
                           </div>
                         ))}
                       </div>
+                    );
+                  }
+                  // If it's an array of other objects (e.g., beschikbaar_bewijs with {type, filename, relevance})
+                  else if (Array.isArray(content) && content.length > 0 && typeof content[0] === 'object') {
+                    return (
+                      <ul className="list-disc list-inside space-y-1">
+                        {content.map((item: any, index: number) => {
+                          // Try to render filename first, then type, then all values joined
+                          const displayText = item.filename || item.type || Object.values(item).filter(v => v).join(' - ');
+                          return <li key={index}>{displayText}</li>;
+                        })}
+                      </ul>
                     );
                   }
                   // If it's a regular array of strings
