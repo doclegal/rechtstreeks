@@ -57,7 +57,7 @@ export default function Dossier() {
   // Extract missing requirements from case analysis (using same logic as Dashboard)
   const missingRequirements = useMemo(() => {
     // If we have fresh checked missing info, use that first
-    if (checkedMissingInfo && checkedMissingInfo.length > 0) {
+    if (checkedMissingInfo !== null) {
       return checkedMissingInfo.map((item: any, index: number) => ({
         id: item.id || `checked-${index}`,
         key: `missing-info-${index}`,
@@ -71,9 +71,27 @@ export default function Dossier() {
         examples: undefined,
       }));
     }
+
     const fullAnalysis = currentCase?.fullAnalysis as any;
     const parsedAnalysis = fullAnalysis?.parsedAnalysis;
     const analysis = currentCase?.analysis as any;
+    
+    // Check if we have saved missing_information from database (from missing_info.flow)
+    if (fullAnalysis?.missingInformation && Array.isArray(fullAnalysis.missingInformation)) {
+      return fullAnalysis.missingInformation.map((item: any, index: number) => ({
+        id: item.id || `saved-${index}`,
+        key: `missing-info-saved-${index}`,
+        label: item.item || item.question || 'Ontbrekende informatie',
+        description: item.why_needed || item.reason || undefined,
+        required: true,
+        inputKind: 'both' as const,
+        acceptMimes: undefined,
+        maxLength: undefined,
+        options: undefined,
+        examples: undefined,
+      }));
+    }
+
     const dataSource = parsedAnalysis || analysis;
     if (!dataSource) return [];
     
