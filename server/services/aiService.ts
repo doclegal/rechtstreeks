@@ -2418,6 +2418,70 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       };
     }
   }
+
+  // Missing Info Check - Consolidate missing information from RKOS and Create_advice flows
+  async runMissingInfo(input_json: any): Promise<{ result?: any; thread?: any; error?: string }> {
+    console.log("🔍 Calling MindStudio missing_info.flow...");
+
+    const variables = {
+      input_json: JSON.stringify(input_json)
+    };
+
+    console.log("📤 Missing Info variables:", {
+      case_id: input_json.case_id,
+      missing_elements_count: input_json.missing_elements?.length || 0,
+      ontbrekend_bewijs_count: input_json.ontbrekend_bewijs?.length || 0
+    });
+
+    const requestBody = {
+      workerId: process.env.MS_AGENT_APP_ID,
+      variables,
+      workflow: "missing_info.flow",
+      includeBillingCost: true
+    };
+
+    // Set timeout to 2 minutes for missing info consolidation
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2 * 60 * 1000);
+
+    try {
+      const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error("❌ MindStudio missing_info error:", errorData);
+        return {
+          error: `MindStudio API error: ${response.status} ${response.statusText}`
+        };
+      }
+
+      const data = await response.json();
+      console.log("📥 Missing Info raw response received");
+
+      // Return the full data - let the caller parse it
+      return {
+        result: data.output?.results || data.result,
+        thread: data.thread
+      };
+
+    } catch (error) {
+      clearTimeout(timeoutId);
+      console.error("❌ Error calling MindStudio missing_info:", error);
+      return {
+        error: `Failed to call missing_info: ${error}`
+      };
+    }
+  }
 }
 
 export const aiService = new AIService();
