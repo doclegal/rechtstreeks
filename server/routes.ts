@@ -1693,7 +1693,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Extract ontbrekend_bewijs from Create_advice.flow (legal advice)
         const legalAdvice = fullAnalysisRecord.legalAdviceJson as any;
-        const ontbrekendBewijs = legalAdvice?.ontbrekend_bewijs || [];
+        let ontbrekendBewijs = legalAdvice?.ontbrekend_bewijs || [];
+        
+        // Parse if it's a string (sometimes MindStudio returns JSON as string)
+        if (typeof ontbrekendBewijs === 'string') {
+          try {
+            ontbrekendBewijs = JSON.parse(ontbrekendBewijs);
+            console.log('📝 Parsed ontbrekend_bewijs from string to array');
+          } catch (e) {
+            console.error('❌ Failed to parse ontbrekend_bewijs string:', e);
+            ontbrekendBewijs = [];
+          }
+        }
+        
         console.log(`📋 Found ${Array.isArray(ontbrekendBewijs) ? ontbrekendBewijs.length : 0} ontbrekend_bewijs items from Create_advice.flow`);
 
         // Build payload for missing_info.flow
