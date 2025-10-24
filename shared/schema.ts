@@ -143,6 +143,9 @@ export const analyses = pgTable("analyses", {
   // Legal advice (from Create_advice.flow)
   legalAdviceJson: jsonb("legal_advice_json"), // Structured legal advice (het_geschil, de_feiten, juridische_duiding, vervolgstappen, samenvatting_advies)
   
+  // Missing information (from missing_info.flow)
+  missingInformation: jsonb("missing_information"), // Consolidated missing info from RKOS and Create_advice flows [{item, why_needed}]
+  
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("idx_analyses_case").on(table.caseId),
