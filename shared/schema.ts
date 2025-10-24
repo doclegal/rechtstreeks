@@ -140,6 +140,9 @@ export const analyses = pgTable("analyses", {
   // Success chance assessment (RKOS - Redelijke Kans Op Succes)
   succesKansAnalysis: jsonb("succes_kans_analysis"), // RKOS evaluation result
   
+  // Legal advice (from Create_advice.flow)
+  legalAdviceJson: jsonb("legal_advice_json"), // Structured legal advice (het_geschil, de_feiten, juridische_duiding, vervolgstappen, samenvatting_advies)
+  
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("idx_analyses_case").on(table.caseId),

@@ -264,6 +264,76 @@ export function useFullAnalyzeCase(caseId: string) {
   });
 }
 
+export function useGenerateLegalAdvice(caseId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/cases/${caseId}/generate-advice`);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+      
+      toast({
+        title: "Juridisch advies gegenereerd",
+        description: "Het juridisch advies is succesvol aangemaakt",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      
+      // Handle timeout errors
+      if (error.message.includes("504") || error.message.includes("524") || error.message.includes("timeout") || error.message.includes("timed out") || error.message.includes("duurt te lang")) {
+        toast({
+          title: "Advies generatie duurt te lang",
+          description: "Het genereren van juridisch advies heeft langer dan verwacht geduurd. Probeer het opnieuw.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Handle service unavailable
+      if (error.message.includes("503")) {
+        toast({
+          title: "Service tijdelijk niet beschikbaar",
+          description: "Het juridisch advies kan momenteel niet worden gegenereerd. Probeer het later opnieuw.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Handle missing analysis
+      if (error.message.includes("400")) {
+        toast({
+          title: "Analyse vereist",
+          description: "Voer eerst een volledige analyse uit voordat u juridisch advies kan genereren.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Juridisch advies generatie mislukt",
+        description: "Er is een fout opgetreden bij het genereren van het advies. Probeer het opnieuw.",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 export function useGenerateLetter(caseId: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
