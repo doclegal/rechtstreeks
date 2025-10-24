@@ -2421,7 +2421,7 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
 
   // Missing Info Check - Consolidate missing information from RKOS and Create_advice flows
   async runMissingInfo(input_json: any): Promise<{ result?: any; thread?: any; error?: string }> {
-    console.log("🔍 Calling MindStudio missing_info.flow...");
+    console.log("🔍 Calling MindStudio Missing_info.flow...");
 
     const variables = {
       input_json: JSON.stringify(input_json)
@@ -2436,7 +2436,7 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     const requestBody = {
       workerId: process.env.MS_AGENT_APP_ID,
       variables,
-      workflow: "missing_info.flow",
+      workflow: "Missing_info.flow",
       includeBillingCost: true
     };
 
