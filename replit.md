@@ -58,6 +58,23 @@ The database schema supports a complete legal case lifecycle with document versi
 - **Template System**: Configurable legal document templates with dynamic field population
 - **Mock Integrations**: Simulated bailiff and court services for MVP testing
 
+### Legal Advice Generation
+- **MindStudio Integration**: AI-powered legal advice generation via Create_advice.flow
+- **Structured JSON Output**: Returns legal_advice_json with clearly defined sections:
+  - `samenvatting_advies`: Executive summary of key points
+  - `het_geschil`: Description of the dispute/conflict
+  - `de_feiten`: Factual overview of the case
+  - `juridische_duiding`: Legal interpretation and analysis
+  - `vervolgstappen`: Recommended next steps and actions
+- **Input Context**: Receives complete case data including full analysis, documents, parties, facts, legal analysis, and risk assessment (same format as RKOS.flow)
+- **Storage**: legal_advice_json stored in analyses.legalAdviceJson field
+- **API Endpoint**: POST /api/cases/:id/generate-advice
+- **Prerequisites**: Requires existing full analysis (mindstudio-full-analysis)
+- **Rendering**: A4 document layout with professional sections, summary highlights, and copy/download functionality
+- **Backwards Compatibility**: Supports legacy legal_advice_full text format for older analyses
+- **Timeout**: 5-minute timeout for longer AI-generated text output
+- **Error Handling**: Comprehensive error messages for missing analysis, service unavailability, and timeouts
+
 ### Authentication & Authorization
 - **Primary Auth**: Replit Auth with OpenID Connect
 - **Session Management**: PostgreSQL-backed sessions with connect-pg-simple
