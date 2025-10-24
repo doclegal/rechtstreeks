@@ -1647,7 +1647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Missing Info Check - Consolidate missing information using missing_info.flow
+  // Missing Info Check - Consolidate missing information from existing analysis
   app.post('/api/cases/:id/missing-info-check', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -1659,192 +1659,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Case not found" });
       }
 
-      // Verify MindStudio is available
-      if (!process.env.MINDSTUDIO_API_KEY || !process.env.MS_AGENT_APP_ID) {
-        return res.status(503).json({ 
-          message: "Sorry, de dossier controle kan niet worden uitgevoerd. Mindstudio AI is niet beschikbaar." 
+      console.log(`🔍 Extracting missing info from existing analysis for case ${caseId}`);
+      
+      // Get full analysis to extract missing_elements (from RKOS.flow)
+      const fullAnalysisRecord = await storage.getAnalysisByType(caseId, 'mindstudio-full-analysis');
+      
+      if (!fullAnalysisRecord) {
+        return res.status(400).json({ 
+          message: "Er moet eerst een analyse worden uitgevoerd voordat een dossier controle kan worden gedaan." 
         });
       }
 
-      try {
-        console.log(`🔍 Running missing info check for case ${caseId}`);
-        
-        // Get full analysis to extract missing_elements (from RKOS.flow)
-        const fullAnalysisRecord = await storage.getAnalysisByType(caseId, 'mindstudio-full-analysis');
-        
-        if (!fullAnalysisRecord) {
-          return res.status(400).json({ 
-            message: "Er moet eerst een analyse worden uitgevoerd voordat een dossier controle kan worden gedaan." 
-          });
-        }
+      const fullAnalysisData = enrichFullAnalysis(fullAnalysisRecord);
+      const parsedAnalysis = fullAnalysisData?.parsedAnalysis;
 
-        const fullAnalysisData = enrichFullAnalysis(fullAnalysisRecord);
-        const parsedAnalysis = fullAnalysisData?.parsedAnalysis;
-
-        if (!parsedAnalysis) {
-          return res.status(400).json({ 
-            message: "Er moet eerst een analyse worden uitgevoerd voordat een dossier controle kan worden gedaan." 
-          });
-        }
-
-        // Extract missing_elements from RKOS.flow analysis
-        const missingElements = parsedAnalysis?.missing_elements || [];
-        console.log(`📋 Found ${missingElements.length} missing_elements from RKOS.flow`);
-
-        // Extract ontbrekend_bewijs from Create_advice.flow (legal advice)
-        const legalAdvice = fullAnalysisRecord.legalAdviceJson as any;
-        let ontbrekendBewijs = legalAdvice?.ontbrekend_bewijs || [];
-        
-        // Debug: log the actual data
-        console.log('🔍 DEBUG ontbrekend_bewijs type:', typeof ontbrekendBewijs);
-        console.log('🔍 DEBUG ontbrekend_bewijs value:', JSON.stringify(ontbrekendBewijs).substring(0, 200));
-        
-        // Parse if it's a string (sometimes MindStudio returns JSON as string)
-        if (typeof ontbrekendBewijs === 'string') {
-          try {
-            ontbrekendBewijs = JSON.parse(ontbrekendBewijs);
-            console.log('📝 Parsed ontbrekend_bewijs from string to array');
-          } catch (e) {
-            console.error('❌ Failed to parse ontbrekend_bewijs string:', e);
-            ontbrekendBewijs = [];
-          }
-        }
-        
-        console.log(`📋 Found ${Array.isArray(ontbrekendBewijs) ? ontbrekendBewijs.length : 0} ontbrekend_bewijs items from Create_advice.flow`);
-
-        // Build payload for missing_info.flow
-        const missingInfoPayload = {
-          case_id: caseId,
-          case_title: caseData.title || 'Zonder titel',
-          missing_elements: missingElements,
-          ontbrekend_bewijs: Array.isArray(ontbrekendBewijs) ? ontbrekendBewijs : []
-        };
-
-        console.log('📤 Calling missing_info.flow with:', {
-          case_id: missingInfoPayload.case_id,
-          missing_elements_count: missingInfoPayload.missing_elements.length,
-          ontbrekend_bewijs_count: missingInfoPayload.ontbrekend_bewijs.length
-        });
-
-        // Call MindStudio missing_info.flow
-        const flowResult = await aiService.runMissingInfo(missingInfoPayload);
-
-        if (flowResult.error) {
-          console.error('❌ missing_info.flow call failed:', flowResult.error);
-          return res.status(500).json({ 
-            message: "Dossier controle mislukt. Probeer het opnieuw.",
-            error: flowResult.error
-          });
-        }
-
-        console.log('✅ missing_info.flow response received');
-
-        // Parse the response - support multiple output formats from MindStudio
-        let missingInformation = null;
-        
-        // Try result.app_response first (current MindStudio format)
-        if (flowResult.result?.app_response) {
-          const appResponse = flowResult.result.app_response;
-          // app_response might be a string that needs parsing, or already an array
-          if (typeof appResponse === 'string') {
-            try {
-              missingInformation = JSON.parse(appResponse);
-              console.log('📄 Found and parsed app_response in result');
-            } catch (e) {
-              console.error('❌ Failed to parse app_response string:', e);
-            }
-          } else {
-            missingInformation = appResponse;
-            console.log('📄 Found app_response in result');
-          }
-        }
-        // Try result.missing_information (alternative format)
-        else if (flowResult.result?.missing_information) {
-          const mi = flowResult.result.missing_information;
-          // Check if missing_information is nested (object with missing_information key)
-          if (mi && typeof mi === 'object' && mi.missing_information) {
-            missingInformation = mi.missing_information;
-            console.log('📄 Found nested missing_information in result');
-          } else {
-            missingInformation = mi;
-            console.log('📄 Found missing_information in result');
-          }
-        }
-        // Try thread posts for app_response variable
-        else if (flowResult.thread?.posts) {
-          console.log('🔍 Checking thread posts for app_response or missing_information variable...');
-          for (const post of flowResult.thread.posts) {
-            // Check for app_response first
-            if (post.debugLog?.newState?.variables?.app_response?.value) {
-              const value = post.debugLog.newState.variables.app_response.value;
-              missingInformation = typeof value === 'string' ? JSON.parse(value) : value;
-              console.log('📄 Found app_response in thread posts');
-              break;
-            }
-            // Check for missing_information
-            if (post.debugLog?.newState?.variables?.missing_information?.value) {
-              const value = post.debugLog.newState.variables.missing_information.value;
-              missingInformation = typeof value === 'string' ? JSON.parse(value) : value;
-              console.log('📄 Found missing_information in thread posts');
-              break;
-            }
-          }
-        }
-        // Try thread variables for app_response
-        else if (flowResult.thread?.variables?.app_response) {
-          const value = flowResult.thread.variables.app_response.value || flowResult.thread.variables.app_response;
-          missingInformation = typeof value === 'string' ? JSON.parse(value) : value;
-          console.log('📄 Found app_response in thread variables');
-        }
-        // Try thread variables for missing_information
-        else if (flowResult.thread?.variables?.missing_information) {
-          const value = flowResult.thread.variables.missing_information.value || flowResult.thread.variables.missing_information;
-          missingInformation = typeof value === 'string' ? JSON.parse(value) : value;
-          console.log('📄 Found missing_information in thread variables');
-        }
-
-        if (!missingInformation) {
-          console.error('❌ No missing_information or app_response in response');
-          console.log('Response structure:', {
-            has_result: !!flowResult.result,
-            has_thread: !!flowResult.thread,
-            result_keys: flowResult.result ? Object.keys(flowResult.result) : [],
-            thread_keys: flowResult.thread ? Object.keys(flowResult.thread) : []
-          });
-          return res.status(500).json({ 
-            message: "Dossier controle heeft geen resultaat opgeleverd." 
-          });
-        }
-
-        console.log(`📄 Found ${Array.isArray(missingInformation) ? missingInformation.length : 0} missing_information items`);
-
-        // Update the fullAnalysis record with missing_information
-        console.log('🔄 Updating fullAnalysis ID:', fullAnalysisRecord.id);
-        const updatedRecord = await storage.updateAnalysis(fullAnalysisRecord.id, {
-          missingInformation: missingInformation
-        });
-        console.log('✅ Missing information saved to fullAnalysis record');
-
-        res.json({ 
-          success: true,
-          missingInformation: missingInformation
-        });
-
-      } catch (error) {
-        console.error("Missing info check failed:", error);
-        
-        // Check if it's a timeout error
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        if (errorMsg.includes('524') || errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
-          return res.status(504).json({ 
-            message: "De dossier controle duurt te lang (timeout). Probeer het opnieuw." 
-          });
-        }
-        
-        return res.status(503).json({ 
-          message: "Sorry, de dossier controle kan niet worden uitgevoerd. Mindstudio AI is niet beschikbaar." 
+      if (!parsedAnalysis) {
+        return res.status(400).json({ 
+          message: "Er moet eerst een analyse worden uitgevoerd voordat een dossier controle kan worden gedaan." 
         });
       }
+
+      // Extract missing_elements from RKOS.flow analysis (Kans op succes section)
+      const missingElements = parsedAnalysis?.missing_elements || [];
+      console.log(`📋 Found ${missingElements.length} missing_elements from RKOS.flow`);
+
+      // Extract ontbrekend_bewijs from Create_advice.flow (section 5 of legal advice)
+      const legalAdvice = fullAnalysisRecord.legalAdviceJson as any;
+      let ontbrekendBewijs = legalAdvice?.ontbrekend_bewijs || [];
+      
+      // Parse if it's a string (sometimes stored as JSON string)
+      if (typeof ontbrekendBewijs === 'string') {
+        try {
+          ontbrekendBewijs = JSON.parse(ontbrekendBewijs);
+        } catch (e) {
+          console.error('❌ Failed to parse ontbrekend_bewijs string:', e);
+          ontbrekendBewijs = [];
+        }
+      }
+      
+      console.log(`📋 Found ${Array.isArray(ontbrekendBewijs) ? ontbrekendBewijs.length : 0} ontbrekend_bewijs items from Create_advice.flow`);
+
+      // Combine both sources into one array
+      const combinedMissingInfo: any[] = [];
+
+      // Add missing_elements from RKOS (these are objects with {title, explanation})
+      if (Array.isArray(missingElements)) {
+        missingElements.forEach((element: any) => {
+          if (typeof element === 'string') {
+            // Simple string - convert to object
+            combinedMissingInfo.push({
+              item: element,
+              why_needed: "Noodzakelijk voor het verstevigen van uw zaak.",
+              source: "RKOS Analyse"
+            });
+          } else if (element.title || element.explanation) {
+            // Structured object from RKOS
+            combinedMissingInfo.push({
+              item: element.title || "Ontbrekend element",
+              why_needed: element.explanation || "Noodzakelijk voor het verstevigen van uw zaak.",
+              source: "RKOS Analyse"
+            });
+          }
+        });
+      }
+
+      // Add ontbrekend_bewijs from Legal Advice (these are objects with {item, why_needed})
+      if (Array.isArray(ontbrekendBewijs)) {
+        ontbrekendBewijs.forEach((bewijs: any) => {
+          if (typeof bewijs === 'string') {
+            // Simple string - convert to object
+            combinedMissingInfo.push({
+              item: bewijs,
+              why_needed: "Noodzakelijk bewijs volgens juridisch advies.",
+              source: "Juridisch Advies"
+            });
+          } else if (bewijs.item || bewijs.why_needed) {
+            // Already in correct format
+            combinedMissingInfo.push({
+              item: bewijs.item || "Ontbrekend bewijs",
+              why_needed: bewijs.why_needed || "Noodzakelijk bewijs volgens juridisch advies.",
+              source: "Juridisch Advies"
+            });
+          }
+        });
+      }
+
+      console.log(`✅ Combined ${combinedMissingInfo.length} missing information items`);
+
+      // Save to fullAnalysis record for persistence
+      await storage.updateAnalysis(fullAnalysisRecord.id, {
+        missingInformation: combinedMissingInfo
+      });
+
+      res.json({ 
+        success: true,
+        missingInformation: combinedMissingInfo
+      });
+
     } catch (error) {
       console.error("Error running missing info check:", error);
       res.status(500).json({ message: "Dossier controle mislukt. Probeer het opnieuw." });
