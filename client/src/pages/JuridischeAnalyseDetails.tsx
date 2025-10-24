@@ -462,8 +462,8 @@ export default function JuridischeAnalyseDetails() {
                     return (
                       <div className="space-y-3">
                         {content.map((entry: any, index: number) => (
-                          <div key={index} className="pl-4 border-l-2 border-gray-300 dark:border-gray-600">
-                            <div className="font-medium text-gray-900 dark:text-white">{entry.item}</div>
+                          <div key={index}>
+                            <div className="italic text-gray-900 dark:text-white">{entry.item}</div>
                             {entry.why_needed && (
                               <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                                 {entry.why_needed}
