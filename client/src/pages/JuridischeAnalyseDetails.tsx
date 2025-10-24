@@ -471,9 +471,9 @@ export default function JuridischeAnalyseDetails() {
                     ) : (
                       // Regular sections
                       <div>
-                        <h2 className="text-base font-bold text-gray-900 dark:text-white mb-3">
+                        <div className="font-bold text-gray-900 dark:text-white mb-3 text-[1em]">
                           {section.title}
-                        </h2>
+                        </div>
                         <SectionBody>
                           {content}
                         </SectionBody>
