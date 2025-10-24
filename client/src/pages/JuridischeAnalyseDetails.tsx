@@ -2,11 +2,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useFullAnalyzeCase } from "@/hooks/useCase";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { FileSearch, ArrowLeft, Download, Copy, RefreshCw } from "lucide-react";
+import { FileSearch, ArrowLeft, Download, Copy, RefreshCw, AlertTriangle } from "lucide-react";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { A4Layout, A4Page, SectionHeading, SectionBody } from "@/components/A4Layout";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function JuridischeAnalyseDetails() {
   const { user, isLoading: authLoading } = useAuth();
@@ -203,6 +204,9 @@ export default function JuridischeAnalyseDetails() {
   };
 
   const sections = parseSections(legalAdviceFull);
+  
+  // Detect if advice seems truncated (suspiciously short)
+  const isTruncated = legalAdviceFull.length < 500;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(legalAdviceFull || '');
@@ -307,6 +311,41 @@ export default function JuridischeAnalyseDetails() {
               })}</p>
             </div>
           </div>
+
+          {/* Truncation warning */}
+          {isTruncated && (
+            <Alert variant="destructive" className="mb-6" data-testid="alert-truncated-advice">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Advies Onvolledig</AlertTitle>
+              <AlertDescription>
+                Het juridisch advies lijkt niet compleet te zijn ({legalAdviceFull.length} karakters). 
+                Dit kan komen door een te lage "maximum response size" in MindStudio (momenteel waarschijnlijk 2.500 tokens).
+                <br /><br />
+                <strong>Oplossing:</strong> Verhoog in MindStudio de "maximum response size" voor de "Legal Analysis" stap naar 8.000-16.000 tokens.
+                <br /><br />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fullAnalyzeMutation.mutate()}
+                  disabled={fullAnalyzeMutation.isPending}
+                  className="mt-2 bg-background hover:bg-background/80"
+                  data-testid="button-retry-from-warning"
+                >
+                  {fullAnalyzeMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                      Opnieuw genereren...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Probeer opnieuw
+                    </>
+                  )}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Render sections */}
           <div className="space-y-6" data-testid="advice-content">
