@@ -1760,8 +1760,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         // Try result.missing_information (alternative format)
         else if (flowResult.result?.missing_information) {
-          missingInformation = flowResult.result.missing_information;
-          console.log('📄 Found missing_information in result');
+          const mi = flowResult.result.missing_information;
+          // Check if missing_information is nested (object with missing_information key)
+          if (mi && typeof mi === 'object' && mi.missing_information) {
+            missingInformation = mi.missing_information;
+            console.log('📄 Found nested missing_information in result');
+          } else {
+            missingInformation = mi;
+            console.log('📄 Found missing_information in result');
+          }
         }
         // Try thread posts for app_response variable
         else if (flowResult.thread?.posts) {
