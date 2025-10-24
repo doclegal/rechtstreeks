@@ -11,6 +11,7 @@ import { ArrowLeft, FileText, AlertCircle, Sparkles, AlertTriangle } from "lucid
 import { RIcon } from "@/components/RIcon";
 import { useQuery } from "@tanstack/react-query";
 import type { MissingRequirement } from "@shared/schema";
+import { useMemo } from "react";
 
 export default function Dossier() {
   const { user, isLoading: authLoading } = useAuth();
@@ -18,8 +19,146 @@ export default function Dossier() {
   const [, setLocation] = useLocation();
   const currentCase = useActiveCase();
   
-  // Extract missing requirements from case fullAnalysis
-  const missingRequirements: MissingRequirement[] = currentCase?.fullAnalysis?.missingRequirements || [];
+  // Extract missing requirements from case analysis (using same logic as Dashboard)
+  const missingRequirements = useMemo(() => {
+    const fullAnalysis = currentCase?.fullAnalysis as any;
+    const parsedAnalysis = fullAnalysis?.parsedAnalysis;
+    const analysis = currentCase?.analysis as any;
+    const dataSource = parsedAnalysis || analysis;
+    if (!dataSource) return [];
+    
+    let questionsArray: any[] = [];
+    
+    // Try missing_info_struct with sections
+    if (dataSource?.missing_info_struct && 
+        Array.isArray(dataSource.missing_info_struct) && 
+        dataSource.missing_info_struct.length > 0 &&
+        dataSource.missing_info_struct.some((s: any) => s.sections)) {
+      dataSource.missing_info_struct.forEach((struct: any) => {
+        if (struct.sections && Array.isArray(struct.sections)) {
+          struct.sections.forEach((section: any) => {
+            if (section.items && Array.isArray(section.items)) {
+              questionsArray.push(...section.items);
+            }
+          });
+        }
+      });
+    } else if (dataSource?.missing_info_struct?.sections && Array.isArray(dataSource.missing_info_struct.sections)) {
+      dataSource.missing_info_struct.sections.forEach((section: any) => {
+        if (section.items && Array.isArray(section.items)) {
+          questionsArray.push(...section.items);
+        }
+      });
+    }
+    
+    // Try missing_essentials and clarifying_questions
+    if (questionsArray.length === 0) {
+      const missing = dataSource?.missing_essentials || [];
+      const clarifying = dataSource?.clarifying_questions || [];
+      
+      if (Array.isArray(missing) || Array.isArray(clarifying)) {
+        questionsArray = [
+          ...(Array.isArray(missing) ? missing : []),
+          ...(Array.isArray(clarifying) ? clarifying : [])
+        ];
+      }
+    }
+    
+    // Try missing_info_for_assessment
+    if (questionsArray.length === 0 && dataSource?.missing_info_for_assessment && Array.isArray(dataSource.missing_info_for_assessment)) {
+      questionsArray = dataSource.missing_info_for_assessment;
+    }
+    
+    // Convert questions to MissingRequirement format
+    if (questionsArray.length > 0) {
+      return questionsArray.map((item: any, index: number) => {
+        let inputKind: 'text' | 'document' | 'both' = 'text';
+        if (item.answer_type === 'file_upload') {
+          inputKind = 'document';
+        } else if (item.answer_type === 'text') {
+          inputKind = 'text';
+        } else if (item.answer_type === 'multiple_choice') {
+          inputKind = 'text';
+        }
+        
+        let description: string | undefined;
+        let options: Array<{value: string, label: string}> | undefined;
+        
+        if (typeof item.expected === 'string') {
+          description = item.expected;
+        } else if (Array.isArray(item.expected)) {
+          options = item.expected.map((opt: string) => ({
+            value: opt,
+            label: opt
+          }));
+          description = 'Kies een optie uit de lijst';
+        }
+        
+        return {
+          id: item.id || `req-${index}`,
+          key: item.key || item.id || `requirement-${index}`,
+          label: item.question || item.label || 'Vraag zonder label',
+          description: description || item.description || undefined,
+          required: item.required !== false,
+          inputKind: inputKind,
+          acceptMimes: item.accept_mimes || item.acceptMimes || undefined,
+          maxLength: item.max_length || item.maxLength || undefined,
+          options: options || item.options || undefined,
+          examples: typeof item.expected === 'string' ? [item.expected] : item.examples || undefined,
+        };
+      });
+    }
+    
+    // Try evidence.missing
+    if (dataSource?.evidence?.missing && Array.isArray(dataSource.evidence.missing)) {
+      return dataSource.evidence.missing.map((item: any, index: number) => {
+        if (typeof item === 'string') {
+          return {
+            id: `evidence-${index}`,
+            key: `evidence-requirement-${index}`,
+            label: item,
+            description: 'Upload het gevraagde document om uw zaak te versterken',
+            required: false,
+            inputKind: 'document' as const,
+            acceptMimes: undefined,
+            maxLength: undefined,
+            options: undefined,
+            examples: undefined,
+          };
+        }
+        return {
+          id: item.id || `evidence-${index}`,
+          key: item.key || item.id || `evidence-requirement-${index}`,
+          label: item.label || item.name || item.description || 'Ontbrekend bewijs',
+          description: item.description || item.reason || 'Upload het gevraagde document',
+          required: item.required !== false,
+          inputKind: item.input_kind || item.inputKind || 'document' as const,
+          acceptMimes: item.accept_mimes || item.acceptMimes || undefined,
+          maxLength: item.max_length || item.maxLength || undefined,
+          options: item.options || undefined,
+          examples: item.examples || undefined,
+        };
+      });
+    }
+    
+    // Try legacy missingDocsJson
+    if (dataSource?.missingDocsJson && Array.isArray(dataSource.missingDocsJson)) {
+      return dataSource.missingDocsJson.map((label: string, index: number) => ({
+        id: `legacy-${index}`,
+        key: `legacy-requirement-${index}`,
+        label: label,
+        description: undefined,
+        required: true,
+        inputKind: 'document' as const,
+        acceptMimes: undefined,
+        maxLength: undefined,
+        options: undefined,
+        examples: undefined,
+      }));
+    }
+    
+    return [];
+  }, [currentCase?.analysis, currentCase?.fullAnalysis]);
 
   if (authLoading) {
     return (
