@@ -276,13 +276,16 @@ export default function JuridischeAnalyseDetails() {
       return renderAdvisoryText(legalAdviceJson.advisory_text);
     }
 
-    // Handle structured sections format
+    // Handle structured sections format (8 sections)
     const sections = [
       { key: 'samenvatting_advies', title: 'Samenvatting Advies', isSummary: true },
       { key: 'het_geschil', title: '1. Het Geschil' },
       { key: 'de_feiten', title: '2. De Feiten' },
-      { key: 'juridische_duiding', title: '3. Juridische Duiding' },
-      { key: 'vervolgstappen', title: '4. Vervolgstappen' },
+      { key: 'betwiste_punten', title: '3. Betwiste Punten' },
+      { key: 'beschikbaar_bewijs', title: '4. Beschikbaar Bewijs' },
+      { key: 'ontbrekend_bewijs', title: '5. Ontbrekend Bewijs' },
+      { key: 'juridische_duiding', title: '6. Juridische Duiding' },
+      { key: 'vervolgstappen', title: '7. Vervolgstappen' },
     ];
 
     const allTextContent = sections

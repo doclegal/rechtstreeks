@@ -61,8 +61,16 @@ The database schema supports a complete legal case lifecycle with document versi
 ### Legal Advice Generation
 - **MindStudio Integration**: AI-powered legal advice generation via Create_advice.flow
 - **Flexible Output Formats**: Supports multiple response structures from MindStudio:
-  - **advisory_text format** (current): Single text field containing complete advisory
-  - **Structured JSON format** (optional): Separate fields for samenvatting_advies, het_geschil, de_feiten, juridische_duiding, vervolgstappen
+  - **advisory_text format**: Single text field containing complete advisory
+  - **Structured JSON format** (current): 8 separate fields:
+    - `samenvatting_advies`: Executive summary of key points
+    - `het_geschil`: Description of the dispute/conflict
+    - `de_feiten`: Factual overview of the case
+    - `betwiste_punten`: Explanation of unclear or disputed elements
+    - `beschikbaar_bewijs`: List of supporting documents and references
+    - `ontbrekend_bewijs`: Missing or incomplete evidence and why it matters
+    - `juridische_duiding`: Legal interpretation, reasoning, and assessment under Dutch law
+    - `vervolgstappen`: Concrete recommended next steps and actions
 - **Input Context**: Receives complete case data including full analysis, documents, parties, facts, legal analysis, and risk assessment (same format as RKOS.flow)
 - **Storage**: legal_advice_json stored in analyses.legalAdviceJson field (supports both formats)
 - **API Endpoint**: POST /api/cases/:id/generate-advice with intelligent parsing of flowResult.result.legal_advice_json
