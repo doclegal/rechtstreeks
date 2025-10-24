@@ -465,7 +465,7 @@ export default function JuridischeAnalyseDetails() {
                           <div key={index}>
                             <div className="italic text-gray-900 dark:text-white">{entry.item}</div>
                             {entry.why_needed && (
-                              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                              <div className="text-gray-900 dark:text-white mt-1">
                                 {entry.why_needed}
                               </div>
                             )}
