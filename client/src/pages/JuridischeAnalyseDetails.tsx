@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useFullAnalyzeCase } from "@/hooks/useCase";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { FileSearch, ArrowLeft, Download, Copy } from "lucide-react";
+import { FileSearch, ArrowLeft, Download, Copy, RefreshCw } from "lucide-react";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { A4Layout, A4Page, SectionHeading, SectionBody } from "@/components/A4Layout";
 import { useToast } from "@/hooks/use-toast";
@@ -266,6 +266,25 @@ export default function JuridischeAnalyseDetails() {
               >
                 <Download className="mr-2 h-4 w-4" />
                 Downloaden
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fullAnalyzeMutation.mutate()}
+                disabled={fullAnalyzeMutation.isPending}
+                data-testid="button-regenerate-advice"
+              >
+                {fullAnalyzeMutation.isPending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                    Genereren...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Opnieuw genereren
+                  </>
+                )}
               </Button>
             </div>
           </div>
