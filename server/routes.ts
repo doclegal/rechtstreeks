@@ -1695,6 +1695,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const legalAdvice = fullAnalysisRecord.legalAdviceJson as any;
         let ontbrekendBewijs = legalAdvice?.ontbrekend_bewijs || [];
         
+        // Debug: log the actual data
+        console.log('🔍 DEBUG ontbrekend_bewijs type:', typeof ontbrekendBewijs);
+        console.log('🔍 DEBUG ontbrekend_bewijs value:', JSON.stringify(ontbrekendBewijs).substring(0, 200));
+        
         // Parse if it's a string (sometimes MindStudio returns JSON as string)
         if (typeof ontbrekendBewijs === 'string') {
           try {
