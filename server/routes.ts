@@ -1723,18 +1723,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log('✅ missing_info.flow response received');
 
-        // Parse the response
+        // Parse the response - support multiple output formats from MindStudio
         let missingInformation = null;
         
-        // Try result.missing_information
-        if (flowResult.result?.missing_information) {
+        // Try result.app_response first (current MindStudio format)
+        if (flowResult.result?.app_response) {
+          const appResponse = flowResult.result.app_response;
+          // app_response might be a string that needs parsing, or already an array
+          if (typeof appResponse === 'string') {
+            try {
+              missingInformation = JSON.parse(appResponse);
+              console.log('📄 Found and parsed app_response in result');
+            } catch (e) {
+              console.error('❌ Failed to parse app_response string:', e);
+            }
+          } else {
+            missingInformation = appResponse;
+            console.log('📄 Found app_response in result');
+          }
+        }
+        // Try result.missing_information (alternative format)
+        else if (flowResult.result?.missing_information) {
           missingInformation = flowResult.result.missing_information;
           console.log('📄 Found missing_information in result');
         }
-        // Try thread posts
+        // Try thread posts for app_response variable
         else if (flowResult.thread?.posts) {
-          console.log('🔍 Checking thread posts for missing_information variable...');
+          console.log('🔍 Checking thread posts for app_response or missing_information variable...');
           for (const post of flowResult.thread.posts) {
+            // Check for app_response first
+            if (post.debugLog?.newState?.variables?.app_response?.value) {
+              const value = post.debugLog.newState.variables.app_response.value;
+              missingInformation = typeof value === 'string' ? JSON.parse(value) : value;
+              console.log('📄 Found app_response in thread posts');
+              break;
+            }
+            // Check for missing_information
             if (post.debugLog?.newState?.variables?.missing_information?.value) {
               const value = post.debugLog.newState.variables.missing_information.value;
               missingInformation = typeof value === 'string' ? JSON.parse(value) : value;
@@ -1743,7 +1767,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
         }
-        // Try thread variables
+        // Try thread variables for app_response
+        else if (flowResult.thread?.variables?.app_response) {
+          const value = flowResult.thread.variables.app_response.value || flowResult.thread.variables.app_response;
+          missingInformation = typeof value === 'string' ? JSON.parse(value) : value;
+          console.log('📄 Found app_response in thread variables');
+        }
+        // Try thread variables for missing_information
         else if (flowResult.thread?.variables?.missing_information) {
           const value = flowResult.thread.variables.missing_information.value || flowResult.thread.variables.missing_information;
           missingInformation = typeof value === 'string' ? JSON.parse(value) : value;
@@ -1751,7 +1781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         if (!missingInformation) {
-          console.error('❌ No missing_information in response');
+          console.error('❌ No missing_information or app_response in response');
           console.log('Response structure:', {
             has_result: !!flowResult.result,
             has_thread: !!flowResult.thread,
