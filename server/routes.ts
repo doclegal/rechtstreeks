@@ -1482,6 +1482,171 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate Legal Advice - using Create_advice.flow
+  app.post('/api/cases/:id/generate-advice', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      // Get case data and verify ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+
+      // Verify MindStudio is available
+      if (!process.env.MINDSTUDIO_API_KEY || !process.env.MS_AGENT_APP_ID) {
+        return res.status(503).json({ 
+          message: "Sorry, het juridisch advies kan niet worden gegenereerd. Mindstudio AI is niet beschikbaar." 
+        });
+      }
+
+      try {
+        console.log(`📝 Generating legal advice for case ${caseId}`);
+        
+        // Try to get full analysis (required for advice generation)
+        let fullAnalysisRecord = await storage.getAnalysisByType(caseId, 'mindstudio-full-analysis');
+        let parsedAnalysis = null;
+        
+        if (fullAnalysisRecord) {
+          const fullAnalysisData = enrichFullAnalysis(fullAnalysisRecord);
+          parsedAnalysis = fullAnalysisData?.parsedAnalysis;
+        }
+
+        if (!parsedAnalysis) {
+          return res.status(400).json({ 
+            message: "Er moet eerst een volledige analyse worden uitgevoerd voordat juridisch advies kan worden gegenereerd." 
+          });
+        }
+
+        // Get all documents for the case (dossier)
+        const documents = await storage.getDocumentsByCase(caseId);
+        console.log(`📄 Found ${documents.length} documents for legal advice`);
+
+        // Build context for Create_advice.flow (same format as RKOS)
+        const contextPayload = {
+          case_id: caseId,
+          case_title: caseData.title || 'Zonder titel',
+          case_description: caseData.description || '',
+          claim_amount: Number(caseData.claimAmount) || 0,
+          
+          // Full analysis sections
+          summary: parsedAnalysis?.summary || '',
+          parties: parsedAnalysis?.case_overview?.parties || [],
+          facts: parsedAnalysis?.facts || {},
+          legal_analysis: parsedAnalysis?.legal_analysis || {},
+          risk_assessment: parsedAnalysis?.risk_assessment || {},
+          recommendations: parsedAnalysis?.recommended_claims || [],
+          applicable_rules: parsedAnalysis?.applicable_rules || [],
+          
+          // Dossier documents
+          dossier: {
+            document_count: documents.length,
+            documents: documents.map(doc => ({
+              filename: doc.filename,
+              extracted_text: doc.extractedText || ''
+            }))
+          },
+          
+          // User role (for context)
+          user_role: parsedAnalysis?.user_context?.legal_role || 'claimant'
+        };
+
+        console.log('📤 Calling Create_advice.flow with:', {
+          case_id: contextPayload.case_id,
+          has_summary: !!contextPayload.summary,
+          facts_count: Object.keys(contextPayload.facts).length,
+          docs_count: contextPayload.dossier.document_count
+        });
+
+        // Call MindStudio Create_advice.flow
+        const flowResult = await aiService.runCreateAdvice(contextPayload);
+
+        if (flowResult.error) {
+          console.error('❌ Create_advice call failed:', flowResult.error);
+          return res.status(500).json({ 
+            message: "Juridisch advies generatie mislukt. Probeer het opnieuw.",
+            error: flowResult.error
+          });
+        }
+
+        console.log('✅ Create_advice.flow response received');
+
+        // Parse the response
+        let legalAdviceJson = null;
+        
+        // Try result.legal_advice_json (new format)
+        if (flowResult.result?.legal_advice_json) {
+          legalAdviceJson = flowResult.result.legal_advice_json;
+          console.log('📄 Found legal_advice_json in result');
+        }
+        // Try thread posts (legacy format)
+        else if (flowResult.thread?.posts) {
+          console.log('🔍 Checking thread posts for legal_advice_json variable...');
+          for (const post of flowResult.thread.posts) {
+            if (post.debugLog?.newState?.variables?.legal_advice_json?.value) {
+              const value = post.debugLog.newState.variables.legal_advice_json.value;
+              legalAdviceJson = typeof value === 'string' ? JSON.parse(value) : value;
+              console.log('📄 Found legal_advice_json in thread posts');
+              break;
+            }
+          }
+        }
+        // Try thread variables (alternative legacy format)
+        else if (flowResult.thread?.variables?.legal_advice_json) {
+          const value = flowResult.thread.variables.legal_advice_json.value || flowResult.thread.variables.legal_advice_json;
+          legalAdviceJson = typeof value === 'string' ? JSON.parse(value) : value;
+          console.log('📄 Found legal_advice_json in thread variables');
+        }
+
+        if (!legalAdviceJson) {
+          console.error('❌ No legal_advice_json in response');
+          console.log('Response structure:', {
+            has_result: !!flowResult.result,
+            has_thread: !!flowResult.thread,
+            result_keys: flowResult.result ? Object.keys(flowResult.result) : [],
+            thread_keys: flowResult.thread ? Object.keys(flowResult.thread) : []
+          });
+          return res.status(500).json({ 
+            message: "Juridisch advies generatie heeft geen resultaat opgeleverd." 
+          });
+        }
+
+        console.log('📄 Legal advice sections:', Object.keys(legalAdviceJson));
+
+        // Update the fullAnalysis record with legal advice
+        console.log('🔄 Updating fullAnalysis ID:', fullAnalysisRecord.id);
+        const updatedRecord = await storage.updateAnalysis(fullAnalysisRecord.id, {
+          legalAdviceJson: legalAdviceJson
+        });
+        console.log('✅ Legal advice saved to fullAnalysis record');
+
+        res.json({ 
+          success: true,
+          legalAdvice: legalAdviceJson
+        });
+
+      } catch (error) {
+        console.error("Legal advice generation failed:", error);
+        
+        // Check if it's a timeout error
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        if (errorMsg.includes('524') || errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
+          return res.status(504).json({ 
+            message: "Het genereren van juridisch advies duurt te lang (timeout). Probeer het opnieuw." 
+          });
+        }
+        
+        return res.status(503).json({ 
+          message: "Sorry, het juridisch advies kan niet worden gegenereerd. Mindstudio AI is niet beschikbaar." 
+        });
+      }
+    } catch (error) {
+      console.error("Error generating legal advice:", error);
+      res.status(500).json({ message: "Juridisch advies generatie mislukt. Probeer het opnieuw." });
+    }
+  });
+
   // Dossier check route - check document completeness using Dossier_check.flow
   app.post('/api/cases/:id/dossier-check', isAuthenticated, async (req: any, res) => {
     try {

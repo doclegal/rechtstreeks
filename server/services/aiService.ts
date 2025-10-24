@@ -2352,6 +2352,72 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       };
     }
   }
+
+  // Create Advice - Generate full legal advice using Create_advice.flow
+  async runCreateAdvice(input_json: any): Promise<{ result?: any; thread?: any; error?: string }> {
+    console.log("📝 Calling MindStudio Create_advice.flow...");
+
+    const variables = {
+      input_json: JSON.stringify(input_json)
+    };
+
+    console.log("📤 Create_advice variables:", {
+      case_id: input_json.case_id,
+      has_summary: !!input_json.summary,
+      has_parties: !!input_json.parties,
+      facts_count: input_json.facts?.length || 0,
+      docs_count: input_json.dossier?.document_count || 0
+    });
+
+    const requestBody = {
+      workerId: process.env.MS_AGENT_APP_ID,
+      variables,
+      workflow: "Create_advice.flow",
+      includeBillingCost: true
+    };
+
+    // Set timeout to 5 minutes for legal advice generation (longer text output)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000);
+
+    try {
+      const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error("❌ MindStudio Create_advice error:", errorData);
+        return {
+          error: `MindStudio API error: ${response.status} ${response.statusText}`
+        };
+      }
+
+      const data = await response.json();
+      console.log("📥 Create_advice raw response received");
+
+      // Return the full data - let the caller parse it
+      return {
+        result: data.output?.results || data.result,
+        thread: data.thread
+      };
+
+    } catch (error) {
+      clearTimeout(timeoutId);
+      console.error("❌ Error calling MindStudio Create_advice:", error);
+      return {
+        error: `Failed to call Create_advice: ${error}`
+      };
+    }
+  }
 }
 
 export const aiService = new AIService();
