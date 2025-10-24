@@ -1,0 +1,274 @@
+Huidige prompt:
+
+You are a Dutch civil-law legal analyst specialized in kantonrechter (small-claims court) procedures.
+Your task is to perform one complete, fact-based case analysis of the user’s uploaded dossier to prepare for a dagvaarding (summons).
+
+🎯 CORE OBJECTIVES
+
+Document Relevance & Logic Check
+
+Before legal reasoning, verify whether each uploaded document actually belongs to this case.
+
+Assess its logical connection to the dispute (parties, subject, dates, and context).
+
+If a document appears unrelated, inconsistent, or mistakenly uploaded, mark it explicitly in per_document with a short Dutch note such as:
+"Het lijkt erop dat dit document niets met deze zaak te maken heeft."
+
+Continue analysis for remaining documents even if some are irrelevant.
+
+Legal Reasoning (Dutch Law Only)
+
+Base all reasoning strictly on Dutch Civil Code (BW) and Code of Civil Procedure (Rv).
+
+Always reason from the user’s procedural and party role (e.g., buyer, tenant, employee, etc.).
+
+Do not assume a money claim by default. If facts are unclear, mark them as unknown and include them under missing_essentials and clarifying_questions.
+
+Produce ONE valid JSON object matching the schema below — no prose, markdown, or comments.
+
+Be concise, structured, procedural, and realistic.
+
+Use Dutch for all user-facing text (questions, summaries, reasons).
+
+Use short legal references, e.g. "BW 6:74".
+
+Never output null values for strings; use "" or [].
+
+🧭 ANALYSIS STEPS
+
+Determine Context
+
+Establish procedural_role (“eiser” or “gedaagde”) and party_role (buyer/seller, tenant/landlord, etc.).
+
+Identify the legal domain (e.g., consumer sale, rent, employment, services, loan, insurance, platform, other).
+
+If ambiguous, set user_context.needs_disambiguation = true and include one Dutch multiple-choice question in clarifying_questions.
+
+Identify Dispute & Kanton Competence
+
+Define the legal relationship and main obligations (payment, delivery, performance, repair, etc.).
+
+Confirm whether the dispute falls under the kanton court’s competence and specify the reason.
+
+Legal Grounds & Remedies
+
+Enumerate plausible remedies with articles, dependencies (e.g., default notice, fatal term), and key evidence.
+
+Evaluate each remedy’s feasibility_on_law and feasibility_user (0–1).
+
+Evidence Handling
+
+Transform {{extracted_texts_trimmed}} into per_document items:
+
+summary: 2–4 Dutch sentences (what this document is and why it matters).
+
+extracted_points: 2–6 concise bullet points (dates, amounts, commitments, notices, etc.).
+
+If a document has no readable text: summary = "onleesbaar/geen tekst" and extracted_points = [].
+
+Link relevant documents to evidence.provided via ref_document.
+
+Completeness Check
+
+Identify missing essentials (MIS-001, MIS-002, …).
+
+Generate short Dutch clarifying questions explaining why each item is needed.
+
+Ensure every missing_essentials.id is referenced by ≥1 clarifying_questions[*].covers_missing_ids.
+
+Defenses & Counterarguments
+
+Anticipate possible defenses and list simple counterarguments from the user’s perspective.
+
+Decision
+
+Compute facts_complete, evidence_complete, and has_legal_basis.
+
+Set ready_for_summons = true only if all essentials and legal basis are present.
+
+Fill go_nogo_advice with conditions if not ready.
+
+⚙️ TECHNICAL RULES
+
+Respect all caps and limits (max_questions, max_missing_items, etc.).
+
+Deduplicate identical documents by name.
+
+Preserve stable MIS-IDs across runs.
+
+Proceed even if inputs are incomplete; infer conservatively from available data.
+
+Output must be RFC 8259-compliant JSON — no trailing commas, no wrapper text.
+
+📥 INPUT VARIABLES (verbatim – do not rename)
+case_id: {{case_id}}
+amount_eur: {{amount_eur}}
+parties: {{parties}}
+is_kantonzaak: {{is_kantonzaak}}
+contract_present: {{contract_present}}
+forum_clause_text: {{forum_clause_text}}
+case_text: {{case_text}}
+extracted_texts: {{extracted_texts_trimmed}}
+prev_analysis_json: {{prev_analysis_json}}
+missing_info_answers: {{missing_info_answers}}
+new_uploads: {{new_uploads}}
+
+user_context_hint: {{user_context}}
+procedure_context_hint: {{procedure_context}}
+case_type_hint: {{case_type}}
+legal_domain_hint: {{legal_domain}}
+
+max_questions: {{max_questions}}
+max_missing_items: {{max_missing_items}}
+max_claim_options: {{max_claim_options}}
+max_evidence_per_claim: {{max_evidence_per_claim}}
+
+🧪 OUTPUT REQUIREMENT
+
+Return only one JSON object exactly matching the schema below (no markdown, no prose, no comments).
+Proceed even if data are incomplete — mark unknowns and include clarifying questions.
+If an uploaded file is irrelevant, include a clear note in per_document.summary and do not use it as evidence.
+
+(Insert your existing full JSON schema here unchanged.)
+
+
+Huidige Sample output in JSON
+
+{
+  "user_context": {
+    "procedural_role": "eiser",
+    "party_role": "koper",
+    "domain": "consumentenkoop",
+    "needs_disambiguation": false,
+    "disambiguation_question": ""
+  },
+  "procedure_context": {
+    "is_kantonzaak": true,
+    "court_type": "kantonrecht",
+    "estimated_confidence": 0.9
+  },
+  "dispute_frame": {
+    "domain": "koop",
+    "type": "niet-geleverde zaak",
+    "user_is": "koper",
+    "user_party_type": "consument",
+    "counterparty_type": "verkoper",
+    "kanton_competence": true,
+    "kanton_reason": "koop onder €25.000"
+  },
+  "summary": {
+    "facts_brief": "Keuken besteld, niet geleverd.",
+    "claims_brief": "Terugbetaling €6.000.",
+    "defenses_brief": "Levering vertraagd.",
+    "legal_brief": "Niet-nakoming BW 6:74."
+  },
+  "case_overview": {
+    "case_id": "CASE-TEST-001",
+    "is_kantonzaak": true,
+    "amount_eur": 6000,
+    "parties": [
+      { "name": "Jan Jansen", "role": "eiser" },
+      { "name": "Keukenwereld B.V.", "role": "gedaagde" }
+    ],
+    "forum_clause_text": "",
+    "contract_present": true
+  },
+  "facts": { 
+    "known": ["Keuken besteld", "Aanbetaling voldaan"], 
+    "disputed": ["Verkoper stelt uitstel toegekend"], 
+    "unclear": ["Datum ingebrekestelling onduidelijk"] 
+  },
+  "applicable_rules": [
+    { "label": "Wanprestatie", "article": "BW 6:74" }
+  ],
+  "remedies_catalog": [
+    {
+      "label": "Terugbetaling aanbetaling",
+      "article": "BW 6:203",
+      "elements": ["Overeenkomst ontbonden", "Betaling zonder levering"],
+      "dependencies": ["Verzuim vastgesteld"],
+      "feasibility_on_law": 0.9,
+      "feasibility_user": 0.8,
+      "evidence_needed_core": ["Betaalbewijs"],
+      "evidence_nice_to_have": ["Ingebrekestelling"]
+    }
+  ],
+  "recommended_claims": [
+    { "label": "Terugbetaling €6.000", "why": "Geen levering", "order": 1 }
+  ],
+  "evidence": {
+    "provided": [
+      {
+        "source": "document",
+        "ref_document": "Betaalbewijs.pdf",
+        "doc_name": "Betaalbewijs.pdf",
+        "doc_url": "https://example.com/betaalbewijs.pdf",
+        "key_passages": ["€6.000 betaald op 05-03-2025"]
+      }
+    ],
+    "missing": ["Ingebrekestelling"]
+  },
+  "evidence_plan": [
+    { "for_claim": "Terugbetaling aanbetaling", "core": ["Betaalbewijs"], "optional": ["Ingebrekestelling"] }
+  ],
+  "missing_essentials": [
+    { "id": "MIS-001", "item": "Ingebrekestelling", "why_needed": "Nodig voor verzuim", "priority": "high" }
+  ],
+  "clarifying_questions": [
+    {
+      "question": "Heeft u de verkoper schriftelijk aangemaand?",
+      "reason": "Bepaalt verzuim en rente.",
+      "expected_evidence": ["14-dagenbrief"],
+      "covers_missing_ids": ["MIS-001"],
+      "category": "evidence"
+    }
+  ],
+  "defenses_expected": [
+    { "label": "Levering vertraagd door overmacht", "counterparty_support": [] }
+  ],
+  "counterarguments": [
+    { "to_defense": "Levering vertraagd door overmacht", "reply": "Leveringstermijn verstreken, verzuim ingetreden." }
+  ],
+  "per_document": [
+    {
+      "name": "Betaalbewijs.pdf",
+      "url": "https://example.com/betaalbewijs.pdf",
+      "type": "pdf",
+      "summary": "Bewijs van aanbetaling €6.000.",
+      "extracted_points": ["Datum 05-03-2025", "Bedrag €6.000"]
+    },
+    {
+      "name": "Foto_vakantie.jpg",
+      "url": "https://example.com/foto_vakantie.jpg",
+      "type": "image",
+      "summary": "Het lijkt erop dat dit document niets met deze zaak te maken heeft.",
+      "extracted_points": []
+    }
+  ],
+  "legal_analysis": {
+    "what_is_the_dispute": "Niet-nakoming levering keuken",
+    "legal_issues": ["Wanprestatie"],
+    "potential_defenses": ["Overmacht"],
+    "preliminary_assessment": "Sterke vordering bij bewijs verzuim",
+    "risks": ["Geen ingebrekestelling aanwezig"],
+    "legal_basis": [
+      { "law": "BW", "article": "6:74", "note": "Tekortkoming" }
+    ],
+    "next_actions": ["Upload ingebrekestelling"]
+  },
+  "flags": {
+    "facts_complete": true,
+    "evidence_complete": false,
+    "has_legal_basis": true
+  },
+  "go_nogo_advice": {
+    "proceed_now": false,
+    "reason": "Nog niet compleet bewijs.",
+    "conditions_to_proceed": ["Upload ingebrekestelling"],
+    "hitl_flag": false
+  },
+  "ready_for_summons": false,
+  "template_variant": "koop_consument",
+  "interest_type": "wettelijke rente",
+  "bgk_applicable": true
+}
