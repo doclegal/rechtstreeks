@@ -4,14 +4,45 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import DocumentList from "@/components/DocumentList";
+import OntbrekendeInformatie from "@/components/OntbrekendeInformatie";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, FileText, AlertCircle, Sparkles } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
+import { useMemo } from "react";
 
 export default function Dossier() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const currentCase = useActiveCase();
+
+  // Extract ontbrekend_bewijs from legal advice
+  const ontbrekendBewijs = useMemo(() => {
+    if (!currentCase?.fullAnalysis?.legalAdviceJson) {
+      return [];
+    }
+
+    const adviceData = currentCase.fullAnalysis.legalAdviceJson as any;
+    let ontbrekend = adviceData?.ontbrekend_bewijs || [];
+
+    // Parse if it's a string (sometimes stored as JSON string)
+    if (typeof ontbrekend === 'string') {
+      try {
+        ontbrekend = JSON.parse(ontbrekend);
+      } catch (e) {
+        console.error('Failed to parse ontbrekend_bewijs:', e);
+        return [];
+      }
+    }
+
+    // Return only if it's a valid array of objects with item and why_needed
+    if (Array.isArray(ontbrekend) && ontbrekend.length > 0) {
+      return ontbrekend.filter((item: any) => 
+        typeof item === 'object' && (item.item || item.why_needed)
+      );
+    }
+
+    return [];
+  }, [currentCase?.fullAnalysis?.legalAdviceJson]);
 
   if (authLoading) {
     return (
@@ -114,6 +145,9 @@ export default function Dossier() {
           )}
         </CardContent>
       </Card>
+
+      {/* Ontbrekende Informatie - from Legal Advice section 5 */}
+      <OntbrekendeInformatie ontbrekendBewijs={ontbrekendBewijs} />
 
       {/* Help text */}
       <Alert>
