@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useLocation } from "wouter";
-import { PlusCircle, FileSearch, Scale, CheckCircle, XCircle, ArrowRight, FileText, Users, AlertTriangle, AlertCircle, TrendingUp, Info, ArrowLeft } from "lucide-react";
+import { PlusCircle, FileSearch, Scale, CheckCircle, XCircle, ArrowRight, FileText, Users, AlertTriangle, AlertCircle, TrendingUp, Info, ArrowLeft, Lightbulb } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 import { useActiveCase } from "@/contexts/CaseContext";
 import DocumentList from "@/components/DocumentList";
@@ -505,102 +505,136 @@ export default function Analysis() {
             <DialogHeader>
               <DialogTitle>Volledige analyse</DialogTitle>
             </DialogHeader>
-            <div className="space-y-6 mt-4">
+            <div className="space-y-4 mt-4">
               {succesKansAnalysis ? (
                 <>
-                  <div className={`p-4 rounded-lg ${
-                    succesKansAnalysis.chance_of_success >= 70 
-                      ? 'bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800' 
-                      : succesKansAnalysis.chance_of_success >= 40
-                        ? 'bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800'
-                        : 'bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800'
-                  }`}>
-                    <div className="flex items-center gap-3 mb-3">
-                      {succesKansAnalysis.chance_of_success >= 70 ? (
-                        <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
-                      ) : succesKansAnalysis.chance_of_success >= 40 ? (
-                        <AlertCircle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-                      ) : (
-                        <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
-                      )}
-                      <div>
-                        <h3 className="font-semibold text-lg">
-                          Kans op succes: {succesKansAnalysis.chance_of_success}%
-                        </h3>
-                        <Badge variant={succesKansAnalysis.confidence_level === 'high' ? 'default' : succesKansAnalysis.confidence_level === 'medium' ? 'secondary' : 'outline'}>
-                          {succesKansAnalysis.confidence_level === 'high' ? 'Hoog vertrouwen' : succesKansAnalysis.confidence_level === 'medium' ? 'Gemiddeld vertrouwen' : 'Laag vertrouwen'}
-                        </Badge>
-                      </div>
+                  {/* Main Success Percentage */}
+                  <div className="text-center py-4 border-b">
+                    <div className="text-5xl font-bold mb-2">
+                      {succesKansAnalysis.chance_of_success}%
                     </div>
+                    <Badge variant={succesKansAnalysis.confidence_level === 'high' ? 'default' : succesKansAnalysis.confidence_level === 'medium' ? 'secondary' : 'outline'}>
+                      {succesKansAnalysis.confidence_level === 'high' ? 'Hoog vertrouwen' : succesKansAnalysis.confidence_level === 'medium' ? 'Gemiddeld vertrouwen' : 'Laag vertrouwen'}
+                    </Badge>
                   </div>
 
+                  {/* Summary Verdict */}
                   {succesKansAnalysis.assessment && (
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-sm">Beoordeling</h4>
-                      <p className="text-sm text-muted-foreground" data-testid="text-success-assessment">
-                        {succesKansAnalysis.assessment}
-                      </p>
+                    <div className="bg-white/50 dark:bg-black/20 rounded-lg p-4">
+                      <h4 className="font-semibold text-sm mb-2">Beoordeling</h4>
+                      <p className="text-sm" data-testid="text-success-assessment">{succesKansAnalysis.assessment}</p>
                     </div>
                   )}
 
+                  {/* Strengths */}
                   {succesKansAnalysis.strengths && succesKansAnalysis.strengths.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-sm border-b pb-2">Sterke punten</h4>
-                      <ul className="text-sm space-y-1 list-disc list-inside">
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        Sterke punten
+                      </h4>
+                      <div className="space-y-2">
                         {succesKansAnalysis.strengths.map((strength: any, idx: number) => (
-                          <li key={idx} className="text-muted-foreground">
-                            {typeof strength === 'string' ? strength : strength.point || JSON.stringify(strength)}
-                          </li>
+                          <div key={idx} className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3">
+                            {typeof strength === 'string' ? (
+                              <p className="text-sm font-medium">{strength}</p>
+                            ) : (
+                              <>
+                                <p className="text-sm font-medium mb-1">{strength.point}</p>
+                                {strength.why_it_matters && (
+                                  <p className="text-xs text-muted-foreground">{strength.why_it_matters}</p>
+                                )}
+                              </>
+                            )}
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     </div>
                   )}
 
+                  {/* Weaknesses */}
                   {succesKansAnalysis.weaknesses && succesKansAnalysis.weaknesses.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-sm border-b pb-2">Zwakke punten</h4>
-                      <ul className="text-sm space-y-1 list-disc list-inside">
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                        Zwakke punten
+                      </h4>
+                      <div className="space-y-2">
                         {succesKansAnalysis.weaknesses.map((weakness: any, idx: number) => (
-                          <li key={idx} className="text-muted-foreground">
-                            {typeof weakness === 'string' ? weakness : weakness.point || JSON.stringify(weakness)}
-                          </li>
+                          <div key={idx} className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3">
+                            {typeof weakness === 'string' ? (
+                              <p className="text-sm font-medium">{weakness}</p>
+                            ) : (
+                              <>
+                                <p className="text-sm font-medium mb-1">{weakness.point}</p>
+                                {weakness.why_it_matters && (
+                                  <p className="text-xs text-muted-foreground">{weakness.why_it_matters}</p>
+                                )}
+                              </>
+                            )}
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     </div>
                   )}
 
+                  {/* Missing Elements */}
                   {succesKansAnalysis.missing_elements && succesKansAnalysis.missing_elements.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-sm border-b pb-2">Ontbrekende elementen</h4>
-                      <ul className="text-sm space-y-1 list-disc list-inside">
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                        <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        Ontbrekende elementen
+                      </h4>
+                      <div className="space-y-2">
                         {succesKansAnalysis.missing_elements.map((element: any, idx: number) => (
-                          <li key={idx} className="text-muted-foreground">
-                            {typeof element === 'string' ? element : element.point || JSON.stringify(element)}
-                          </li>
+                          <div key={idx} className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3">
+                            {typeof element === 'string' ? (
+                              <p className="text-sm font-medium">{element}</p>
+                            ) : (
+                              <>
+                                <p className="text-sm font-medium mb-1">{element.item || element.point}</p>
+                                {(element.why_needed || element.why_it_matters) && (
+                                  <p className="text-xs text-muted-foreground">{element.why_needed || element.why_it_matters}</p>
+                                )}
+                              </>
+                            )}
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     </div>
                   )}
 
+                  {/* Recommendations */}
                   {succesKansAnalysis.recommendations && succesKansAnalysis.recommendations.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-sm border-b pb-2">Aanbevelingen</h4>
-                      <ul className="text-sm space-y-1 list-disc list-inside">
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                        <Lightbulb className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                        Aanbevelingen
+                      </h4>
+                      <div className="space-y-2">
                         {succesKansAnalysis.recommendations.map((rec: any, idx: number) => (
-                          <li key={idx} className="text-muted-foreground">
-                            {typeof rec === 'string' ? rec : rec.point || JSON.stringify(rec)}
-                          </li>
+                          <div key={idx} className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-3">
+                            {typeof rec === 'string' ? (
+                              <p className="text-sm font-medium">{rec}</p>
+                            ) : (
+                              <>
+                                <p className="text-sm font-medium mb-1">{rec.point}</p>
+                                {rec.why_it_matters && (
+                                  <p className="text-xs text-muted-foreground">{rec.why_it_matters}</p>
+                                )}
+                              </>
+                            )}
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     </div>
                   )}
 
+                  {/* Advice for User */}
                   {succesKansAnalysis.advice_for_user && (
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-sm border-b pb-2">Advies voor u</h4>
-                      <p className="text-sm text-muted-foreground" data-testid="text-advice-for-user">
-                        {succesKansAnalysis.advice_for_user}
-                      </p>
+                    <div className="bg-primary/5 dark:bg-primary/10 rounded-lg p-4 border border-primary/20">
+                      <h4 className="font-semibold text-sm mb-2">Advies</h4>
+                      <p className="text-sm" data-testid="text-advice-for-user">{succesKansAnalysis.advice_for_user}</p>
                     </div>
                   )}
 
