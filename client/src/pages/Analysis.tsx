@@ -277,33 +277,24 @@ export default function Analysis() {
             >
               <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
               <CardHeader>
-                <CardTitle className="flex items-center gap-3">
-                  {fullAnalysis ? (
-                    <CheckCircle className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                  ) : (
-                    <FileSearch className="h-6 w-6 text-primary" />
-                  )}
+                <CardTitle className="flex items-center gap-3 text-base">
+                  <FileSearch className="h-5 w-5 text-foreground" />
                   Volledige analyse
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {fullAnalysis ? (
                   <div className="space-y-2 text-sm">
-                    <div>
-                      <Badge variant="default" className="mb-2 bg-blue-600 dark:bg-blue-700">
-                        Voltooid
-                      </Badge>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <CheckCircle className="h-4 w-4" />
+                      <span>Uitgebreide analyse beschikbaar</span>
                     </div>
-                    <p className="text-muted-foreground">
-                      Uitgebreide analyse beschikbaar
-                    </p>
                   </div>
                 ) : (
                   <div className="space-y-2 text-sm">
-                    <p className="text-muted-foreground mb-2">
-                      Nog niet uitgevoerd
+                    <p className="text-muted-foreground">
+                      Nog niet uitgevoerd → Klik om te starten
                     </p>
-                    <Badge variant="outline">Klik om te starten</Badge>
                   </div>
                 )}
               </CardContent>
@@ -481,21 +472,17 @@ export default function Analysis() {
             >
               <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
               <CardHeader>
-                <CardTitle className="flex items-center gap-3">
-                  <FileSearch className="h-6 w-6 text-primary" />
+                <CardTitle className="flex items-center gap-3 text-base">
+                  <Lightbulb className="h-5 w-5 text-foreground" />
                   Juridisch advies
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 text-sm">
-                  <div>
-                    <Badge variant="default" className="mb-2 bg-green-600 dark:bg-green-700">
-                      Advies beschikbaar
-                    </Badge>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Klik voor volledig advies</span>
                   </div>
-                  <p className="text-muted-foreground">
-                    Klik voor volledig advies
-                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -507,8 +494,8 @@ export default function Analysis() {
           >
             <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
             <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <FileSearch className="h-6 w-6 text-primary" />
+              <CardTitle className="flex items-center gap-3 text-base">
+                <Lightbulb className="h-5 w-5 text-foreground" />
                 Juridisch advies
               </CardTitle>
             </CardHeader>
@@ -521,6 +508,8 @@ export default function Analysis() {
                   onClick={() => generateAdviceMutation.mutate()}
                   disabled={generateAdviceMutation.isPending || !(succesKansAnalysis || fullAnalysis)}
                   data-testid="button-start-full-analysis"
+                  size="sm"
+                  variant="outline"
                 >
                   {generateAdviceMutation.isPending ? 'Adviseren...' : 'Stel advies op'}
                 </Button>
@@ -537,14 +526,14 @@ export default function Analysis() {
 
       {/* READY FOR SUMMONS BANNER */}
       {readyForSummons && (
-        <div className="bg-green-50 dark:bg-green-950/30 border-2 border-green-500 dark:border-green-700 rounded-lg p-4 mb-6" data-testid="banner-ready-for-summons">
+        <div className="bg-green-50/50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6" data-testid="banner-ready-for-summons">
           <div className="flex items-start gap-3">
-            <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-1">
+              <h3 className="text-base font-semibold text-foreground mb-1">
                 Klaar voor dagvaarding
               </h3>
-              <p className="text-sm text-green-800 dark:text-green-200">
+              <p className="text-sm text-muted-foreground">
                 De zaak is compleet genoeg om een dagvaarding op te stellen. U kunt doorgaan naar de dagvaarding sectie.
               </p>
             </div>
