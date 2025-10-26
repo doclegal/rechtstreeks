@@ -595,6 +595,15 @@ export default function Analysis() {
                     </div>
                   )}
 
+                  {succesKansAnalysis.advice_for_user && (
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm border-b pb-2">Advies voor u</h4>
+                      <p className="text-sm text-muted-foreground" data-testid="text-advice-for-user">
+                        {succesKansAnalysis.advice_for_user}
+                      </p>
+                    </div>
+                  )}
+
                   <Button
                     className="w-full"
                     onClick={() => {
