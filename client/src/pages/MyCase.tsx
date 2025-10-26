@@ -128,11 +128,11 @@ export default function MyCase() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         
         <Dialog open={zaakgegevensOpen} onOpenChange={setZaakgegevensOpen}>
           <DialogTrigger asChild>
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow relative" data-testid="card-zaakgegevens">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow relative h-full" data-testid="card-zaakgegevens">
               <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
               <CardHeader>
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -241,7 +241,7 @@ export default function MyCase() {
         </Dialog>
 
         <Link href="/dossier">
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow relative" data-testid="card-documenten">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow relative h-full" data-testid="card-documenten">
             <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
             <CardHeader>
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
