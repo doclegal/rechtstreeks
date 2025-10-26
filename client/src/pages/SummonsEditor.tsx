@@ -7,8 +7,13 @@ import { A4Layout, A4Page, SectionHeading, SectionBody } from "@/components/A4La
 import { SectionBlock } from "@/components/SectionBlock";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Scale, FileText, Download, Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Scale, FileText, Download, Loader2, AlertTriangle, ArrowLeft, CheckCircle, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { RIcon } from "@/components/RIcon";
+import { useCases, useAnalyzeCase } from "@/hooks/useCase";
+import { useActiveCase } from "@/contexts/CaseContext";
 
 // Define the 8 sections in strict order
 const SUMMONS_SECTIONS = [
@@ -100,12 +105,66 @@ export default function SummonsEditor() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isLoading: casesLoading, refetch } = useCases();
   const [summonsId, setSummonsId] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [kantonDialogOpen, setKantonDialogOpen] = useState(false);
+  const [kantonCheckResult, setKantonCheckResult] = useState<any>(null);
 
   // Get selected case from localStorage
   const selectedCaseId = localStorage.getItem('selectedCaseId');
+  
+  // Get current case data
+  const currentCase = useActiveCase();
+  const caseId = currentCase?.id;
+  
+  // Kanton check mutation
+  const analyzeMutation = useAnalyzeCase(caseId || "");
+  
+  // Parse kanton check result
+  let parsedKantonCheck = kantonCheckResult;
+  if (!parsedKantonCheck && currentCase?.analysis?.rawText) {
+    try {
+      const parsed = JSON.parse(currentCase.analysis.rawText);
+      if (parsed.ok !== undefined) {
+        parsedKantonCheck = parsed;
+      } else if (parsed.thread?.posts) {
+        for (const post of parsed.thread.posts) {
+          if (post.debugLog?.newState?.variables?.app_response?.value) {
+            const responseValue = post.debugLog.newState.variables.app_response.value;
+            let appResponse;
+            if (typeof responseValue === 'string') {
+              appResponse = JSON.parse(responseValue);
+            } else {
+              appResponse = responseValue;
+            }
+            if (appResponse.ok !== undefined) {
+              parsedKantonCheck = appResponse;
+              break;
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.log('Could not parse kanton check from rawText:', error);
+    }
+  }
+
+  const kantonSuitable = parsedKantonCheck?.ok === true;
+  const kantonNotSuitable = parsedKantonCheck?.ok === false;
+
+  // Update kanton check result after mutation
+  useEffect(() => {
+    if (analyzeMutation.isSuccess && analyzeMutation.data) {
+      if (analyzeMutation.data.kantonCheck) {
+        setKantonCheckResult(analyzeMutation.data.kantonCheck);
+      }
+      setTimeout(() => {
+        refetch();
+      }, 500);
+    }
+  }, [analyzeMutation.isSuccess, analyzeMutation.data, refetch]);
 
   // Fetch or initialize summons for the selected case
   useEffect(() => {
@@ -409,6 +468,172 @@ export default function SummonsEditor() {
             </Button>
           </div>
         )}
+      </div>
+
+      {/* KANTONZAAK CHECK CARD */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+        <Dialog open={kantonDialogOpen} onOpenChange={setKantonDialogOpen}>
+          <DialogTrigger asChild>
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-all relative h-full"
+              data-testid="card-kanton-check"
+            >
+              <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  {kantonSuitable ? (
+                    <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+                  ) : kantonNotSuitable ? (
+                    <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                  ) : (
+                    <Scale className="h-6 w-6 text-primary" />
+                  )}
+                  Kantonzaak check
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {parsedKantonCheck ? (
+                  <div className="space-y-2 text-sm">
+                    <div>
+                      <Badge 
+                        variant={kantonSuitable ? "default" : "destructive"}
+                        className="mb-2"
+                      >
+                        {kantonSuitable ? 'Geschikt' : 'Niet geschikt'}
+                      </Badge>
+                    </div>
+                    <p className="text-muted-foreground">
+                      {parsedKantonCheck.summary || parsedKantonCheck.decision || 'Klik voor details'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 text-sm">
+                    <p className="text-muted-foreground mb-2">
+                      Nog niet gecontroleerd
+                    </p>
+                    <Badge variant="outline">Klik om te starten</Badge>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Kantonzaak check</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6 mt-4">
+              {parsedKantonCheck ? (
+                <>
+                  <div className={`p-4 rounded-lg ${
+                    kantonSuitable ? 'bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800' : 
+                    'bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800'
+                  }`}>
+                    <div className="flex items-center gap-3 mb-3">
+                      {kantonSuitable ? (
+                        <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+                      ) : (
+                        <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                      )}
+                      <h3 className="font-semibold text-lg">
+                        {kantonSuitable ? 'Geschikt voor kantongerecht' : 'Niet geschikt voor kantongerecht'}
+                      </h3>
+                    </div>
+                    <p className="text-sm" data-testid="text-kanton-decision">
+                      {parsedKantonCheck.decision || parsedKantonCheck.summary || 'Geen beslissing beschikbaar'}
+                    </p>
+                  </div>
+
+                  {parsedKantonCheck.reason && (
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm">Reden</h4>
+                      <p className="text-sm text-muted-foreground" data-testid="text-kanton-reason">
+                        {parsedKantonCheck.reason}
+                      </p>
+                    </div>
+                  )}
+
+                  {parsedKantonCheck.rationale && (
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm">Toelichting</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {parsedKantonCheck.rationale}
+                      </p>
+                    </div>
+                  )}
+
+                  {parsedKantonCheck.parties && (
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm border-b pb-2">Partijen</h4>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        {parsedKantonCheck.parties.claimant_name && (
+                          <div>
+                            <span className="text-muted-foreground">Eiser:</span>{' '}
+                            <span className="font-medium">{parsedKantonCheck.parties.claimant_name}</span>
+                          </div>
+                        )}
+                        {parsedKantonCheck.parties.defendant_name && (
+                          <div>
+                            <span className="text-muted-foreground">Gedaagde:</span>{' '}
+                            <span className="font-medium">{parsedKantonCheck.parties.defendant_name}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {parsedKantonCheck.basis && (
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm border-b pb-2">Grondslag</h4>
+                      <div className="text-sm space-y-1">
+                        {parsedKantonCheck.basis.grond && (
+                          <div>
+                            <span className="text-muted-foreground">Grond:</span>{' '}
+                            <span>{parsedKantonCheck.basis.grond}</span>
+                          </div>
+                        )}
+                        {parsedKantonCheck.basis.belang_eur !== null && parsedKantonCheck.basis.belang_eur !== undefined && (
+                          <div>
+                            <span className="text-muted-foreground">Belang:</span>{' '}
+                            <span>€ {parsedKantonCheck.basis.belang_eur.toLocaleString('nl-NL')}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <Button
+                    className="w-full"
+                    onClick={() => {
+                      analyzeMutation.mutate();
+                    }}
+                    disabled={analyzeMutation.isPending}
+                    data-testid="button-recheck-kanton"
+                  >
+                    {analyzeMutation.isPending ? 'Controleren...' : 'Opnieuw controleren'}
+                  </Button>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <Scale className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Nog niet gecontroleerd</h3>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    Start de kantonzaak controle om te zien of uw zaak geschikt is voor het kantongerecht.
+                  </p>
+                  <Button
+                    className="w-full"
+                    onClick={() => {
+                      analyzeMutation.mutate();
+                    }}
+                    disabled={analyzeMutation.isPending}
+                    data-testid="button-start-kanton-check"
+                  >
+                    {analyzeMutation.isPending ? 'Controleren...' : 'Start check'}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* A4 Document Layout */}
