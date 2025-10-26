@@ -1548,12 +1548,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`📝 Generating legal advice for case ${caseId}`);
         
         // Try to get full analysis (required for advice generation)
+        // Check for either mindstudio-full-analysis OR any analysis with succesKansAnalysis
         let fullAnalysisRecord = await storage.getAnalysisByType(caseId, 'mindstudio-full-analysis');
         let parsedAnalysis = null;
         
         if (fullAnalysisRecord) {
           const fullAnalysisData = enrichFullAnalysis(fullAnalysisRecord);
           parsedAnalysis = fullAnalysisData?.parsedAnalysis;
+        }
+        
+        // If no full analysis record, check if there's an analysis with succesKansAnalysis
+        if (!fullAnalysisRecord || !parsedAnalysis) {
+          const latestAnalysis = await storage.getLatestAnalysis(caseId);
+          if (latestAnalysis && latestAnalysis.succesKansAnalysis) {
+            console.log('📊 Using succesKansAnalysis as basis for legal advice');
+            fullAnalysisRecord = latestAnalysis;
+            // Create minimal parsedAnalysis from available data
+            parsedAnalysis = {
+              summary: (latestAnalysis.succesKansAnalysis as any)?.summary_verdict || '',
+              case_overview: {
+                parties: []
+              },
+              facts: latestAnalysis.factsJson || {},
+              legal_analysis: latestAnalysis.legalAnalysisJson || {},
+              risk_assessment: {
+                strengths: (latestAnalysis.succesKansAnalysis as any)?.strengths || [],
+                weaknesses: (latestAnalysis.succesKansAnalysis as any)?.weaknesses || []
+              },
+              recommended_claims: [],
+              applicable_rules: []
+            };
+          }
         }
 
         if (!parsedAnalysis || !fullAnalysisRecord) {

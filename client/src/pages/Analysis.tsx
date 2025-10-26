@@ -649,7 +649,7 @@ export default function Analysis() {
         </Dialog>
 
         {/* JURIDISCHE ANALYSE CARD */}
-        {(succesKansAnalysis || fullAnalysis || legalAdviceFull) ? (
+        {legalAdviceFull ? (
           <Link href="/analyse-details">
             <Card 
               className="relative cursor-pointer hover:shadow-lg transition-shadow h-full"
@@ -695,11 +695,16 @@ export default function Analysis() {
                 </p>
                 <Button
                   onClick={() => fullAnalyzeMutation.mutate()}
-                  disabled={fullAnalyzeMutation.isPending}
+                  disabled={fullAnalyzeMutation.isPending || !(succesKansAnalysis || fullAnalysis)}
                   data-testid="button-start-full-analysis"
                 >
                   {fullAnalyzeMutation.isPending ? 'Adviseren...' : 'Stel advies op'}
                 </Button>
+                {!(succesKansAnalysis || fullAnalysis) && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Eerst volledige analyse uitvoeren
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
