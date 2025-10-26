@@ -68,11 +68,11 @@ export default function Layout({ children }: LayoutProps) {
               {currentCase && (
                 <Link 
                   href="/dashboard" 
-                  className="hidden lg:flex items-center gap-3 px-3 py-1.5 rounded-md bg-muted border border-border hover:bg-muted/80 transition-colors cursor-pointer"
+                  className="hidden lg:flex items-center gap-3 px-3 py-1.5 rounded-md bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-900/40 transition-colors cursor-pointer"
                   data-testid="link-dashboard"
                 >
-                  <Briefcase className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-foreground max-w-[200px] truncate" data-testid="text-selected-case">
+                  <Briefcase className="h-4 w-4 text-blue-700 dark:text-blue-300" />
+                  <span className="text-sm font-medium text-blue-900 dark:text-blue-100 max-w-[200px] truncate" data-testid="text-selected-case">
                     {currentCase.title}
                   </span>
                 </Link>
