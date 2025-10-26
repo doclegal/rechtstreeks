@@ -731,6 +731,15 @@ export default function SummonsEditor() {
                 
                 if (!section) return null;
 
+                // Check if we should show the "Next: Generate Claims" indicator
+                // Show it after FACTS (section 3) if FACTS is approved but CLAIMS is not
+                const factsSection = sections.find(s => s.sectionKey === "FACTS");
+                const claimsSection = sections.find(s => s.sectionKey === "CLAIMS");
+                const showClaimsIndicator = 
+                  sectionDef.key === "LEGAL_GROUNDS" && // Show before LEGAL_GROUNDS (section 4)
+                  factsSection?.status === "approved" && 
+                  claimsSection?.status !== "approved";
+
                 // Fixed Aanzegging section
                 if (sectionDef.isFixed) {
                   return (
@@ -756,40 +765,74 @@ export default function SummonsEditor() {
                 const isGenerating = generateMutation.isPending && 
                                     generateMutation.variables?.sectionKey === section.sectionKey;
                 
+                // Check if this is the CLAIMS section and it should be highlighted
+                const isClaimsHighlight = sectionDef.key === "CLAIMS" && showClaimsIndicator;
+
                 return (
-                  <SectionBlock
-                    key={section.id}
-                    sectionKey={section.sectionKey}
-                    sectionName={section.sectionName}
-                    stepOrder={section.stepOrder}
-                    status={section.status}
-                    generatedText={section.generatedText}
-                    userFeedback={section.userFeedback}
-                    disabled={isDisabled}
-                    isGenerating={isGenerating}
-                    onGenerate={async () => {
-                      await generateMutation.mutateAsync({ 
-                        sectionKey: section.sectionKey 
-                      });
-                    }}
-                    onApprove={async () => {
-                      await approveMutation.mutateAsync(section.sectionKey);
-                    }}
-                    onNeedsChanges={() => {
-                      // The SectionBlock component will handle showing the feedback form
-                    }}
-                    onRevise={async (feedback) => {
-                      await rejectMutation.mutateAsync({
-                        sectionKey: section.sectionKey,
-                        feedback
-                      });
-                      // Then regenerate with feedback
-                      await generateMutation.mutateAsync({
-                        sectionKey: section.sectionKey,
-                        userFeedback: feedback
-                      });
-                    }}
-                  />
+                  <div key={section.id}>
+                    {/* Show "Next: Generate Claims" indicator before LEGAL_GROUNDS */}
+                    {showClaimsIndicator && (
+                      <Alert 
+                        className="mb-6 bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800 border-2"
+                        data-testid="alert-next-step-claims"
+                      >
+                        <ArrowRight className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                        <div className="ml-2">
+                          <h4 className="font-semibold text-amber-900 dark:text-amber-100 mb-1">
+                            Volgende stap: Genereer eerst Vorderingen
+                          </h4>
+                          <AlertDescription className="text-amber-800 dark:text-amber-200">
+                            Nu de feiten zijn goedgekeurd, moet u eerst <strong>sectie 7 (Vorderingen / Petitum)</strong> genereren voordat u verder gaat met de andere secties. 
+                            Scroll naar beneden naar sectie 7 en klik op "Genereer".
+                          </AlertDescription>
+                        </div>
+                      </Alert>
+                    )}
+
+                    <div 
+                      className={isClaimsHighlight ? "relative" : ""}
+                      data-highlight-claims={isClaimsHighlight}
+                    >
+                      {isClaimsHighlight && (
+                        <div className="absolute -inset-2 bg-amber-100/50 dark:bg-amber-900/20 rounded-lg border-2 border-amber-400 dark:border-amber-600 animate-pulse pointer-events-none" />
+                      )}
+                      <div className="relative">
+                        <SectionBlock
+                          key={section.id}
+                          sectionKey={section.sectionKey}
+                          sectionName={section.sectionName}
+                          stepOrder={section.stepOrder}
+                          status={section.status}
+                          generatedText={section.generatedText}
+                          userFeedback={section.userFeedback}
+                          disabled={isDisabled}
+                          isGenerating={isGenerating}
+                          onGenerate={async () => {
+                            await generateMutation.mutateAsync({ 
+                              sectionKey: section.sectionKey 
+                            });
+                          }}
+                          onApprove={async () => {
+                            await approveMutation.mutateAsync(section.sectionKey);
+                          }}
+                          onNeedsChanges={() => {
+                            // The SectionBlock component will handle showing the feedback form
+                          }}
+                          onRevise={async (feedback) => {
+                            await rejectMutation.mutateAsync({
+                              sectionKey: section.sectionKey,
+                              feedback
+                            });
+                            // Then regenerate with feedback
+                            await generateMutation.mutateAsync({
+                              sectionKey: section.sectionKey,
+                              userFeedback: feedback
+                            });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 );
               })}
             </SectionBody>
