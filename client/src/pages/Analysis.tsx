@@ -506,58 +506,96 @@ export default function Analysis() {
               <DialogTitle>Volledige analyse</DialogTitle>
             </DialogHeader>
             <div className="space-y-6 mt-4">
-              {fullAnalysis ? (
+              {succesKansAnalysis ? (
                 <>
-                  <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+                  <div className={`p-4 rounded-lg ${
+                    succesKansAnalysis.chance_of_success >= 70 
+                      ? 'bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800' 
+                      : succesKansAnalysis.chance_of_success >= 40
+                        ? 'bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800'
+                        : 'bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800'
+                  }`}>
                     <div className="flex items-center gap-3 mb-3">
-                      <CheckCircle className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                      <h3 className="font-semibold text-lg">
-                        Analyse voltooid
-                      </h3>
+                      {succesKansAnalysis.chance_of_success >= 70 ? (
+                        <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+                      ) : succesKansAnalysis.chance_of_success >= 40 ? (
+                        <AlertCircle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                      ) : (
+                        <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                      )}
+                      <div>
+                        <h3 className="font-semibold text-lg">
+                          Kans op succes: {succesKansAnalysis.chance_of_success}%
+                        </h3>
+                        <Badge variant={succesKansAnalysis.confidence_level === 'high' ? 'default' : succesKansAnalysis.confidence_level === 'medium' ? 'secondary' : 'outline'}>
+                          {succesKansAnalysis.confidence_level === 'high' ? 'Hoog vertrouwen' : succesKansAnalysis.confidence_level === 'medium' ? 'Gemiddeld vertrouwen' : 'Laag vertrouwen'}
+                        </Badge>
+                      </div>
                     </div>
-                    <p className="text-sm">
-                      De uitgebreide AI-analyse van uw zaak is succesvol voltooid. U kunt nu juridisch advies genereren.
-                    </p>
                   </div>
 
-                  {fullAnalysis.summary && (
+                  {succesKansAnalysis.assessment && (
                     <div className="space-y-2">
-                      <h4 className="font-semibold text-sm">Samenvatting</h4>
-                      <p className="text-sm text-muted-foreground" data-testid="text-full-analysis-summary">
-                        {fullAnalysis.summary}
+                      <h4 className="font-semibold text-sm">Beoordeling</h4>
+                      <p className="text-sm text-muted-foreground" data-testid="text-success-assessment">
+                        {succesKansAnalysis.assessment}
                       </p>
                     </div>
                   )}
 
-                  {fullAnalysis.case_overview && (
+                  {succesKansAnalysis.strengths && succesKansAnalysis.strengths.length > 0 && (
                     <div className="space-y-2">
-                      <h4 className="font-semibold text-sm border-b pb-2">Overzicht</h4>
-                      <div className="text-sm space-y-1">
-                        {fullAnalysis.case_overview.dispute_type && (
-                          <div>
-                            <span className="text-muted-foreground">Type geschil:</span>{' '}
-                            <span>{fullAnalysis.case_overview.dispute_type}</span>
-                          </div>
-                        )}
-                        {fullAnalysis.case_overview.amount && (
-                          <div>
-                            <span className="text-muted-foreground">Bedrag:</span>{' '}
-                            <span>€ {fullAnalysis.case_overview.amount.toLocaleString('nl-NL')}</span>
-                          </div>
-                        )}
-                      </div>
+                      <h4 className="font-semibold text-sm border-b pb-2">Sterke punten</h4>
+                      <ul className="text-sm space-y-1 list-disc list-inside">
+                        {succesKansAnalysis.strengths.map((strength: string, idx: number) => (
+                          <li key={idx} className="text-muted-foreground">{strength}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {succesKansAnalysis.weaknesses && succesKansAnalysis.weaknesses.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm border-b pb-2">Zwakke punten</h4>
+                      <ul className="text-sm space-y-1 list-disc list-inside">
+                        {succesKansAnalysis.weaknesses.map((weakness: string, idx: number) => (
+                          <li key={idx} className="text-muted-foreground">{weakness}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {succesKansAnalysis.missing_elements && succesKansAnalysis.missing_elements.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm border-b pb-2">Ontbrekende elementen</h4>
+                      <ul className="text-sm space-y-1 list-disc list-inside">
+                        {succesKansAnalysis.missing_elements.map((element: string, idx: number) => (
+                          <li key={idx} className="text-muted-foreground">{element}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {succesKansAnalysis.recommendations && succesKansAnalysis.recommendations.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm border-b pb-2">Aanbevelingen</h4>
+                      <ul className="text-sm space-y-1 list-disc list-inside">
+                        {succesKansAnalysis.recommendations.map((rec: string, idx: number) => (
+                          <li key={idx} className="text-muted-foreground">{rec}</li>
+                        ))}
+                      </ul>
                     </div>
                   )}
 
                   <Button
                     className="w-full"
                     onClick={() => {
-                      fullAnalyzeMutation.mutate();
+                      successChanceMutation.mutate();
                     }}
-                    disabled={fullAnalyzeMutation.isPending}
+                    disabled={successChanceMutation.isPending}
                     data-testid="button-rerun-full-analysis"
                   >
-                    {fullAnalyzeMutation.isPending ? 'Analyseren...' : 'Opnieuw analyseren'}
+                    {successChanceMutation.isPending ? 'Analyseren...' : 'Opnieuw analyseren'}
                   </Button>
                 </>
               ) : (
@@ -570,12 +608,12 @@ export default function Analysis() {
                   <Button
                     className="w-full"
                     onClick={() => {
-                      fullAnalyzeMutation.mutate();
+                      successChanceMutation.mutate();
                     }}
-                    disabled={fullAnalyzeMutation.isPending}
+                    disabled={successChanceMutation.isPending}
                     data-testid="button-start-full-analysis-dialog"
                   >
-                    {fullAnalyzeMutation.isPending ? 'Analyseren...' : 'Start volledige analyse'}
+                    {successChanceMutation.isPending ? 'Analyseren...' : 'Start volledige analyse'}
                   </Button>
                 </div>
               )}

@@ -1327,10 +1327,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Try to get full analysis (optional - MindStudio will handle missing data)
         let fullAnalysisRecord = await storage.getAnalysisByType(caseId, 'mindstudio-full-analysis');
         let parsedAnalysis = null;
+        let extractedTexts = null;
+        let allFiles = null;
         
         if (fullAnalysisRecord) {
           const fullAnalysisData = enrichFullAnalysis(fullAnalysisRecord);
           parsedAnalysis = fullAnalysisData?.parsedAnalysis;
+          extractedTexts = fullAnalysisData?.extractedTexts;
+          allFiles = fullAnalysisData?.allFiles;
         }
 
         // Get all documents for the case (dossier)
@@ -1338,13 +1342,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`📄 Found ${documents.length} documents for success chance assessment`);
         console.log(`📋 Full analysis available: ${parsedAnalysis ? 'YES' : 'NO'}`);
 
-        // Build context for RKOS assessment
-        // If parsedAnalysis is missing, MindStudio will return fallback response
+        // Get Kanton check result
+        let kantonCheckResult = null;
+        const kantonAnalysis = await storage.getAnalysisByType(caseId, 'kanton-check');
+        if (kantonAnalysis?.rawText) {
+          try {
+            const parsed = JSON.parse(kantonAnalysis.rawText);
+            if (parsed.ok !== undefined) {
+              kantonCheckResult = parsed;
+            } else if (parsed.thread?.posts) {
+              for (const post of parsed.thread.posts) {
+                if (post.debugLog?.newState?.variables?.app_response?.value) {
+                  const responseValue = post.debugLog.newState.variables.app_response.value;
+                  kantonCheckResult = typeof responseValue === 'string' ? JSON.parse(responseValue) : responseValue;
+                  break;
+                }
+              }
+            }
+          } catch (error) {
+            console.log('Could not parse kanton check from rawText:', error);
+          }
+        }
+
+        // Build context for RKOS assessment with ALL case data
         const contextPayload = {
           case_id: caseId,
-          case_title: caseData.title || 'Zonder titel',
-          case_description: caseData.description || '',
-          claim_amount: Number(caseData.claimAmount) || 0,
+          
+          // COMPLETE CASE DATA (including counterparty)
+          case_data: {
+            title: caseData.title || 'Zonder titel',
+            description: caseData.description || '',
+            claim_amount: Number(caseData.claimAmount) || 0,
+            status: caseData.status,
+            claimant_name: caseData.claimantName || '',
+            counterparty_name: caseData.counterpartyName || '',
+            counterparty_type: caseData.counterpartyType || '',
+            counterparty_address: caseData.counterpartyAddress || '',
+            created_at: caseData.createdAt,
+            next_action_label: caseData.nextActionLabel
+          },
+          
+          // KANTON CHECK RESULT (complete)
+          kanton_check: kantonCheckResult,
           
           // Full analysis sections (may be empty/null - MindStudio handles this)
           summary: parsedAnalysis?.summary || '',
@@ -1355,15 +1394,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           recommendations: parsedAnalysis?.recommended_claims || [],
           applicable_rules: parsedAnalysis?.applicable_rules || [],
           
-          // Dossier documents
+          // DOSSIER FROM MINDSTUDIO (extractedTexts and allFiles)
           dossier: {
             document_count: documents.length,
             documents: documents.map(doc => ({
               filename: doc.filename,
               type: doc.mimetype,
               extracted_text: doc.extractedText || '[Tekst niet beschikbaar]',
-              size_bytes: doc.sizeBytes
-            }))
+              size_bytes: doc.sizeBytes,
+              document_analysis: doc.documentAnalysis || null
+            })),
+            // Complete result from MindStudio dossier check
+            extracted_texts: extractedTexts,
+            all_files: allFiles
           }
         };
 
