@@ -2244,13 +2244,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Store supplemental context for the next analysis
-      // We'll pass this to the analyze endpoint later
+      // Now automatically trigger RKOS re-analysis to check if all info is complete
       
-      res.json({ 
-        success: true,
-        message: "Antwoorden opgeslagen. U kunt nu een heranalyse starten.",
-        supplementalContext 
-      });
+      console.log(`📊 Missing info responses saved. Triggering automatic RKOS re-analysis for case ${caseId}`);
+      
+      try {
+        // Get fullAnalysis - must exist for RKOS
+        const fullAnalysis = await storage.getAnalysisByType(caseId, 'mindstudio-full-analysis');
+        
+        if (fullAnalysis && fullAnalysis.analysisJson) {
+          console.log('✅ Full analysis found, starting RKOS re-analysis...');
+          
+          // Get all case documents
+          const documents = await storage.getDocumentsByCase(caseId);
+          
+          // Parse fullAnalysis to get all structured data
+          let analysisData: any = {};
+          try {
+            analysisData = typeof fullAnalysis.analysisJson === 'string' 
+              ? JSON.parse(fullAnalysis.analysisJson) 
+              : fullAnalysis.analysisJson;
+          } catch (error) {
+            console.error("Error parsing fullAnalysis:", error);
+          }
+          
+          // Prepare input for RKOS.flow including the new supplemental context
+          const inputData: any = {
+            case_id: caseId,
+            case_title: caseData.title || 'Zonder titel',
+            case_description: caseData.description || '',
+            claim_amount: Number(caseData.claimAmount) || 0,
+            
+            // Full analysis data
+            full_analysis: analysisData,
+            
+            // NEW: Include supplemental context from user responses
+            supplemental_context: supplementalContext,
+            
+            // Documents
+            dossier: {
+              document_count: documents.length,
+              documents: documents.map(doc => ({
+                filename: doc.filename,
+                extracted_text: doc.extractedText || ''
+              }))
+            }
+          };
+          
+          // Call RKOS.flow
+          const rkosResult = await aiService.runRKOS(inputData);
+          
+          if (!rkosResult.error && rkosResult.result) {
+            console.log('✅ RKOS re-analysis completed successfully');
+            
+            // Parse RKOS result
+            let rkosData = null;
+            try {
+              // Check result.rkos first (new format)
+              if (rkosResult.result.rkos) {
+                rkosData = rkosResult.result.rkos;
+              }
+              // Check thread posts (MindStudio format)
+              else if (rkosResult.thread?.posts) {
+                for (const post of rkosResult.thread.posts) {
+                  if (post.debugLog?.newState?.variables?.rkos?.value) {
+                    const value = post.debugLog.newState.variables.rkos.value;
+                    rkosData = typeof value === 'string' ? JSON.parse(value) : value;
+                    break;
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Error parsing RKOS result:', error);
+            }
+            
+            if (rkosData) {
+              // Update fullAnalysis with new RKOS result
+              await storage.updateAnalysis(fullAnalysis.id, {
+                succesKansAnalysis: rkosData
+              });
+              
+              res.json({ 
+                success: true,
+                message: "Antwoorden opgeslagen en heranalyse voltooid. Check de Analyse pagina voor de nieuwe resultaten.",
+                reanalysisCompleted: true,
+                newMissingElements: rkosData.missing_elements || []
+              });
+            } else {
+              console.error('❌ Could not parse RKOS result');
+              res.json({ 
+                success: true,
+                message: "Antwoorden opgeslagen, maar heranalyse data kon niet worden verwerkt.",
+                reanalysisCompleted: false
+              });
+            }
+          } else {
+            console.error('❌ RKOS re-analysis failed:', rkosResult.error);
+            res.json({ 
+              success: true,
+              message: "Antwoorden opgeslagen, maar heranalyse mislukt. U kunt handmatig een nieuwe analyse starten.",
+              reanalysisCompleted: false
+            });
+          }
+        } else {
+          console.log('⚠️ No full analysis found, skipping automatic re-analysis');
+          res.json({ 
+            success: true,
+            message: "Antwoorden opgeslagen. Voer eerst een volledige analyse uit.",
+            reanalysisCompleted: false
+          });
+        }
+      } catch (reanalysisError) {
+        console.error("Error during automatic re-analysis:", reanalysisError);
+        // Still return success for saving responses, even if re-analysis failed
+        res.json({ 
+          success: true,
+          message: "Antwoorden opgeslagen, maar heranalyse mislukt. U kunt handmatig een nieuwe analyse starten.",
+          reanalysisCompleted: false
+        });
+      }
       
     } catch (error) {
       console.error("Error processing missing info responses:", error);
