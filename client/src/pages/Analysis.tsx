@@ -614,14 +614,6 @@ export default function Analysis() {
                     </div>
                   )}
 
-                  {/* Advice for User */}
-                  {succesKansAnalysis.advice_for_user && (
-                    <div className="bg-primary/5 dark:bg-primary/10 rounded-lg p-4 border border-primary/20">
-                      <h4 className="font-semibold text-sm mb-2">Advies</h4>
-                      <p className="text-sm" data-testid="text-advice-for-user">{succesKansAnalysis.advice_for_user}</p>
-                    </div>
-                  )}
-
                   <Button
                     className="w-full"
                     onClick={() => {
@@ -657,7 +649,7 @@ export default function Analysis() {
         </Dialog>
 
         {/* JURIDISCHE ANALYSE CARD */}
-        {(fullAnalysis || legalAdviceFull) ? (
+        {(succesKansAnalysis || fullAnalysis || legalAdviceFull) ? (
           <Link href="/analyse-details">
             <Card 
               className="relative cursor-pointer hover:shadow-lg transition-shadow h-full"
