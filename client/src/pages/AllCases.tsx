@@ -106,13 +106,32 @@ export default function AllCases() {
                     </CardTitle>
                   </div>
                   
-                  <Badge 
-                    variant={getStatusBadgeVariant(caseItem.status)}
-                    data-testid={`badge-status-${caseItem.id}`}
-                    className="w-fit"
-                  >
-                    {getStatusDisplayName(caseItem.status)}
-                  </Badge>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge 
+                      variant={getStatusBadgeVariant(caseItem.status)}
+                      data-testid={`badge-status-${caseItem.id}`}
+                      className="w-fit"
+                    >
+                      {getStatusDisplayName(caseItem.status)}
+                    </Badge>
+                    
+                    {/* Success Chance Badge */}
+                    {(caseItem as any).fullAnalysis?.succesKansAnalysis?.chance_of_success !== undefined && (
+                      <Badge 
+                        variant="outline"
+                        className={`w-fit ${
+                          (caseItem as any).fullAnalysis.succesKansAnalysis.chance_of_success >= 70 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200 border-green-300 dark:border-green-700' 
+                            : (caseItem as any).fullAnalysis.succesKansAnalysis.chance_of_success >= 40
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                            : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200 border-red-300 dark:border-red-700'
+                        }`}
+                        data-testid={`badge-success-chance-${caseItem.id}`}
+                      >
+                        {(caseItem as any).fullAnalysis.succesKansAnalysis.chance_of_success}% kans op succes
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
