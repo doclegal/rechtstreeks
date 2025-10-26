@@ -30,6 +30,30 @@ export default function Analysis() {
   const analyzeMutation = useAnalyzeCase(caseId || "");
   const fullAnalyzeMutation = useFullAnalyzeCase(caseId || "");
 
+  // Legal advice generation mutation
+  const generateAdviceMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', `/api/cases/${caseId}/generate-advice`);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
+      toast({
+        title: "Juridisch advies gegenereerd",
+        description: "Het advies is beschikbaar om te bekijken",
+      });
+      refetch();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout bij genereren advies",
+        description: error.message || "Het advies kon niet worden gegenereerd",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Success chance assessment mutation
   const successChanceMutation = useMutation({
     mutationFn: async () => {
@@ -688,11 +712,11 @@ export default function Analysis() {
                   Nog niet opgesteld
                 </p>
                 <Button
-                  onClick={() => fullAnalyzeMutation.mutate()}
-                  disabled={fullAnalyzeMutation.isPending || !(succesKansAnalysis || fullAnalysis)}
+                  onClick={() => generateAdviceMutation.mutate()}
+                  disabled={generateAdviceMutation.isPending || !(succesKansAnalysis || fullAnalysis)}
                   data-testid="button-start-full-analysis"
                 >
-                  {fullAnalyzeMutation.isPending ? 'Adviseren...' : 'Stel advies op'}
+                  {generateAdviceMutation.isPending ? 'Adviseren...' : 'Stel advies op'}
                 </Button>
                 {!(succesKansAnalysis || fullAnalysis) && (
                   <p className="text-xs text-muted-foreground mt-2">
