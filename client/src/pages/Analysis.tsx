@@ -278,11 +278,7 @@ export default function Analysis() {
         <Dialog open={kantonDialogOpen} onOpenChange={setKantonDialogOpen}>
           <DialogTrigger asChild>
             <Card 
-              className={`cursor-pointer hover:shadow-lg transition-all relative h-full ${
-                kantonSuitable ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' : 
-                kantonNotSuitable ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800' : 
-                ''
-              }`}
+              className="cursor-pointer hover:shadow-lg transition-all relative h-full"
               data-testid="card-kanton-check"
             >
               <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
@@ -446,9 +442,7 @@ export default function Analysis() {
         <Dialog open={fullAnalysisDialogOpen} onOpenChange={setFullAnalysisDialogOpen}>
           <DialogTrigger asChild>
             <Card 
-              className={`cursor-pointer hover:shadow-lg transition-all relative h-full ${
-                fullAnalysis ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800' : ''
-              }`}
+              className="cursor-pointer hover:shadow-lg transition-all relative h-full"
               data-testid="card-full-analysis"
             >
               <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
