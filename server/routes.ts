@@ -4116,13 +4116,21 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
           generatedText = response.result?.text || response.result?.output || JSON.stringify(response.result || response, null, 2);
         }
         
-        // Update section with generated text
+        // Extract warnings if any
+        const warnings = sectionResult?.warnings || [];
+        
+        // Update section with generated text and warnings
         console.log(`💾 Saving section ${section.sectionName} with status=draft and ${generatedText.length} chars of text`);
+        if (warnings.length > 0) {
+          console.log(`⚠️ Saving ${warnings.length} warnings for section ${section.sectionName}`);
+        }
+        
         await storage.updateSummonsSection(section.id, {
           status: "draft",
           generatedText,
           generationCount: (section.generationCount || 0) + 1,
-          userFeedback: userFeedback || null
+          userFeedback: userFeedback || null,
+          warningsJson: warnings.length > 0 ? warnings : null
         });
         
         const updatedSection = await storage.getSummonsSection(section.id);

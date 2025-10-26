@@ -163,6 +163,21 @@ export function SectionBlock({
           </div>
         )}
 
+        {/* Warnings from MindStudio - Only shown in edit mode (not in preview/download) */}
+        {warnings && warnings.length > 0 && (
+          <Alert className="mb-4 bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800" data-testid={`warnings-${sectionKey}`}>
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertDescription className="ml-2">
+              <p className="font-semibold text-amber-900 dark:text-amber-100 mb-2">Let op:</p>
+              <ul className="list-disc list-inside space-y-1 text-amber-800 dark:text-amber-200">
+                {warnings.map((warning, idx) => (
+                  <li key={idx}>{warning}</li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2">
           {status === "pending" && (

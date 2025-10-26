@@ -211,6 +211,7 @@ export const summonsSections = pgTable("summons_sections", {
   generatedText: text("generated_text"), // AI-generated text for this section
   userFeedback: text("user_feedback"), // User comments/corrections for regeneration
   generationCount: integer("generation_count").default(0), // How many times generated
+  warningsJson: jsonb("warnings_json"), // MindStudio warnings array from generation
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

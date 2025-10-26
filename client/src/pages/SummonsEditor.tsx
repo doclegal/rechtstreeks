@@ -87,6 +87,7 @@ interface SummonsSection {
   generatedText?: string | null;
   userFeedback?: string | null;
   generationCount: number;
+  warningsJson?: string[] | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -805,6 +806,7 @@ export default function SummonsEditor() {
                           status={section.status}
                           generatedText={section.generatedText}
                           userFeedback={section.userFeedback}
+                          warnings={section.warningsJson || undefined}
                           disabled={isDisabled}
                           isGenerating={isGenerating}
                           onGenerate={async () => {
