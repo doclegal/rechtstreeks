@@ -1556,7 +1556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           parsedAnalysis = fullAnalysisData?.parsedAnalysis;
         }
 
-        if (!parsedAnalysis) {
+        if (!parsedAnalysis || !fullAnalysisRecord) {
           return res.status(400).json({ 
             message: "Er moet eerst een volledige analyse worden uitgevoerd voordat juridisch advies kan worden gegenereerd." 
           });
@@ -1565,6 +1565,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get all documents for the case (dossier)
         const documents = await storage.getDocumentsByCase(caseId);
         console.log(`📄 Found ${documents.length} documents for legal advice`);
+
+        // Get missing information (from RKOS.flow or consolidated missing_info.flow)
+        let missingInformation: any[] = [];
+        if (fullAnalysisRecord.missingInformation) {
+          missingInformation = fullAnalysisRecord.missingInformation as any[];
+          console.log(`📋 Found ${missingInformation.length} items from consolidated missing info check`);
+        } else if (fullAnalysisRecord.succesKansAnalysis) {
+          // Fallback to RKOS missing_elements if consolidated check hasn't been run
+          const succesKans = fullAnalysisRecord.succesKansAnalysis as any;
+          if (succesKans.missing_elements && Array.isArray(succesKans.missing_elements)) {
+            missingInformation = succesKans.missing_elements;
+            console.log(`📋 Found ${missingInformation.length} missing_elements from RKOS.flow`);
+          }
+        }
 
         // Build context for Create_advice.flow (same format as RKOS)
         const contextPayload = {
@@ -1581,6 +1595,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           risk_assessment: parsedAnalysis?.risk_assessment || {},
           recommendations: parsedAnalysis?.recommended_claims || [],
           applicable_rules: parsedAnalysis?.applicable_rules || [],
+          
+          // Missing information (from RKOS or consolidated check)
+          missing_information: missingInformation,
           
           // Dossier documents
           dossier: {
@@ -1599,7 +1616,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           case_id: contextPayload.case_id,
           has_summary: !!contextPayload.summary,
           facts_count: Object.keys(contextPayload.facts).length,
-          docs_count: contextPayload.dossier.document_count
+          docs_count: contextPayload.dossier.document_count,
+          missing_info_count: contextPayload.missing_information.length
         });
 
         // Call MindStudio Create_advice.flow
