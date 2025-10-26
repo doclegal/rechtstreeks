@@ -303,19 +303,16 @@ export default function DocumentList({
                     {document.documentAnalysis.tags && document.documentAnalysis.tags.length > 0 && (
                       <div className="flex items-center flex-wrap gap-2 mb-3">
                         <Tag className="h-3 w-3 text-muted-foreground" />
-                        {document.documentAnalysis.tags.map((tag, index) => {
-                          const tagColor = getTagColor(tag);
-                          return (
-                            <Badge 
-                              key={index} 
-                              variant="secondary" 
-                              className={`${tagColor.bg} ${tagColor.text} border-0`}
-                              data-testid={`tag-${document.id}-${index}`}
-                            >
-                              {tag}
-                            </Badge>
-                          );
-                        })}
+                        {document.documentAnalysis.tags.map((tag, index) => (
+                          <Badge 
+                            key={index} 
+                            variant="secondary" 
+                            className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-0"
+                            data-testid={`tag-${document.id}-${index}`}
+                          >
+                            {tag}
+                          </Badge>
+                        ))}
                       </div>
                     )}
 
