@@ -143,6 +143,7 @@ export default function Analysis() {
 
   let fullAnalysis = null;
   let legalAdviceFull = null;
+  let legalAdviceJson = null;
   let userContext = null;
   let procedureContext = null;
   let flags = null;
@@ -155,6 +156,11 @@ export default function Analysis() {
   // ALWAYS check for succesKansAnalysis first, even if there's no parsedAnalysis
   if ((currentCase?.fullAnalysis as any)?.succesKansAnalysis) {
     succesKansAnalysis = (currentCase.fullAnalysis as any).succesKansAnalysis;
+  }
+  
+  // Check for legalAdviceJson (new format from Create_advice.flow)
+  if ((currentCase?.fullAnalysis as any)?.legalAdviceJson) {
+    legalAdviceJson = (currentCase.fullAnalysis as any).legalAdviceJson;
   }
   
   try {
@@ -667,7 +673,7 @@ export default function Analysis() {
         </Dialog>
 
         {/* JURIDISCHE ANALYSE CARD */}
-        {legalAdviceFull ? (
+        {(legalAdviceFull || legalAdviceJson) ? (
           <Link href="/analyse-details">
             <Card 
               className="relative cursor-pointer hover:shadow-lg transition-shadow h-full"
