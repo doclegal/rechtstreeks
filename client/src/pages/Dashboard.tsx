@@ -12,8 +12,7 @@ import {
   FileSearch, 
   Mail, 
   Scale,
-  PlusCircle,
-  Files
+  PlusCircle
 } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { format } from "date-fns";
@@ -321,11 +320,6 @@ export default function Dashboard() {
     ? (caseResolved ? "Zaak afgerond" : "Procedure aanhangig")
     : "Nog geen procedure";
 
-  const docCount = caseData.documents?.length || 0;
-  const dossierStatus = docCount > 0
-    ? `${docCount} document${docCount > 1 ? 'en' : ''} geüpload`
-    : "Nog geen documenten";
-
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -568,38 +562,6 @@ export default function Dashboard() {
                   {summonsCount > 0 
                     ? "Bekijk uw dagvaarding documenten"
                     : "Genereer dagvaarding voor uw zaak"}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-
-        {/* Dossier */}
-        <Link href="/dossier" data-testid="tile-dossier">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full relative">
-            <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <Files className="h-6 w-6 text-primary" />
-                Dossier
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Status:</span>{" "}
-                  <span className="font-medium" data-testid="summary-dossier-status">{dossierStatus}</span>
-                </div>
-                {docCount > 0 && (
-                  <div>
-                    <span className="text-muted-foreground">Documenten:</span>{" "}
-                    <span className="font-medium" data-testid="summary-doc-count">{docCount}</span>
-                  </div>
-                )}
-                <p className="text-muted-foreground pt-2">
-                  {docCount > 0 
-                    ? "Bekijk documenten en controleer uw dossier"
-                    : "Upload documenten voor uw zaak"}
                 </p>
               </div>
             </CardContent>
