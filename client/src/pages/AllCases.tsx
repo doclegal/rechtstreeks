@@ -95,71 +95,55 @@ export default function AllCases() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {cases.map((caseItem) => (
-            <Card key={caseItem.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg mb-2" data-testid={`text-case-title-${caseItem.id}`}>
+            <Card key={caseItem.id} className="hover:shadow-lg transition-all hover:scale-105 cursor-pointer h-full flex flex-col" onClick={() => handleCaseSelect(caseItem.id)}>
+              <CardHeader className="flex-1">
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="text-base font-semibold line-clamp-2" data-testid={`text-case-title-${caseItem.id}`}>
                       {caseItem.title}
                     </CardTitle>
-                    <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="h-4 w-4" />
-                        <span>
-                          {formatDistanceToNow(new Date(caseItem.createdAt), { 
-                            addSuffix: true, 
-                            locale: nl 
-                          })}
-                        </span>
-                      </div>
-                      {caseItem.claimAmount && (
-                        <span>
-                          €{parseFloat(caseItem.claimAmount).toLocaleString('nl-NL')}
-                        </span>
-                      )}
-                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Badge 
-                      variant={getStatusBadgeVariant(caseItem.status)}
-                      data-testid={`badge-status-${caseItem.id}`}
-                    >
-                      {getStatusDisplayName(caseItem.status)}
-                    </Badge>
-                    <Button 
-                      size="sm" 
-                      data-testid={`button-view-case-${caseItem.id}`}
-                      onClick={() => handleCaseSelect(caseItem.id)}
-                      className="shrink-0"
-                    >
-                      Selecteren
-                    </Button>
-                  </div>
+                  
+                  <Badge 
+                    variant={getStatusBadgeVariant(caseItem.status)}
+                    data-testid={`badge-status-${caseItem.id}`}
+                    className="w-fit"
+                  >
+                    {getStatusDisplayName(caseItem.status)}
+                  </Badge>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <CardContent className="space-y-3">
+                <div className="space-y-2 text-sm">
                   <div>
-                    <Label className="text-muted-foreground">Categorie</Label>
-                    <p className="text-foreground">{caseItem.category || "Algemeen"}</p>
+                    <Label className="text-xs text-muted-foreground">Wederpartij</Label>
+                    <p className="text-foreground font-medium line-clamp-1">{caseItem.counterpartyName || "Niet opgegeven"}</p>
                   </div>
-                  <div>
-                    <Label className="text-muted-foreground">Wederpartij</Label>
-                    <p className="text-foreground">{caseItem.counterpartyName || "Niet opgegeven"}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground">Type</Label>
-                    <p className="text-foreground">
-                      {caseItem.counterpartyType === "company" ? "Bedrijf" : "Particulier"}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground">Voortgang</Label>
-                    <p className="text-foreground">
+                  
+                  {caseItem.claimAmount && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Bedrag</Label>
+                      <p className="text-foreground font-medium">
+                        €{parseFloat(caseItem.claimAmount).toLocaleString('nl-NL')}
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      <span>
+                        {formatDistanceToNow(new Date(caseItem.createdAt), { 
+                          addSuffix: true, 
+                          locale: nl 
+                        })}
+                      </span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
                       Stap {getStepNumber(caseItem.status)}/9
-                    </p>
+                    </span>
                   </div>
                 </div>
               </CardContent>
