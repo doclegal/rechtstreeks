@@ -3682,12 +3682,23 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       const feedbackVariableName = sectionConfig.feedbackVariableName || "user_feedback";
       
       // Get analysis and documents for context
-      const analysis = await storage.getLatestAnalysis(caseId);
+      let analysis = await storage.getLatestAnalysis(caseId);
       const documents = await storage.getDocumentsByCase(caseId);
       
       if (!analysis) {
         return res.status(400).json({ message: "Case must be analyzed first before generating summons sections" });
       }
+      
+      // Enrich analysis with parsedAnalysis from rawText if needed
+      analysis = enrichFullAnalysis(analysis);
+      
+      // Log analysis enrichment status
+      console.log(`📊 Analysis enrichment status:`, {
+        hasAnalysisJson: !!analysis.analysisJson,
+        hasRawText: !!analysis.rawText,
+        analysisJsonType: typeof analysis.analysisJson,
+        analysisJsonKeys: analysis.analysisJson ? Object.keys(analysis.analysisJson) : []
+      });
       
       // Get all prior approved sections to provide context
       const allSections = await storage.getSummonsSections(summonsId);
@@ -3706,6 +3717,17 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         parsedAnalysis = typeof analysis.analysisJson === 'string' 
           ? JSON.parse(analysis.analysisJson) 
           : analysis.analysisJson || {};
+        
+        // Log what we extracted from the analysis
+        console.log(`📋 Extracted from analysis:`, {
+          hasFacts: !!parsedAnalysis?.facts,
+          factsKnownCount: parsedAnalysis?.facts?.known?.length || 0,
+          factsDisputedCount: parsedAnalysis?.facts?.disputed?.length || 0,
+          hasLegalAnalysis: !!parsedAnalysis?.legal_analysis,
+          legalIssuesCount: parsedAnalysis?.legal_analysis?.legal_issues?.length || 0,
+          hasProcedure: !!parsedAnalysis?.procedure,
+          isKantonzaak: parsedAnalysis?.procedure?.is_kantonzaak || false
+        });
       } catch (e) {
         console.error('Failed to parse analysis JSON:', e);
         parsedAnalysis = {};
