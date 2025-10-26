@@ -48,6 +48,9 @@ export default function JuridischeAnalyseDetails() {
   let legalAdviceJson: any = null;
   let legalAdviceFull: string | null = null;
   
+  // IMPORTANT: Extract missing_elements from RKOS.flow (Volledige analyse) - this is the authoritative source
+  let missingElementsFromRKOS: any[] = [];
+  
   try {
     // Check for new JSON format in legalAdviceJson field
     if (currentCase?.fullAnalysis?.legalAdviceJson) {
@@ -79,6 +82,15 @@ export default function JuridischeAnalyseDetails() {
             break;
           }
         }
+      }
+    }
+    
+    // Extract missing_elements from RKOS.flow (Volledige analyse) - AUTHORITATIVE SOURCE
+    if (currentCase?.fullAnalysis?.succesKansAnalysis) {
+      const succesKans = currentCase.fullAnalysis.succesKansAnalysis as any;
+      if (succesKans.missing_elements && Array.isArray(succesKans.missing_elements)) {
+        missingElementsFromRKOS = succesKans.missing_elements;
+        console.log('📋 Using missing_elements from RKOS.flow (authoritative):', missingElementsFromRKOS.length);
       }
     }
   } catch (error) {
@@ -306,7 +318,20 @@ export default function JuridischeAnalyseDetails() {
 
     const handleCopy = () => {
       const fullText = sections
-        .map(s => `${s.title}\n\n${legalAdviceJson[s.key] || 'Geen informatie beschikbaar'}\n\n`)
+        .map(s => {
+          // Use RKOS missing_elements for ontbrekend_bewijs if available
+          let content = legalAdviceJson[s.key];
+          if (s.key === 'ontbrekend_bewijs' && missingElementsFromRKOS.length > 0) {
+            content = missingElementsFromRKOS.map((item: any) => 
+              typeof item === 'string' ? item : `${item.point || item.item}\n${item.why_it_matters || item.why_needed || ''}`
+            ).join('\n\n');
+          } else if (Array.isArray(content)) {
+            content = content.map((item: any) => 
+              typeof item === 'string' ? item : JSON.stringify(item)
+            ).join('\n');
+          }
+          return `${s.title}\n\n${content || 'Geen informatie beschikbaar'}\n\n`;
+        })
         .join('---\n\n');
       navigator.clipboard.writeText(fullText);
       toast({
@@ -317,7 +342,20 @@ export default function JuridischeAnalyseDetails() {
 
     const handleDownload = () => {
       const fullText = sections
-        .map(s => `${s.title}\n\n${legalAdviceJson[s.key] || 'Geen informatie beschikbaar'}\n\n`)
+        .map(s => {
+          // Use RKOS missing_elements for ontbrekend_bewijs if available
+          let content = legalAdviceJson[s.key];
+          if (s.key === 'ontbrekend_bewijs' && missingElementsFromRKOS.length > 0) {
+            content = missingElementsFromRKOS.map((item: any) => 
+              typeof item === 'string' ? item : `${item.point || item.item}\n${item.why_it_matters || item.why_needed || ''}`
+            ).join('\n\n');
+          } else if (Array.isArray(content)) {
+            content = content.map((item: any) => 
+              typeof item === 'string' ? item : JSON.stringify(item)
+            ).join('\n');
+          }
+          return `${s.title}\n\n${content || 'Geen informatie beschikbaar'}\n\n`;
+        })
         .join('---\n\n');
       const blob = new Blob([fullText], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
@@ -452,7 +490,15 @@ export default function JuridischeAnalyseDetails() {
             {/* Render sections */}
             <div className="space-y-6" data-testid="advice-content">
               {sections.map((section, idx) => {
-                const content = legalAdviceJson[section.key];
+                // IMPORTANT: Use RKOS.flow missing_elements instead of Create_advice ontbrekend_bewijs
+                let content = legalAdviceJson[section.key];
+                
+                // Override ontbrekend_bewijs with RKOS.flow missing_elements (authoritative source)
+                if (section.key === 'ontbrekend_bewijs' && missingElementsFromRKOS.length > 0) {
+                  content = missingElementsFromRKOS;
+                  console.log('📋 Using RKOS missing_elements for Ontbrekend Bewijs section');
+                }
+                
                 if (!content) return null;
 
                 // Helper function to render content (handles both strings and arrays of objects)
