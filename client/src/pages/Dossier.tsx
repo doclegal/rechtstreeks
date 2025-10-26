@@ -42,7 +42,7 @@ export default function Dossier() {
         label: item,
         description: why_needed,
         required: true, // All RKOS missing elements are important
-        inputKind: 'text' as const, // Default to text, but component allows document upload too
+        inputKind: undefined, // Allow both text and document upload
         createdAt: new Date(),
       };
     });
