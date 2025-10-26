@@ -21,6 +21,7 @@ export default function Analysis() {
   const { toast } = useToast();
   const [kantonCheckResult, setKantonCheckResult] = useState<any>(null);
   const [kantonDialogOpen, setKantonDialogOpen] = useState(false);
+  const [fullAnalysisDialogOpen, setFullAnalysisDialogOpen] = useState(false);
   const [successChanceDialogOpen, setSuccessChanceDialogOpen] = useState(false);
   const [successChanceResult, setSuccessChanceResult] = useState<any>(null);
   const [location, setLocation] = useLocation();
@@ -450,6 +451,131 @@ export default function Analysis() {
                     data-testid="button-start-kanton-check"
                   >
                     {analyzeMutation.isPending ? 'Controleren...' : 'Start check'}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* VOLLEDIGE ANALYSE CARD */}
+        <Dialog open={fullAnalysisDialogOpen} onOpenChange={setFullAnalysisDialogOpen}>
+          <DialogTrigger asChild>
+            <Card 
+              className={`cursor-pointer hover:shadow-lg transition-all relative h-full ${
+                fullAnalysis ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800' : ''
+              }`}
+              data-testid="card-full-analysis"
+            >
+              <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  {fullAnalysis ? (
+                    <CheckCircle className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                  ) : (
+                    <FileSearch className="h-6 w-6 text-primary" />
+                  )}
+                  Volledige analyse
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {fullAnalysis ? (
+                  <div className="space-y-2 text-sm">
+                    <div>
+                      <Badge variant="default" className="mb-2 bg-blue-600 dark:bg-blue-700">
+                        Voltooid
+                      </Badge>
+                    </div>
+                    <p className="text-muted-foreground">
+                      Uitgebreide analyse beschikbaar
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 text-sm">
+                    <p className="text-muted-foreground mb-2">
+                      Nog niet uitgevoerd
+                    </p>
+                    <Badge variant="outline">Klik om te starten</Badge>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Volledige analyse</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6 mt-4">
+              {fullAnalysis ? (
+                <>
+                  <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-center gap-3 mb-3">
+                      <CheckCircle className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                      <h3 className="font-semibold text-lg">
+                        Analyse voltooid
+                      </h3>
+                    </div>
+                    <p className="text-sm">
+                      De uitgebreide AI-analyse van uw zaak is succesvol voltooid. U kunt nu juridisch advies genereren.
+                    </p>
+                  </div>
+
+                  {fullAnalysis.summary && (
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm">Samenvatting</h4>
+                      <p className="text-sm text-muted-foreground" data-testid="text-full-analysis-summary">
+                        {fullAnalysis.summary}
+                      </p>
+                    </div>
+                  )}
+
+                  {fullAnalysis.case_overview && (
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm border-b pb-2">Overzicht</h4>
+                      <div className="text-sm space-y-1">
+                        {fullAnalysis.case_overview.dispute_type && (
+                          <div>
+                            <span className="text-muted-foreground">Type geschil:</span>{' '}
+                            <span>{fullAnalysis.case_overview.dispute_type}</span>
+                          </div>
+                        )}
+                        {fullAnalysis.case_overview.amount && (
+                          <div>
+                            <span className="text-muted-foreground">Bedrag:</span>{' '}
+                            <span>€ {fullAnalysis.case_overview.amount.toLocaleString('nl-NL')}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <Button
+                    className="w-full"
+                    onClick={() => {
+                      fullAnalyzeMutation.mutate();
+                    }}
+                    disabled={fullAnalyzeMutation.isPending}
+                    data-testid="button-rerun-full-analysis"
+                  >
+                    {fullAnalyzeMutation.isPending ? 'Analyseren...' : 'Opnieuw analyseren'}
+                  </Button>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <FileSearch className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Nog niet uitgevoerd</h3>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    Start de volledige analyse om een uitgebreide AI-beoordeling van uw zaak te krijgen. Dit is nodig voor het genereren van juridisch advies.
+                  </p>
+                  <Button
+                    className="w-full"
+                    onClick={() => {
+                      fullAnalyzeMutation.mutate();
+                    }}
+                    disabled={fullAnalyzeMutation.isPending}
+                    data-testid="button-start-full-analysis-dialog"
+                  >
+                    {fullAnalyzeMutation.isPending ? 'Analyseren...' : 'Start volledige analyse'}
                   </Button>
                 </div>
               )}
