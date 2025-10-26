@@ -547,8 +547,10 @@ export default function Analysis() {
                     <div className="space-y-2">
                       <h4 className="font-semibold text-sm border-b pb-2">Sterke punten</h4>
                       <ul className="text-sm space-y-1 list-disc list-inside">
-                        {succesKansAnalysis.strengths.map((strength: string, idx: number) => (
-                          <li key={idx} className="text-muted-foreground">{strength}</li>
+                        {succesKansAnalysis.strengths.map((strength: any, idx: number) => (
+                          <li key={idx} className="text-muted-foreground">
+                            {typeof strength === 'string' ? strength : strength.point || JSON.stringify(strength)}
+                          </li>
                         ))}
                       </ul>
                     </div>
@@ -558,8 +560,10 @@ export default function Analysis() {
                     <div className="space-y-2">
                       <h4 className="font-semibold text-sm border-b pb-2">Zwakke punten</h4>
                       <ul className="text-sm space-y-1 list-disc list-inside">
-                        {succesKansAnalysis.weaknesses.map((weakness: string, idx: number) => (
-                          <li key={idx} className="text-muted-foreground">{weakness}</li>
+                        {succesKansAnalysis.weaknesses.map((weakness: any, idx: number) => (
+                          <li key={idx} className="text-muted-foreground">
+                            {typeof weakness === 'string' ? weakness : weakness.point || JSON.stringify(weakness)}
+                          </li>
                         ))}
                       </ul>
                     </div>
@@ -569,8 +573,10 @@ export default function Analysis() {
                     <div className="space-y-2">
                       <h4 className="font-semibold text-sm border-b pb-2">Ontbrekende elementen</h4>
                       <ul className="text-sm space-y-1 list-disc list-inside">
-                        {succesKansAnalysis.missing_elements.map((element: string, idx: number) => (
-                          <li key={idx} className="text-muted-foreground">{element}</li>
+                        {succesKansAnalysis.missing_elements.map((element: any, idx: number) => (
+                          <li key={idx} className="text-muted-foreground">
+                            {typeof element === 'string' ? element : element.point || JSON.stringify(element)}
+                          </li>
                         ))}
                       </ul>
                     </div>
@@ -580,8 +586,10 @@ export default function Analysis() {
                     <div className="space-y-2">
                       <h4 className="font-semibold text-sm border-b pb-2">Aanbevelingen</h4>
                       <ul className="text-sm space-y-1 list-disc list-inside">
-                        {succesKansAnalysis.recommendations.map((rec: string, idx: number) => (
-                          <li key={idx} className="text-muted-foreground">{rec}</li>
+                        {succesKansAnalysis.recommendations.map((rec: any, idx: number) => (
+                          <li key={idx} className="text-muted-foreground">
+                            {typeof rec === 'string' ? rec : rec.point || JSON.stringify(rec)}
+                          </li>
                         ))}
                       </ul>
                     </div>
