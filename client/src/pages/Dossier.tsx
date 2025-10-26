@@ -4,45 +4,49 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import DocumentList from "@/components/DocumentList";
-import OntbrekendeInformatie from "@/components/OntbrekendeInformatie";
+import MissingInfo from "@/components/MissingInfo";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, FileText, AlertCircle, Sparkles } from "lucide-react";
+import { ArrowLeft, FileText, AlertCircle, Sparkles, AlertTriangle } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 import { useMemo } from "react";
+import type { MissingRequirement } from "@shared/schema";
 
 export default function Dossier() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const currentCase = useActiveCase();
 
-  // Extract ontbrekend_bewijs from legal advice
-  const ontbrekendBewijs = useMemo(() => {
-    if (!currentCase?.fullAnalysis?.legalAdviceJson) {
+  // Extract missing_elements from RKOS.flow (Volledige analyse) - AUTHORITATIVE SOURCE
+  const missingRequirements = useMemo(() => {
+    if (!currentCase?.fullAnalysis?.succesKansAnalysis) {
       return [];
     }
 
-    const adviceData = currentCase.fullAnalysis.legalAdviceJson as any;
-    let ontbrekend = adviceData?.ontbrekend_bewijs || [];
+    const succesKans = currentCase.fullAnalysis.succesKansAnalysis as any;
+    const missing_elements = succesKans.missing_elements || [];
 
-    // Parse if it's a string (sometimes stored as JSON string)
-    if (typeof ontbrekend === 'string') {
-      try {
-        ontbrekend = JSON.parse(ontbrekend);
-      } catch (e) {
-        console.error('Failed to parse ontbrekend_bewijs:', e);
-        return [];
-      }
+    if (!Array.isArray(missing_elements) || missing_elements.length === 0) {
+      return [];
     }
 
-    // Return only if it's a valid array of objects with item and why_needed
-    if (Array.isArray(ontbrekend) && ontbrekend.length > 0) {
-      return ontbrekend.filter((item: any) => 
-        typeof item === 'object' && (item.item || item.why_needed)
-      );
-    }
-
-    return [];
-  }, [currentCase?.fullAnalysis?.legalAdviceJson]);
+    // Convert RKOS missing_elements to MissingRequirement format
+    return missing_elements.map((elem: any, index: number): MissingRequirement => {
+      // Handle both string and object formats
+      const item = typeof elem === 'string' ? elem : (elem.point || elem.item || '');
+      const why_needed = typeof elem === 'object' ? (elem.why_it_matters || elem.why_needed || '') : '';
+      
+      return {
+        id: `rkos-missing-${index}`,
+        caseId: currentCase.id,
+        key: `rkos-missing-${index}`,
+        label: item,
+        description: why_needed,
+        required: true, // All RKOS missing elements are important
+        inputKind: 'text' as const, // Default to text, but component allows document upload too
+        createdAt: new Date(),
+      };
+    });
+  }, [currentCase?.fullAnalysis?.succesKansAnalysis, currentCase?.id]);
 
   if (authLoading) {
     return (
@@ -112,49 +116,103 @@ export default function Dossier() {
           <div className="space-y-1">
             <p className="font-semibold">Automatische documentanalyse</p>
             <p className="text-sm">
-              Elk document wordt automatisch geanalyseerd na upload. U ziet direct onder elk document de AI-analyse met een samenvatting, tags en eventuele opmerkingen.
+              Elk document wordt automatisch geanalyseerd na upload. Vul ontbrekende informatie aan en klik op "Versturen" om een heranalyse te starten.
             </p>
           </div>
         </AlertDescription>
       </Alert>
 
-      {/* Documents Summary Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Documenten ({docCount})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {docCount === 0 ? (
-            <div className="text-center py-8">
-              <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-              <p className="text-muted-foreground mb-4">
-                Nog geen documenten geüpload
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Upload documenten om ze te laten controleren
-              </p>
-            </div>
-          ) : (
-            <DocumentList 
-              documents={currentCase.documents || []} 
-              caseId={currentCase.id}
-            />
-          )}
-        </CardContent>
-      </Card>
+      {/* 2-Column Grid Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column: Documents */}
+        <Card className="h-fit">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Documenten ({docCount})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {docCount === 0 ? (
+              <div className="text-center py-8">
+                <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                <p className="text-muted-foreground mb-4">
+                  Nog geen documenten geüpload
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Upload documenten om ze te laten controleren
+                </p>
+              </div>
+            ) : (
+              <DocumentList 
+                documents={currentCase.documents || []} 
+                caseId={currentCase.id}
+              />
+            )}
+          </CardContent>
+        </Card>
 
-      {/* Ontbrekende Informatie - from Legal Advice section 5 */}
-      <OntbrekendeInformatie ontbrekendBewijs={ontbrekendBewijs} />
+        {/* Right Column: Missing Information from RKOS.flow */}
+        <div>
+          {missingRequirements.length > 0 ? (
+            <MissingInfo
+              requirements={missingRequirements}
+              caseId={currentCase.id}
+              caseDocuments={currentCase.documents || []}
+              onUpdated={() => {
+                // After submitting missing info, suggest re-analysis
+                console.log('Missing info updated - user should run re-analysis');
+              }}
+            />
+          ) : (
+            <Card className="border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-green-900 dark:text-green-100">
+                  <AlertTriangle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  Ontbrekende Informatie
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Alert className="border-green-300 bg-green-100 dark:bg-green-900 dark:border-green-700">
+                  <AlertDescription className="text-green-800 dark:text-green-200">
+                    {currentCase.fullAnalysis?.succesKansAnalysis ? (
+                      <>
+                        <p className="font-semibold mb-2">✅ Compleet dossier</p>
+                        <p className="text-sm">
+                          Op basis van de volledige analyse lijkt uw dossier compleet te zijn. Er zijn geen ontbrekende elementen gevonden.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-semibold mb-2">Nog geen analyse uitgevoerd</p>
+                        <p className="text-sm">
+                          Voer eerst een <strong>Volledige analyse</strong> uit op de Analyse pagina om te zien welke informatie nog ontbreekt.
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-3"
+                          onClick={() => setLocation('/analysis')}
+                          data-testid="button-go-to-analysis"
+                        >
+                          Ga naar Analyse
+                        </Button>
+                      </>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
 
       {/* Help text */}
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
           Upload alle relevante documenten voor uw zaak. Elk document wordt automatisch geanalyseerd
-          om het type, inhoud en relevantie te bepalen. Dit helpt u te zorgen dat uw dossier compleet is.
+          om het type, inhoud en relevantie te bepalen. Vul ontbrekende informatie aan en verstuur deze om een heranalyse te starten.
         </AlertDescription>
       </Alert>
     </div>
