@@ -272,31 +272,35 @@ export default function Analysis() {
         <Dialog open={fullAnalysisDialogOpen} onOpenChange={setFullAnalysisDialogOpen}>
           <DialogTrigger asChild>
             <Card 
-              className="cursor-pointer hover:shadow-lg transition-all relative h-full"
+              className="cursor-pointer hover:shadow-lg transition-shadow relative h-full"
               data-testid="card-full-analysis"
             >
               <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
               <CardHeader>
-                <CardTitle className="flex items-center gap-3 text-base">
-                  <FileSearch className="h-5 w-5 text-foreground" />
+                <CardTitle className="flex items-center gap-3">
+                  <FileSearch className="h-6 w-6 text-primary" />
                   Volledige analyse
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {fullAnalysis ? (
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <CheckCircle className="h-4 w-4" />
-                      <span>Uitgebreide analyse beschikbaar</span>
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Status:</span>{" "}
+                    <span className="font-medium">{fullAnalysis ? 'Analyse voltooid' : 'Nog niet uitgevoerd'}</span>
+                  </div>
+                  {succesKansAnalysis && (
+                    <div>
+                      <span className="text-muted-foreground">Kans op succes:</span>{" "}
+                      <span className="font-medium">{succesKansAnalysis.chance_of_success}%</span>
                     </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2 text-sm">
-                    <p className="text-muted-foreground">
-                      Nog niet uitgevoerd → Klik om te starten
-                    </p>
-                  </div>
-                )}
+                  )}
+                  {!fullAnalysis && (
+                    <div>
+                      <span className="text-muted-foreground">Actie:</span>{" "}
+                      <span className="font-medium">Klik om te starten</span>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </DialogTrigger>
@@ -472,16 +476,20 @@ export default function Analysis() {
             >
               <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
               <CardHeader>
-                <CardTitle className="flex items-center gap-3 text-base">
-                  <Lightbulb className="h-5 w-5 text-foreground" />
+                <CardTitle className="flex items-center gap-3">
+                  <Lightbulb className="h-6 w-6 text-primary" />
                   Juridisch advies
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Klik voor volledig advies</span>
+                  <div>
+                    <span className="text-muted-foreground">Status:</span>{" "}
+                    <span className="font-medium">Advies beschikbaar</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Actie:</span>{" "}
+                    <span className="font-medium">Klik voor volledig advies</span>
                   </div>
                 </div>
               </CardContent>
@@ -494,30 +502,34 @@ export default function Analysis() {
           >
             <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
             <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-base">
-                <Lightbulb className="h-5 w-5 text-foreground" />
+              <CardTitle className="flex items-center gap-3">
+                <Lightbulb className="h-6 w-6 text-primary" />
                 Juridisch advies
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2 text-sm">
-                <p className="text-muted-foreground mb-4">
-                  Nog niet opgesteld
-                </p>
-                <Button
-                  onClick={() => generateAdviceMutation.mutate()}
-                  disabled={generateAdviceMutation.isPending || !(succesKansAnalysis || fullAnalysis)}
-                  data-testid="button-start-full-analysis"
-                  size="sm"
-                  variant="outline"
-                >
-                  {generateAdviceMutation.isPending ? 'Adviseren...' : 'Stel advies op'}
-                </Button>
+                <div>
+                  <span className="text-muted-foreground">Status:</span>{" "}
+                  <span className="font-medium">Nog niet opgesteld</span>
+                </div>
                 {!(succesKansAnalysis || fullAnalysis) && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Eerst volledige analyse uitvoeren
-                  </p>
+                  <div>
+                    <span className="text-muted-foreground">Vereist:</span>{" "}
+                    <span className="font-medium">Eerst volledige analyse</span>
+                  </div>
                 )}
+                <div className="pt-2">
+                  <Button
+                    onClick={() => generateAdviceMutation.mutate()}
+                    disabled={generateAdviceMutation.isPending || !(succesKansAnalysis || fullAnalysis)}
+                    data-testid="button-start-full-analysis"
+                    size="sm"
+                    className="w-full"
+                  >
+                    {generateAdviceMutation.isPending ? 'Adviseren...' : 'Stel advies op'}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
