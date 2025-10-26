@@ -294,21 +294,23 @@ export default function JuridischeAnalyseDetails() {
     
     const sections = hasSamenvatting ? [
       { key: 'samenvatting_advies', title: 'Samenvatting Advies', isSummary: true },
-      { key: 'het_geschil', title: '1. Het Geschil' },
-      { key: 'de_feiten', title: '2. De Feiten' },
-      { key: 'betwiste_punten', title: '3. Betwiste Punten' },
-      { key: 'beschikbaar_bewijs', title: '4. Beschikbaar Bewijs' },
-      { key: 'ontbrekend_bewijs', title: '5. Ontbrekend Bewijs' },
-      { key: 'juridische_duiding', title: '6. Juridische Duiding' },
-      { key: 'vervolgstappen', title: '7. Vervolgstappen' },
+      { key: 'vervolgstappen', title: '1. Vervolgstappen' },
+      { key: 'divider', title: '', isDivider: true },
+      { key: 'het_geschil', title: '2. Het Geschil' },
+      { key: 'de_feiten', title: '3. De Feiten' },
+      { key: 'betwiste_punten', title: '4. Betwiste Punten' },
+      { key: 'beschikbaar_bewijs', title: '5. Beschikbaar Bewijs' },
+      { key: 'ontbrekend_bewijs', title: '6. Ontbrekend Bewijs' },
+      { key: 'juridische_duiding', title: '7. Juridische Duiding' },
     ] : [
-      { key: 'het_geschil', title: '1. Het Geschil' },
-      { key: 'de_feiten', title: '2. De Feiten' },
-      { key: 'betwiste_punten', title: '3. Betwiste Punten' },
-      { key: 'beschikbaar_bewijs', title: '4. Beschikbaar Bewijs' },
-      { key: 'ontbrekend_bewijs', title: '5. Ontbrekend Bewijs' },
-      { key: 'juridische_duiding', title: '6. Juridische Duiding' },
-      { key: 'vervolgstappen', title: '7. Vervolgstappen' },
+      { key: 'vervolgstappen', title: '1. Vervolgstappen' },
+      { key: 'divider', title: '', isDivider: true },
+      { key: 'het_geschil', title: '2. Het Geschil' },
+      { key: 'de_feiten', title: '3. De Feiten' },
+      { key: 'betwiste_punten', title: '4. Betwiste Punten' },
+      { key: 'beschikbaar_bewijs', title: '5. Beschikbaar Bewijs' },
+      { key: 'ontbrekend_bewijs', title: '6. Ontbrekend Bewijs' },
+      { key: 'juridische_duiding', title: '7. Juridische Duiding' },
     ];
 
     const allTextContent = sections
@@ -490,6 +492,13 @@ export default function JuridischeAnalyseDetails() {
             {/* Render sections */}
             <div className="space-y-6" data-testid="advice-content">
               {sections.map((section, idx) => {
+                // Render horizontal divider
+                if (section.isDivider) {
+                  return (
+                    <div key={section.key} className="my-8 border-t-2 border-gray-300 dark:border-gray-600"></div>
+                  );
+                }
+                
                 // IMPORTANT: Use RKOS.flow missing_elements instead of Create_advice ontbrekend_bewijs
                 let content = legalAdviceJson[section.key];
                 
