@@ -84,6 +84,7 @@ export const cases = pgTable("cases", {
   currentStep: varchar("current_step"),
   nextActionLabel: varchar("next_action_label"),
   hasUnseenMissingItems: boolean("has_unseen_missing_items").default(false), // Set to true after analysis if missing items exist, cleared on Dossier page visit
+  needsReanalysis: boolean("needs_reanalysis").default(false), // Set to true when new documents uploaded or missing info answered, cleared after RKOS analysis
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
