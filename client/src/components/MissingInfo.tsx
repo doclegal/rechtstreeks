@@ -226,7 +226,7 @@ export default function MissingInfo({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5" />
-            Wat we nog nodig hebben ({requirements.length})
+            Wat we nog nodig hebben
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
