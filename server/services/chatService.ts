@@ -176,7 +176,7 @@ export async function callChatFlow(
   
   const variables = {
     user_question: userQuestion,
-    info_json: context,
+    input_json: context, // Variable name must match Chat.flow prompt template
     conversation_history: conversationHistory,
   };
 
