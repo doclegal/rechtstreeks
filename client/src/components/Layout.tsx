@@ -103,12 +103,17 @@ export default function Layout({ children }: LayoutProps) {
                 </Link>
                 <Link 
                   href="/analysis" 
-                  className={`font-medium transition-colors ${
+                  className={`font-medium transition-colors relative flex items-center gap-2 ${
                     location === '/analysis' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                   }`}
                   data-testid="link-analysis"
                 >
                   Analyse
+                  {currentCase?.needsReanalysis && (
+                    <Badge className="text-xs px-1.5 py-0 bg-blue-500 hover:bg-blue-600 text-white">
+                      Nieuw
+                    </Badge>
+                  )}
                 </Link>
                 <Link 
                   href="/dossier" 
@@ -178,9 +183,16 @@ export default function Layout({ children }: LayoutProps) {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/analysis" data-testid="link-analysis-mobile">
-                      <FileSearch className="mr-2 h-4 w-4" />
-                      Analyse
+                    <Link href="/analysis" data-testid="link-analysis-mobile" className="flex items-center justify-between w-full">
+                      <div className="flex items-center">
+                        <FileSearch className="mr-2 h-4 w-4" />
+                        Analyse
+                      </div>
+                      {currentCase?.needsReanalysis && (
+                        <Badge className="text-xs px-1.5 py-0 bg-blue-500 hover:bg-blue-600 text-white ml-2">
+                          Nieuw
+                        </Badge>
+                      )}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
