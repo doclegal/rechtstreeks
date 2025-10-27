@@ -83,6 +83,7 @@ export const cases = pgTable("cases", {
   status: caseStatusEnum("status").default("NEW_INTAKE"),
   currentStep: varchar("current_step"),
   nextActionLabel: varchar("next_action_label"),
+  hasUnseenMissingItems: boolean("has_unseen_missing_items").default(false), // Set to true after analysis if missing items exist, cleared on Dossier page visit
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

@@ -1,0 +1,25 @@
+📄 Werkorder / interne communicatie over klus in Helmond
+
+Project: Bouwbedrijf Gevers – nieuwbouw loodgieterswerk
+Locatie: Kanaaldijk N.W. 112, Helmond
+Projectnummer: 24-071
+
+E-mail van voorman Peter Verhoeven aan magazijn (Jan de Groot):
+Datum: 9 augustus 2025, 15:42
+Onderwerp: spullen voor Helmond
+
+Hoi Jan,
+
+Kun jij maandagochtend ff een doos met ¾ koppelingen en een paar rollen tape meenemen naar Helmond?
+Ligt klaar bij stelling 3, ik heb het alvast apart gezet.
+De jongens hebben daar niks meer liggen.
+
+Groet,
+Peter
+
+Interne werkorder (fragment uit Excel):
+
+Datum	Project	Opdracht	Uitvoerder	Status
+12-08-2025	Gevers Helmond	Aanvullen koperfittingen + tape	J. de Groot	Gereed
+
+Opmerking veld: “Meegegeven aan Jan voor levering maandagochtend. Afspraak met Peter bevestigd.”

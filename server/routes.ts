@@ -1499,6 +1499,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log('✅ New record ID:', newRecord.id, 'succesKansAnalysis:', newRecord.succesKansAnalysis);
         }
 
+        // Check if there are missing elements and set flag
+        const hasMissingElements = rkosResult.missing_elements && 
+                                   Array.isArray(rkosResult.missing_elements) && 
+                                   rkosResult.missing_elements.length > 0;
+        
+        if (hasMissingElements) {
+          await storage.updateCase(caseId, {
+            hasUnseenMissingItems: true
+          });
+          console.log(`🔔 Set hasUnseenMissingItems flag - ${rkosResult.missing_elements.length} items found`);
+        }
+
         res.json({ 
           success: true,
           successChance: rkosResult
@@ -2567,6 +2579,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateAnalysis(fullAnalysis.id, {
           succesKansAnalysis: rkosData
         });
+        
+        // Check if there are missing elements and set flag
+        const hasMissingElements = rkosData.missing_elements && 
+                                   Array.isArray(rkosData.missing_elements) && 
+                                   rkosData.missing_elements.length > 0;
+        
+        if (hasMissingElements) {
+          await storage.updateCase(caseId, {
+            hasUnseenMissingItems: true
+          });
+          console.log(`🔔 Set hasUnseenMissingItems flag - ${rkosData.missing_elements.length} items found`);
+        }
         
         // Log event
         await storage.createEvent({
