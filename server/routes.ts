@@ -2902,12 +2902,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Case must be analyzed first" });
       }
 
-      // Prepare sender information (from user profile or case data)
+      // Prepare sender information (from case claimant data)
       const sender = {
-        name: req.user.claims.name || req.user.claims.email || "Niet opgegeven",
-        address: "Niet opgegeven",
+        name: caseData.claimantName || "Niet opgegeven",
+        address: caseData.claimantAddress || "Niet opgegeven",
         postal_code: "",
-        city: "",
+        city: caseData.claimantCity || "",
         email: req.user.claims.email || ""
       };
 
@@ -2916,7 +2916,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: caseData.counterpartyName || "Niet opgegeven",
         address: caseData.counterpartyAddress || "Niet opgegeven", 
         postal_code: "",
-        city: ""
+        city: caseData.counterpartyCity || ""
       };
 
       console.log("📝 Generating letter with MindStudio DraftFirstLetter.flow...");
