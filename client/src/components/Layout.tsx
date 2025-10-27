@@ -115,16 +115,37 @@ export default function Layout({ children }: LayoutProps) {
                     </Badge>
                   )}
                 </Link>
-                <Link 
-                  href="/chat" 
-                  className={`font-medium transition-colors relative flex items-center gap-2 ${
-                    location === '/chat' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                  data-testid="link-chat"
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  Chat
-                </Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button 
+                      className={`font-medium transition-colors relative flex items-center gap-2 ${
+                        location === '/chat' || location === '/qna' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                      data-testid="button-help-menu"
+                    >
+                      <HelpCircle className="h-4 w-4" />
+                      Help
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem asChild>
+                      <Link href="/chat" data-testid="link-chat-submenu">
+                        <MessageCircle className="mr-2 h-4 w-4" />
+                        Chat
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/qna" data-testid="link-qna-submenu">
+                        <HelpCircle className="mr-2 h-4 w-4" />
+                        Q&A
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem disabled data-testid="link-expert-submenu">
+                      <User className="mr-2 h-4 w-4" />
+                      Jurist vragen
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Link 
                   href="/letters" 
                   className={`font-medium transition-colors ${
@@ -195,6 +216,12 @@ export default function Layout({ children }: LayoutProps) {
                     <Link href="/chat" data-testid="link-chat-mobile">
                       <MessageCircle className="mr-2 h-4 w-4" />
                       Chat
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/qna" data-testid="link-qna-mobile">
+                      <HelpCircle className="mr-2 h-4 w-4" />
+                      Q&A
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
