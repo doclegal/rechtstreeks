@@ -19,7 +19,7 @@ interface CaseChatProps {
 
 export function CaseChat({ caseId }: CaseChatProps) {
   const [message, setMessage] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   // Fetch conversation history
@@ -81,10 +81,8 @@ export function CaseChat({ caseId }: CaseChatProps) {
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [history]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [history, sendMessageMutation.isPending]);
 
   const handleSend = () => {
     if (!message.trim()) return;
@@ -131,10 +129,7 @@ export function CaseChat({ caseId }: CaseChatProps) {
       </CardHeader>
       <CardContent className="flex flex-col flex-1 min-h-0 gap-4">
         {/* Messages area */}
-        <ScrollArea 
-          ref={scrollRef}
-          className="flex-1 pr-4"
-        >
+        <ScrollArea className="flex-1 pr-4">
           <div className="space-y-4">
             {isLoading && (
               <div className="flex items-center justify-center py-8">
@@ -193,6 +188,9 @@ export function CaseChat({ caseId }: CaseChatProps) {
                 </div>
               </div>
             )}
+            
+            {/* Invisible element to scroll to */}
+            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
 
