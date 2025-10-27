@@ -36,9 +36,10 @@ Preferred communication style: Simple, everyday language.
 - **Document Processing**: Multi-format parsing with text extraction.
 - **AI Integration**: Structured legal analysis (fact extraction, issue identification, risk assessment).
 - **Template System**: Configurable legal document templates with dynamic field population.
-- **Legal Advice Generation**: AI-powered via MindStudio (Create_advice.flow), supporting structured JSON or plain text output, and rendered in an A4 document layout.
+- **Legal Advice Generation**: AI-powered via MindStudio (Create_advice.flow), supporting structured JSON or plain text output, and rendered in a popup dialog on the Analysis page.
 - **Missing Information Check (Dossier Controle)**: AI-powered consolidation of missing information via MindStudio (missing_info.flow) from various analysis sources into a unified checklist.
 - **Summons Generation (Dagvaarding)**: AI-powered via MindStudio (CreateDagvaarding.flow), generating professional Dutch legal summons based on a strict JSON schema, sending complete case context without summarization, and generating PDFs via Puppeteer.
+- **Q&A Generation (Veelgestelde Vragen)**: AI-powered via MindStudio (InfoQnA.flow) to generate case-specific Q&A pairs. Supports both initial generation and incremental "add more questions" functionality. When adding more questions, existing Q&A items are sent as `{{qna_history}}` to prevent duplicate questions. New questions are appended (not replaced) to maintain full history.
 
 ### Template Management System
 - **Dynamic Templates**: Supports `[user_field]` for user input and `{ai_field}` for AI-generated content, defining JSON keys directly.

@@ -9,7 +9,7 @@ import { pdfService } from "./services/pdfService";
 import { mockIntegrations } from "./services/mockIntegrations";
 import { handleDatabaseError } from "./db";
 import { getConversationHistory, saveChatMessage, callChatFlow } from "./services/chatService";
-import { callInfoQnAFlow, saveQnAPairs, getQnAItems } from "./services/qnaService";
+import { callInfoQnAFlow, saveQnAPairs, getQnAItems, appendQnAPairs } from "./services/qnaService";
 import { validateSummonsV1 } from "@shared/summonsValidation";
 import { parseTemplateText, extractTextFromFile, validateParsedTemplate } from "./services/templateParser";
 import multer from "multer";
@@ -2586,7 +2586,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Save Q&A pairs to database
+      // Save Q&A pairs to database (replaces existing)
       const savedItems = await saveQnAPairs(caseId, qnaPairs);
       
       console.log(`✅ Generated and saved ${savedItems.length} Q&A items`);
@@ -2601,6 +2601,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error generating Q&A:", error);
       res.status(500).json({ 
         message: error.message || "Failed to generate Q&A",
+        success: false
+      });
+    }
+  });
+
+  // Generate MORE Q&A (append to existing)
+  app.post('/api/cases/:id/generate-more-qna', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      // Verify case ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      console.log(`➕ Generating MORE Q&A for case ${caseId}`);
+      
+      // Get existing Q&A items to use as history
+      const existingItems = await getQnAItems(caseId);
+      const existingQnA = existingItems.map(item => ({
+        question: item.question,
+        answer: item.answer
+      }));
+      
+      console.log(`📜 Found ${existingQnA.length} existing Q&A items to send as context`);
+      
+      // Call MindStudio InfoQnA.flow with existing Q&A as history
+      const newQnaPairs = await callInfoQnAFlow(caseId, existingQnA);
+      
+      if (newQnaPairs.length === 0) {
+        return res.status(200).json({ 
+          message: "Geen nieuwe vragen gegenereerd - mogelijk te weinig nieuwe informatie",
+          items: [],
+          count: 0
+        });
+      }
+      
+      // Append new Q&A pairs to existing ones
+      const appendedItems = await appendQnAPairs(caseId, newQnaPairs);
+      
+      console.log(`✅ Generated and appended ${appendedItems.length} new Q&A items`);
+      
+      res.json({ 
+        success: true,
+        items: appendedItems,
+        count: appendedItems.length,
+        total: existingItems.length + appendedItems.length
+      });
+      
+    } catch (error: any) {
+      console.error("Error generating more Q&A:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to generate more Q&A",
         success: false
       });
     }

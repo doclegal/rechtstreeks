@@ -3,7 +3,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { HelpCircle, Loader2, RefreshCw, AlertCircle } from "lucide-react";
+import { HelpCircle, Loader2, RefreshCw, AlertCircle, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -34,7 +34,7 @@ export function CaseQnA({ caseId }: CaseQnAProps) {
 
   const items: QnaItem[] = qnaData?.items || [];
 
-  // Generate Q&A mutation
+  // Generate Q&A mutation (replaces existing)
   const generateMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest('POST', `/api/cases/${caseId}/generate-qna`);
@@ -56,6 +56,28 @@ export function CaseQnA({ caseId }: CaseQnAProps) {
     },
   });
 
+  // Generate MORE Q&A mutation (appends to existing)
+  const generateMoreMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', `/api/cases/${caseId}/generate-more-qna`);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'qna'] });
+      toast({
+        title: "Nieuwe vragen toegevoegd",
+        description: `${data.count || 0} nieuwe vragen zijn toegevoegd aan de ${data.total || 0} totale vragen`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout bij toevoegen",
+        description: error.message || "Kon geen nieuwe vragen genereren",
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -69,25 +91,48 @@ export function CaseQnA({ caseId }: CaseQnAProps) {
               </CardDescription>
             </div>
           </div>
-          <Button
-            onClick={() => generateMutation.mutate()}
-            disabled={generateMutation.isPending || isLoading}
-            data-testid="button-generate-qna"
-            variant={items.length > 0 ? "outline" : "default"}
-            size="sm"
-          >
-            {generateMutation.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Genereren...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                {items.length > 0 ? 'Vernieuwen' : 'Genereer Q&A'}
-              </>
+          <div className="flex gap-2">
+            {items.length > 0 && (
+              <Button
+                onClick={() => generateMoreMutation.mutate()}
+                disabled={generateMoreMutation.isPending || generateMutation.isPending || isLoading}
+                data-testid="button-generate-more-qna"
+                variant="default"
+                size="sm"
+              >
+                {generateMoreMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Toevoegen...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Meer vragen
+                  </>
+                )}
+              </Button>
             )}
-          </Button>
+            <Button
+              onClick={() => generateMutation.mutate()}
+              disabled={generateMutation.isPending || generateMoreMutation.isPending || isLoading}
+              data-testid="button-generate-qna"
+              variant={items.length > 0 ? "outline" : "default"}
+              size="sm"
+            >
+              {generateMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Genereren...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  {items.length > 0 ? 'Vernieuwen' : 'Genereer Q&A'}
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -144,11 +189,13 @@ export function CaseQnA({ caseId }: CaseQnAProps) {
           </Accordion>
         )}
 
-        {generateMutation.isPending && (
+        {(generateMutation.isPending || generateMoreMutation.isPending) && (
           <div className="flex flex-col items-center justify-center py-12 gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <div className="text-center">
-              <p className="font-medium">Q&A wordt gegenereerd...</p>
+              <p className="font-medium">
+                {generateMoreMutation.isPending ? 'Nieuwe vragen worden toegevoegd...' : 'Q&A wordt gegenereerd...'}
+              </p>
               <p className="text-sm text-muted-foreground mt-1">
                 Dit kan 1-2 minuten duren
               </p>

@@ -113,17 +113,25 @@ export async function buildQnAContext(caseId: string): Promise<any> {
  * Call MindStudio InfoQnA.flow to generate Q&A pairs
  * Returns array of {question, answer} objects
  */
-export async function callInfoQnAFlow(caseId: string): Promise<Array<{question: string, answer: string}>> {
+export async function callInfoQnAFlow(caseId: string, existingQnA?: Array<{question: string, answer: string}>): Promise<Array<{question: string, answer: string}>> {
   console.log(`❓ Calling InfoQnA.flow for case ${caseId}`);
   
   const context = await buildQnAContext(caseId);
   
-  const variables = {
+  const variables: any = {
     input_json: context, // Complete case context
   };
 
+  // Add existing Q&A as history to prevent duplicates
+  if (existingQnA && existingQnA.length > 0) {
+    variables.qna_history = existingQnA;
+    console.log(`📜 Including ${existingQnA.length} existing Q&A items to prevent duplicates`);
+  }
+
   console.log(`📤 InfoQnA.flow variables: ${JSON.stringify({
     context_keys: Object.keys(context),
+    has_qna_history: !!existingQnA,
+    qna_history_count: existingQnA?.length || 0,
   })}`);
 
   const requestBody = {
@@ -269,4 +277,34 @@ export async function getQnAItems(caseId: string): Promise<QnaItem[]> {
     .from(qnaItems)
     .where(eq(qnaItems.caseId, caseId))
     .orderBy(qnaItems.order);
+}
+
+/**
+ * Append new Q&A pairs to existing ones (instead of replacing)
+ */
+export async function appendQnAPairs(caseId: string, newPairs: Array<{question: string, answer: string}>): Promise<QnaItem[]> {
+  console.log(`➕ Appending ${newPairs.length} Q&A pairs for case ${caseId}`);
+  
+  // Get existing items to determine the next order value
+  const existingItems = await getQnAItems(caseId);
+  const nextOrder = existingItems.length;
+  
+  console.log(`📊 Found ${existingItems.length} existing Q&A items, starting at order ${nextOrder}`);
+  
+  // Insert new Q&A pairs
+  const insertedItems: QnaItem[] = [];
+  
+  for (let i = 0; i < newPairs.length; i++) {
+    const [item] = await db.insert(qnaItems).values({
+      caseId,
+      question: newPairs[i].question,
+      answer: newPairs[i].answer,
+      order: nextOrder + i,
+    }).returning();
+    
+    insertedItems.push(item);
+  }
+  
+  console.log(`✅ Appended ${insertedItems.length} Q&A items`);
+  return insertedItems;
 }
