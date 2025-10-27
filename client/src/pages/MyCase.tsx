@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import DocumentList from "@/components/DocumentList";
 import DeadlineWarning from "@/components/DeadlineWarning";
 import { Link, useLocation } from "wouter";
-import { PlusCircle, Headset, MessageSquare, FileText, CheckCircle, Files, ArrowLeft } from "lucide-react";
+import { PlusCircle, Headset, MessageSquare, FileText, CheckCircle, Files, ArrowLeft, AlertCircle, FolderOpen } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 import { useActiveCase } from "@/contexts/CaseContext";
 
@@ -241,19 +241,34 @@ export default function MyCase() {
         </Dialog>
 
         <Link href="/dossier">
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow relative h-full" data-testid="card-documenten">
+          <Card className={`cursor-pointer hover:shadow-lg transition-shadow relative h-full ${currentCase?.hasUnseenMissingItems ? 'border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/20' : ''}`} data-testid="card-documenten">
             <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
             <CardHeader>
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Files className="h-8 w-8 text-primary" />
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${currentCase?.hasUnseenMissingItems ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-primary/10'}`}>
+                <FolderOpen className={`h-8 w-8 ${currentCase?.hasUnseenMissingItems ? 'text-amber-600 dark:text-amber-400' : 'text-primary'}`} />
               </div>
-              <CardTitle className="text-center">Dossier</CardTitle>
+              <CardTitle className="text-center flex items-center justify-center gap-2">
+                Dossier
+                {currentCase?.hasUnseenMissingItems && (
+                  <Badge className="bg-amber-500 hover:bg-amber-600 text-white">
+                    Nieuw
+                  </Badge>
+                )}
+              </CardTitle>
             </CardHeader>
             <CardContent className="text-center">
               <p className="text-2xl font-bold text-foreground">{docCount}</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground mb-2">
                 {docCount === 1 ? 'document' : 'documenten'} geüpload
               </p>
+              {currentCase?.hasUnseenMissingItems && (
+                <div className="flex items-start gap-2 mt-3 p-2 bg-amber-100 dark:bg-amber-900/30 rounded border border-amber-300 dark:border-amber-700">
+                  <AlertCircle className="h-4 w-4 text-amber-700 dark:text-amber-300 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-amber-800 dark:text-amber-200 font-medium text-left">
+                    Nieuwe ontbrekende informatie na analyse! Klik om te bekijken.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </Link>
