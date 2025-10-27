@@ -1529,9 +1529,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (hasMissingElements) {
           await storage.updateCase(caseId, {
-            hasUnseenMissingItems: true
+            hasUnseenMissingItems: true,
+            needsReanalysis: false  // Clear reanalysis flag since we just ran RKOS
           });
           console.log(`🔔 Set hasUnseenMissingItems flag - ${rkosResult.missing_elements.length} items found`);
+          console.log(`✅ Cleared needsReanalysis flag - RKOS analysis completed`);
+        } else {
+          // No missing elements, just clear the reanalysis flag
+          await storage.updateCase(caseId, {
+            needsReanalysis: false
+          });
+          console.log(`✅ Cleared needsReanalysis flag - RKOS analysis completed`);
         }
 
         res.json({ 
@@ -2613,9 +2621,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (hasMissingElements) {
           await storage.updateCase(caseId, {
-            hasUnseenMissingItems: true
+            hasUnseenMissingItems: true,
+            needsReanalysis: false  // Clear reanalysis flag since we just ran RKOS
           });
           console.log(`🔔 Set hasUnseenMissingItems flag - ${rkosData.missing_elements.length} items found`);
+          console.log(`✅ Cleared needsReanalysis flag - RKOS analysis completed`);
+        } else {
+          // No missing elements, just clear the reanalysis flag
+          await storage.updateCase(caseId, {
+            needsReanalysis: false
+          });
+          console.log(`✅ Cleared needsReanalysis flag - RKOS analysis completed`);
         }
         
         // Log event
