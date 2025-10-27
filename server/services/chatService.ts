@@ -191,7 +191,7 @@ export async function callChatFlow(
   console.log(`🔑 API Key status: ${hasApiKey ? 'Present' : 'Missing'} (${keyPrefix})`);
 
   const requestBody = {
-    workerId: process.env.MINDSTUDIO_WORKER_ID,
+    workerId: process.env.MS_AGENT_APP_ID, // Same as RKOS.flow and Create_advice.flow
     variables,
     workflow: "Chat.flow", // Case-sensitive!
     includeBillingCost: true
