@@ -14,7 +14,6 @@ import { useActiveCase } from "@/contexts/CaseContext";
 import DocumentList from "@/components/DocumentList";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { CaseQnA } from "@/components/CaseQnA";
 
 export default function Analysis() {
   const { user, isLoading: authLoading } = useAuth();
@@ -603,13 +602,6 @@ export default function Analysis() {
               </p>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Q&A SECTION */}
-      {caseId && (
-        <div className="mt-6" data-testid="section-qna">
-          <CaseQnA caseId={caseId} />
         </div>
       )}
 
