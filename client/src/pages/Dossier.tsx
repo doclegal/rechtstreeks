@@ -37,13 +37,11 @@ export default function Dossier() {
       
       return {
         id: `rkos-missing-${index}`,
-        caseId: currentCase.id,
         key: `rkos-missing-${index}`,
         label: item,
         description: why_needed,
         required: true, // All RKOS missing elements are important
-        inputKind: undefined, // Allow both text and document upload
-        createdAt: new Date(),
+        inputKind: 'text' as const, // Default to text, but can upload documents too
       };
     });
   }, [currentCase?.fullAnalysis?.succesKansAnalysis, currentCase?.id]);
@@ -109,19 +107,6 @@ export default function Dossier() {
         <RIcon size="md" className="opacity-10" />
       </div>
 
-      {/* Info Alert */}
-      <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
-        <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        <AlertDescription className="text-blue-800 dark:text-blue-200">
-          <div className="space-y-1">
-            <p className="font-semibold">Automatische documentanalyse</p>
-            <p className="text-sm">
-              Elk document wordt automatisch geanalyseerd na upload. Vul ontbrekende informatie aan en klik op "Versturen" om een heranalyse te starten.
-            </p>
-          </div>
-        </AlertDescription>
-      </Alert>
-
       {/* 2-Column Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column: Documents */}
@@ -151,6 +136,26 @@ export default function Dossier() {
             )}
           </CardContent>
         </Card>
+
+        {/* Info Card - same size as Documents */}
+        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800 h-fit">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-100">
+              <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              Automatische documentanalyse
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              Elk document wordt automatisch geanalyseerd na upload. Vul ontbrekende informatie aan en klik op "Versturen" om een heranalyse te starten.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Second Row: Missing Information */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div></div> {/* Empty left column to align with documents */}
 
         {/* Right Column: Missing Information from RKOS.flow */}
         <div>
@@ -206,15 +211,6 @@ export default function Dossier() {
           )}
         </div>
       </div>
-
-      {/* Help text */}
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Upload alle relevante documenten voor uw zaak. Elk document wordt automatisch geanalyseerd
-          om het type, inhoud en relevantie te bepalen. Vul ontbrekende informatie aan en verstuur deze om een heranalyse te starten.
-        </AlertDescription>
-      </Alert>
     </div>
   );
 }
