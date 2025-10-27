@@ -225,12 +225,13 @@ export async function callChatFlow(
     console.log("📥 Chat.flow raw response received");
     console.log("📊 Response structure:", JSON.stringify(flowResult, null, 2));
 
-    // Extract assistant response
-    // MindStudio typically returns the answer in result.assistant_response or result.answer
+    // Extract assistant response from Chat.flow End output
     let assistantResponse = '';
     
     if (flowResult.result) {
-      assistantResponse = flowResult.result.assistant_response 
+      // Chat.flow returns result.chat_response from End step
+      assistantResponse = flowResult.result.chat_response 
+        || flowResult.result.assistant_response 
         || flowResult.result.answer 
         || flowResult.result.response
         || flowResult.result.text
