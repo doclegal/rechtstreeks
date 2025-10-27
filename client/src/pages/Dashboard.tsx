@@ -11,7 +11,9 @@ import {
   FileSearch, 
   Mail, 
   Scale,
-  PlusCircle
+  PlusCircle,
+  FolderOpen,
+  AlertCircle
 } from "lucide-react";
 import { useEffect } from "react";
 import { format } from "date-fns";
@@ -251,6 +253,47 @@ export default function Dashboard() {
                   {hasAnalysis 
                     ? "Bekijk de juridische analyse van uw zaak"
                     : "Start een analyse om uw juridische positie te begrijpen"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* Dossier */}
+        <Link href="/dossier" data-testid="tile-dossier">
+          <Card className={`hover:shadow-lg transition-shadow cursor-pointer h-full relative ${currentCase?.hasUnseenMissingItems ? 'border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/20' : ''}`}>
+            <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <FolderOpen className={`h-6 w-6 ${currentCase?.hasUnseenMissingItems ? 'text-amber-600 dark:text-amber-400' : 'text-primary'}`} />
+                Dossier
+                {currentCase?.hasUnseenMissingItems && (
+                  <Badge className="ml-auto bg-amber-500 hover:bg-amber-600 text-white">
+                    Nieuw
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Documenten:</span>{" "}
+                  <span className="font-medium" data-testid="summary-documents-count">
+                    {currentCase?.documents?.length || 0}
+                  </span>
+                </div>
+                {currentCase?.hasUnseenMissingItems && (
+                  <div className="flex items-start gap-2 mt-3 p-2 bg-amber-100 dark:bg-amber-900/30 rounded border border-amber-300 dark:border-amber-700">
+                    <AlertCircle className="h-4 w-4 text-amber-700 dark:text-amber-300 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-amber-800 dark:text-amber-200 font-medium">
+                      Nieuwe ontbrekende informatie na analyse! Klik om te bekijken.
+                    </p>
+                  </div>
+                )}
+                <p className="text-muted-foreground pt-2">
+                  {currentCase?.hasUnseenMissingItems 
+                    ? "Bekijk en vul ontbrekende informatie aan"
+                    : "Beheer uw documenten en dossier"}
                 </p>
               </div>
             </CardContent>
