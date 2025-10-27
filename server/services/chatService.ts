@@ -175,13 +175,13 @@ export async function callChatFlow(
   const context = await buildCaseContext(caseId);
   
   const variables = {
-    user_question: userQuestion,
-    input_json: context, // Variable name must match Chat.flow prompt template
-    conversation_history: conversationHistory,
+    last_question: userQuestion, // The specific question to answer NOW
+    input_json: context, // Complete case context
+    conversation_history: conversationHistory, // Full conversation for context
   };
 
   console.log(`📤 Chat.flow variables: ${JSON.stringify({
-    user_question: userQuestion,
+    last_question: userQuestion,
     context_keys: Object.keys(context),
     history_length: conversationHistory.length,
   })}`);
@@ -223,19 +223,35 @@ export async function callChatFlow(
 
     const flowResult = await response.json();
     console.log("📥 Chat.flow raw response received");
-    console.log("📊 Response structure:", JSON.stringify(flowResult, null, 2));
-
+    
     // Extract assistant response from Chat.flow End output
     let assistantResponse = '';
     
     if (flowResult.result) {
       // Chat.flow returns result.chat_response from End step
-      assistantResponse = flowResult.result.chat_response 
+      const rawResponse = flowResult.result.chat_response 
         || flowResult.result.assistant_response 
         || flowResult.result.answer 
         || flowResult.result.response
-        || flowResult.result.text
-        || JSON.stringify(flowResult.result);
+        || flowResult.result.text;
+      
+      // If the response is still a JSON string, try to parse it
+      if (typeof rawResponse === 'string') {
+        // Check if it looks like JSON
+        if (rawResponse.trim().startsWith('{') && rawResponse.includes('chat_response')) {
+          try {
+            const parsed = JSON.parse(rawResponse);
+            assistantResponse = parsed.chat_response || rawResponse;
+          } catch (e) {
+            // Not valid JSON, use as-is
+            assistantResponse = rawResponse;
+          }
+        } else {
+          assistantResponse = rawResponse;
+        }
+      } else {
+        assistantResponse = JSON.stringify(flowResult.result);
+      }
     } else if (flowResult.output) {
       assistantResponse = flowResult.output;
     } else {
