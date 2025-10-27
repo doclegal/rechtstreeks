@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
-import { FileText, PlusCircle, Download, Mail, ArrowLeft } from "lucide-react";
+import { FileText, PlusCircle, Download, Mail, ArrowLeft, Trash2 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import { RIcon } from "@/components/RIcon";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -203,149 +204,198 @@ export default function Letters() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Generate Letter Tile */}
-          <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
-            <DialogTrigger asChild>
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full relative" data-testid="tile-generate-letter">
-                <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-3">
-                    <PlusCircle className="h-6 w-6 text-primary" />
-                    Genereer een brief
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">
-                    Maak een nieuwe juridische brief aan voor uw zaak
-                  </p>
-                </CardContent>
-              </Card>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nieuwe brief genereren</DialogTitle>
-                <DialogDescription>
-                  Selecteer het type brief en de gewenste toon
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="brief-type">Brief type</Label>
-                  <Select value={briefType} onValueChange={setBriefType}>
-                    <SelectTrigger id="brief-type" data-testid="select-brief-type">
-                      <SelectValue placeholder="Selecteer brief type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="LAATSTE_AANMANING">Laatste aanmaning</SelectItem>
-                      <SelectItem value="INGEBREKESTELLING">Ingebrekestelling</SelectItem>
-                      <SelectItem value="INFORMATIEVERZOEK">Informatieverzoek</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="tone">Toon</Label>
-                  <Select value={tone} onValueChange={setTone}>
-                    <SelectTrigger id="tone" data-testid="select-tone">
-                      <SelectValue placeholder="Selecteer toon" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="zakelijk-vriendelijk">Zakelijk-vriendelijk</SelectItem>
-                      <SelectItem value="formeel">Formeel</SelectItem>
-                      <SelectItem value="streng">Streng</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button 
-                  onClick={handleGenerateLetter}
-                  disabled={letterMutation.isPending}
-                  className="w-full"
-                  data-testid="button-generate-letter"
-                >
-                  {letterMutation.isPending ? "Genereren..." : "Genereer brief"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* Letter Type Tiles */}
-          {letterTypes.map(({ type, letter, count }) => (
-            <Dialog 
-              key={type}
-              open={previewDialogOpen && selectedLetterType === type}
-              onOpenChange={(open) => {
-                setPreviewDialogOpen(open);
-                if (!open) setSelectedLetterType(null);
-              }}
-            >
+        <>
+          {/* Action Tiles */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Generate Letter Tile */}
+            <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
               <DialogTrigger asChild>
-                <Card 
-                  className="hover:shadow-lg transition-shadow cursor-pointer h-full relative" 
-                  data-testid={`tile-letter-${type}`}
-                  onClick={() => {
-                    setSelectedLetterType(type);
-                    setPreviewDialogOpen(true);
-                  }}
-                >
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full relative" data-testid="tile-generate-letter">
                   <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
                   <CardHeader>
                     <CardTitle className="flex items-center gap-3">
-                      <FileText className="h-6 w-6 text-primary" />
-                      {getLetterTypeLabel(type)}
+                      <PlusCircle className="h-6 w-6 text-primary" />
+                      Genereer een brief
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Aantal:</span>{" "}
-                        <span className="font-medium" data-testid={`text-count-${type}`}>{count}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Laatst gegenereerd:</span>{" "}
-                        <span className="font-medium" data-testid={`text-date-${type}`}>
-                          {formatDate(letter.createdAt)}
-                        </span>
-                      </div>
+                      <p className="text-muted-foreground">
+                        Maak een nieuwe juridische brief aan voor uw zaak
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
               </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+              <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>{getLetterTypeLabel(type)}</DialogTitle>
+                  <DialogTitle>Nieuwe brief genereren</DialogTitle>
                   <DialogDescription>
-                    Laatst gegenereerd op {formatDate(letter.createdAt)}
+                    Selecteer het type brief en de gewenste toon
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
-                  <div 
-                    className="bg-card border border-border rounded-lg p-8"
-                    style={{
-                      minHeight: '400px',
-                      maxHeight: '500px',
-                      overflowY: 'auto'
-                    }}
-                    data-testid={`letter-preview-${type}`}
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="brief-type">Brief type</Label>
+                    <Select value={briefType} onValueChange={setBriefType}>
+                      <SelectTrigger id="brief-type" data-testid="select-brief-type">
+                        <SelectValue placeholder="Selecteer brief type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="LAATSTE_AANMANING">Laatste aanmaning</SelectItem>
+                        <SelectItem value="INGEBREKESTELLING">Ingebrekestelling</SelectItem>
+                        <SelectItem value="INFORMATIEVERZOEK">Informatieverzoek</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="tone">Toon</Label>
+                    <Select value={tone} onValueChange={setTone}>
+                      <SelectTrigger id="tone" data-testid="select-tone">
+                        <SelectValue placeholder="Selecteer toon" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="zakelijk-vriendelijk">Zakelijk-vriendelijk</SelectItem>
+                        <SelectItem value="formeel">Formeel</SelectItem>
+                        <SelectItem value="streng">Streng</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button 
+                    onClick={handleGenerateLetter}
+                    disabled={letterMutation.isPending}
+                    className="w-full"
+                    data-testid="button-generate-letter"
                   >
-                    <div dangerouslySetInnerHTML={{ __html: letter.html }} />
-                  </div>
-                  <div className="flex gap-3">
-                    <Button 
-                      onClick={() => handleDownload(letter)}
-                      className="flex-1"
-                      data-testid={`button-download-${type}`}
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </Button>
-                  </div>
+                    {letterMutation.isPending ? "Genereren..." : "Genereer brief"}
+                  </Button>
                 </div>
               </DialogContent>
             </Dialog>
-          ))}
-        </div>
+
+            {/* Ingebrekestelling Quick Tile */}
+            <Card 
+              className="hover:shadow-lg transition-shadow cursor-pointer h-full relative" 
+              data-testid="tile-ingebrekestelling"
+              onClick={() => {
+                setBriefType("INGEBREKESTELLING");
+                setGenerateDialogOpen(true);
+              }}
+            >
+              <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  <Mail className="h-6 w-6 text-primary" />
+                  Ingebrekestelling
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <p className="text-muted-foreground">
+                    Snel een formele ingebrekestelling genereren
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Separator */}
+          {letters.length > 0 && (
+            <>
+              <Separator className="my-8" />
+
+              {/* Document Overview */}
+              <div>
+                <h2 className="text-xl font-semibold text-foreground mb-4">Gegenereerde brieven</h2>
+                <div className="space-y-3">
+                  {letters.map((letter: any, index: number) => (
+                    <Dialog 
+                      key={letter.id}
+                      open={previewDialogOpen && selectedLetterType === letter.id}
+                      onOpenChange={(open) => {
+                        setPreviewDialogOpen(open);
+                        if (!open) setSelectedLetterType(null);
+                      }}
+                    >
+                      <DialogTrigger asChild>
+                        <Card 
+                          className="hover:shadow-md transition-shadow cursor-pointer"
+                          data-testid={`document-${index}`}
+                          onClick={() => {
+                            setSelectedLetterType(letter.id);
+                            setPreviewDialogOpen(true);
+                          }}
+                        >
+                          <CardContent className="py-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3 flex-1">
+                                <FileText className="h-5 w-5 text-primary flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-foreground">
+                                    {getLetterTypeLabel(letter.briefType || "Brief")}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {formatDate(letter.createdAt)}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDownload(letter);
+                                  }}
+                                  data-testid={`button-download-${index}`}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>{getLetterTypeLabel(letter.briefType || "Brief")}</DialogTitle>
+                          <DialogDescription>
+                            Gegenereerd op {formatDate(letter.createdAt)}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div 
+                            className="bg-card border border-border rounded-lg p-8"
+                            style={{
+                              minHeight: '400px',
+                              maxHeight: '500px',
+                              overflowY: 'auto'
+                            }}
+                            data-testid={`letter-preview-${letter.id}`}
+                          >
+                            <div dangerouslySetInnerHTML={{ __html: letter.html }} />
+                          </div>
+                          <div className="flex gap-3">
+                            <Button 
+                              onClick={() => handleDownload(letter)}
+                              className="flex-1"
+                              data-testid={`button-download-dialog-${letter.id}`}
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              Download
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </>
       )}
     </div>
   );
