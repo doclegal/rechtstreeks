@@ -159,9 +159,10 @@ export async function callInfoQnAFlow(caseId: string): Promise<Array<{question: 
 
     const flowResult = await response.json();
     console.log("📥 InfoQnA.flow raw response received");
+    console.log("📥 InfoQnA.flow full response:", JSON.stringify(flowResult, null, 2));
     
     // Extract Q&A pairs from InfoQnA.flow End output
-    // Expected format: result.qna_pairs as array of {question, answer}
+    // Expected format: result.qna_pairs, result.qna_items, or result.qna_json.qna
     let qnaPairs: Array<{question: string, answer: string}> = [];
     
     if (flowResult.result?.qna_pairs) {
@@ -188,6 +189,25 @@ export async function callInfoQnAFlow(caseId: string): Promise<Array<{question: 
         }
       } else if (Array.isArray(rawItems)) {
         qnaPairs = rawItems;
+      }
+    } else if (flowResult.result?.qna_json) {
+      // New format from MindStudio: qna_json.qna
+      console.log("📥 Found qna_json structure");
+      let qnaJson = flowResult.result.qna_json;
+      
+      // Parse if string
+      if (typeof qnaJson === 'string') {
+        try {
+          qnaJson = JSON.parse(qnaJson);
+        } catch (e) {
+          console.error('Could not parse qna_json string');
+        }
+      }
+      
+      // Extract qna array
+      if (qnaJson?.qna && Array.isArray(qnaJson.qna)) {
+        qnaPairs = qnaJson.qna.filter((item: any) => item && item.question && item.answer);
+        console.log(`📥 Extracted ${qnaPairs.length} Q&A pairs from qna_json.qna`);
       }
     }
 
