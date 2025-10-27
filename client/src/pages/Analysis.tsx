@@ -43,6 +43,11 @@ export default function Analysis() {
         description: "Het advies is beschikbaar om te bekijken",
       });
       refetch();
+      setAdviceDialogOpen(false);
+      // Navigate to the advice details page after a short delay
+      setTimeout(() => {
+        setLocation('/analyse-details');
+      }, 500);
     },
     onError: (error: any) => {
       toast({
@@ -558,17 +563,24 @@ export default function Analysis() {
                     </p>
                   </div>
                 ) : (
-                  <Button
-                    onClick={() => {
-                      generateAdviceMutation.mutate();
-                      setAdviceDialogOpen(false);
-                    }}
-                    disabled={generateAdviceMutation.isPending}
-                    data-testid="button-generate-advice-dialog"
-                    className="w-full"
-                  >
-                    {generateAdviceMutation.isPending ? 'Adviseren...' : 'Stel advies op'}
-                  </Button>
+                  <div className="space-y-3">
+                    {generateAdviceMutation.isPending && (
+                      <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                          AI genereert uw juridisch advies... Dit kan enkele minuten duren.
+                        </p>
+                      </div>
+                    )}
+                    <Button
+                      onClick={() => generateAdviceMutation.mutate()}
+                      disabled={generateAdviceMutation.isPending}
+                      data-testid="button-generate-advice-dialog"
+                      className="w-full"
+                    >
+                      {generateAdviceMutation.isPending ? 'Adviseren...' : 'Stel advies op'}
+                    </Button>
+                  </div>
                 )}
               </div>
             </DialogContent>
