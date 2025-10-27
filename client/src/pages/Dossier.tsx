@@ -8,13 +8,34 @@ import MissingInfo from "@/components/MissingInfo";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, FileText, AlertCircle, Sparkles, AlertTriangle } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
+import { apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import type { MissingRequirement } from "@shared/schema";
 
 export default function Dossier() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const currentCase = useActiveCase();
+
+  // Clear the unseen missing items notification when viewing this page
+  useEffect(() => {
+    const clearNotification = async () => {
+      if (currentCase?.id && currentCase?.hasUnseenMissingItems) {
+        try {
+          await apiRequest('PATCH', `/api/cases/${currentCase.id}/clear-unseen-missing`);
+          
+          // Invalidate the case query to refresh the data
+          queryClient.invalidateQueries({ queryKey: ['/api/cases', currentCase.id] });
+          queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
+        } catch (error) {
+          console.error('Failed to clear unseen missing items notification:', error);
+        }
+      }
+    };
+
+    clearNotification();
+  }, [currentCase?.id, currentCase?.hasUnseenMissingItems]);
 
   // Extract missing_elements from RKOS.flow (Volledige analyse) - AUTHORITATIVE SOURCE
   const missingRequirements = useMemo(() => {

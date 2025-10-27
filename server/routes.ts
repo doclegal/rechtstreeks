@@ -290,6 +290,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Clear unseen missing items notification
+  app.patch('/api/cases/:id/clear-unseen-missing', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseData = await storage.getCase(req.params.id);
+      
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      await storage.updateCase(req.params.id, { hasUnseenMissingItems: false });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error clearing unseen missing items:", error);
+      res.status(500).json({ message: "Failed to clear notification" });
+    }
+  });
+
   // Case deadlines endpoint
   app.get('/api/cases/:id/deadlines', isAuthenticated, async (req: any, res) => {
     try {
