@@ -538,49 +538,81 @@ export default function Analysis() {
                         {legalAdviceJson.samenvatting_advies && (
                           <div>
                             <h3 className="font-semibold mb-2">Samenvatting Advies</h3>
-                            <p className="whitespace-pre-wrap">{legalAdviceJson.samenvatting_advies}</p>
+                            <p className="whitespace-pre-wrap">
+                              {typeof legalAdviceJson.samenvatting_advies === 'string' 
+                                ? legalAdviceJson.samenvatting_advies 
+                                : JSON.stringify(legalAdviceJson.samenvatting_advies, null, 2)}
+                            </p>
                           </div>
                         )}
                         {legalAdviceJson.vervolgstappen && (
                           <div>
                             <h3 className="font-semibold mb-2">Vervolgstappen</h3>
-                            <p className="whitespace-pre-wrap">{legalAdviceJson.vervolgstappen}</p>
+                            <p className="whitespace-pre-wrap">
+                              {typeof legalAdviceJson.vervolgstappen === 'string' 
+                                ? legalAdviceJson.vervolgstappen 
+                                : JSON.stringify(legalAdviceJson.vervolgstappen, null, 2)}
+                            </p>
                           </div>
                         )}
                         {legalAdviceJson.het_geschil && (
                           <div>
                             <h3 className="font-semibold mb-2">Het Geschil</h3>
-                            <p className="whitespace-pre-wrap">{legalAdviceJson.het_geschil}</p>
+                            <p className="whitespace-pre-wrap">
+                              {typeof legalAdviceJson.het_geschil === 'string' 
+                                ? legalAdviceJson.het_geschil 
+                                : JSON.stringify(legalAdviceJson.het_geschil, null, 2)}
+                            </p>
                           </div>
                         )}
                         {legalAdviceJson.de_feiten && (
                           <div>
                             <h3 className="font-semibold mb-2">De Feiten</h3>
-                            <p className="whitespace-pre-wrap">{legalAdviceJson.de_feiten}</p>
+                            <p className="whitespace-pre-wrap">
+                              {typeof legalAdviceJson.de_feiten === 'string' 
+                                ? legalAdviceJson.de_feiten 
+                                : JSON.stringify(legalAdviceJson.de_feiten, null, 2)}
+                            </p>
                           </div>
                         )}
                         {legalAdviceJson.betwiste_punten && (
                           <div>
                             <h3 className="font-semibold mb-2">Betwiste Punten</h3>
-                            <p className="whitespace-pre-wrap">{legalAdviceJson.betwiste_punten}</p>
+                            <p className="whitespace-pre-wrap">
+                              {typeof legalAdviceJson.betwiste_punten === 'string' 
+                                ? legalAdviceJson.betwiste_punten 
+                                : JSON.stringify(legalAdviceJson.betwiste_punten, null, 2)}
+                            </p>
                           </div>
                         )}
                         {legalAdviceJson.beschikbaar_bewijs && (
                           <div>
                             <h3 className="font-semibold mb-2">Beschikbaar Bewijs</h3>
-                            <p className="whitespace-pre-wrap">{legalAdviceJson.beschikbaar_bewijs}</p>
+                            <p className="whitespace-pre-wrap">
+                              {typeof legalAdviceJson.beschikbaar_bewijs === 'string' 
+                                ? legalAdviceJson.beschikbaar_bewijs 
+                                : JSON.stringify(legalAdviceJson.beschikbaar_bewijs, null, 2)}
+                            </p>
                           </div>
                         )}
                         {legalAdviceJson.ontbrekend_bewijs && (
                           <div>
                             <h3 className="font-semibold mb-2">Ontbrekend Bewijs</h3>
-                            <p className="whitespace-pre-wrap">{legalAdviceJson.ontbrekend_bewijs}</p>
+                            <p className="whitespace-pre-wrap">
+                              {typeof legalAdviceJson.ontbrekend_bewijs === 'string' 
+                                ? legalAdviceJson.ontbrekend_bewijs 
+                                : JSON.stringify(legalAdviceJson.ontbrekend_bewijs, null, 2)}
+                            </p>
                           </div>
                         )}
                         {legalAdviceJson.juridische_duiding && (
                           <div>
                             <h3 className="font-semibold mb-2">Juridische Duiding</h3>
-                            <p className="whitespace-pre-wrap">{legalAdviceJson.juridische_duiding}</p>
+                            <p className="whitespace-pre-wrap">
+                              {typeof legalAdviceJson.juridische_duiding === 'string' 
+                                ? legalAdviceJson.juridische_duiding 
+                                : JSON.stringify(legalAdviceJson.juridische_duiding, null, 2)}
+                            </p>
                           </div>
                         )}
                       </div>
