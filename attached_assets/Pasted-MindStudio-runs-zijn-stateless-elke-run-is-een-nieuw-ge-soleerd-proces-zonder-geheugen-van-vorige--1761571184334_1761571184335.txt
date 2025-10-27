@@ -1,0 +1,88 @@
+MindStudio-runs zijn stateless: elke run is een nieuw, geïsoleerd proces zonder geheugen van vorige interacties.
+Dat betekent:
+
+De flow kent de vorige vraag/antwoorden niet.
+
+Alles wat de AI moet weten (zaakdetails, feiten, bewijs, eerdere antwoorden) moet bij elke call opnieuw meegegeven worden in de launch_variables.
+
+Dus:
+
+{
+  "launch_variables": {
+    "user_question": "Wat gebeurt er als ik de auto niet repareer?",
+    "case_context": { … alle relevante zaakinfo … }
+  }
+}
+
+⚙️ Slimmere aanpak: compacte case_context + chatgeschiedenis
+
+Om te voorkomen dat je elke keer een megagroot JSON-blok stuurt, kun je dit in 3 lagen opdelen:
+
+1. Vaste basisinformatie (blijft gelijk voor de hele chat)
+
+Bijv.:
+
+{
+  "case_id": "ab123",
+  "case_title": "Loonvordering tegen werkgever",
+  "facts": "...",
+  "legal_issues": "...",
+  "evidence": [...]
+}
+
+2. Dynamische gesprekshistorie
+
+Je bewaart in je Replit-backend:
+
+[
+  {"user": "Wat kan ik eisen?", "assistant": "U kunt nakoming eisen."},
+  {"user": "En als hij niet betaalt?", "assistant": "Dan kunt u ontbinding vorderen."}
+]
+
+
+Bij elke nieuwe vraag voeg je dat toe aan de payload:
+
+{
+  "launch_variables": {
+    "case_context": { … },
+    "conversation_history": [...],
+    "user_question": "Wat als hij in beroep gaat?"
+  }
+}
+
+
+De flow-prompt in MindStudio bevat dan:
+
+Below is the user's question and a short conversation history:
+{{conversation_history}}
+
+Case context:
+{{case_context}}
+
+Answer in Dutch, clearly and practically. Refer only to information that fits this case.
+
+
+Zo blijft de context volledig, maar compact.
+
+🪄 Pro tip: automatisch opslaan van context in Replit
+
+Je kunt in je Replit-backend eenvoudig:
+
+De case_context opslaan in je DB of memory-cache (bijv. Redis of Supabase-table).
+
+Bij elke chatvraag:
+
+Haal case_context op via case_id.
+
+Voeg conversation_history toe.
+
+Stuur alles samen als één launch_variable.
+
+Zo hoeft de frontend niets te onthouden en blijft alles per gebruiker netjes gescheiden.
+
+🧩 Samenvattend
+Component	Wat doe je ermee
+Replit backend	Beheert case_context en gesprekshistorie
+MindStudio flow	Ontvangt per run de vraag + context, genereert antwoord
+Frontend	Stuurt alleen de vraag → backend → krijgt antwoord terug
+Voordeel	Contextcontrole, geen datalekrisico, makkelijk te debuggen

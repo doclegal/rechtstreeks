@@ -330,6 +330,18 @@ export const warrantyDocuments = pgTable("warranty_documents", {
   index("idx_warranty_documents_created").on(table.createdAt),
 ]);
 
+// Chat messages for case-specific AI conversations
+export const chatMessages = pgTable("chat_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  caseId: varchar("case_id").notNull().references(() => cases.id, { onDelete: "cascade" }),
+  role: varchar("role").notNull(), // 'user' or 'assistant'
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_chat_messages_case").on(table.caseId),
+  index("idx_chat_messages_created").on(table.createdAt),
+]);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   cases: many(cases),
@@ -350,6 +362,7 @@ export const casesRelations = relations(cases, ({ one, many }) => ({
   summons: many(summons),
   events: many(events),
   webhooks: many(webhooks),
+  chatMessages: many(chatMessages),
 }));
 
 export const caseDocumentsRelations = relations(caseDocuments, ({ one }) => ({
@@ -411,6 +424,13 @@ export const warrantyDocumentsRelations = relations(warrantyDocuments, ({ one })
   uploadedBy: one(users, {
     fields: [warrantyDocuments.uploadedByUserId],
     references: [users.id],
+  }),
+}));
+
+export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
+  case: one(cases, {
+    fields: [chatMessages.caseId],
+    references: [cases.id],
   }),
 }));
 
@@ -522,6 +542,11 @@ export const submitMissingInfoRequestSchema = z.object({
   responses: z.array(missingInfoResponseSchema),
 });
 
+export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -550,3 +575,5 @@ export type CaseStatus = typeof cases.status.enumValues[number];
 export type MissingRequirement = z.infer<typeof missingRequirementSchema>;
 export type MissingInfoResponse = z.infer<typeof missingInfoResponseSchema>;
 export type SubmitMissingInfoRequest = z.infer<typeof submitMissingInfoRequestSchema>;
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
