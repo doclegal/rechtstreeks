@@ -21,6 +21,7 @@ export default function Analysis() {
   const { toast } = useToast();
   const [fullAnalysisDialogOpen, setFullAnalysisDialogOpen] = useState(false);
   const [adviceDialogOpen, setAdviceDialogOpen] = useState(false);
+  const [legalAdviceDialogOpen, setLegalAdviceDialogOpen] = useState(false);
   const [location, setLocation] = useLocation();
   
   const currentCase = useActiveCase();
@@ -44,9 +45,9 @@ export default function Analysis() {
       });
       refetch();
       setAdviceDialogOpen(false);
-      // Navigate to the advice details page after a short delay
+      // Open the legal advice dialog to show the generated advice
       setTimeout(() => {
-        setLocation('/analyse-details');
+        setLegalAdviceDialogOpen(true);
       }, 500);
     },
     onError: (error: any) => {
@@ -487,8 +488,8 @@ export default function Analysis() {
         </Dialog>
 
         {/* JURIDISCHE ANALYSE CARD */}
-        {(legalAdviceFull || legalAdviceJson) ? (
-          <Link href="/analyse-details">
+        <Dialog open={legalAdviceDialogOpen} onOpenChange={setLegalAdviceDialogOpen}>
+          <DialogTrigger asChild>
             <Card 
               className="relative cursor-pointer hover:shadow-lg transition-shadow h-full"
               data-testid="card-juridische-analyse"
@@ -504,54 +505,92 @@ export default function Analysis() {
                 <div className="space-y-2 text-sm">
                   <div>
                     <span className="text-muted-foreground">Status:</span>{" "}
-                    <span className="font-medium">Advies beschikbaar</span>
+                    <span className="font-medium">{(legalAdviceFull || legalAdviceJson) ? 'Advies beschikbaar' : 'Nog niet opgesteld'}</span>
                   </div>
+                  {!(legalAdviceFull || legalAdviceJson) && !(succesKansAnalysis || fullAnalysis) && (
+                    <div>
+                      <span className="text-muted-foreground">Vereist:</span>{" "}
+                      <span className="font-medium">Eerst volledige analyse</span>
+                    </div>
+                  )}
                   <div>
                     <span className="text-muted-foreground">Actie:</span>{" "}
-                    <span className="font-medium">Klik voor volledig advies</span>
+                    <span className="font-medium">{(legalAdviceFull || legalAdviceJson) ? 'Klik voor volledig advies' : 'Klik om op te stellen'}</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
-          </Link>
-        ) : (
-          <Dialog open={adviceDialogOpen} onOpenChange={setAdviceDialogOpen}>
-            <DialogTrigger asChild>
-              <Card 
-                className="relative cursor-pointer hover:shadow-lg transition-shadow h-full"
-                data-testid="card-juridische-analyse"
-              >
-                <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-3">
-                    <Lightbulb className="h-6 w-6 text-primary" />
-                    Juridisch advies
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Status:</span>{" "}
-                      <span className="font-medium">Nog niet opgesteld</span>
-                    </div>
-                    {!(succesKansAnalysis || fullAnalysis) && (
-                      <div>
-                        <span className="text-muted-foreground">Vereist:</span>{" "}
-                        <span className="font-medium">Eerst volledige analyse</span>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Juridisch Advies</DialogTitle>
+            </DialogHeader>
+            {(legalAdviceFull || legalAdviceJson) ? (
+              <div className="space-y-4 mt-4">
+                <div className="prose prose-sm dark:prose-invert max-w-none bg-white dark:bg-gray-900 p-6 rounded-lg border">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    <strong>Zaak:</strong> {currentCase?.title || 'Onbekend'}
+                  </p>
+                  <div data-testid="text-legal-advice-content">
+                    {legalAdviceJson ? (
+                      <div className="space-y-6">
+                        <h2 className="text-lg font-bold">JURIDISCH ADVIES</h2>
+                        {legalAdviceJson.samenvatting_advies && (
+                          <div>
+                            <h3 className="font-semibold mb-2">Samenvatting Advies</h3>
+                            <p className="whitespace-pre-wrap">{legalAdviceJson.samenvatting_advies}</p>
+                          </div>
+                        )}
+                        {legalAdviceJson.vervolgstappen && (
+                          <div>
+                            <h3 className="font-semibold mb-2">Vervolgstappen</h3>
+                            <p className="whitespace-pre-wrap">{legalAdviceJson.vervolgstappen}</p>
+                          </div>
+                        )}
+                        {legalAdviceJson.het_geschil && (
+                          <div>
+                            <h3 className="font-semibold mb-2">Het Geschil</h3>
+                            <p className="whitespace-pre-wrap">{legalAdviceJson.het_geschil}</p>
+                          </div>
+                        )}
+                        {legalAdviceJson.de_feiten && (
+                          <div>
+                            <h3 className="font-semibold mb-2">De Feiten</h3>
+                            <p className="whitespace-pre-wrap">{legalAdviceJson.de_feiten}</p>
+                          </div>
+                        )}
+                        {legalAdviceJson.betwiste_punten && (
+                          <div>
+                            <h3 className="font-semibold mb-2">Betwiste Punten</h3>
+                            <p className="whitespace-pre-wrap">{legalAdviceJson.betwiste_punten}</p>
+                          </div>
+                        )}
+                        {legalAdviceJson.beschikbaar_bewijs && (
+                          <div>
+                            <h3 className="font-semibold mb-2">Beschikbaar Bewijs</h3>
+                            <p className="whitespace-pre-wrap">{legalAdviceJson.beschikbaar_bewijs}</p>
+                          </div>
+                        )}
+                        {legalAdviceJson.ontbrekend_bewijs && (
+                          <div>
+                            <h3 className="font-semibold mb-2">Ontbrekend Bewijs</h3>
+                            <p className="whitespace-pre-wrap">{legalAdviceJson.ontbrekend_bewijs}</p>
+                          </div>
+                        )}
+                        {legalAdviceJson.juridische_duiding && (
+                          <div>
+                            <h3 className="font-semibold mb-2">Juridische Duiding</h3>
+                            <p className="whitespace-pre-wrap">{legalAdviceJson.juridische_duiding}</p>
+                          </div>
+                        )}
                       </div>
+                    ) : (
+                      <div className="whitespace-pre-wrap">{legalAdviceFull}</div>
                     )}
-                    <div>
-                      <span className="text-muted-foreground">Actie:</span>{" "}
-                      <span className="font-medium">Klik om op te stellen</span>
-                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Juridisch advies opstellen</DialogTitle>
-              </DialogHeader>
+                </div>
+              </div>
+            ) : (
               <div className="space-y-4 mt-4">
                 <p className="text-sm text-muted-foreground">
                   Het systeem genereert een uitgebreid juridisch advies op basis van de volledige analyse van uw zaak.
@@ -583,9 +622,9 @@ export default function Analysis() {
                   </div>
                 )}
               </div>
-            </DialogContent>
-          </Dialog>
-        )}
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* READY FOR SUMMONS BANNER */}
