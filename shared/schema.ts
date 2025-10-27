@@ -342,6 +342,20 @@ export const chatMessages = pgTable("chat_messages", {
   index("idx_chat_messages_created").on(table.createdAt),
 ]);
 
+// Q&A items for case-specific frequently asked questions
+export const qnaItems = pgTable("qna_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  caseId: varchar("case_id").notNull().references(() => cases.id, { onDelete: "cascade" }),
+  question: text("question").notNull(),
+  answer: text("answer").notNull(),
+  order: integer("order").notNull().default(0), // Display order
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_qna_items_case").on(table.caseId),
+  index("idx_qna_items_order").on(table.order),
+]);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   cases: many(cases),
@@ -430,6 +444,13 @@ export const warrantyDocumentsRelations = relations(warrantyDocuments, ({ one })
 export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
   case: one(cases, {
     fields: [chatMessages.caseId],
+    references: [cases.id],
+  }),
+}));
+
+export const qnaItemsRelations = relations(qnaItems, ({ one }) => ({
+  case: one(cases, {
+    fields: [qnaItems.caseId],
     references: [cases.id],
   }),
 }));
@@ -547,6 +568,12 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
   createdAt: true,
 });
 
+export const insertQnaItemSchema = createInsertSchema(qnaItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -577,3 +604,5 @@ export type MissingInfoResponse = z.infer<typeof missingInfoResponseSchema>;
 export type SubmitMissingInfoRequest = z.infer<typeof submitMissingInfoRequestSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
+export type QnaItem = typeof qnaItems.$inferSelect;
+export type InsertQnaItem = z.infer<typeof insertQnaItemSchema>;
