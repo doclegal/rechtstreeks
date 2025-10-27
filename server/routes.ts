@@ -1669,12 +1669,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Missing information (from RKOS or consolidated check)
           missing_information: missingInformation,
           
-          // Dossier documents
+          // Dossier documents with signed URLs for MindStudio
           dossier: {
             document_count: documents.length,
-            documents: documents.map(doc => ({
-              filename: doc.filename,
-              extracted_text: doc.extractedText || ''
+            documents: await Promise.all(documents.map(async (doc: any) => {
+              let url = null;
+              
+              // Generate signed URL if document is in object storage
+              if (doc.storageKey) {
+                try {
+                  url = await fileService.generateSignedUrl(doc.storageKey, 48); // 48 hours validity
+                } catch (error) {
+                  console.warn(`⚠️ Could not generate signed URL for ${doc.filename}:`, error);
+                }
+              }
+              
+              return {
+                filename: doc.filename,
+                extracted_text: doc.extractedText || '',
+                url: url || undefined, // MindStudio can use this URL for "Extract Text from File" block
+              };
             }))
           },
           
@@ -2744,11 +2758,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         risks: analysisData.risks || [],
         recommendations: analysisData.recommendations || [],
         
-        // All documents summary (from Dossier)
-        all_documents: documents.map((doc: any) => ({
-          filename: doc.filename,
-          extracted_text: doc.extractedText || '',
-          document_analysis: doc.documentAnalysis || null,
+        // All documents summary (from Dossier) with signed URLs for MindStudio
+        all_documents: await Promise.all(documents.map(async (doc: any) => {
+          let url = null;
+          
+          // Generate signed URL if document is in object storage
+          if (doc.storageKey) {
+            try {
+              url = await fileService.generateSignedUrl(doc.storageKey, 48); // 48 hours validity
+            } catch (error) {
+              console.warn(`⚠️ Could not generate signed URL for ${doc.filename}:`, error);
+            }
+          }
+          
+          return {
+            filename: doc.filename,
+            extracted_text: doc.extractedText || '',
+            document_analysis: doc.documentAnalysis || null,
+            url: url || undefined, // MindStudio can use this URL for "Extract Text from File" block
+          };
         })),
       };
       
@@ -2759,6 +2787,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount_eur: inputData.amount_eur,
         facts_count: inputData.facts_known.length,
         documents_count: inputData.all_documents.length,
+        documents_with_urls: inputData.all_documents.filter((d: any) => d.url).length,
       });
       
       // Call MindStudio RKOS.flow

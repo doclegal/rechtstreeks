@@ -167,6 +167,43 @@ export class FileService {
     }
   }
 
+  async generateSignedUrl(storageKey: string, expiresInHours: number = 24): Promise<string | null> {
+    try {
+      const privateObjectDir = process.env.PRIVATE_OBJECT_DIR;
+      if (!privateObjectDir) {
+        console.error("PRIVATE_OBJECT_DIR not set. Object storage not configured.");
+        return null;
+      }
+      
+      // Parse bucket and path from private object directory
+      const fullPath = `${privateObjectDir}/${storageKey}`;
+      const { bucketName, objectName } = this.parseObjectPath(fullPath);
+      
+      const bucket = objectStorageClient.bucket(bucketName);
+      const fileObject = bucket.file(objectName);
+      
+      // Check if file exists
+      const [exists] = await fileObject.exists();
+      if (!exists) {
+        console.error(`File not found in object storage: ${storageKey}`);
+        return null;
+      }
+      
+      // Generate signed URL (valid for specified hours)
+      const [signedUrl] = await fileObject.getSignedUrl({
+        action: 'read',
+        expires: Date.now() + expiresInHours * 60 * 60 * 1000,
+      });
+      
+      console.log(`✅ Generated signed URL for ${storageKey} (valid for ${expiresInHours}h)`);
+      
+      return signedUrl;
+    } catch (error) {
+      console.error(`Error generating signed URL for ${storageKey}:`, error);
+      return null;
+    }
+  }
+
   async deleteFile(storageKey: string): Promise<void> {
     try {
       const filePath = path.join(this.uploadDir, storageKey);
