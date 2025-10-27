@@ -9,6 +9,7 @@ import { pdfService } from "./services/pdfService";
 import { mockIntegrations } from "./services/mockIntegrations";
 import { handleDatabaseError } from "./db";
 import { getConversationHistory, saveChatMessage, callChatFlow } from "./services/chatService";
+import { callInfoQnAFlow, saveQnAPairs, getQnAItems } from "./services/qnaService";
 import { validateSummonsV1 } from "@shared/summonsValidation";
 import { parseTemplateText, extractTextFromFile, validateParsedTemplate } from "./services/templateParser";
 import multer from "multer";
@@ -2535,6 +2536,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error processing chat message:", error);
       res.status(500).json({ 
         message: error.message || "Failed to process chat message",
+        success: false
+      });
+    }
+  });
+
+  // Q&A endpoints - Generate and fetch case-specific Q&A
+  app.get('/api/cases/:id/qna', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      // Verify case ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      // Get Q&A items
+      const items = await getQnAItems(caseId);
+      
+      res.json({ items });
+    } catch (error) {
+      console.error("Error fetching Q&A items:", error);
+      res.status(500).json({ message: "Failed to fetch Q&A items" });
+    }
+  });
+
+  app.post('/api/cases/:id/generate-qna', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      // Verify case ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      console.log(`❓ Generating Q&A for case ${caseId}`);
+      
+      // Call MindStudio InfoQnA.flow
+      const qnaPairs = await callInfoQnAFlow(caseId);
+      
+      if (qnaPairs.length === 0) {
+        return res.status(200).json({ 
+          message: "Geen Q&A gegenereerd - mogelijk te weinig informatie in het dossier",
+          items: []
+        });
+      }
+      
+      // Save Q&A pairs to database
+      const savedItems = await saveQnAPairs(caseId, qnaPairs);
+      
+      console.log(`✅ Generated and saved ${savedItems.length} Q&A items`);
+      
+      res.json({ 
+        success: true,
+        items: savedItems,
+        count: savedItems.length
+      });
+      
+    } catch (error: any) {
+      console.error("Error generating Q&A:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to generate Q&A",
         success: false
       });
     }
