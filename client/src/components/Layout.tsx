@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
-import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle, ArrowLeft, Shield, FileText, FileSearch, Mail, Palette, Briefcase, FolderOpen } from "lucide-react";
+import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle, ArrowLeft, Shield, FileText, FileSearch, Mail, Palette, Briefcase, FolderOpen, MessageCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useActiveCase } from "@/contexts/CaseContext";
 
@@ -130,6 +130,16 @@ export default function Layout({ children }: LayoutProps) {
                   )}
                 </Link>
                 <Link 
+                  href="/chat" 
+                  className={`font-medium transition-colors relative flex items-center gap-2 ${
+                    location === '/chat' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  data-testid="link-chat"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Chat
+                </Link>
+                <Link 
                   href="/letters" 
                   className={`font-medium transition-colors ${
                     location === '/letters' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
@@ -206,6 +216,12 @@ export default function Layout({ children }: LayoutProps) {
                           Nieuw
                         </Badge>
                       )}
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/chat" data-testid="link-chat-mobile">
+                      <MessageCircle className="mr-2 h-4 w-4" />
+                      Chat
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>

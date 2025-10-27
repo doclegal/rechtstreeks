@@ -22,6 +22,7 @@ import AllCases from "@/pages/AllCases";
 import StepView from "@/pages/StepView";
 import Warranty from "@/pages/Warranty";
 import Dossier from "@/pages/Dossier";
+import Chat from "@/pages/Chat";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -52,6 +53,7 @@ function Router() {
           <Route path="/letters" component={Letters} />
           <Route path="/summons" component={SummonsEditor} />
           <Route path="/dossier" component={Dossier} />
+          <Route path="/chat" component={Chat} />
           <Route path="/edit-case/:id" component={EditCase} />
           <Route path="/step/:stepId" component={StepView} />
           <Route path="/warranty" component={Warranty} />
