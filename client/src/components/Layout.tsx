@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
-import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle, ArrowLeft, Shield, FileText, FileSearch, Mail, Palette, Briefcase, FolderOpen, MessageCircle } from "lucide-react";
+import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle, ArrowLeft, Shield, FileText, FileSearch, Mail, Palette, Briefcase, MessageCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useActiveCase } from "@/contexts/CaseContext";
 
@@ -116,20 +116,6 @@ export default function Layout({ children }: LayoutProps) {
                   )}
                 </Link>
                 <Link 
-                  href="/dossier" 
-                  className={`font-medium transition-colors relative flex items-center gap-2 ${
-                    location === '/dossier' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                  data-testid="link-dossier"
-                >
-                  Dossier
-                  {currentCase?.hasUnseenMissingItems && (
-                    <Badge className="text-xs px-1.5 py-0 bg-amber-500 hover:bg-amber-600 text-white">
-                      Nieuw
-                    </Badge>
-                  )}
-                </Link>
-                <Link 
                   href="/chat" 
                   className={`font-medium transition-colors relative flex items-center gap-2 ${
                     location === '/chat' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
@@ -200,19 +186,6 @@ export default function Layout({ children }: LayoutProps) {
                       </div>
                       {currentCase?.needsReanalysis && (
                         <Badge className="text-xs px-1.5 py-0 bg-blue-500 hover:bg-blue-600 text-white ml-2">
-                          Nieuw
-                        </Badge>
-                      )}
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dossier" data-testid="link-dossier-mobile" className="flex items-center justify-between w-full">
-                      <div className="flex items-center">
-                        <FolderOpen className="mr-2 h-4 w-4" />
-                        Dossier
-                      </div>
-                      {currentCase?.hasUnseenMissingItems && (
-                        <Badge className="text-xs px-1.5 py-0 bg-amber-500 hover:bg-amber-600 text-white ml-2">
                           Nieuw
                         </Badge>
                       )}
