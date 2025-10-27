@@ -371,8 +371,8 @@ export default function MissingInfo({
                     )}
                     
                     {/* Document upload - show for 'document' or undefined inputKind */}
-                    {(req.inputKind === 'document' || !req.inputKind) && (
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
+                      {(req.inputKind === 'document' || !req.inputKind) && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -382,16 +382,16 @@ export default function MissingInfo({
                           <Upload className="mr-2 h-4 w-4" />
                           {req.inputKind === 'document' ? 'Upload document' : 'Of upload document'}
                         </Button>
-                        <button
-                          type="button"
-                          onClick={() => handleNotAvailable(req.id)}
-                          className="text-xs text-muted-foreground hover:text-foreground underline"
-                          data-testid={`link-not-available-${req.id}`}
-                        >
-                          Ik heb dit niet
-                        </button>
-                      </div>
-                    )}
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleNotAvailable(req.id)}
+                        className="text-xs text-muted-foreground hover:text-foreground underline"
+                        data-testid={`link-not-available-${req.id}`}
+                      >
+                        Ik heb dit niet
+                      </button>
+                    </div>
                     
                     {/* Unsupported input kind */}
                     {req.inputKind && req.inputKind !== 'text' && req.inputKind !== 'document' && (
