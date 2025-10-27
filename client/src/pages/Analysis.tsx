@@ -20,6 +20,7 @@ export default function Analysis() {
   const { isLoading: casesLoading, refetch } = useCases();
   const { toast } = useToast();
   const [fullAnalysisDialogOpen, setFullAnalysisDialogOpen] = useState(false);
+  const [adviceDialogOpen, setAdviceDialogOpen] = useState(false);
   const [location, setLocation] = useLocation();
   
   const currentCase = useActiveCase();
@@ -509,43 +510,69 @@ export default function Analysis() {
             </Card>
           </Link>
         ) : (
-          <Card 
-            className="relative h-full"
-            data-testid="card-juridische-analyse"
-          >
-            <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <Lightbulb className="h-6 w-6 text-primary" />
-                Juridisch advies
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Status:</span>{" "}
-                  <span className="font-medium">Nog niet opgesteld</span>
-                </div>
-                {!(succesKansAnalysis || fullAnalysis) && (
-                  <div>
-                    <span className="text-muted-foreground">Vereist:</span>{" "}
-                    <span className="font-medium">Eerst volledige analyse</span>
+          <Dialog open={adviceDialogOpen} onOpenChange={setAdviceDialogOpen}>
+            <DialogTrigger asChild>
+              <Card 
+                className="relative cursor-pointer hover:shadow-lg transition-shadow h-full"
+                data-testid="card-juridische-analyse"
+              >
+                <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-3">
+                    <Lightbulb className="h-6 w-6 text-primary" />
+                    Juridisch advies
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Status:</span>{" "}
+                      <span className="font-medium">Nog niet opgesteld</span>
+                    </div>
+                    {!(succesKansAnalysis || fullAnalysis) && (
+                      <div>
+                        <span className="text-muted-foreground">Vereist:</span>{" "}
+                        <span className="font-medium">Eerst volledige analyse</span>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-muted-foreground">Actie:</span>{" "}
+                      <span className="font-medium">Klik om op te stellen</span>
+                    </div>
                   </div>
-                )}
-                <div className="pt-2">
+                </CardContent>
+              </Card>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Juridisch advies opstellen</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 mt-4">
+                <p className="text-sm text-muted-foreground">
+                  Het systeem genereert een uitgebreid juridisch advies op basis van de volledige analyse van uw zaak.
+                </p>
+                {!(succesKansAnalysis || fullAnalysis) ? (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                      U moet eerst een volledige analyse uitvoeren voordat u een juridisch advies kunt opstellen.
+                    </p>
+                  </div>
+                ) : (
                   <Button
-                    onClick={() => generateAdviceMutation.mutate()}
-                    disabled={generateAdviceMutation.isPending || !(succesKansAnalysis || fullAnalysis)}
-                    data-testid="button-start-full-analysis"
-                    size="sm"
+                    onClick={() => {
+                      generateAdviceMutation.mutate();
+                      setAdviceDialogOpen(false);
+                    }}
+                    disabled={generateAdviceMutation.isPending}
+                    data-testid="button-generate-advice-dialog"
                     className="w-full"
                   >
                     {generateAdviceMutation.isPending ? 'Adviseren...' : 'Stel advies op'}
                   </Button>
-                </div>
+                )}
               </div>
-            </CardContent>
-          </Card>
+            </DialogContent>
+          </Dialog>
         )}
       </div>
 
