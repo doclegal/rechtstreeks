@@ -370,19 +370,17 @@ export default function MissingInfo({
                       />
                     )}
                     
-                    {/* Document upload - show for 'document' or undefined inputKind */}
-                    <div className="flex items-center gap-2">
-                      {(req.inputKind === 'document' || !req.inputKind) && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowUploadForReq(req.id)}
-                          data-testid={`button-upload-${req.id}`}
-                        >
-                          <Upload className="mr-2 h-4 w-4" />
-                          {req.inputKind === 'document' ? 'Upload document' : 'Of upload document'}
-                        </Button>
-                      )}
+                    {/* Document upload and "not available" option - always show both */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowUploadForReq(req.id)}
+                        data-testid={`button-upload-${req.id}`}
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        Of upload document
+                      </Button>
                       <button
                         type="button"
                         onClick={() => handleNotAvailable(req.id)}
