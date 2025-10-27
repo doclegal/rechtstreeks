@@ -68,6 +68,18 @@ export default function Letters() {
     );
   };
 
+  const handleDeleteLetter = (letterId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm("Weet u zeker dat u deze brief wilt verwijderen?")) {
+      deleteLetterMutation.mutate(letterId, {
+        onSuccess: () => {
+          refetch();
+          setPreviewDialogOpen(false);
+        }
+      });
+    }
+  };
+
   if (authLoading || casesLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -328,6 +340,15 @@ export default function Letters() {
                                 >
                                   <Download className="h-4 w-4" />
                                 </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={(e) => handleDeleteLetter(letter.id, e)}
+                                  data-testid={`button-delete-${index}`}
+                                  disabled={deleteLetterMutation.isPending}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
                               </div>
                             </div>
                           </CardContent>
@@ -360,6 +381,16 @@ export default function Letters() {
                             >
                               <Download className="h-4 w-4 mr-2" />
                               Download
+                            </Button>
+                            <Button 
+                              onClick={(e) => handleDeleteLetter(letter.id, e)}
+                              variant="destructive"
+                              className="flex-1"
+                              data-testid={`button-delete-dialog-${letter.id}`}
+                              disabled={deleteLetterMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Verwijder
                             </Button>
                           </div>
                         </div>
