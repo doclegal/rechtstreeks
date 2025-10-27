@@ -206,7 +206,7 @@ export default function Letters() {
       ) : (
         <>
           {/* Action Tiles */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Generate Letter Tile */}
             <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
               <DialogTrigger asChild>
@@ -274,31 +274,6 @@ export default function Letters() {
                 </div>
               </DialogContent>
             </Dialog>
-
-            {/* Ingebrekestelling Quick Tile */}
-            <Card 
-              className="hover:shadow-lg transition-shadow cursor-pointer h-full relative" 
-              data-testid="tile-ingebrekestelling"
-              onClick={() => {
-                setBriefType("INGEBREKESTELLING");
-                setGenerateDialogOpen(true);
-              }}
-            >
-              <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3">
-                  <Mail className="h-6 w-6 text-primary" />
-                  Ingebrekestelling
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm">
-                  <p className="text-muted-foreground">
-                    Snel een formele ingebrekestelling genereren
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Separator */}
