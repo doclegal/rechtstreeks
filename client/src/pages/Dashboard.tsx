@@ -227,12 +227,17 @@ export default function Dashboard() {
 
         {/* Analyse */}
         <Link href="/analysis" data-testid="tile-analyse">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full relative">
+          <Card className={`hover:shadow-lg transition-shadow cursor-pointer h-full relative ${currentCase?.needsReanalysis ? 'border-blue-400 dark:border-blue-600 bg-blue-50 dark:bg-blue-950/20' : ''}`}>
             <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
-                <FileSearch className="h-6 w-6 text-primary" />
+                <FileSearch className={`h-6 w-6 ${currentCase?.needsReanalysis ? 'text-blue-600 dark:text-blue-400' : 'text-primary'}`} />
                 Analyse
+                {currentCase?.needsReanalysis && (
+                  <Badge className="ml-auto bg-blue-500 hover:bg-blue-600 text-white">
+                    Nieuw
+                  </Badge>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -249,10 +254,20 @@ export default function Dashboard() {
                     </span>
                   </div>
                 )}
+                {currentCase?.needsReanalysis && (
+                  <div className="flex items-start gap-2 mt-3 p-2 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-300 dark:border-blue-700">
+                    <AlertCircle className="h-4 w-4 text-blue-700 dark:text-blue-300 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-blue-800 dark:text-blue-200 font-medium">
+                      Nieuwe documenten of informatie toegevoegd! Heranalyse aanbevolen.
+                    </p>
+                  </div>
+                )}
                 <p className="text-muted-foreground pt-2">
-                  {hasAnalysis 
-                    ? "Bekijk de juridische analyse van uw zaak"
-                    : "Start een analyse om uw juridische positie te begrijpen"}
+                  {currentCase?.needsReanalysis 
+                    ? "Voer opnieuw een analyse uit met de nieuwe gegevens"
+                    : hasAnalysis 
+                      ? "Bekijk de juridische analyse van uw zaak"
+                      : "Start een analyse om uw juridische positie te begrijpen"}
                 </p>
               </div>
             </CardContent>

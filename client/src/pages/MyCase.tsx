@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import DocumentList from "@/components/DocumentList";
 import DeadlineWarning from "@/components/DeadlineWarning";
 import { Link, useLocation } from "wouter";
-import { PlusCircle, Headset, MessageSquare, FileText, CheckCircle, Files, ArrowLeft, AlertCircle, FolderOpen } from "lucide-react";
+import { PlusCircle, Headset, MessageSquare, FileText, CheckCircle, Files, ArrowLeft, AlertCircle, FolderOpen, FileSearch } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 import { useActiveCase } from "@/contexts/CaseContext";
 
@@ -239,6 +239,38 @@ export default function MyCase() {
             </div>
           </DialogContent>
         </Dialog>
+
+        <Link href="/analysis">
+          <Card className={`cursor-pointer hover:shadow-lg transition-shadow relative h-full ${currentCase?.needsReanalysis ? 'border-blue-400 dark:border-blue-600 bg-blue-50 dark:bg-blue-950/20' : ''}`} data-testid="card-analyse">
+            <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+            <CardHeader>
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${currentCase?.needsReanalysis ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-primary/10'}`}>
+                <FileSearch className={`h-8 w-8 ${currentCase?.needsReanalysis ? 'text-blue-600 dark:text-blue-400' : 'text-primary'}`} />
+              </div>
+              <CardTitle className="text-center flex items-center justify-center gap-2">
+                Analyse
+                {currentCase?.needsReanalysis && (
+                  <Badge className="bg-blue-500 hover:bg-blue-600 text-white">
+                    Nieuw
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p className="text-sm text-muted-foreground mb-2">
+                {currentCase?.analysis || currentCase?.fullAnalysis ? 'Analyse voltooid' : 'Nog geen analyse'}
+              </p>
+              {currentCase?.needsReanalysis && (
+                <div className="flex items-start gap-2 mt-3 p-2 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-300 dark:border-blue-700">
+                  <AlertCircle className="h-4 w-4 text-blue-700 dark:text-blue-300 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-blue-800 dark:text-blue-200 font-medium text-left">
+                    Nieuwe documenten of informatie toegevoegd! Heranalyse aanbevolen.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </Link>
 
         <Link href="/dossier">
           <Card className={`cursor-pointer hover:shadow-lg transition-shadow relative h-full ${currentCase?.hasUnseenMissingItems ? 'border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/20' : ''}`} data-testid="card-documenten">
