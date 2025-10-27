@@ -109,23 +109,36 @@ export function CaseChat({ caseId }: CaseChatProps) {
               </div>
             )}
             
-            {history.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                data-testid={`chat-message-${idx}`}
-              >
+            {history.map((msg, idx) => {
+              // Clean up any legacy JSON-wrapped messages
+              let cleanContent = msg.content;
+              if (msg.role === 'assistant' && cleanContent.includes('{"chat_response"')) {
+                try {
+                  const parsed = JSON.parse(cleanContent);
+                  cleanContent = parsed.chat_response || cleanContent;
+                } catch (e) {
+                  // Not valid JSON, use as-is
+                }
+              }
+              
+              return (
                 <div
-                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                    msg.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
-                  }`}
+                  key={idx}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  data-testid={`chat-message-${idx}`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  <div
+                    className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                      msg.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted'
+                    }`}
+                  >
+                    <p className="text-sm whitespace-pre-wrap">{cleanContent}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             
             {sendMessageMutation.isPending && (
               <div className="flex justify-start">
