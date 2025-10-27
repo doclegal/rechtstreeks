@@ -370,21 +370,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
       
-      // Prepare input for MindStudio - include ALL case context
+      // Prepare input for MindStudio - MUST match expected structure: input_json.dossier.documents[]
       const inputData = {
-        document: {
-          filename: document.filename,
-          type: document.mimetype,
-          size: document.sizeBytes,
-          text: document.extractedText || '[Tekst kon niet worden geëxtraheerd]'
-        },
-        case_context: {
+        dossier: {
           case_id: caseId,
-          title: caseData.title || 'Zonder titel',
-          description: caseData.description || '',
+          case_title: caseData.title || 'Zonder titel',
+          case_description: caseData.description || '',
           category: caseData.category || 'general',
           claim_amount: Number(caseData.claimAmount) || 0,
           user_role: caseData.userRole || 'EISER',
+          
+          // Documents array - MindStudio expects this!
+          documents: [{
+            filename: document.filename,
+            type: document.mimetype,
+            size: document.sizeBytes,
+            extracted_text: document.extractedText || '[Tekst kon niet worden geëxtraheerd]'
+          }],
           
           // Claimant (eiser) information
           claimant: {
