@@ -115,6 +115,25 @@ export default function Layout({ children }: LayoutProps) {
                     </Badge>
                   )}
                 </Link>
+                <Link 
+                  href="/letters" 
+                  className={`font-medium transition-colors ${
+                    location === '/letters' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  data-testid="link-letters"
+                >
+                  Brieven
+                </Link>
+                <Link 
+                  href="/summons" 
+                  className={`font-medium transition-colors ${
+                    location === '/summons' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  data-testid="link-summons"
+                >
+                  Dagvaarding
+                </Link>
+                <div className="h-6 w-px bg-border" />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button 
@@ -146,24 +165,6 @@ export default function Layout({ children }: LayoutProps) {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Link 
-                  href="/letters" 
-                  className={`font-medium transition-colors ${
-                    location === '/letters' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                  data-testid="link-letters"
-                >
-                  Brieven
-                </Link>
-                <Link 
-                  href="/summons" 
-                  className={`font-medium transition-colors ${
-                    location === '/summons' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                  data-testid="link-summons"
-                >
-                  Dagvaarding
-                </Link>
               </nav>
             </div>
             
