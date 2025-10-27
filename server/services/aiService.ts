@@ -2292,7 +2292,7 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     console.log("📊 Calling MindStudio RKOS.flow...");
 
     const variables = {
-      input_json: JSON.stringify(input_json)
+      input_json: input_json  // Send as object, not stringified (MindStudio handles JSON)
     };
 
     console.log("📤 RKOS variables:", {
@@ -2358,7 +2358,7 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     console.log("📝 Calling MindStudio Create_advice.flow...");
 
     const variables = {
-      input_json: JSON.stringify(input_json)
+      input_json: input_json  // Send as object, not stringified (MindStudio handles JSON)
     };
 
     console.log("📤 Create_advice variables:", {

@@ -414,7 +414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         appId: process.env.MS_AGENT_APP_ID,
         workflow: 'Dossier_check.flow',
         variables: {
-          input_json: JSON.stringify(inputData)
+          input_json: inputData  // Send as object, not stringified (MindStudio handles JSON)
         },
         includeBillingCost: true
       };
@@ -457,16 +457,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await response.json();
       console.log('✅ MindStudio document analysis result:', result);
       
-      // Extract analysis from result (MindStudio returns result.result for workflows)
+      // Extract analysis from result - NEW: MindStudio now returns structured data
       let analysis = null;
-      if (result.result?.result) {
-        // Extract the nested result.result which contains the actual analysis
-        try {
-          analysis = typeof result.result.result === 'string' 
-            ? JSON.parse(result.result.result) 
-            : result.result.result;
-        } catch (e) {
-          console.error('Failed to parse MindStudio result:', e);
+      
+      // NEW format: result.result contains { documents, extracted_text, doc_count }
+      if (result.result) {
+        const mindstudioOutput = result.result;
+        
+        // Check if we have the new format with documents array
+        if (mindstudioOutput.documents && Array.isArray(mindstudioOutput.documents)) {
+          console.log(`📄 Found ${mindstudioOutput.doc_count || mindstudioOutput.documents.length} processed documents`);
+          
+          // For single document analysis, take the first document
+          const processedDoc = mindstudioOutput.documents[0];
+          
+          if (processedDoc) {
+            analysis = {
+              document_name: processedDoc.filename || document.filename,
+              document_type: document.mimetype || 'unknown',
+              is_readable: !!processedDoc.extracted_text,
+              belongs_to_case: true,
+              summary: processedDoc.extracted_text ? 
+                `Document verwerkt met MindStudio. ${processedDoc.extracted_text.substring(0, 200)}...` : 
+                'Document geüpload',
+              tags: [],
+              note: null,
+              // Store the extracted text from MindStudio (may be better than local extraction)
+              mindstudio_extracted_text: processedDoc.extracted_text
+            };
+          }
         }
       }
       
@@ -1972,8 +1991,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
             body: JSON.stringify({
               appId: process.env.MS_AGENT_APP_ID,
-              inputs: {
-                input_json: JSON.stringify(inputData)
+              variables: {
+                input_json: inputData  // Send as object, not stringified (MindStudio handles JSON)
               },
               workflow: 'Dossier_check.flow',
               includeBillingCost: true
@@ -1992,12 +2011,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const result = await response.json();
           console.log("✅ Dossier check completed");
           
-          // Extract result from MindStudio response
+          // Extract result from MindStudio response - NEW format
           let checkResult: any = {};
           
           try {
-            // Try to parse the output JSON
-            if (result.outputs?.output_json) {
+            // NEW format: result.result contains { documents, extracted_text, doc_count }
+            if (result.result) {
+              const mindstudioOutput = result.result;
+              
+              console.log(`📄 Processed ${mindstudioOutput.doc_count || 0} documents via MindStudio`);
+              
+              checkResult = {
+                success: true,
+                doc_count: mindstudioOutput.doc_count || 0,
+                documents: mindstudioOutput.documents || [],
+                extracted_text: mindstudioOutput.extracted_text || '',
+                message: `${mindstudioOutput.doc_count || 0} documenten verwerkt via MindStudio Extract Text from File`
+              };
+            } else if (result.outputs?.output_json) {
+              // Fallback to old format
               checkResult = JSON.parse(result.outputs.output_json);
             } else if (result.outputs?.result) {
               checkResult = result.outputs.result;
@@ -2007,7 +2039,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch (e) {
             console.error("Failed to parse dossier check result:", e);
             checkResult = { 
-              raw_result: result.outputs,
+              raw_result: result.outputs || result.result,
               message: "Dossiercontrole voltooid maar resultaat kon niet worden geparseerd"
             };
           }
