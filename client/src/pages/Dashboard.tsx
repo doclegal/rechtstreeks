@@ -333,7 +333,7 @@ export default function Dashboard() {
       {/* Status Bar */}
       <Card>
         <CardHeader>
-          <CardTitle>Voortgang</CardTitle>
+          <CardTitle>Acties</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
