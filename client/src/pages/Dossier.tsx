@@ -125,22 +125,10 @@ export default function Dossier() {
               </AlertDescription>
             </Alert>
 
-            {docCount === 0 ? (
-              <div className="text-center py-8">
-                <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                <p className="text-muted-foreground mb-4">
-                  Nog geen documenten geüpload
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Upload documenten om ze te laten controleren
-                </p>
-              </div>
-            ) : (
-              <DocumentList 
-                documents={currentCase.documents || []} 
-                caseId={currentCase.id}
-              />
-            )}
+            <DocumentList 
+              documents={currentCase.documents || []} 
+              caseId={currentCase.id}
+            />
           </CardContent>
         </Card>
 
