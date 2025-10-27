@@ -203,7 +203,7 @@ export async function callChatFlow(
   const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
 
   try {
-    const response = await fetch(`${process.env.MINDSTUDIO_API_URL}/workflow/run`, {
+    const response = await fetch("https://v1.mindstudio-api.com/developer/v2/agents/run", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
