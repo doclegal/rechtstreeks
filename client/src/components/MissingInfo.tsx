@@ -338,8 +338,8 @@ export default function MissingInfo({
                   </div>
                 )}
 
-                {/* Input fields (only show if not answered OR not a draft) */}
-                {!isSubmitted && !hasDraftAnswer && (
+                {/* Input fields (always show when not submitted, regardless of draft) */}
+                {!isSubmitted && (
                   <div className="space-y-3 mt-3">
                     {/* Select dropdown for options (multiple_choice) */}
                     {req.options && req.options.length > 0 && req.inputKind === 'text' && (
@@ -358,7 +358,7 @@ export default function MissingInfo({
                     )}
                     
                     {/* Text input - show for 'text', 'document' (flexible), or undefined */}
-                    {(req.inputKind === 'text' || req.inputKind === 'document' || !req.inputKind) && (!req.options || req.options.length === 0) && (
+                    {!hasDraftAnswer && (req.inputKind === 'text' || req.inputKind === 'document' || !req.inputKind) && (!req.options || req.options.length === 0) && (
                       <Textarea
                         placeholder="Typ hier uw antwoord..."
                         className="min-h-[80px]"
@@ -461,7 +461,7 @@ export default function MissingInfo({
                 {isSubmitted && isEditing && (
                   <div className="space-y-3 mt-3">
                     {/* Show input fields when editing */}
-                    {(req.inputKind === 'text' || req.inputKind === 'document' || !req.inputKind) && (!req.options || req.options.length === 0) && (
+                    {!hasDraftAnswer && (req.inputKind === 'text' || req.inputKind === 'document' || !req.inputKind) && (!req.options || req.options.length === 0) && (
                       <Textarea
                         placeholder="Typ hier uw antwoord..."
                         className="min-h-[80px]"
@@ -473,35 +473,34 @@ export default function MissingInfo({
                       />
                     )}
                     
-                    {(req.inputKind === 'document' || !req.inputKind) && (
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowUploadForReq(req.id)}
-                          data-testid={`button-upload-edit-${req.id}`}
-                        >
-                          <Upload className="mr-2 h-4 w-4" />
-                          {req.inputKind === 'document' ? 'Upload nieuw document' : 'Of upload document'}
-                        </Button>
-                        <button
-                          type="button"
-                          onClick={() => handleNotAvailable(req.id)}
-                          className="text-xs text-muted-foreground hover:text-foreground underline"
-                          data-testid={`link-not-available-edit-${req.id}`}
-                        >
-                          Ik heb dit niet
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditingReqId(null)}
-                          className="text-xs text-muted-foreground hover:text-foreground underline ml-auto"
-                          data-testid={`link-cancel-edit-${req.id}`}
-                        >
-                          Annuleren
-                        </button>
-                      </div>
-                    )}
+                    {/* Document upload and "not available" option - always show both in edit mode */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowUploadForReq(req.id)}
+                        data-testid={`button-upload-edit-${req.id}`}
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        Of upload document
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={() => handleNotAvailable(req.id)}
+                        className="text-xs text-muted-foreground hover:text-foreground underline"
+                        data-testid={`link-not-available-edit-${req.id}`}
+                      >
+                        Ik heb dit niet
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingReqId(null)}
+                        className="text-xs text-muted-foreground hover:text-foreground underline ml-auto"
+                        data-testid={`link-cancel-edit-${req.id}`}
+                      >
+                        Annuleren
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
