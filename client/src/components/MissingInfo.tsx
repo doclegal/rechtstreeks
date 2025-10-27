@@ -249,8 +249,8 @@ export default function MissingInfo({
             </Alert>
           ) : (
             <>
-              <Alert>
-                <AlertDescription>
+              <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
+                <AlertDescription className="text-blue-800 dark:text-blue-200">
                   Beantwoord de vragen hieronder door <strong>tekst in te vullen</strong> of een <strong>document te uploaden</strong>. Klik daarna op "Versturen" om de informatie op te slaan.
                 </AlertDescription>
               </Alert>

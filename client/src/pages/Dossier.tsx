@@ -117,7 +117,14 @@ export default function Dossier() {
               Documenten ({docCount})
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
+              <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <AlertDescription className="text-blue-800 dark:text-blue-200">
+                Elk document wordt automatisch geanalyseerd na upload. Vul ontbrekende informatie aan en klik op "Versturen" om een heranalyse te starten.
+              </AlertDescription>
+            </Alert>
+
             {docCount === 0 ? (
               <div className="text-center py-8">
                 <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
@@ -134,21 +141,6 @@ export default function Dossier() {
                 caseId={currentCase.id}
               />
             )}
-          </CardContent>
-        </Card>
-
-        {/* Info Card - same size as Documents */}
-        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800 h-fit">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-100">
-              <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              Automatische documentanalyse
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-blue-800 dark:text-blue-200">
-              Elk document wordt automatisch geanalyseerd na upload. Vul ontbrekende informatie aan en klik op "Versturen" om een heranalyse te starten.
-            </p>
           </CardContent>
         </Card>
       </div>
