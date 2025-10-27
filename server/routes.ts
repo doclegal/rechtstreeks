@@ -2485,16 +2485,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`💬 Processing chat message for case ${caseId}: ${message.substring(0, 50)}...`);
       
-      // Save user message
+      // Get existing conversation history (WITHOUT the new message yet)
+      const existingHistory = await getConversationHistory(caseId);
+      
+      // Build complete history including the NEW user message for MindStudio
+      const completeHistory = [
+        ...existingHistory,
+        { role: 'user', content: message }
+      ];
+      
+      console.log(`📤 Sending to Chat.flow: ${completeHistory.length} messages in history`);
+      
+      // Call MindStudio Chat.flow with full context INCLUDING the current user question
+      const assistantResponse = await callChatFlow(caseId, message, completeHistory);
+      
+      // Now save both messages to database
       await saveChatMessage(caseId, 'user', message);
-      
-      // Get conversation history (now includes the user's message)
-      const conversationHistory = await getConversationHistory(caseId);
-      
-      // Call MindStudio Chat.flow with full context
-      const assistantResponse = await callChatFlow(caseId, message, conversationHistory);
-      
-      // Save assistant response
       await saveChatMessage(caseId, 'assistant', assistantResponse);
       
       res.json({ 

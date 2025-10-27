@@ -118,14 +118,14 @@ export async function buildCaseContext(caseId: string): Promise<any> {
     } : null,
     brieven: letterRecords.map((letter: Letter) => ({
       id: letter.id,
-      type: letter.letterType,
-      recipient_name: letter.recipientName,
+      type: letter.briefType,
+      status: letter.status,
       created_at: letter.createdAt,
     })),
     dagvaardingen: summonsRecords.map((s: Summons) => ({
       id: s.id,
-      court_location: s.courtLocation,
-      hearing_date: s.hearingDate,
+      status: s.status,
+      template_version: s.templateVersion,
       created_at: s.createdAt,
     })),
   };
