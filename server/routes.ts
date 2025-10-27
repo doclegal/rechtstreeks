@@ -2408,6 +2408,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } else {
           console.log('⚠️ No full analysis found, skipping automatic re-analysis');
+          // Set needsReanalysis flag since we have new info but can't auto-analyze
+          await storage.updateCase(caseId, { needsReanalysis: true });
+          console.log(`🔔 Set needsReanalysis flag - missing info provided but no full analysis yet`);
           res.json({ 
             success: true,
             message: "Antwoorden opgeslagen. Voer eerst een volledige analyse uit.",
