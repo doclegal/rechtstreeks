@@ -2467,6 +2467,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/cases/:id/chat', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      // Verify case ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      // Delete all chat messages for this case
+      await storage.deleteChatMessages(caseId);
+      console.log(`🗑️ Deleted all chat messages for case ${caseId}`);
+      
+      res.json({ success: true, message: "Chat geschiedenis gewist" });
+      
+    } catch (error) {
+      console.error("Error deleting chat history:", error);
+      res.status(500).json({ message: "Failed to delete chat history" });
+    }
+  });
+
   app.post('/api/cases/:id/chat', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

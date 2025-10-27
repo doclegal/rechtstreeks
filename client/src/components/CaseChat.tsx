@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageCircle, Send, Loader2 } from "lucide-react";
+import { MessageCircle, Send, Loader2, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ChatMessage {
@@ -56,6 +56,29 @@ export function CaseChat({ caseId }: CaseChatProps) {
     },
   });
 
+  // Delete chat history mutation
+  const deleteHistoryMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('DELETE', `/api/cases/${caseId}/chat`);
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate and refetch chat history
+      queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'chat'] });
+      toast({
+        title: "Gelukt",
+        description: "Chat geschiedenis is gewist",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout",
+        description: error.message || "Kon chat geschiedenis niet wissen",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollRef.current) {
@@ -78,13 +101,33 @@ export function CaseChat({ caseId }: CaseChatProps) {
   return (
     <Card className="flex flex-col h-[600px]">
       <CardHeader className="flex-shrink-0">
-        <CardTitle className="flex items-center gap-2">
-          <MessageCircle className="h-5 w-5" />
-          AI Assistent
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Stel vragen over uw zaak en ontvang direct antwoord
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5" />
+              AI Assistent
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Stel vragen over uw zaak en ontvang direct antwoord
+            </p>
+          </div>
+          {history.length > 0 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => deleteHistoryMutation.mutate()}
+              disabled={deleteHistoryMutation.isPending}
+              data-testid="button-clear-chat"
+              title="Wis gesprek"
+            >
+              {deleteHistoryMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="flex flex-col flex-1 min-h-0 gap-4">
         {/* Messages area */}

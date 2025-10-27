@@ -10,6 +10,7 @@ import {
   events,
   webhooks,
   settings,
+  chatMessages,
   type User,
   type UpsertUser,
   type Case,
@@ -94,6 +95,9 @@ export interface IStorage {
   // Timeline and progress
   getCaseTimeline(caseId: string): Promise<Event[]>;
   computeProgress(caseData: Case): number;
+  
+  // Chat operations
+  deleteChatMessages(caseId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -477,6 +481,11 @@ export class DatabaseStorage implements IStorage {
     if (currentIndex === -1) return 0;
     
     return Math.round(((currentIndex + 1) / stepOrder.length) * 100);
+  }
+
+  // Chat operations
+  async deleteChatMessages(caseId: string): Promise<void> {
+    await db.delete(chatMessages).where(eq(chatMessages.caseId, caseId));
   }
 }
 
