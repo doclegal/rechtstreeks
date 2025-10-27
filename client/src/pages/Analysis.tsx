@@ -27,6 +27,55 @@ export default function Analysis() {
   const currentCase = useActiveCase();
   const caseId = currentCase?.id;
 
+  const renderFieldValue = (value: any): React.ReactNode => {
+    if (!value) return null;
+    
+    // Handle arrays
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return <span className="text-muted-foreground italic">Geen items</span>;
+      }
+      
+      return (
+        <div className="space-y-3">
+          {value.map((item, index) => {
+            if (typeof item === 'object' && item !== null) {
+              // Special handling for bewijs items with 'document' and 'belang' fields
+              if ('document' in item && 'belang' in item) {
+                return (
+                  <div key={index} className="pl-4 border-l-2 border-primary/30">
+                    <div className="font-medium text-sm mb-1">📄 {item.document}</div>
+                    <div className="text-sm">{item.belang}</div>
+                  </div>
+                );
+              }
+              // Generic object display
+              return (
+                <div key={index} className="pl-4 border-l-2 border-muted">
+                  {Object.entries(item).map(([key, val]) => (
+                    <div key={key}>
+                      <span className="font-medium">{key}:</span> {String(val)}
+                    </div>
+                  ))}
+                </div>
+              );
+            }
+            // Simple array item (string/number)
+            return <div key={index} className="pl-4">• {String(item)}</div>;
+          })}
+        </div>
+      );
+    }
+    
+    // Handle objects
+    if (typeof value === 'object') {
+      return <pre className="text-xs bg-muted p-2 rounded overflow-auto">{JSON.stringify(value, null, 2)}</pre>;
+    }
+    
+    // Handle strings
+    return <span className="whitespace-pre-wrap">{String(value)}</span>;
+  };
+
   const analyzeMutation = useAnalyzeCase(caseId || "");
   const fullAnalyzeMutation = useFullAnalyzeCase(caseId || "");
 
@@ -538,81 +587,49 @@ export default function Analysis() {
                         {legalAdviceJson.samenvatting_advies && (
                           <div>
                             <h3 className="font-semibold mb-2">Samenvatting Advies</h3>
-                            <p className="whitespace-pre-wrap">
-                              {typeof legalAdviceJson.samenvatting_advies === 'string' 
-                                ? legalAdviceJson.samenvatting_advies 
-                                : JSON.stringify(legalAdviceJson.samenvatting_advies, null, 2)}
-                            </p>
+                            <div>{renderFieldValue(legalAdviceJson.samenvatting_advies)}</div>
                           </div>
                         )}
                         {legalAdviceJson.vervolgstappen && (
                           <div>
                             <h3 className="font-semibold mb-2">Vervolgstappen</h3>
-                            <p className="whitespace-pre-wrap">
-                              {typeof legalAdviceJson.vervolgstappen === 'string' 
-                                ? legalAdviceJson.vervolgstappen 
-                                : JSON.stringify(legalAdviceJson.vervolgstappen, null, 2)}
-                            </p>
+                            <div>{renderFieldValue(legalAdviceJson.vervolgstappen)}</div>
                           </div>
                         )}
                         {legalAdviceJson.het_geschil && (
                           <div>
                             <h3 className="font-semibold mb-2">Het Geschil</h3>
-                            <p className="whitespace-pre-wrap">
-                              {typeof legalAdviceJson.het_geschil === 'string' 
-                                ? legalAdviceJson.het_geschil 
-                                : JSON.stringify(legalAdviceJson.het_geschil, null, 2)}
-                            </p>
+                            <div>{renderFieldValue(legalAdviceJson.het_geschil)}</div>
                           </div>
                         )}
                         {legalAdviceJson.de_feiten && (
                           <div>
                             <h3 className="font-semibold mb-2">De Feiten</h3>
-                            <p className="whitespace-pre-wrap">
-                              {typeof legalAdviceJson.de_feiten === 'string' 
-                                ? legalAdviceJson.de_feiten 
-                                : JSON.stringify(legalAdviceJson.de_feiten, null, 2)}
-                            </p>
+                            <div>{renderFieldValue(legalAdviceJson.de_feiten)}</div>
                           </div>
                         )}
                         {legalAdviceJson.betwiste_punten && (
                           <div>
                             <h3 className="font-semibold mb-2">Betwiste Punten</h3>
-                            <p className="whitespace-pre-wrap">
-                              {typeof legalAdviceJson.betwiste_punten === 'string' 
-                                ? legalAdviceJson.betwiste_punten 
-                                : JSON.stringify(legalAdviceJson.betwiste_punten, null, 2)}
-                            </p>
+                            <div>{renderFieldValue(legalAdviceJson.betwiste_punten)}</div>
                           </div>
                         )}
                         {legalAdviceJson.beschikbaar_bewijs && (
                           <div>
                             <h3 className="font-semibold mb-2">Beschikbaar Bewijs</h3>
-                            <p className="whitespace-pre-wrap">
-                              {typeof legalAdviceJson.beschikbaar_bewijs === 'string' 
-                                ? legalAdviceJson.beschikbaar_bewijs 
-                                : JSON.stringify(legalAdviceJson.beschikbaar_bewijs, null, 2)}
-                            </p>
+                            <div>{renderFieldValue(legalAdviceJson.beschikbaar_bewijs)}</div>
                           </div>
                         )}
                         {legalAdviceJson.ontbrekend_bewijs && (
                           <div>
                             <h3 className="font-semibold mb-2">Ontbrekend Bewijs</h3>
-                            <p className="whitespace-pre-wrap">
-                              {typeof legalAdviceJson.ontbrekend_bewijs === 'string' 
-                                ? legalAdviceJson.ontbrekend_bewijs 
-                                : JSON.stringify(legalAdviceJson.ontbrekend_bewijs, null, 2)}
-                            </p>
+                            <div>{renderFieldValue(legalAdviceJson.ontbrekend_bewijs)}</div>
                           </div>
                         )}
                         {legalAdviceJson.juridische_duiding && (
                           <div>
                             <h3 className="font-semibold mb-2">Juridische Duiding</h3>
-                            <p className="whitespace-pre-wrap">
-                              {typeof legalAdviceJson.juridische_duiding === 'string' 
-                                ? legalAdviceJson.juridische_duiding 
-                                : JSON.stringify(legalAdviceJson.juridische_duiding, null, 2)}
-                            </p>
+                            <div>{renderFieldValue(legalAdviceJson.juridische_duiding)}</div>
                           </div>
                         )}
                       </div>
