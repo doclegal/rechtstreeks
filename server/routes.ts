@@ -574,6 +574,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.touchCase(caseId);
       }
       
+      // Set needsReanalysis flag when new documents are uploaded
+      await storage.updateCase(caseId, { needsReanalysis: true });
+      console.log(`🔔 Set needsReanalysis flag - ${uploadedDocs.length} documents uploaded`);
+      
       // Create event
       await storage.createEvent({
         caseId,
