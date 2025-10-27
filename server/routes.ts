@@ -8,6 +8,7 @@ import { fileService } from "./services/fileService";
 import { pdfService } from "./services/pdfService";
 import { mockIntegrations } from "./services/mockIntegrations";
 import { handleDatabaseError } from "./db";
+import { getConversationHistory, saveChatMessage, callChatFlow } from "./services/chatService";
 import { validateSummonsV1 } from "@shared/summonsValidation";
 import { parseTemplateText, extractTextFromFile, validateParsedTemplate } from "./services/templateParser";
 import multer from "multer";
@@ -2441,6 +2442,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Ongeldige antwoorden" });
       }
       res.status(500).json({ message: "Fout bij verwerken van antwoorden" });
+    }
+  });
+
+  // Chat endpoints - AI conversation per case
+  app.get('/api/cases/:id/chat', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      // Verify case ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      // Get conversation history
+      const history = await getConversationHistory(caseId);
+      
+      res.json({ history });
+    } catch (error) {
+      console.error("Error fetching chat history:", error);
+      res.status(500).json({ message: "Failed to fetch chat history" });
+    }
+  });
+
+  app.post('/api/cases/:id/chat', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      const { message } = req.body;
+      
+      if (!message || typeof message !== 'string' || message.trim().length === 0) {
+        return res.status(400).json({ message: "Message is required" });
+      }
+      
+      // Verify case ownership
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      console.log(`💬 Processing chat message for case ${caseId}: ${message.substring(0, 50)}...`);
+      
+      // Save user message
+      await saveChatMessage(caseId, 'user', message);
+      
+      // Get conversation history (now includes the user's message)
+      const conversationHistory = await getConversationHistory(caseId);
+      
+      // Call MindStudio Chat.flow with full context
+      const assistantResponse = await callChatFlow(caseId, message, conversationHistory);
+      
+      // Save assistant response
+      await saveChatMessage(caseId, 'assistant', assistantResponse);
+      
+      res.json({ 
+        response: assistantResponse,
+        success: true
+      });
+      
+    } catch (error: any) {
+      console.error("Error processing chat message:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to process chat message",
+        success: false
+      });
     }
   });
 
