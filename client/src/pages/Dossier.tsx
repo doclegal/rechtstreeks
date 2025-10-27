@@ -143,11 +143,6 @@ export default function Dossier() {
             )}
           </CardContent>
         </Card>
-      </div>
-
-      {/* Second Row: Missing Information */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div></div> {/* Empty left column to align with documents */}
 
         {/* Right Column: Missing Information from RKOS.flow */}
         <div>

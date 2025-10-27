@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, Upload, Type, CheckCircle2, Send, Edit2, FileText, XCircle } from "lucide-react";
+import { AlertTriangle, Upload, Type, CheckCircle2, Send, Edit2, FileText, XCircle, ClipboardList } from "lucide-react";
 import DocumentUpload from "./DocumentUpload";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -224,21 +224,10 @@ export default function MissingInfo({
     <>
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold">
-              Wat we nog nodig hebben
-            </CardTitle>
-            <div className="flex gap-2">
-              <Badge variant="secondary" className="bg-warning text-white" data-testid="badge-missing-count">
-                {requiredCount - requiredAnsweredCount} vereist ontbrekend
-              </Badge>
-              {totalAnsweredCount > 0 && (
-                <Badge variant="secondary" className="bg-success text-white" data-testid="badge-answered-count">
-                  {totalAnsweredCount} beantwoord
-                </Badge>
-              )}
-            </div>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <ClipboardList className="h-5 w-5" />
+            Wat we nog nodig hebben ({requirements.length})
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {requirements.length === 0 ? (
