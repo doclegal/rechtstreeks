@@ -423,11 +423,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('📋 Full input data:', JSON.stringify(inputData, null, 2));
       
       // MindStudio v2 API expects variables, not inputs
+      // DossierFiles.flow expects TOP-LEVEL variables: file_url, file_name, input_json, extracted_text
       const requestBody = {
         appId: process.env.MS_AGENT_APP_ID,
         workflow: 'Dossier_check.flow',
         variables: {
-          input_json: inputData  // Send as object, not stringified (MindStudio handles JSON)
+          // Top-level variables for DossierFiles.flow
+          file_url: downloadUrl,
+          file_name: document.filename,
+          extracted_text: document.extractedText || '[Tekst kon niet worden geëxtraheerd]',
+          // Complete case context
+          input_json: inputData
         },
         includeBillingCost: true
       };
