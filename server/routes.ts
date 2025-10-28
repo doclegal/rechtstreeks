@@ -371,10 +371,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Construct public download URL for MindStudio
-      const publicBaseUrl = process.env.REPL_SLUG 
-        ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
-        : 'http://localhost:5000';
+      // Use PUBLIC_BASE_URL if available (set by Replit), otherwise use REPLIT_DOMAINS
+      const publicBaseUrl = process.env.PUBLIC_BASE_URL 
+        || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : 'http://localhost:5000');
       const downloadUrl = `${publicBaseUrl}/api/documents/${documentId}/download`;
+      
+      console.log(`🔗 Generated download URL for MindStudio: ${downloadUrl}`);
       
       // Prepare input for MindStudio - MUST match expected structure: input_json.dossier.documents[]
       const inputData = {
@@ -417,6 +419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('📤 Calling MindStudio Dossier_check.flow for single document');
       console.log('📋 Document filename:', document.filename);
       console.log('📋 Input data size:', JSON.stringify(inputData).length, 'characters');
+      console.log('📋 Full input data:', JSON.stringify(inputData, null, 2));
       
       // MindStudio v2 API expects variables, not inputs
       const requestBody = {
@@ -5358,18 +5361,25 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   app.get('/api/documents/:id/download', async (req: any, res) => {
     try {
       const documentId = req.params.id;
+      console.log(`📥 Download request for document: ${documentId}`);
       
       // Get document from database
       const document = await storage.getDocument(documentId);
       if (!document) {
+        console.error(`❌ Document not found: ${documentId}`);
         return res.status(404).json({ message: "Document not found" });
       }
+      
+      console.log(`✅ Found document: ${document.filename} (${document.mimetype})`);
       
       // Get file stream using storage key
       const fileStream = await fileService.getFile(document.storageKey);
       if (!fileStream) {
+        console.error(`❌ File not found in storage: ${document.storageKey}`);
         return res.status(404).json({ message: "File not found in storage" });
       }
+      
+      console.log(`✅ Streaming file: ${document.filename}`);
       
       // Set appropriate headers for MindStudio
       res.setHeader('Content-Type', document.mimetype || 'application/octet-stream');
@@ -5380,7 +5390,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       
       fileStream.pipe(res);
     } catch (error) {
-      console.error("Error downloading document:", error);
+      console.error("❌ Error downloading document:", error);
       res.status(500).json({ message: "Failed to download document" });
     }
   });
