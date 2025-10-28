@@ -391,7 +391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Documents array - MindStudio expects this!
           documents: [{
             filename: document.filename,
-            url: downloadUrl,  // Public download URL for MindStudio
+            file_url: downloadUrl,  // Public download URL for MindStudio (Extract Text from File block expects {{file_url}})
             type: document.mimetype,
             size: document.sizeBytes,
             extracted_text: document.extractedText || '[Tekst kon niet worden geëxtraheerd]'
