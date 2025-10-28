@@ -381,62 +381,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`🔗 Generated download URL for MindStudio: ${downloadUrl}`);
       
-      // Prepare input for MindStudio - MUST match expected structure: input_json.dossier.documents[]
-      const inputData = {
-        dossier: {
-          case_id: caseId,
-          case_title: caseData.title || 'Zonder titel',
-          case_description: caseData.description || '',
-          category: caseData.category || 'general',
-          claim_amount: Number(caseData.claimAmount) || 0,
-          user_role: caseData.userRole || 'EISER',
-          
-          // Documents array - MindStudio expects this!
-          documents: [{
-            filename: document.filename,
-            file_url: downloadUrl,  // Public download URL for MindStudio (optional - for Extract Text from File block)
-            type: document.mimetype,
-            size: document.sizeBytes,
-            // Primary: use our extracted text (already processed by backend)
-            text_content: document.extractedText || '[Tekst kon niet worden geëxtraheerd]'
-          }],
-          
-          // Claimant (eiser) information
-          claimant: {
-            name: caseData.claimantName || '',
-            address: caseData.claimantAddress || '',
-            city: caseData.claimantCity || ''
-          },
-          
-          // Counterparty (gedaagde/wederpartij) information
-          counterparty: {
-            type: caseData.counterpartyType || 'unknown',
-            name: caseData.counterpartyName || 'Onbekend',
-            email: caseData.counterpartyEmail || '',
-            phone: caseData.counterpartyPhone || '',
-            address: caseData.counterpartyAddress || '',
-            city: caseData.counterpartyCity || ''
-          }
-        }
+      // MindStudio expects input_json as a JSON STRING with only file_url and file_name
+      // The Extract Text from File block in MindStudio uses these to fetch and process the document
+      const inputJsonData = {
+        file_url: downloadUrl,
+        file_name: document.filename
       };
       
       console.log('📤 Calling MindStudio Dossier_check.flow for single document');
       console.log('📋 Document filename:', document.filename);
-      console.log('📋 Input data size:', JSON.stringify(inputData).length, 'characters');
-      console.log('📋 Full input data:', JSON.stringify(inputData, null, 2));
+      console.log('📋 Download URL:', downloadUrl);
       
-      // MindStudio v2 API expects variables, not inputs
-      // DossierFiles.flow expects TOP-LEVEL variables: file_url, file_name, input_json, extracted_text
+      // MindStudio v2 API call with input_json as JSON string
       const requestBody = {
         appId: process.env.MS_AGENT_APP_ID,
         workflow: 'Dossier_check.flow',
         variables: {
-          // Top-level variables for DossierFiles.flow
-          file_url: downloadUrl,
-          file_name: document.filename,
-          extracted_text: document.extractedText || '[Tekst kon niet worden geëxtraheerd]',
-          // Complete case context
-          input_json: inputData
+          // input_json must be a JSON STRING (not an object)
+          input_json: JSON.stringify(inputJsonData)
         },
         includeBillingCost: true
       };
