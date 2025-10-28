@@ -441,35 +441,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await response.json();
       console.log('✅ MindStudio document analysis result:', result);
       
-      // Extract analysis from result - NEW: MindStudio now returns structured data
+      // Extract analysis from result
       let analysis = null;
       
-      // NEW format: result.result contains { documents, extracted_text, doc_count }
+      // MindStudio returns the analysis directly in result.result
       if (result.result) {
-        const mindstudioOutput = result.result;
+        const docAnalysis = result.result;
         
-        // Check if we have the new format with documents array
-        if (mindstudioOutput.documents && Array.isArray(mindstudioOutput.documents)) {
-          console.log(`📄 Found ${mindstudioOutput.doc_count || mindstudioOutput.documents.length} processed documents`);
+        // Check if we have the expected fields from MindStudio
+        if (docAnalysis.document_name || docAnalysis.summary) {
+          console.log(`📄 Processing MindStudio analysis for: ${docAnalysis.document_name || document.filename}`);
           
-          // For single document analysis, take the first document
-          const processedDoc = mindstudioOutput.documents[0];
+          analysis = {
+            document_name: docAnalysis.document_name || document.filename,
+            document_type: docAnalysis.document_type || 'unknown',
+            is_readable: docAnalysis.is_readable ?? true,
+            belongs_to_case: docAnalysis.belongs_to_case ?? true,
+            summary: docAnalysis.summary || 'Geen samenvatting beschikbaar',
+            tags: Array.isArray(docAnalysis.tags) ? docAnalysis.tags : [],
+            note: docAnalysis.note || null,
+            submitted_by: docAnalysis.submitted_by || 'onbekend',
+            evidential_value: docAnalysis.evidential_value || null,
+            reasoning: docAnalysis.reasoning || null
+          };
           
-          if (processedDoc) {
-            analysis = {
-              document_name: processedDoc.filename || document.filename,
-              document_type: document.mimetype || 'unknown',
-              is_readable: !!processedDoc.extracted_text,
-              belongs_to_case: true,
-              summary: processedDoc.extracted_text ? 
-                `Document verwerkt met MindStudio. ${processedDoc.extracted_text.substring(0, 200)}...` : 
-                'Document geüpload',
-              tags: [],
-              note: null,
-              // Store the extracted text from MindStudio (may be better than local extraction)
-              mindstudio_extracted_text: processedDoc.extracted_text
-            };
-          }
+          console.log(`✅ Extracted analysis:`, JSON.stringify(analysis, null, 2));
         }
       }
       
