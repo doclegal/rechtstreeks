@@ -512,56 +512,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
-  // Document upload routes
-  app.post('/api/cases/:id/uploads', isAuthenticated, upload.array('files'), async (req: any, res) => {
+  // Document upload routes - Single file upload only
+  app.post('/api/cases/:id/uploads', isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const caseId = req.params.id;
-      const files = req.files as Express.Multer.File[];
+      const file = req.file as Express.Multer.File;
+      
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
       
       const caseData = await storage.getCase(caseId);
       if (!caseData || caseData.ownerUserId !== userId) {
         return res.status(404).json({ message: "Case not found" });
       }
       
-      const uploadedDocs = [];
+      // Store file in both local storage and object storage
+      const storageKey = await fileService.storeFile(caseId, file);
       
-      for (const file of files) {
-        // Store file in both local storage and object storage
-        const storageKey = await fileService.storeFile(caseId, file);
-        
-        let publicUrl = '';
-        try {
-          // Also store in object storage for public access
-          const objectStorage = await fileService.storeFileToObjectStorage(caseId, file);
-          publicUrl = objectStorage.publicUrl;
-        } catch (error) {
-          console.warn('Failed to store file in object storage:', error);
-          // Continue with local storage only
-        }
-        
-        // Extract text content
-        const extractedText = await fileService.extractText(file);
-        
-        // Save document record
-        const document = await storage.createDocument({
-          caseId,
-          filename: file.originalname,
-          storageKey,
-          mimetype: file.mimetype,
-          sizeBytes: file.size,
-          extractedText,
-          uploadedByUserId: userId,
-          publicUrl: publicUrl || undefined, // Store public URL if available
-        });
-        
-        uploadedDocs.push(document);
-        
-        // Trigger automatic document analysis (async, don't wait)
-        analyzeDocumentWithMindStudio(document.id, caseId).catch(err => {
-          console.error(`Failed to analyze document ${document.id}:`, err);
-        });
+      let publicUrl = '';
+      try {
+        // Also store in object storage for public access
+        const objectStorage = await fileService.storeFileToObjectStorage(caseId, file);
+        publicUrl = objectStorage.publicUrl;
+      } catch (error) {
+        console.warn('Failed to store file in object storage:', error);
+        // Continue with local storage only
       }
+      
+      // Extract text content
+      const extractedText = await fileService.extractText(file);
+      
+      // Save document record
+      const document = await storage.createDocument({
+        caseId,
+        filename: file.originalname,
+        storageKey,
+        mimetype: file.mimetype,
+        sizeBytes: file.size,
+        extractedText,
+        uploadedByUserId: userId,
+        publicUrl: publicUrl || undefined, // Store public URL if available
+      });
+      
+      // Trigger automatic document analysis (async, don't wait)
+      analyzeDocumentWithMindStudio(document.id, caseId).catch(err => {
+        console.error(`Failed to analyze document ${document.id}:`, err);
+      });
       
       // Update case status if this is first upload
       if (caseData.status === "NEW_INTAKE") {
@@ -578,20 +576,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Set needsReanalysis flag when new documents are uploaded
       await storage.updateCase(caseId, { needsReanalysis: true });
-      console.log(`🔔 Set needsReanalysis flag - ${uploadedDocs.length} documents uploaded`);
+      console.log(`🔔 Set needsReanalysis flag - 1 document uploaded`);
       
       // Create event
       await storage.createEvent({
         caseId,
         actorUserId: userId,
         type: "documents_uploaded",
-        payloadJson: { count: uploadedDocs.length, filenames: uploadedDocs.map(d => d.filename) },
+        payloadJson: { count: 1, filenames: [document.filename] },
       });
       
-      res.json(uploadedDocs);
+      res.status(201).json([document]);
     } catch (error) {
-      console.error("Error uploading documents:", error);
-      res.status(500).json({ message: "Failed to upload documents" });
+      console.error("Error uploading document:", error);
+      res.status(500).json({ message: "Failed to upload document" });
     }
   });
 

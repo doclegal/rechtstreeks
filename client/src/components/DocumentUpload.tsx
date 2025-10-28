@@ -32,9 +32,9 @@ export default function DocumentUpload({
   const queryClient = useQueryClient();
 
   const uploadMutation = useMutation({
-    mutationFn: async (files: File[]) => {
+    mutationFn: async (file: File) => {
       const formData = new FormData();
-      files.forEach(file => formData.append('files', file));
+      formData.append('file', file);
 
       const response = await fetch(`/api/cases/${caseId}/uploads`, {
         method: 'POST',
@@ -54,7 +54,7 @@ export default function DocumentUpload({
       queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
       toast({
         title: "Upload voltooid",
-        description: "Documenten zijn succesvol geüpload",
+        description: "Document is succesvol geüpload",
       });
       // Backend returns array directly, not { documents: [] }
       onSuccess?.(Array.isArray(data) ? data : []);
@@ -69,67 +69,65 @@ export default function DocumentUpload({
   });
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    // Validate file types and sizes
-    const validFiles = acceptedFiles.filter(file => {
-      const validTypes = [
-        'application/pdf',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'image/jpeg',
-        'image/png',
-        'image/gif',
-        'image/webp',
-        'text/plain',
-        'text/csv',
-        'message/rfc822'
-      ];
-      
-      const isValidType = validTypes.includes(file.type) || file.name.endsWith('.eml');
-      const isValidSize = file.size <= 100 * 1024 * 1024; // 100MB
-      
-      if (!isValidType) {
-        toast({
-          title: "Bestandstype niet ondersteund",
-          description: `${file.name} heeft een niet-ondersteund bestandstype`,
-          variant: "destructive",
-        });
-        return false;
-      }
-      
-      if (!isValidSize) {
-        toast({
-          title: "Bestand te groot",
-          description: `${file.name} is groter dan 100MB`,
-          variant: "destructive",
-        });
-        return false;
-      }
-      
-      return true;
-    });
-
-    if (validFiles.length > 0) {
-      // Simulate upload progress
-      validFiles.forEach(file => {
-        const fileName = file.name;
-        let progress = 0;
-        const interval = setInterval(() => {
-          progress += Math.random() * 20;
-          if (progress >= 100) {
-            progress = 100;
-            clearInterval(interval);
-            setUploadedFiles(prev => [...prev, fileName]);
-          }
-          setUploadProgress(prev => ({ ...prev, [fileName]: progress }));
-        }, 200);
+    // Only accept the first file
+    const file = acceptedFiles[0];
+    
+    if (!file) return;
+    
+    // Validate file type and size
+    const validTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'text/plain',
+      'text/csv',
+      'message/rfc822'
+    ];
+    
+    const isValidType = validTypes.includes(file.type) || file.name.endsWith('.eml');
+    const isValidSize = file.size <= 100 * 1024 * 1024; // 100MB
+    
+    if (!isValidType) {
+      toast({
+        title: "Bestandstype niet ondersteund",
+        description: `${file.name} heeft een niet-ondersteund bestandstype`,
+        variant: "destructive",
       });
-
-      uploadMutation.mutate(validFiles);
+      return;
     }
+    
+    if (!isValidSize) {
+      toast({
+        title: "Bestand te groot",
+        description: `${file.name} is groter dan 100MB`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Simulate upload progress
+    const fileName = file.name;
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.random() * 20;
+      if (progress >= 100) {
+        progress = 100;
+        clearInterval(interval);
+        setUploadedFiles([fileName]);
+      }
+      setUploadProgress({ [fileName]: progress });
+    }, 200);
+
+    uploadMutation.mutate(file);
   }, [caseId, uploadMutation, toast]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    multiple: true,
+    multiple: false,
+    maxFiles: 1,
     accept: {
       'application/pdf': ['.pdf'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
@@ -181,13 +179,13 @@ export default function DocumentUpload({
             <input {...getInputProps()} />
             <CloudUpload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-foreground font-medium mb-2">
-              Sleep bestanden hierheen of klik om te uploaden
+              Sleep een bestand hierheen of klik om te uploaden
             </p>
             <p className="text-sm text-muted-foreground mb-4">
-              Ondersteunde formaten: PDF, DOCX, JPG, PNG, EML (max 100 MB)
+              Upload 1 document per keer • PDF, DOCX, JPG, PNG, EML (max 100 MB)
             </p>
             <Button type="button" data-testid="button-select-files">
-              Bestanden selecteren
+              Bestand selecteren
             </Button>
           </div>
 
