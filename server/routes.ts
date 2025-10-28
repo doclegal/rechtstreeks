@@ -440,6 +440,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const result = await response.json();
       console.log('✅ MindStudio document analysis result:', result);
+      console.log('🔍 DEBUG: result.result type:', typeof result.result);
+      console.log('🔍 DEBUG: result.result keys:', result.result ? Object.keys(result.result) : 'null');
       
       // Extract analysis from result
       let analysis = null;
@@ -447,6 +449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // MindStudio returns the analysis directly in result.result
       if (result.result) {
         const docAnalysis = result.result;
+        console.log('🔍 DEBUG: docAnalysis:', JSON.stringify(docAnalysis, null, 2));
         
         // Check if we have the expected fields from MindStudio
         if (docAnalysis.document_name || docAnalysis.summary) {
