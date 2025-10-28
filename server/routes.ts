@@ -374,7 +374,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use PUBLIC_BASE_URL if available (set by Replit), otherwise use REPLIT_DOMAINS
       const publicBaseUrl = process.env.PUBLIC_BASE_URL 
         || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : 'http://localhost:5000');
-      const downloadUrl = `${publicBaseUrl}/api/documents/${documentId}/download`;
+      
+      // IMPORTANT: URL must end with .pdf extension for MindStudio to recognize file type
+      const encodedFilename = encodeURIComponent(document.filename);
+      const downloadUrl = `${publicBaseUrl}/api/documents/${documentId}/download/${encodedFilename}`;
       
       console.log(`🔗 Generated download URL for MindStudio: ${downloadUrl}`);
       
@@ -5365,10 +5368,12 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   });
 
   // Document download route by ID (for MindStudio access)
-  app.get('/api/documents/:id/download', async (req: any, res) => {
+  // Accept both /api/documents/:id/download and /api/documents/:id/download/:filename
+  app.get('/api/documents/:id/download/:filename?', async (req: any, res) => {
     try {
       const documentId = req.params.id;
-      console.log(`📥 Download request for document: ${documentId}`);
+      const requestedFilename = req.params.filename;
+      console.log(`📥 Download request for document: ${documentId}${requestedFilename ? ` (${requestedFilename})` : ''}`);
       
       // Get document from database
       const document = await storage.getDocument(documentId);
