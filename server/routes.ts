@@ -370,6 +370,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
       
+      // Construct public download URL for MindStudio
+      const publicBaseUrl = process.env.REPL_SLUG 
+        ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+        : 'http://localhost:5000';
+      const downloadUrl = `${publicBaseUrl}/api/documents/${documentId}/download`;
+      
       // Prepare input for MindStudio - MUST match expected structure: input_json.dossier.documents[]
       const inputData = {
         dossier: {
@@ -383,6 +389,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Documents array - MindStudio expects this!
           documents: [{
             filename: document.filename,
+            url: downloadUrl,  // Public download URL for MindStudio
             type: document.mimetype,
             size: document.sizeBytes,
             extracted_text: document.extractedText || '[Tekst kon niet worden geëxtraheerd]'
