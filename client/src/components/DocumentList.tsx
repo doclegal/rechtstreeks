@@ -222,13 +222,13 @@ export default function DocumentList({
                 data-testid={`document-item-${document.id}`}
               >
                 {/* Document header */}
-                <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center space-x-3 flex-1">
-                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors gap-3">
+                  <div className="flex items-center space-x-3 flex-1 min-w-0">
+                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
                       {getFileIcon(document.mimetype)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground truncate" data-testid={`text-filename-${document.id}`}>
+                      <p className="font-medium text-foreground break-words" data-testid={`text-filename-${document.id}`}>
                         {document.filename}
                       </p>
                       <div className="flex items-center space-x-4 text-sm text-muted-foreground">
@@ -245,7 +245,7 @@ export default function DocumentList({
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 flex-shrink-0">
                     <Button
                       variant="ghost"
                       size="sm"

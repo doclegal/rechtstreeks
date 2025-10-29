@@ -195,18 +195,20 @@ export default function DocumentUpload({
               <h4 className="text-sm font-medium text-foreground">Upload voortgang</h4>
               {Object.entries(uploadProgress).map(([fileName, progress]) => (
                 <div key={fileName} className="space-y-2" data-testid={`upload-progress-${fileName}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      {uploadedFiles.includes(fileName) ? (
-                        <CheckCircle className="h-4 w-4 text-success" />
-                      ) : (
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <span className="text-sm font-medium text-foreground truncate">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center space-x-2 flex-1 min-w-0">
+                      <div className="flex-shrink-0">
+                        {uploadedFiles.includes(fileName) ? (
+                          <CheckCircle className="h-4 w-4 text-success" />
+                        ) : (
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      <span className="text-sm font-medium text-foreground break-words">
                         {fileName}
                       </span>
                     </div>
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-sm text-muted-foreground flex-shrink-0">
                       {uploadedFiles.includes(fileName) ? "Voltooid" : `${Math.round(progress)}%`}
                     </span>
                   </div>
