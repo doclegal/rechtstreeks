@@ -406,7 +406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('📤 Sending to MindStudio with variables:', Object.keys(requestBody.variables));
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 1 minute timeout
+      const timeoutId = setTimeout(() => controller.abort(), 3 * 60 * 1000); // 3 minutes timeout
       
       const response = await fetch('https://v1.mindstudio-api.com/developer/v2/agents/run', {
         method: 'POST',
