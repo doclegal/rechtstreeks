@@ -373,7 +373,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // FEATURE FLAG: Use local text extraction to avoid MindStudio timeout
       // Set USE_LOCAL_TEXT_EXTRACTION=true to send extracted text instead of file URL
       // Set USE_LOCAL_TEXT_EXTRACTION=false (or unset) to use file URL (original method)
+      console.log('🔧 DEBUG: USE_LOCAL_TEXT_EXTRACTION =', process.env.USE_LOCAL_TEXT_EXTRACTION);
       const useLocalTextExtraction = process.env.USE_LOCAL_TEXT_EXTRACTION === 'true';
+      console.log('🔧 DEBUG: useLocalTextExtraction =', useLocalTextExtraction);
       
       let inputJsonData;
       
