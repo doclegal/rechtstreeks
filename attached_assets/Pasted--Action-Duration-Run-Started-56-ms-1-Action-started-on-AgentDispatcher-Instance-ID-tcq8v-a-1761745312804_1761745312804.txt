@@ -1,0 +1,237 @@
+
+Action
+Duration
+Run Started
+56 ms
+1
+Action started on AgentDispatcher
+Instance ID: tcq8v
+ at Oct 29, 2025 2:39:22.381 PM GMT+1
+2
+ New run with ID "9b4ed011-aa15-408b-b22c-c59c81d1d644"
+3
+ Preparing launch variables
+4
+ Running workflow Dossier_check.flow
+5
+ Initializing {{currentDate}} with value "Oct 29, 2025 1:39:22 PM"
+6
+ Initializing {{global.userId}} with value "cea0889c-9c7e-46fb-ba63-0a5f3bfc9de2"
+7
+ Initializing {{global.threadId}} with value "9b4ed011-aa15-408b-b22c-c59c81d1d644"
+8
+ Initializing {{global.username}} with value "Pieter D."
+9
+ Initializing {{global.userEmail}} with value "pdelaat@gmail.com"
+10
+ Initializing {{global.companyName}} with value "Notforlawyers"
+11
+ Initializing {{$launchVariables->input_json}} with value JSON
+{
+file_url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/e4cda52f-dc82-4f47-804e-16ffe05c862f/download/Vragenlijst%20Deel%20B%20getekend%20via%20Move.nl%20met%20handtekeningen%20verkopers%20Esp%203%20te%20Bakel%2008-07-2024%201.pdf"
+file_name: "Vragenlijst Deel B getekend via Move.nl met handtekeningen verkopers Esp 3 te Bakel 08-07-2024 1.pdf"
+}
+12
+ Dispatching run request to Agent Runner
+13
+ Action completed
+Logic Block
+1,13 s
+1
+Action started on CloudRunner
+Instance ID: chhmc
+ at Oct 29, 2025 2:39:22.575 PM GMT+1
+2
+ Evaluating logic block
+3
+ Resolving conditions
+4
+ Evaluating conditions
+5
+ Received raw response: "1"
+6
+ Evaluated conditions, selected "1"
+Context
+Check of input_json.file_text aanwezig is.
+Option
+Raw Value
+Resolved Value
+Destination
+#1
+Condition #1 – lokale tekstmethode
+if {{input_json.file_text}} exists and {{input_json.file_text}} != ""
+Condition #1 – lokale tekstmethode
+if  exists and  != ""
+Dossier_check.flow ->
+Set variable
+#2
+Condition #2 – originele methode (via file_url)
+
+else
+Condition #2 – originele methode (via file_url)
+
+else
+Dossier_check.flow ->
+Run Workflow
+7
+ Transitioning to 
+Dossier_check.flow ->
+Set variable
+8
+ Action completed
+Billing Events
+claude-3-5-haiku-llm_inference-prompt
+(238 units at $0,000000800 per unit)
+$0,000190400
+claude-3-5-haiku-llm_inference-response
+(5 units at $0,000004000 per unit)
+$0,000020000
+Action Total
+$0,000210400
+Set variable - Background Message
+1,62 s
+1
+Action started on CloudRunner
+Instance ID: chhmc
+ at Oct 29, 2025 2:39:23.730 PM GMT+1
+2
+ Sending message: "Output ONLY valid JSON.
+Build an array with exactly one object:
+[
+  {..."
+3
+ Loading message history
+4
+ Preparing to query 
+Claude 3.5 Haiku at 0.3° with a maximum response size of 8,192 tokens
+5
+ Resolving variables
+6
+ Sending resolved message: "Output ONLY valid JSON.
+Build an array with exactly one object:
+[
+  {..."
+7
+ Waiting for model response...
+8
+ Received first response token
+9
+ Received full result: 219 tokens (163 sent, 56 received) at 36.036 tokens/second
+10
+ Received result: JSON
+[
+0: {
+file_text: "{{input_json.file_text}}"
+file_name: "{{input_json.file_name | default:"unknown.pdf"}}"
+}
+]
+11
+ Saving result to variable {{processed_documents}}
+12
+ Action completed
+Billing Events
+claude-3-5-haiku-llm_inference-prompt
+(163 units at $0,000000800 per unit)
+$0,000130400
+claude-3-5-haiku-llm_inference-response
+(56 units at $0,000004000 per unit)
+$0,000224000
+Action Total
+$0,000354400
+Generate Text - Background Message
+9,07 s
+1
+Action started on CloudRunner
+Instance ID: chhmc
+ at Oct 29, 2025 2:39:25.381 PM GMT+1
+2
+ Sending message: "# Document Analysis (Dutch Legal Context)
+
+### Input..."
+3
+ Loading message history
+4
+ Preparing to query 
+DeepSeek-V3 at 0.2° with a maximum response size of 2,800 tokens
+5
+ Resolving variables
+6
+ Sending resolved message: "# Document Analysis (Dutch Legal Context)
+
+### Input..."
+7
+ Waiting for model response...
+8
+ Received first response token
+9
+ Received full result: 1,543 tokens (1,330 sent, 213 received) at 23.704 tokens/second
+10
+ Model did not return valid JSON, attempting to autoheal
+11
+ Successfully converted model response to valid JSON.
+12
+ Received result: JSON
+{
+document_name: "unknown.pdf"
+document_type: "factuur"
+is_readable: true
+belongs_to_case: true
+submitted_by: "eiser"
+evidential_value: "ondersteunend"
+reasoning: "De factuur toont aan dat de geleverde diensten en materialen zijn gefactureerd volgens overeengekomen tarieven, hetgeen de vordering tot betaling ondersteunt."
+summary: "Factuur voor geleverde bouwmaterialen en werkzaamheden met een totaalbedrag van €4.150,00 inclusief btw. De factuur vermeldt een betaaltermijn van 14 dagen en bevat een specificatie van de geleverde artikelen en uitgevoerde werkzaamheden."
+tags: [
+0: "factuur"
+1: "betaling"
+2: "overeenkomst"
+3: "nakoming"
+4: "dienstverlening"
+]
+note: null
+}
+13
+ Saving result to variable {{result}}
+14
+ Action completed
+Billing Events
+deepseek-chat-llm_inference-prompt
+(1.330 units at $0,000000270 per unit)
+$0,000359100
+deepseek-chat-llm_inference-response
+(213 units at $0,000001100 per unit)
+$0,000234300
+Action Total
+$0,000593400
+Sending Output
+18 ms
+1
+Action started on CloudRunner
+Instance ID: chhmc
+ at Oct 29, 2025 2:39:34.487 PM GMT+1
+2
+ Sending JSON: JSON
+{
+result: "{{result}}"
+}
+3
+ Resolving variables
+4
+ Sending message: JSON
+{
+result: {
+document_name: "unknown.pdf"
+document_type: "factuur"
+is_readable: true
+belongs_to_case: true
+submitted_by: "eiser"
+evidential_value: "ondersteunend"
+reasoning: "De factuur toont aan dat de geleverde diensten en materialen zijn gefactureerd volgens overeengekomen tarieven, hetgeen de vordering tot betaling ondersteunt."
+summary: "Factuur voor geleverde bouwmaterialen en werkzaamheden met een totaalbedrag van €4.150,00 inclusief btw. De factuur vermeldt een betaaltermijn van 14 dagen en bevat een specificatie van de geleverde artikelen en uitgevoerde werkzaamheden."
+tags: []
+note: null
+}
+}
+5
+ Action completed
+Run Completed
+11,881 s
