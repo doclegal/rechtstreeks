@@ -370,27 +370,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
       
-      // Construct public download URL for MindStudio
-      // Use PUBLIC_BASE_URL if available (set by Replit), otherwise use REPLIT_DOMAINS
-      const publicBaseUrl = process.env.PUBLIC_BASE_URL 
-        || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : 'http://localhost:5000');
+      // FEATURE FLAG: Use local text extraction to avoid MindStudio timeout
+      // Set USE_LOCAL_TEXT_EXTRACTION=true to send extracted text instead of file URL
+      // Set USE_LOCAL_TEXT_EXTRACTION=false (or unset) to use file URL (original method)
+      const useLocalTextExtraction = process.env.USE_LOCAL_TEXT_EXTRACTION === 'true';
       
-      // IMPORTANT: URL must end with .pdf extension for MindStudio to recognize file type
-      const encodedFilename = encodeURIComponent(document.filename);
-      const downloadUrl = `${publicBaseUrl}/api/documents/${documentId}/download/${encodedFilename}`;
+      let inputJsonData;
       
-      console.log(`🔗 Generated download URL for MindStudio: ${downloadUrl}`);
-      
-      // MindStudio expects input_json as a JSON STRING with only file_url and file_name
-      // The Extract Text from File block in MindStudio uses these to fetch and process the document
-      const inputJsonData = {
-        file_url: downloadUrl,
-        file_name: document.filename
-      };
+      if (useLocalTextExtraction) {
+        // NEW METHOD: Send extracted text directly to MindStudio (faster, avoids Cloudflare timeout)
+        console.log('📝 Using LOCAL text extraction method');
+        console.log('📋 Document filename:', document.filename);
+        console.log('📋 Extracted text length:', document.extractedText?.length || 0, 'characters');
+        
+        inputJsonData = {
+          file_text: document.extractedText || '',
+          file_name: document.filename
+        };
+      } else {
+        // ORIGINAL METHOD: Send file URL to MindStudio (uses MindStudio's Extract Text from File block)
+        console.log('🔗 Using FILE URL method (original)');
+        
+        // Construct public download URL for MindStudio
+        // Use PUBLIC_BASE_URL if available (set by Replit), otherwise use REPLIT_DOMAINS
+        const publicBaseUrl = process.env.PUBLIC_BASE_URL 
+          || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : 'http://localhost:5000');
+        
+        // IMPORTANT: URL must end with .pdf extension for MindStudio to recognize file type
+        const encodedFilename = encodeURIComponent(document.filename);
+        const downloadUrl = `${publicBaseUrl}/api/documents/${documentId}/download/${encodedFilename}`;
+        
+        console.log('🔗 Generated download URL for MindStudio:', downloadUrl);
+        console.log('📋 Document filename:', document.filename);
+        
+        inputJsonData = {
+          file_url: downloadUrl,
+          file_name: document.filename
+        };
+      }
       
       console.log('📤 Calling MindStudio Dossier_check.flow for single document');
-      console.log('📋 Document filename:', document.filename);
-      console.log('📋 Download URL:', downloadUrl);
       
       // MindStudio v2 API call with input_json as JSON string
       const requestBody = {
