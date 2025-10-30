@@ -294,11 +294,25 @@ export class FileService {
           
         } else if (approach === 'minimal') {
           // Minimal text extraction from PDF buffer using basic string parsing
-          // This is a very basic fallback that looks for readable text in the buffer
+          // Extract text from PDF stream objects only (not metadata/structure)
           const bufferStr = buffer.toString('latin1');
-          const textMatches = bufferStr.match(/\w+[\s\w.,€$£¥₹\d\-:/()]+/g) || [];
-          result = textMatches
-            .filter(match => match.length > 3 && /[a-zA-Z]/.test(match))
+          
+          // Extract text from PDF stream objects between "stream" and "endstream"
+          const streamMatches = bufferStr.match(/stream\s+([\s\S]+?)\s+endstream/gi) || [];
+          const streamTexts = streamMatches.map(s => 
+            s.replace(/^stream\s+/i, '').replace(/\s+endstream$/i, '')
+          );
+          
+          // Also extract text from direct text objects (between parentheses or angle brackets)
+          const textObjects = bufferStr.match(/\(([^)]{10,})\)/g) || [];
+          const cleanedTexts = textObjects.map(t => t.slice(1, -1));
+          
+          // Combine and filter for meaningful text (Dutch/English words)
+          const allText = [...streamTexts, ...cleanedTexts].join(' ');
+          const words = allText.match(/[a-zA-Z]{3,}[\s\w.,€$£¥₹\d\-:/()]*[a-zA-Z]{2,}/g) || [];
+          
+          result = words
+            .filter(word => word.length > 5 && !/^(obj|endobj|stream|endstream|Type|Pages|Catalog)$/i.test(word))
             .join(' ')
             .replace(/\s+/g, ' ')
             .trim() || null;
