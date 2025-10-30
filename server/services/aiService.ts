@@ -1705,14 +1705,20 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     const variables = {
       case_id: params.case_id,
       case_text: params.case_text,
-      analysis_json: JSON.stringify(params.analysis_json),
+      analysis_json: params.analysis_json,
       brief_type: params.brief_type,
-      sender: JSON.stringify(params.sender),
-      recipient: JSON.stringify(params.recipient),
+      sender: params.sender,
+      recipient: params.recipient,
       tone: params.tone
     };
 
-    console.log("📤 DraftFirstLetter variables:", variables);
+    console.log("📤 DraftFirstLetter variables (sending objects, not JSON strings):");
+    console.log("   - case_id:", params.case_id);
+    console.log("   - brief_type:", params.brief_type);
+    console.log("   - tone:", params.tone);
+    console.log("   - analysis_json:", typeof params.analysis_json === 'object' ? 'Object' : typeof params.analysis_json);
+    console.log("   - sender:", typeof params.sender === 'object' ? 'Object' : typeof params.sender);
+    console.log("   - recipient:", typeof params.recipient === 'object' ? 'Object' : typeof params.recipient);
 
     const requestBody = {
       workerId: process.env.MINDSTUDIO_WORKER_ID,
