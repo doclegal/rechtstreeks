@@ -5347,9 +5347,10 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       
       console.log(`✅ Streaming file: ${document.filename}`);
       
-      // Set appropriate headers for MindStudio
-      res.setHeader('Content-Type', document.mimetype || 'application/octet-stream');
+      // Set appropriate headers for MindStudio (public download)
+      res.setHeader('Content-Type', document.mimetype || 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${document.filename}"`);
+      res.setHeader('Cache-Control', 'public, max-age=3600');
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET');
       res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
