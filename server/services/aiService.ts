@@ -1689,6 +1689,16 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       city: string;
     };
     tone: string;
+    dossier: Array<{
+      filename: string;
+      document_type: string;
+      summary: string;
+      tags: string[];
+      readability_score: number | null;
+      belongs_to_case: boolean;
+      note: string;
+      analysis_status: string | null;
+    }>;
   }): Promise<{
     success: boolean;
     brief?: {
@@ -1709,7 +1719,8 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       brief_type: params.brief_type,
       sender: params.sender,
       recipient: params.recipient,
-      tone: params.tone
+      tone: params.tone,
+      dossier: params.dossier
     };
 
     console.log("📤 DraftFirstLetter variables (sending objects, not JSON strings):");
@@ -1719,6 +1730,7 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     console.log("   - analysis_json:", typeof params.analysis_json === 'object' ? 'Object' : typeof params.analysis_json);
     console.log("   - sender:", typeof params.sender === 'object' ? 'Object' : typeof params.sender);
     console.log("   - recipient:", typeof params.recipient === 'object' ? 'Object' : typeof params.recipient);
+    console.log("   - dossier:", Array.isArray(params.dossier) ? `Array[${params.dossier.length}]` : typeof params.dossier);
 
     const requestBody = {
       workerId: process.env.MINDSTUDIO_WORKER_ID,

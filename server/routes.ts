@@ -2939,6 +2939,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Case must be analyzed first" });
       }
 
+      // Get all documents with their analyses for the dossier
+      const documents = await storage.getDocumentsByCase(caseId);
+      const dossier = documents.map((doc: any) => ({
+        filename: doc.filename,
+        document_type: doc.documentAnalysis?.document_type || "Onbekend",
+        summary: doc.documentAnalysis?.summary || "",
+        tags: doc.documentAnalysis?.tags || [],
+        readability_score: doc.documentAnalysis?.readability_score || null,
+        belongs_to_case: doc.documentAnalysis?.belongs_to_case || true,
+        note: doc.documentAnalysis?.note || "",
+        analysis_status: doc.analysisStatus
+      }));
+
+      console.log(`📁 Prepared dossier with ${dossier.length} documents`);
+
       // Prepare sender information (from case claimant data)
       const sender = {
         name: caseData.claimantName || "Niet opgegeven",
@@ -2968,7 +2983,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         brief_type: briefType,
         sender,
         recipient,
-        tone
+        tone,
+        dossier
       });
 
       if (!letterResult.success || !letterResult.brief) {
