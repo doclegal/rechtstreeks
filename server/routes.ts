@@ -384,6 +384,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('📝 Using LOCAL text extraction method');
         console.log('📋 Document filename:', document.filename);
         console.log('📋 Extracted text length:', document.extractedText?.length || 0, 'characters');
+        console.log('🔍 DEBUG: First 200 chars of extractedText:', document.extractedText?.substring(0, 200));
+        console.log('🔍 DEBUG: extractedText type:', typeof document.extractedText);
         
         inputJsonData = {
           file_text: document.extractedText || '',
