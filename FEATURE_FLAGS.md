@@ -2,13 +2,20 @@
 
 ## USE_LOCAL_TEXT_EXTRACTION
 
-**Doel:** Voorkom MindStudio Cloudflare timeout door geëxtraheerde tekst te sturen in plaats van file URL.
+⚠️ **STATUS: UITGESCHAKELD - WERKT NIET**
+
+Deze feature flag is uitgeschakeld omdat de lokale PDF text extractie niet betrouwbaar genoeg is.
 
 ### Probleem
 MindStudio's "Extract Text from File" block duurt te lang voor grote PDFs (>60 seconden), wat Cloudflare timeout veroorzaakt (Error 524).
 
-### Oplossing
-In plaats van een file URL naar MindStudio te sturen, extraheren we de tekst lokaal en sturen alleen de tekst naar MindStudio.
+### Geprobeerde oplossing (werkt niet)
+Lokale text extractie stuurt RAW PDF binary data in plaats van schone tekst naar MindStudio, waardoor de analyse faalt.
+
+### Huidige oplossing
+We gebruiken de originele file_url methode. Voor documenten die langer dan 2 minuten duren:
+- MindStudio moet geoptimaliseerd worden
+- Of we accepteren timeout voor zeer grote documenten
 
 ---
 
