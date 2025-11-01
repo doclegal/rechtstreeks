@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Upload, FileSearch, CheckCircle, Mail, AlertTriangle, FileText } from "lucide-react";
+import { Upload, FileSearch, CheckCircle, Mail, AlertTriangle, FileText, Scale } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 
 export default function Landing() {
@@ -240,6 +240,57 @@ export default function Landing() {
                           <span className="text-foreground">📷 Bewijsmateriaal</span>
                           <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs rounded">Compleet</span>
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Feature 7: Dagvaarding maken */}
+            <Card className="overflow-hidden md:col-span-2 border-2 border-primary/20">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Scale className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg text-foreground mb-2">
+                      7. Maak zelf een dagvaarding
+                    </h3>
+                    <p className="text-muted-foreground mb-3">
+                      Wij begeleiden u stap voor stap bij het maken van een dagvaarding voor de kantonrechter. 
+                      U hoeft geen advocaat te betalen.
+                    </p>
+                    <div className="bg-muted/50 rounded-lg p-4 border border-border">
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div>
+                          <div className="text-sm font-medium text-foreground mb-2">
+                            Wat wij voor u doen:
+                          </div>
+                          <ul className="text-sm space-y-1.5 text-foreground/80">
+                            <li>✓ Stap-voor-stap uitleg</li>
+                            <li>✓ AI helpt bij het schrijven</li>
+                            <li>✓ Controleer uw dagvaarding</li>
+                            <li>✓ Download klaar voor deurwaarder</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-foreground mb-2">
+                            Voor welke zaken:
+                          </div>
+                          <ul className="text-sm space-y-1.5 text-foreground/80">
+                            <li>• Huurgeschillen</li>
+                            <li>• Kleine geldvorderingen</li>
+                            <li>• Arbeidsconflicten</li>
+                            <li>• Consumentenzaken</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div className="mt-4 pt-4 border-t border-border">
+                        <p className="text-xs text-muted-foreground">
+                          💡 Bij de kantonrechter kunt u vaak zonder advocaat procederen. Wij helpen u hierbij.
+                        </p>
                       </div>
                     </div>
                   </div>
