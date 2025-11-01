@@ -54,6 +54,17 @@ function updateUserSession(
   user.expires_at = user.claims?.exp;
 }
 
+function isEmailAllowed(email: string): boolean {
+  const allowedEmails = process.env.ALLOWED_EMAILS || '';
+  
+  if (!allowedEmails.trim()) {
+    return true;
+  }
+  
+  const emailList = allowedEmails.split(',').map(e => e.trim().toLowerCase());
+  return emailList.includes(email.toLowerCase());
+}
+
 async function upsertUser(
   claims: any,
 ) {
@@ -87,9 +98,24 @@ export async function setupAuth(app: Express) {
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
+    const claims = tokens.claims();
+    if (!claims) {
+      return verified(new Error('No claims found in token'));
+    }
+    
+    const email = claims.email;
+    if (!email || typeof email !== 'string') {
+      return verified(new Error('No email found in claims'));
+    }
+    
+    if (!isEmailAllowed(email)) {
+      console.warn(`Login attempt blocked for unauthorized email: ${email}`);
+      return verified(new Error('Access denied: Your email address is not authorized to access this application.'));
+    }
+    
     const user = {};
     updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
+    await upsertUser(claims);
     verified(null, user);
   };
 

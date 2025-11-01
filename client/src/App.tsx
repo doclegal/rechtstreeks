@@ -41,11 +41,11 @@ function Router() {
 
   return (
     <Switch>
-      {!isAuthenticated ? (
-        <Route path="/" component={Landing} />
-      ) : (
+      <Route path="/" component={Landing} />
+      
+      {isAuthenticated ? (
         <Layout>
-          <Route path="/" component={AllCases} />
+          <Route path="/cases" component={AllCases} />
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/my-case" component={MyCase} />
           <Route path="/analysis" component={Analysis} />
@@ -62,7 +62,8 @@ function Router() {
           <Route path="/help" component={Help} />
           <Route path="/new-case" component={NewCase} />
         </Layout>
-      )}
+      ) : null}
+      
       <Route component={NotFound} />
     </Switch>
   );

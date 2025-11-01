@@ -1,9 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Upload, FileSearch, CheckCircle, Mail, AlertTriangle, FileText, Scale } from "lucide-react";
+import { Upload, FileSearch, CheckCircle, Mail, AlertTriangle, FileText, Scale, ArrowRight } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Landing() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -14,9 +17,15 @@ export default function Landing() {
               <RIcon size="md" />
               <span className="text-xl font-bold text-foreground">Rechtstreeks.ai</span>
             </div>
-            <Button asChild data-testid="button-login">
-              <a href="/api/login">Inloggen</a>
-            </Button>
+            {isAuthenticated ? (
+              <Button asChild data-testid="button-go-to-app">
+                <a href="/cases">Naar App</a>
+              </Button>
+            ) : (
+              <Button asChild data-testid="button-login">
+                <a href="/api/login">Inloggen</a>
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -32,11 +41,19 @@ export default function Landing() {
             Upload uw documenten. AI helpt u ze te begrijpen en brieven te schrijven. 
             Eenvoudig en duidelijk.
           </p>
-          <Button size="lg" asChild data-testid="button-get-started">
-            <a href="/api/login" className="px-8 py-4 text-lg">
-              Gratis beginnen
-            </a>
-          </Button>
+          {isAuthenticated ? (
+            <Button size="lg" asChild data-testid="button-open-app">
+              <a href="/cases" className="px-8 py-4 text-lg">
+                Open App <ArrowRight className="ml-2 h-5 w-5" />
+              </a>
+            </Button>
+          ) : (
+            <Button size="lg" asChild data-testid="button-get-started">
+              <a href="/api/login" className="px-8 py-4 text-lg">
+                Gratis beginnen
+              </a>
+            </Button>
+          )}
         </div>
       </section>
 
