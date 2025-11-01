@@ -112,7 +112,42 @@ export default function Landing() {
               </CardContent>
             </Card>
 
-            {/* Feature 3: Success Chance */}
+            {/* Feature 3: Dossier Overview */}
+            <Card className="overflow-hidden">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <FileText className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg text-foreground mb-2">
+                      3. Overzicht van alles
+                    </h3>
+                    <p className="text-muted-foreground mb-3">
+                      Alle documenten op één plek. Duidelijk overzicht van uw zaak.
+                    </p>
+                    <div className="bg-muted/50 rounded-lg p-4 border border-border">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-foreground">📄 Contract</span>
+                          <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs rounded">Compleet</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-foreground">📧 E-mails</span>
+                          <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs rounded">Compleet</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-foreground">📷 Bewijsmateriaal</span>
+                          <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs rounded">Compleet</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Feature 4: Success Chance */}
             <Card className="overflow-hidden">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
@@ -121,7 +156,7 @@ export default function Landing() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg text-foreground mb-2">
-                      3. Zie uw kans op succes
+                      4. Zie uw kans op succes
                     </h3>
                     <p className="text-muted-foreground mb-3">
                       AI beoordeelt hoe sterk uw zaak is en wat u nog nodig heeft.
@@ -142,7 +177,7 @@ export default function Landing() {
               </CardContent>
             </Card>
 
-            {/* Feature 4: Generate Letters */}
+            {/* Feature 5: Generate Letters */}
             <Card className="overflow-hidden">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
@@ -151,7 +186,7 @@ export default function Landing() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg text-foreground mb-2">
-                      4. Maak juridische brieven
+                      5. Maak juridische brieven
                     </h3>
                     <p className="text-muted-foreground mb-3">
                       AI schrijft brieven voor u. Bijvoorbeeld: aanmaning, ingebrekestelling.
@@ -177,7 +212,7 @@ export default function Landing() {
               </CardContent>
             </Card>
 
-            {/* Feature 5: Missing Info */}
+            {/* Feature 6: Missing Info */}
             <Card className="overflow-hidden">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
@@ -186,7 +221,7 @@ export default function Landing() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg text-foreground mb-2">
-                      5. Weet wat u nog nodig heeft
+                      6. Weet wat u nog nodig heeft
                     </h3>
                     <p className="text-muted-foreground mb-3">
                       AI vertelt welke informatie of documenten nog ontbreken.
@@ -204,41 +239,6 @@ export default function Landing() {
                             <span className="text-xs text-amber-700 dark:text-amber-300">!</span>
                           </div>
                           <span className="text-foreground/80">Ontbreekt: datum eerste melding</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Feature 6: Dossier Overview */}
-            <Card className="overflow-hidden">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <FileText className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg text-foreground mb-2">
-                      6. Overzicht van alles
-                    </h3>
-                    <p className="text-muted-foreground mb-3">
-                      Alle documenten op één plek. Duidelijk overzicht van uw zaak.
-                    </p>
-                    <div className="bg-muted/50 rounded-lg p-4 border border-border">
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-foreground">📄 Contract</span>
-                          <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs rounded">Compleet</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-foreground">📧 E-mails</span>
-                          <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs rounded">Compleet</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-foreground">📷 Bewijsmateriaal</span>
-                          <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs rounded">Compleet</span>
                         </div>
                       </div>
                     </div>
