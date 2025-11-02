@@ -194,11 +194,11 @@ export default function DocumentList({
     <>
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <CardTitle className="text-lg font-semibold">
               Geüploade documenten
             </CardTitle>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <Badge variant="secondary" data-testid="badge-document-count">
                 {documents.length} document{documents.length !== 1 ? 'en' : ''}
               </Badge>
@@ -206,6 +206,7 @@ export default function DocumentList({
                 size="sm" 
                 onClick={() => setShowUpload(true)}
                 data-testid="button-add-document"
+                className="whitespace-nowrap"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Toevoegen
@@ -222,56 +223,61 @@ export default function DocumentList({
                 data-testid={`document-item-${document.id}`}
               >
                 {/* Document header */}
-                <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors gap-3">
-                  <div className="flex items-center space-x-3 flex-1 min-w-0">
-                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                      {getFileIcon(document.mimetype)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground break-words" data-testid={`text-filename-${document.id}`}>
-                        {document.filename}
-                      </p>
-                      <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                        <div className="flex items-center space-x-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>
-                            {formatDistanceToNow(new Date(document.createdAt), { 
-                              addSuffix: true, 
-                              locale: nl 
-                            })}
-                          </span>
+                <div className="p-4 hover:bg-muted/50 transition-colors">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    {/* Left side: Icon + Info */}
+                    <div className="flex items-start space-x-3 flex-1 min-w-0">
+                      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        {getFileIcon(document.mimetype)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground break-words" data-testid={`text-filename-${document.id}`}>
+                          {document.filename}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
+                          <div className="flex items-center space-x-1">
+                            <Calendar className="h-3 w-3 flex-shrink-0" />
+                            <span className="whitespace-nowrap">
+                              {formatDistanceToNow(new Date(document.createdAt), { 
+                                addSuffix: true, 
+                                locale: nl 
+                              })}
+                            </span>
+                          </div>
+                          <span className="whitespace-nowrap">{formatFileSize(document.sizeBytes)}</span>
                         </div>
-                        <span>{formatFileSize(document.sizeBytes)}</span>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center space-x-2 flex-shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedDocument(document)}
-                      data-testid={`button-preview-${document.id}`}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDownload(document)}
-                      data-testid={`button-download-${document.id}`}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteDocument(document)}
-                      disabled={deleteDocumentMutation.isPending}
-                      data-testid={`button-delete-${document.id}`}
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    
+                    {/* Right side: Action buttons */}
+                    <div className="flex items-center gap-1 sm:gap-2 ml-auto sm:ml-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedDocument(document)}
+                        data-testid={`button-preview-${document.id}`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDownload(document)}
+                        data-testid={`button-download-${document.id}`}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteDocument(document)}
+                        disabled={deleteDocumentMutation.isPending}
+                        data-testid={`button-delete-${document.id}`}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
