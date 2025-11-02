@@ -58,12 +58,12 @@ export default function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-card border-b border-border shadow-sm">
-        <div className="max-w-[1600px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1600px] 2xl:max-w-[1800px] mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-8">
-              <Link href="/cases" className="flex items-center gap-2" data-testid="link-home">
-                <RIcon size="md" />
-                <span className="text-xl font-semibold text-foreground">Rechtstreeks.ai</span>
+            <div className="flex items-center gap-3 sm:gap-8 min-w-0 flex-1">
+              <Link href="/cases" className="flex items-center gap-2 min-w-0" data-testid="link-home">
+                <RIcon size="md" className="flex-shrink-0" />
+                <span className="text-xl font-semibold text-foreground hidden sm:inline">Rechtstreeks.ai</span>
               </Link>
               
               {currentCase && (
@@ -168,7 +168,7 @@ export default function Layout({ children }: LayoutProps) {
               </nav>
             </div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center gap-1 sm:gap-4 flex-shrink-0">
               {/* Theme Toggle Button */}
               <Button 
                 variant="ghost" 
@@ -176,6 +176,7 @@ export default function Layout({ children }: LayoutProps) {
                 onClick={() => setBoldBrightTheme(!boldBrightTheme)}
                 data-testid="button-theme-toggle"
                 title={boldBrightTheme ? "Schakel over naar standaard theme" : "Schakel over naar Bold & Bright theme"}
+                className="px-2 sm:px-3"
               >
                 <Palette className={`h-4 w-4 ${boldBrightTheme ? 'text-primary' : 'text-muted-foreground'}`} />
               </Button>
@@ -183,7 +184,7 @@ export default function Layout({ children }: LayoutProps) {
               {/* Overflow menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" data-testid="button-overflow-menu">
+                  <Button variant="ghost" size="sm" data-testid="button-overflow-menu" className="px-2 sm:px-3">
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -253,13 +254,13 @@ export default function Layout({ children }: LayoutProps) {
               </DropdownMenu>
               
               {user && (
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm text-muted-foreground hidden sm:block" data-testid="text-username">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <span className="text-sm text-muted-foreground hidden lg:block" data-testid="text-username">
                     {getUserDisplayName(user)}
                   </span>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="p-0" data-testid="button-user-menu">
+                      <Button variant="ghost" className="p-0 h-8 w-8" data-testid="button-user-menu">
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={user.profileImageUrl} alt={getUserDisplayName(user)} />
                           <AvatarFallback className="bg-primary text-primary-foreground">
