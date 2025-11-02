@@ -81,17 +81,17 @@ export function CaseQnA({ caseId }: CaseQnAProps) {
   return (
     <Card className="w-full">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <HelpCircle className="h-5 w-5 text-primary" />
-            <div>
-              <CardTitle>Veelgestelde Vragen</CardTitle>
-              <CardDescription>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-2 min-w-0">
+            <HelpCircle className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
+            <div className="min-w-0">
+              <CardTitle className="break-words">Veelgestelde Vragen</CardTitle>
+              <CardDescription className="break-words">
                 AI-gegenereerde antwoorden op vragen over uw zaak
               </CardDescription>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-shrink-0">
             {items.length > 0 && (
               <Button
                 onClick={() => generateMoreMutation.mutate()}
@@ -99,6 +99,7 @@ export function CaseQnA({ caseId }: CaseQnAProps) {
                 data-testid="button-generate-more-qna"
                 variant="default"
                 size="sm"
+                className="whitespace-nowrap"
               >
                 {generateMoreMutation.isPending ? (
                   <>
@@ -119,6 +120,7 @@ export function CaseQnA({ caseId }: CaseQnAProps) {
               data-testid="button-generate-qna"
               variant={items.length > 0 ? "outline" : "default"}
               size="sm"
+              className="whitespace-nowrap"
             >
               {generateMutation.isPending ? (
                 <>

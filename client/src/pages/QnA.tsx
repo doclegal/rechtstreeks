@@ -71,11 +71,11 @@ export default function QnA() {
       </Button>
 
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-          <HelpCircle className="h-8 w-8" />
-          Veelgestelde Vragen
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2 sm:gap-3">
+          <HelpCircle className="h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0" />
+          <span className="break-words">Veelgestelde Vragen</span>
         </h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-sm sm:text-base text-muted-foreground mt-2 break-words">
           AI-gegenereerde antwoorden over zaak: <span className="font-medium">{currentCase.title}</span>
         </p>
       </div>
