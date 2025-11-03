@@ -316,23 +316,15 @@ export default function Analysis() {
         </Link>
       </Button>
       
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-6 md:hidden lg:flex">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+        <div className="flex items-start">
           <div>
             <h2 className="text-2xl font-bold text-foreground">Analyse</h2>
             <p className="text-muted-foreground">Juridische analyse van uw zaak</p>
           </div>
-          <AskJuristButton context="Analyse" variant="outline" />
         </div>
-
-        <div className="hidden md:grid lg:hidden grid-cols-2 gap-6 items-start mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground">Analyse</h2>
-            <p className="text-muted-foreground">Juridische analyse van uw zaak</p>
-          </div>
-          <div>
-            <AskJuristButton context="Analyse" variant="outline" />
-          </div>
+        <div className="flex items-start">
+          <AskJuristButton context="Analyse" variant="outline" />
         </div>
       </div>
 
