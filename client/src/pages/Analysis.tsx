@@ -380,16 +380,6 @@ export default function Analysis() {
             <div className="space-y-4 mt-4">
               {succesKansAnalysis ? (
                 <>
-                  {/* Main Success Percentage */}
-                  <div className="text-center py-4 border-b">
-                    <div className="text-5xl font-bold mb-2">
-                      {succesKansAnalysis.chance_of_success}%
-                    </div>
-                    <Badge variant={succesKansAnalysis.confidence_level === 'high' ? 'default' : succesKansAnalysis.confidence_level === 'medium' ? 'secondary' : 'outline'}>
-                      {succesKansAnalysis.confidence_level === 'high' ? 'Hoog vertrouwen' : succesKansAnalysis.confidence_level === 'medium' ? 'Gemiddeld vertrouwen' : 'Laag vertrouwen'}
-                    </Badge>
-                  </div>
-
                   {/* Summary Verdict */}
                   {succesKansAnalysis.assessment && (
                     <div className="bg-white/50 dark:bg-black/20 rounded-lg p-4">
