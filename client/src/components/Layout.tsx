@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle, ArrowLeft, Shield, FileText, FileSearch, Mail, Palette, Briefcase, MessageCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useActiveCase } from "@/contexts/CaseContext";
+import { AskJuristDialog } from "@/components/AskJuristDialog";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -22,6 +23,7 @@ export default function Layout({ children }: LayoutProps) {
   const { user } = useAuth();
   const [location] = useLocation();
   const currentCase = useActiveCase();
+  const [juristDialogOpen, setJuristDialogOpen] = useState(false);
   const [boldBrightTheme, setBoldBrightTheme] = useState(() => {
     const saved = localStorage.getItem('bold-bright-theme');
     return saved === 'true';
@@ -159,7 +161,10 @@ export default function Layout({ children }: LayoutProps) {
                         Q&A
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem disabled data-testid="link-expert-submenu">
+                    <DropdownMenuItem 
+                      onClick={() => setJuristDialogOpen(true)} 
+                      data-testid="link-expert-submenu"
+                    >
                       <User className="mr-2 h-4 w-4" />
                       Jurist vragen
                     </DropdownMenuItem>
@@ -293,6 +298,13 @@ export default function Layout({ children }: LayoutProps) {
       <main className="max-w-[1600px] 2xl:max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
+
+      {/* Ask Jurist Dialog */}
+      <AskJuristDialog 
+        open={juristDialogOpen} 
+        onOpenChange={setJuristDialogOpen}
+        context="Help Menu"
+      />
     </div>
   );
 }

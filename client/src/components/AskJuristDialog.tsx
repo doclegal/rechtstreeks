@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserCircle, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -14,6 +15,8 @@ interface AskJuristDialogProps {
 
 export function AskJuristDialog({ open, onOpenChange, context }: AskJuristDialogProps) {
   const [question, setQuestion] = useState("");
+  const [subject, setSubject] = useState("");
+  const [attachments, setAttachments] = useState("");
   const { toast } = useToast();
 
   const handleSubmit = () => {
@@ -26,12 +29,23 @@ export function AskJuristDialog({ open, onOpenChange, context }: AskJuristDialog
       return;
     }
 
+    if (!subject) {
+      toast({
+        title: "Onderwerp vereist",
+        description: "Selecteer waarover de vraag gaat",
+        variant: "destructive",
+      });
+      return;
+    }
+
     toast({
       title: "Vraag verzonden",
       description: "Een jurist zal binnenkort contact met u opnemen",
     });
     
     setQuestion("");
+    setSubject("");
+    setAttachments("");
     onOpenChange(false);
   };
 
@@ -58,11 +72,48 @@ export function AskJuristDialog({ open, onOpenChange, context }: AskJuristDialog
                   Direct contact met een jurist
                 </h4>
                 <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-200">
-                  Een ervaren jurist zal uw vraag beoordelen en binnen 24 uur contact met u opnemen. 
-                  In de toekomst zal uw dossier automatisch worden meegestuurd voor complete context.
+                  Een ervaren jurist zal uw vraag beoordelen en binnen 24 uur contact met u opnemen.
                 </p>
               </div>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="question-subject" className="text-sm sm:text-base">
+              Waarover gaat uw vraag?
+            </Label>
+            <Select value={subject} onValueChange={setSubject}>
+              <SelectTrigger id="question-subject" data-testid="select-question-subject">
+                <SelectValue placeholder="Selecteer een onderwerp" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="analyse">Analyse van de zaak</SelectItem>
+                <SelectItem value="brief">Beoordelen van een brief</SelectItem>
+                <SelectItem value="dagvaarding">Opstellen van een dagvaarding</SelectItem>
+                <SelectItem value="anders">Iets anders</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="attachments" className="text-sm sm:text-base">
+              Welke informatie moet meegestuurd worden?
+            </Label>
+            <Select value={attachments} onValueChange={setAttachments}>
+              <SelectTrigger id="attachments" data-testid="select-attachments">
+                <SelectValue placeholder="Selecteer informatie (optioneel)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="dossier">Het Dossier</SelectItem>
+                <SelectItem value="document">Een nader te kiezen document</SelectItem>
+                <SelectItem value="brief">Een opgestelde brief</SelectItem>
+                <SelectItem value="dagvaarding">Een opgestelde dagvaarding</SelectItem>
+                <SelectItem value="anders">Iets anders</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Optioneel: De geselecteerde informatie wordt aan uw vraag toegevoegd.
+            </p>
           </div>
 
           <div className="space-y-2">
