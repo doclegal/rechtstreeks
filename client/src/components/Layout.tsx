@@ -211,7 +211,7 @@ export default function Layout({ children }: LayoutProps) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem asChild>
-                    <Link href="/" data-testid="link-all-cases-mobile">
+                    <Link href="/cases" data-testid="link-all-cases-mobile">
                       <Briefcase className="mr-2 h-4 w-4" />
                       Alle zaken
                     </Link>
