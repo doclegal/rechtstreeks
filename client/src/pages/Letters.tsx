@@ -187,24 +187,30 @@ export default function Letters() {
       </Button>
       
       {/* Header */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-        <div className="md:col-span-2 lg:col-span-3">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
-                <Mail className="h-8 w-8 text-primary" />
-                Brieven
-              </h1>
-              <p className="text-muted-foreground">
-                Genereer en beheer juridische brieven voor uw zaak
-              </p>
-            </div>
-            <div className="md:hidden lg:block">
-              <AskJuristButton context="Brieven" variant="outline" />
-            </div>
+      <div className="mb-6">
+        <div className="flex items-start justify-between mb-6 md:hidden lg:flex">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
+              <Mail className="h-8 w-8 text-primary" />
+              Brieven
+            </h1>
+            <p className="text-muted-foreground">
+              Genereer en beheer juridische brieven voor uw zaak
+            </p>
           </div>
+          <AskJuristButton context="Brieven" variant="outline" />
         </div>
-        <div className="hidden md:block lg:hidden md:col-start-2 md:row-start-1">
+
+        <div className="hidden md:grid lg:hidden grid-cols-2 gap-6 items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
+              <Mail className="h-8 w-8 text-primary" />
+              Brieven
+            </h1>
+            <p className="text-muted-foreground">
+              Genereer en beheer juridische brieven voor uw zaak
+            </p>
+          </div>
           <div className="flex justify-end">
             <AskJuristButton context="Brieven" variant="outline" />
           </div>
