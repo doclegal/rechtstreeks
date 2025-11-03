@@ -199,7 +199,7 @@ export default function Letters() {
             </p>
           </div>
         </div>
-        <div className="flex items-start">
+        <div className="flex items-start lg:hidden">
           <AskJuristButton context="Brieven" variant="outline" />
         </div>
       </div>

@@ -323,7 +323,7 @@ export default function Analysis() {
             <p className="text-muted-foreground">Juridische analyse van uw zaak</p>
           </div>
         </div>
-        <div className="flex items-start">
+        <div className="flex items-start lg:hidden">
           <AskJuristButton context="Analyse" variant="outline" />
         </div>
       </div>

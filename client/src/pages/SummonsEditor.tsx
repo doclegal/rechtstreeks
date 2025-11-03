@@ -452,7 +452,9 @@ export default function SummonsEditor() {
         </div>
 
         <div className="flex gap-2">
-          <AskJuristButton context="Dagvaarding" variant="outline" />
+          <div className="lg:hidden">
+            <AskJuristButton context="Dagvaarding" variant="outline" />
+          </div>
           {allSectionsApproved() && (
             <>
               {isPreviewMode && (

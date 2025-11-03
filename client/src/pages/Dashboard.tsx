@@ -13,19 +13,22 @@ import {
   Scale,
   PlusCircle,
   FolderOpen,
-  AlertCircle
+  AlertCircle,
+  UserCircle
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { RIcon } from "@/components/RIcon";
 import { useActiveCase } from "@/contexts/CaseContext";
+import { AskJuristDialog } from "@/components/AskJuristDialog";
 
 export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const { isLoading: casesLoading } = useCases();
   const { toast } = useToast();
   const currentCase = useActiveCase();
+  const [juristDialogOpen, setJuristDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -382,7 +385,55 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </Link>
+
+        {/* Vraag een jurist - Opvallend block */}
+        <Card 
+          className="hover:shadow-lg transition-shadow cursor-pointer h-full relative bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border-2 border-blue-300 dark:border-blue-700"
+          onClick={() => setJuristDialogOpen(true)}
+          data-testid="tile-vraag-jurist"
+        >
+          <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3">
+              <UserCircle className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              Vraag een jurist
+              <Badge className="ml-auto bg-blue-500 hover:bg-blue-600 text-white">
+                Nieuw
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                Heeft u vragen over uw zaak?
+              </p>
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                Een ervaren jurist staat klaar om uw juridische vragen te beantwoorden. Klik hier voor direct contact.
+              </p>
+              <div className="pt-2">
+                <Button 
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setJuristDialogOpen(true);
+                  }}
+                  data-testid="button-ask-jurist-dashboard"
+                >
+                  <UserCircle className="h-4 w-4 mr-2" />
+                  Stel uw vraag
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Ask Jurist Dialog */}
+      <AskJuristDialog 
+        open={juristDialogOpen} 
+        onOpenChange={setJuristDialogOpen}
+        context="Dashboard"
+      />
     </div>
   );
 }
