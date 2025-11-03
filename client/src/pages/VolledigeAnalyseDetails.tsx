@@ -124,32 +124,6 @@ export default function VolledigeAnalyseDetails() {
               </Card>
             )}
 
-            {succesKansAnalysis.chance_of_success !== undefined && (
-              <Card className="border-primary/30 bg-primary/5">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileSearch className="h-5 w-5 text-primary" />
-                    Kans op succes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-4">
-                    <div className="text-4xl font-bold text-primary">
-                      {succesKansAnalysis.chance_of_success}%
-                    </div>
-                    <div className="flex-1">
-                      <div className="h-4 bg-muted rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-primary transition-all duration-500"
-                          style={{ width: `${succesKansAnalysis.chance_of_success}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             {succesKansAnalysis.strengths && succesKansAnalysis.strengths.length > 0 && (
               <Card>
                 <CardHeader>
