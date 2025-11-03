@@ -5,7 +5,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import DocumentList from "@/components/DocumentList";
 import DeadlineWarning from "@/components/DeadlineWarning";
 import { Link, useLocation } from "wouter";
@@ -20,8 +19,6 @@ export default function MyCase() {
   const [location, setLocation] = useLocation();
   const [kantonCheckResult, setKantonCheckResult] = useState<any>(null);
   const [v2Analysis, setV2Analysis] = useState<any>(null);
-  
-  const [zaakgegevensOpen, setZaakgegevensOpen] = useState(false);
   
   const currentCase = useActiveCase();
   const caseId = currentCase?.id;
@@ -130,115 +127,25 @@ export default function MyCase() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         
-        <Dialog open={zaakgegevensOpen} onOpenChange={setZaakgegevensOpen}>
-          <DialogTrigger asChild>
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow relative h-full" data-testid="card-zaakgegevens">
-              <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
-              <CardHeader>
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FileText className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle className="text-center">Zaakgegevens</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-sm text-muted-foreground mb-2">
-                  {currentCase.title || "Geen titel"}
-                </p>
-                <Badge variant="outline" className="mt-2">
-                  {currentCase.category || "Algemeen"}
-                </Badge>
-              </CardContent>
-            </Card>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Zaakgegevens</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6 mt-4">
-              <div className="space-y-3">
-                <h3 className="font-semibold text-sm text-foreground border-b pb-2">Zaak informatie</h3>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Titel</label>
-                  <p className="text-sm text-foreground" data-testid="text-case-title">
-                    {currentCase.title || "Geen titel"}
-                  </p>
-                </div>
-                
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Beschrijving</label>
-                  <p className="text-sm text-foreground" data-testid="text-case-description">
-                    {currentCase.description || "Geen beschrijving"}
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">Categorie</label>
-                    <p className="text-sm text-foreground" data-testid="text-category">
-                      {currentCase.category || "Algemeen"}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">Claim bedrag</label>
-                    <p className="text-sm text-foreground" data-testid="text-claim-amount">
-                      {formatCurrency(currentCase.claimAmount)}
-                    </p>
-                  </div>
-                </div>
+        <Link href="/case-details">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow relative h-full" data-testid="card-zaakgegevens">
+            <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+            <CardHeader>
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileText className="h-8 w-8 text-primary" />
               </div>
-
-              <div className="space-y-3 pt-3 border-t">
-                <h3 className="font-semibold text-sm text-foreground border-b pb-2">Wederpartij gegevens</h3>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Type</label>
-                  <p className="text-sm text-foreground" data-testid="text-counterparty-type">
-                    {currentCase.counterpartyType === "company" ? "Bedrijf" : "Particulier"}
-                  </p>
-                </div>
-                
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Naam</label>
-                  <p className="text-sm text-foreground" data-testid="text-counterparty-name">
-                    {currentCase.counterpartyName || "Niet opgegeven"}
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">E-mail</label>
-                    <p className="text-sm text-foreground truncate" data-testid="text-counterparty-email">
-                      {currentCase.counterpartyEmail || "-"}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">Telefoon</label>
-                    <p className="text-sm text-foreground" data-testid="text-counterparty-phone">
-                      {currentCase.counterpartyPhone || "-"}
-                    </p>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Adres</label>
-                  <p className="text-sm text-foreground" data-testid="text-counterparty-address">
-                    {currentCase.counterpartyAddress || "Niet opgegeven"}
-                  </p>
-                </div>
-              </div>
-
-              <Button
-                className="w-full"
-                onClick={() => {
-                  setZaakgegevensOpen(false);
-                  setLocation(`/edit-case/${currentCase.id}`);
-                }}
-                data-testid="button-edit-case"
-              >
-                Bewerken
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+              <CardTitle className="text-center">Zaakgegevens</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p className="text-sm text-muted-foreground mb-2">
+                {currentCase.title || "Geen titel"}
+              </p>
+              <Badge variant="outline" className="mt-2">
+                {currentCase.category || "Algemeen"}
+              </Badge>
+            </CardContent>
+          </Card>
+        </Link>
 
         <Link href="/dossier">
           <Card className={`cursor-pointer hover:shadow-lg transition-shadow relative h-full ${currentCase?.hasUnseenMissingItems ? 'border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/20' : ''}`} data-testid="card-documenten">

@@ -10,6 +10,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
 import MyCase from "@/pages/MyCase";
+import CaseDetails from "@/pages/CaseDetails";
 import Analysis from "@/pages/Analysis";
 import FullAnalysis from "@/pages/FullAnalysis";
 import JuridischeAnalyseDetails from "@/pages/JuridischeAnalyseDetails";
@@ -48,6 +49,7 @@ function Router() {
           <Route path="/cases" component={AllCases} />
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/my-case" component={MyCase} />
+          <Route path="/case-details" component={CaseDetails} />
           <Route path="/analysis" component={Analysis} />
           <Route path="/analyse-details" component={JuridischeAnalyseDetails} />
           <Route path="/analysis/:id/full" component={FullAnalysis} />
