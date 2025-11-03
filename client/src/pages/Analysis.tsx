@@ -325,12 +325,12 @@ export default function Analysis() {
           <AskJuristButton context="Analyse" variant="outline" />
         </div>
 
-        <div className="hidden md:grid lg:hidden grid-cols-2 gap-6 items-start">
+        <div className="hidden md:grid lg:hidden grid-cols-2 gap-6 items-start mb-6">
           <div>
             <h2 className="text-2xl font-bold text-foreground">Analyse</h2>
             <p className="text-muted-foreground">Juridische analyse van uw zaak</p>
           </div>
-          <div className="flex justify-end">
+          <div>
             <AskJuristButton context="Analyse" variant="outline" />
           </div>
         </div>

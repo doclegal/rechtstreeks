@@ -201,7 +201,7 @@ export default function Letters() {
           <AskJuristButton context="Brieven" variant="outline" />
         </div>
 
-        <div className="hidden md:grid lg:hidden grid-cols-2 gap-6 items-start">
+        <div className="hidden md:grid lg:hidden grid-cols-2 gap-6 items-start mb-6">
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
               <Mail className="h-8 w-8 text-primary" />
@@ -211,7 +211,7 @@ export default function Letters() {
               Genereer en beheer juridische brieven voor uw zaak
             </p>
           </div>
-          <div className="flex justify-end">
+          <div>
             <AskJuristButton context="Brieven" variant="outline" />
           </div>
         </div>
