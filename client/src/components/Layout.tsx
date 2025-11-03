@@ -39,6 +39,22 @@ export default function Layout({ children }: LayoutProps) {
     }
   }, [boldBrightTheme]);
 
+  // Helper function to check if current location matches a menu item and its sub-pages
+  const isActiveRoute = (mainRoute: string, subRoutes: string[] = []) => {
+    if (location === mainRoute) return true;
+    // Check exact matches
+    if (subRoutes.some(subRoute => location === subRoute)) return true;
+    // Check if location starts with any of the base routes (for dynamic routes like /analysis/:id/full)
+    return subRoutes.some(subRoute => {
+      if (subRoute.includes(':')) {
+        // Handle dynamic routes by checking prefix
+        const baseRoute = subRoute.split('/:')[0];
+        return location.startsWith(baseRoute + '/');
+      }
+      return false;
+    });
+  };
+
   const getUserInitials = (user: any) => {
     if (user?.firstName && user?.lastName) {
       return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
@@ -97,7 +113,7 @@ export default function Layout({ children }: LayoutProps) {
                 <Link 
                   href="/my-case" 
                   className={`font-medium transition-colors ${
-                    location === '/my-case' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                    isActiveRoute('/my-case', ['/case-details']) ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                   }`}
                   data-testid="link-my-case"
                 >
@@ -106,7 +122,7 @@ export default function Layout({ children }: LayoutProps) {
                 <Link 
                   href="/analysis" 
                   className={`font-medium transition-colors relative flex items-center gap-2 ${
-                    location === '/analysis' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                    isActiveRoute('/analysis', ['/volledige-analyse', '/analyse-details', '/analysis/:id/full']) ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                   }`}
                   data-testid="link-analysis"
                 >
@@ -120,7 +136,7 @@ export default function Layout({ children }: LayoutProps) {
                 <Link 
                   href="/letters" 
                   className={`font-medium transition-colors ${
-                    location === '/letters' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                    isActiveRoute('/letters') ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                   }`}
                   data-testid="link-letters"
                 >
@@ -129,7 +145,7 @@ export default function Layout({ children }: LayoutProps) {
                 <Link 
                   href="/summons" 
                   className={`font-medium transition-colors ${
-                    location === '/summons' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                    isActiveRoute('/summons') ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                   }`}
                   data-testid="link-summons"
                 >
@@ -140,7 +156,7 @@ export default function Layout({ children }: LayoutProps) {
                   <DropdownMenuTrigger asChild>
                     <button 
                       className={`font-medium transition-colors relative flex items-center gap-2 ${
-                        location === '/chat' || location === '/qna' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                        isActiveRoute('/chat', ['/qna']) || location === '/qna' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                       }`}
                       data-testid="button-help-menu"
                     >
