@@ -14,6 +14,7 @@ import { useActiveCase } from "@/contexts/CaseContext";
 import DocumentList from "@/components/DocumentList";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { AskJuristButton } from "@/components/AskJuristButton";
 
 export default function Analysis() {
   const { user, isLoading: authLoading } = useAuth();
@@ -320,6 +321,7 @@ export default function Analysis() {
           <h2 className="text-2xl font-bold text-foreground">Analyse</h2>
           <p className="text-muted-foreground">Juridische analyse van uw zaak</p>
         </div>
+        <AskJuristButton context="Analyse" variant="outline" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">

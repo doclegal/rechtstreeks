@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { RIcon } from "@/components/RIcon";
 import { useCases, useAnalyzeCase } from "@/hooks/useCase";
 import { useActiveCase } from "@/contexts/CaseContext";
+import { AskJuristButton } from "@/components/AskJuristButton";
 
 // Define the 8 sections in strict order
 const SUMMONS_SECTIONS = [
@@ -450,25 +451,28 @@ export default function SummonsEditor() {
           </p>
         </div>
 
-        {allSectionsApproved() && (
-          <div className="flex gap-2">
-            {isPreviewMode && (
-              <Button variant="outline" onClick={() => setIsPreviewMode(false)} data-testid="button-back-to-edit">
-                Terug naar bewerken
+        <div className="flex gap-2">
+          <AskJuristButton context="Dagvaarding" variant="outline" />
+          {allSectionsApproved() && (
+            <>
+              {isPreviewMode && (
+                <Button variant="outline" onClick={() => setIsPreviewMode(false)} data-testid="button-back-to-edit">
+                  Terug naar bewerken
+                </Button>
+              )}
+              <Button 
+                variant="default" 
+                className="bg-green-600 hover:bg-green-700"
+                onClick={() => setIsPreviewMode(true)}
+                disabled={isPreviewMode}
+                data-testid="button-compile-preview"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                {isPreviewMode ? "Voorbeeld wordt weergegeven" : "Toon volledig voorbeeld"}
               </Button>
-            )}
-            <Button 
-              variant="default" 
-              className="bg-green-600 hover:bg-green-700"
-              onClick={() => setIsPreviewMode(true)}
-              disabled={isPreviewMode}
-              data-testid="button-compile-preview"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              {isPreviewMode ? "Voorbeeld wordt weergegeven" : "Toon volledig voorbeeld"}
-            </Button>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* KANTONZAAK CHECK STATUS BANNER */}

@@ -14,6 +14,7 @@ import { RIcon } from "@/components/RIcon";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { useActiveCase } from "@/contexts/CaseContext";
+import { AskJuristButton } from "@/components/AskJuristButton";
 
 export default function Letters() {
   const { user, isLoading: authLoading } = useAuth();
@@ -186,14 +187,17 @@ export default function Letters() {
       </Button>
       
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
-          <Mail className="h-8 w-8 text-primary" />
-          Brieven
-        </h1>
-        <p className="text-muted-foreground">
-          Genereer en beheer juridische brieven voor uw zaak
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
+            <Mail className="h-8 w-8 text-primary" />
+            Brieven
+          </h1>
+          <p className="text-muted-foreground">
+            Genereer en beheer juridische brieven voor uw zaak
+          </p>
+        </div>
+        <AskJuristButton context="Brieven" variant="outline" />
       </div>
 
       {!hasAnalysis ? (
