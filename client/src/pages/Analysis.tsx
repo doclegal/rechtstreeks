@@ -20,7 +20,6 @@ export default function Analysis() {
   const { user, isLoading: authLoading } = useAuth();
   const { isLoading: casesLoading, refetch } = useCases();
   const { toast } = useToast();
-  const [fullAnalysisDialogOpen, setFullAnalysisDialogOpen] = useState(false);
   const [adviceDialogOpen, setAdviceDialogOpen] = useState(false);
   const [legalAdviceDialogOpen, setLegalAdviceDialogOpen] = useState(false);
   const [location, setLocation] = useLocation();
@@ -331,206 +330,53 @@ export default function Analysis() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         
         {/* VOLLEDIGE ANALYSE CARD */}
-        <Dialog open={fullAnalysisDialogOpen} onOpenChange={setFullAnalysisDialogOpen}>
-          <DialogTrigger asChild>
-            <Card 
-              className={`cursor-pointer hover:shadow-lg transition-shadow relative h-full ${currentCase?.needsReanalysis ? 'border-blue-400 dark:border-blue-600 bg-blue-50 dark:bg-blue-950/20' : ''}`}
-              data-testid="card-full-analysis"
-            >
-              <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3">
-                  <FileSearch className={`h-6 w-6 ${currentCase?.needsReanalysis ? 'text-blue-600 dark:text-blue-400' : 'text-primary'}`} />
-                  Volledige analyse
-                  {currentCase?.needsReanalysis && (
-                    <Badge className="ml-auto bg-blue-500 hover:bg-blue-600 text-white">
-                      Nieuw
-                    </Badge>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm">
+        <Link href="/volledige-analyse">
+          <Card 
+            className={`cursor-pointer hover:shadow-lg transition-shadow relative h-full ${currentCase?.needsReanalysis ? 'border-blue-400 dark:border-blue-600 bg-blue-50 dark:bg-blue-950/20' : ''}`}
+            data-testid="card-full-analysis"
+          >
+            <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <FileSearch className={`h-6 w-6 ${currentCase?.needsReanalysis ? 'text-blue-600 dark:text-blue-400' : 'text-primary'}`} />
+                Volledige analyse
+                {currentCase?.needsReanalysis && (
+                  <Badge className="ml-auto bg-blue-500 hover:bg-blue-600 text-white">
+                    Nieuw
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Status:</span>{" "}
+                  <span className="font-medium">{fullAnalysis ? 'Analyse voltooid' : 'Nog niet uitgevoerd'}</span>
+                </div>
+                {succesKansAnalysis && (
                   <div>
-                    <span className="text-muted-foreground">Status:</span>{" "}
-                    <span className="font-medium">{fullAnalysis ? 'Analyse voltooid' : 'Nog niet uitgevoerd'}</span>
+                    <span className="text-muted-foreground">Kans op succes:</span>{" "}
+                    <span className="font-medium">{succesKansAnalysis.chance_of_success}%</span>
                   </div>
-                  {succesKansAnalysis && (
-                    <div>
-                      <span className="text-muted-foreground">Kans op succes:</span>{" "}
-                      <span className="font-medium">{succesKansAnalysis.chance_of_success}%</span>
-                    </div>
-                  )}
-                  {!fullAnalysis && (
-                    <div>
-                      <span className="text-muted-foreground">Actie:</span>{" "}
-                      <span className="font-medium">Klik om te starten</span>
-                    </div>
-                  )}
-                  {currentCase?.needsReanalysis && (
-                    <div className="flex items-start gap-2 mt-3 p-2 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-300 dark:border-blue-700">
-                      <AlertCircle className="h-4 w-4 text-blue-700 dark:text-blue-300 mt-0.5 flex-shrink-0" />
-                      <p className="text-xs text-blue-800 dark:text-blue-200 font-medium">
-                        Nieuwe documenten of informatie toegevoegd! Heranalyse aanbevolen.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Volledige analyse</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 mt-4">
-              {succesKansAnalysis ? (
-                <>
-                  {/* Summary Verdict */}
-                  {succesKansAnalysis.assessment && (
-                    <div className="bg-white/50 dark:bg-black/20 rounded-lg p-4">
-                      <h4 className="font-semibold text-sm mb-2">Beoordeling</h4>
-                      <p className="text-sm" data-testid="text-success-assessment">{succesKansAnalysis.assessment}</p>
-                    </div>
-                  )}
-
-                  {/* Strengths */}
-                  {succesKansAnalysis.strengths && succesKansAnalysis.strengths.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                        Sterke punten
-                      </h4>
-                      <div className="space-y-2">
-                        {succesKansAnalysis.strengths.map((strength: any, idx: number) => (
-                          <div key={idx} className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3">
-                            {typeof strength === 'string' ? (
-                              <p className="text-sm font-medium">{strength}</p>
-                            ) : (
-                              <>
-                                <p className="text-sm font-medium mb-1">{strength.point}</p>
-                                {strength.why_it_matters && (
-                                  <p className="text-xs text-muted-foreground">{strength.why_it_matters}</p>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Weaknesses */}
-                  {succesKansAnalysis.weaknesses && succesKansAnalysis.weaknesses.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                        Zwakke punten
-                      </h4>
-                      <div className="space-y-2">
-                        {succesKansAnalysis.weaknesses.map((weakness: any, idx: number) => (
-                          <div key={idx} className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3">
-                            {typeof weakness === 'string' ? (
-                              <p className="text-sm font-medium">{weakness}</p>
-                            ) : (
-                              <>
-                                <p className="text-sm font-medium mb-1">{weakness.point}</p>
-                                {weakness.why_it_matters && (
-                                  <p className="text-xs text-muted-foreground">{weakness.why_it_matters}</p>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Missing Elements */}
-                  {succesKansAnalysis.missing_elements && succesKansAnalysis.missing_elements.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                        <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        Ontbrekende elementen
-                      </h4>
-                      <div className="space-y-2">
-                        {succesKansAnalysis.missing_elements.map((element: any, idx: number) => (
-                          <div key={idx} className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3">
-                            {typeof element === 'string' ? (
-                              <p className="text-sm font-medium">{element}</p>
-                            ) : (
-                              <>
-                                <p className="text-sm font-medium mb-1">{element.item || element.point}</p>
-                                {(element.why_needed || element.why_it_matters) && (
-                                  <p className="text-xs text-muted-foreground">{element.why_needed || element.why_it_matters}</p>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Recommendations */}
-                  {succesKansAnalysis.recommendations && succesKansAnalysis.recommendations.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                        <Lightbulb className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                        Aanbevelingen
-                      </h4>
-                      <div className="space-y-2">
-                        {succesKansAnalysis.recommendations.map((rec: any, idx: number) => (
-                          <div key={idx} className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-3">
-                            {typeof rec === 'string' ? (
-                              <p className="text-sm font-medium">{rec}</p>
-                            ) : (
-                              <>
-                                <p className="text-sm font-medium mb-1">{rec.point}</p>
-                                {rec.why_it_matters && (
-                                  <p className="text-xs text-muted-foreground">{rec.why_it_matters}</p>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <Button
-                    className="w-full"
-                    onClick={() => {
-                      successChanceMutation.mutate();
-                    }}
-                    disabled={successChanceMutation.isPending}
-                    data-testid="button-rerun-full-analysis"
-                  >
-                    {successChanceMutation.isPending ? 'Analyseren...' : 'Opnieuw analyseren'}
-                  </Button>
-                </>
-              ) : (
-                <div className="text-center py-8">
-                  <FileSearch className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Nog niet uitgevoerd</h3>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    Start de volledige analyse om een uitgebreide AI-beoordeling van uw zaak te krijgen. Dit is nodig voor het genereren van juridisch advies.
-                  </p>
-                  <Button
-                    className="w-full"
-                    onClick={() => {
-                      successChanceMutation.mutate();
-                    }}
-                    disabled={successChanceMutation.isPending}
-                    data-testid="button-start-full-analysis-dialog"
-                  >
-                    {successChanceMutation.isPending ? 'Analyseren...' : 'Start volledige analyse'}
-                  </Button>
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
+                )}
+                {!fullAnalysis && (
+                  <div>
+                    <span className="text-muted-foreground">Actie:</span>{" "}
+                    <span className="font-medium">Klik om te bekijken</span>
+                  </div>
+                )}
+                {currentCase?.needsReanalysis && (
+                  <div className="flex items-start gap-2 mt-3 p-2 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-300 dark:border-blue-700">
+                    <AlertCircle className="h-4 w-4 text-blue-700 dark:text-blue-300 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-blue-800 dark:text-blue-200 font-medium">
+                      Nieuwe documenten of informatie toegevoegd! Heranalyse aanbevolen.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
 
         {/* JURIDISCHE ANALYSE CARD */}
         <Dialog open={legalAdviceDialogOpen} onOpenChange={setLegalAdviceDialogOpen}>

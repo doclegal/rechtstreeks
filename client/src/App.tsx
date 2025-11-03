@@ -14,6 +14,7 @@ import CaseDetails from "@/pages/CaseDetails";
 import Analysis from "@/pages/Analysis";
 import FullAnalysis from "@/pages/FullAnalysis";
 import JuridischeAnalyseDetails from "@/pages/JuridischeAnalyseDetails";
+import VolledigeAnalyseDetails from "@/pages/VolledigeAnalyseDetails";
 import Letters from "@/pages/Letters";
 import SummonsEditor from "@/pages/SummonsEditor";
 import Help from "@/pages/Help";
@@ -52,6 +53,7 @@ function Router() {
           <Route path="/case-details" component={CaseDetails} />
           <Route path="/analysis" component={Analysis} />
           <Route path="/analyse-details" component={JuridischeAnalyseDetails} />
+          <Route path="/volledige-analyse" component={VolledigeAnalyseDetails} />
           <Route path="/analysis/:id/full" component={FullAnalysis} />
           <Route path="/letters" component={Letters} />
           <Route path="/summons" component={SummonsEditor} />
