@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCases, useAnalyzeCase, useFullAnalyzeCase } from "@/hooks/useCase";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useLocation } from "wouter";
 import { PlusCircle, FileSearch, Scale, CheckCircle, XCircle, ArrowRight, FileText, Users, AlertTriangle, AlertCircle, TrendingUp, Info, ArrowLeft, Lightbulb } from "lucide-react";
@@ -20,93 +19,13 @@ export default function Analysis() {
   const { user, isLoading: authLoading } = useAuth();
   const { isLoading: casesLoading, refetch } = useCases();
   const { toast } = useToast();
-  const [adviceDialogOpen, setAdviceDialogOpen] = useState(false);
-  const [legalAdviceDialogOpen, setLegalAdviceDialogOpen] = useState(false);
   const [location, setLocation] = useLocation();
   
   const currentCase = useActiveCase();
   const caseId = currentCase?.id;
 
-  const renderFieldValue = (value: any): React.ReactNode => {
-    if (!value) return null;
-    
-    // Handle arrays
-    if (Array.isArray(value)) {
-      if (value.length === 0) {
-        return <span className="text-muted-foreground italic">Geen items</span>;
-      }
-      
-      return (
-        <div className="space-y-3">
-          {value.map((item, index) => {
-            if (typeof item === 'object' && item !== null) {
-              // Special handling for bewijs items with 'document' and 'belang' fields
-              if ('document' in item && 'belang' in item) {
-                return (
-                  <div key={index} className="pl-4 border-l-2 border-primary/30">
-                    <div className="font-medium text-sm mb-1">📄 {item.document}</div>
-                    <div className="text-sm">{item.belang}</div>
-                  </div>
-                );
-              }
-              // Generic object display
-              return (
-                <div key={index} className="pl-4 border-l-2 border-muted">
-                  {Object.entries(item).map(([key, val]) => (
-                    <div key={key}>
-                      <span className="font-medium">{key}:</span> {String(val)}
-                    </div>
-                  ))}
-                </div>
-              );
-            }
-            // Simple array item (string/number)
-            return <div key={index} className="pl-4">• {String(item)}</div>;
-          })}
-        </div>
-      );
-    }
-    
-    // Handle objects
-    if (typeof value === 'object') {
-      return <pre className="text-xs bg-muted p-2 rounded overflow-auto">{JSON.stringify(value, null, 2)}</pre>;
-    }
-    
-    // Handle strings
-    return <span className="whitespace-pre-wrap">{String(value)}</span>;
-  };
-
   const analyzeMutation = useAnalyzeCase(caseId || "");
   const fullAnalyzeMutation = useFullAnalyzeCase(caseId || "");
-
-  // Legal advice generation mutation
-  const generateAdviceMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest('POST', `/api/cases/${caseId}/generate-advice`);
-      return response;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
-      toast({
-        title: "Juridisch advies gegenereerd",
-        description: "Het advies is beschikbaar om te bekijken",
-      });
-      refetch();
-      setAdviceDialogOpen(false);
-      // Open the legal advice dialog to show the generated advice
-      setTimeout(() => {
-        setLegalAdviceDialogOpen(true);
-      }, 500);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Fout bij genereren advies",
-        description: error.message || "Het advies kon niet worden gegenereerd",
-        variant: "destructive",
-      });
-    },
-  });
 
   // Success chance assessment mutation
   const successChanceMutation = useMutation({
@@ -379,143 +298,38 @@ export default function Analysis() {
         </Link>
 
         {/* JURIDISCHE ANALYSE CARD */}
-        <Dialog open={legalAdviceDialogOpen} onOpenChange={setLegalAdviceDialogOpen}>
-          <DialogTrigger asChild>
-            <Card 
-              className="relative cursor-pointer hover:shadow-lg transition-shadow h-full"
-              data-testid="card-juridische-analyse"
-            >
-              <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3">
-                  <Lightbulb className="h-6 w-6 text-primary" />
-                  Juridisch advies
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Status:</span>{" "}
-                    <span className="font-medium">{(legalAdviceFull || legalAdviceJson) ? 'Advies beschikbaar' : 'Nog niet opgesteld'}</span>
-                  </div>
-                  {!(legalAdviceFull || legalAdviceJson) && !(succesKansAnalysis || fullAnalysis) && (
-                    <div>
-                      <span className="text-muted-foreground">Vereist:</span>{" "}
-                      <span className="font-medium">Eerst volledige analyse</span>
-                    </div>
-                  )}
-                  <div>
-                    <span className="text-muted-foreground">Actie:</span>{" "}
-                    <span className="font-medium">{(legalAdviceFull || legalAdviceJson) ? 'Klik voor volledig advies' : 'Klik om op te stellen'}</span>
-                  </div>
+        <Link href="/analyse-details">
+          <Card 
+            className="relative cursor-pointer hover:shadow-lg transition-shadow h-full"
+            data-testid="card-juridische-analyse"
+          >
+            <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <Lightbulb className="h-6 w-6 text-primary" />
+                Juridisch advies
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Status:</span>{" "}
+                  <span className="font-medium">{(legalAdviceFull || legalAdviceJson) ? 'Advies beschikbaar' : 'Nog niet opgesteld'}</span>
                 </div>
-              </CardContent>
-            </Card>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Juridisch Advies</DialogTitle>
-            </DialogHeader>
-            {(legalAdviceFull || legalAdviceJson) ? (
-              <div className="space-y-4 mt-4">
-                <div className="prose prose-sm dark:prose-invert max-w-none bg-white dark:bg-gray-900 p-6 rounded-lg border">
-                  <p className="text-sm text-muted-foreground mb-4">
-                    <strong>Zaak:</strong> {currentCase?.title || 'Onbekend'}
-                  </p>
-                  <div data-testid="text-legal-advice-content">
-                    {legalAdviceJson ? (
-                      <div className="space-y-6">
-                        <h2 className="text-lg font-bold">JURIDISCH ADVIES</h2>
-                        {legalAdviceJson.samenvatting_advies && (
-                          <div>
-                            <h3 className="font-semibold mb-2">Samenvatting Advies</h3>
-                            <div>{renderFieldValue(legalAdviceJson.samenvatting_advies)}</div>
-                          </div>
-                        )}
-                        {legalAdviceJson.vervolgstappen && (
-                          <div>
-                            <h3 className="font-semibold mb-2">Vervolgstappen</h3>
-                            <div>{renderFieldValue(legalAdviceJson.vervolgstappen)}</div>
-                          </div>
-                        )}
-                        {legalAdviceJson.het_geschil && (
-                          <div>
-                            <h3 className="font-semibold mb-2">Het Geschil</h3>
-                            <div>{renderFieldValue(legalAdviceJson.het_geschil)}</div>
-                          </div>
-                        )}
-                        {legalAdviceJson.de_feiten && (
-                          <div>
-                            <h3 className="font-semibold mb-2">De Feiten</h3>
-                            <div>{renderFieldValue(legalAdviceJson.de_feiten)}</div>
-                          </div>
-                        )}
-                        {legalAdviceJson.betwiste_punten && (
-                          <div>
-                            <h3 className="font-semibold mb-2">Betwiste Punten</h3>
-                            <div>{renderFieldValue(legalAdviceJson.betwiste_punten)}</div>
-                          </div>
-                        )}
-                        {legalAdviceJson.beschikbaar_bewijs && (
-                          <div>
-                            <h3 className="font-semibold mb-2">Beschikbaar Bewijs</h3>
-                            <div>{renderFieldValue(legalAdviceJson.beschikbaar_bewijs)}</div>
-                          </div>
-                        )}
-                        {legalAdviceJson.ontbrekend_bewijs && (
-                          <div>
-                            <h3 className="font-semibold mb-2">Ontbrekend Bewijs</h3>
-                            <div>{renderFieldValue(legalAdviceJson.ontbrekend_bewijs)}</div>
-                          </div>
-                        )}
-                        {legalAdviceJson.juridische_duiding && (
-                          <div>
-                            <h3 className="font-semibold mb-2">Juridische Duiding</h3>
-                            <div>{renderFieldValue(legalAdviceJson.juridische_duiding)}</div>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="whitespace-pre-wrap">{legalAdviceFull}</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4 mt-4">
-                <p className="text-sm text-muted-foreground">
-                  Het systeem genereert een uitgebreid juridisch advies op basis van de volledige analyse van uw zaak.
-                </p>
-                {!(succesKansAnalysis || fullAnalysis) ? (
-                  <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                    <p className="text-sm text-amber-800 dark:text-amber-200">
-                      U moet eerst een volledige analyse uitvoeren voordat u een juridisch advies kunt opstellen.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {generateAdviceMutation.isPending && (
-                      <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                        <p className="text-sm text-blue-800 dark:text-blue-200">
-                          AI genereert uw juridisch advies... Dit kan enkele minuten duren.
-                        </p>
-                      </div>
-                    )}
-                    <Button
-                      onClick={() => generateAdviceMutation.mutate()}
-                      disabled={generateAdviceMutation.isPending}
-                      data-testid="button-generate-advice-dialog"
-                      className="w-full"
-                    >
-                      {generateAdviceMutation.isPending ? 'Adviseren...' : 'Stel advies op'}
-                    </Button>
+                {!(legalAdviceFull || legalAdviceJson) && !(succesKansAnalysis || fullAnalysis) && (
+                  <div>
+                    <span className="text-muted-foreground">Vereist:</span>{" "}
+                    <span className="font-medium">Eerst volledige analyse</span>
                   </div>
                 )}
+                <div>
+                  <span className="text-muted-foreground">Actie:</span>{" "}
+                  <span className="font-medium">{(legalAdviceFull || legalAdviceJson) ? 'Klik voor volledig advies' : 'Klik om te bekijken'}</span>
+                </div>
               </div>
-            )}
-          </DialogContent>
-        </Dialog>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* READY FOR SUMMONS BANNER */}
