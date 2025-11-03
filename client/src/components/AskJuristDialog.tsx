@@ -37,27 +37,27 @@ export function AskJuristDialog({ open, onOpenChange, context }: AskJuristDialog
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <UserCircle className="h-6 w-6 text-primary" />
-            Vraag een jurist
+          <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
+            <UserCircle className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0" />
+            <span className="line-clamp-2">Vraag een jurist</span>
           </DialogTitle>
-          <DialogDescription>
-            Heeft u juridische vragen of twijfels? Stel uw vraag aan een van onze ervaren juristen. 
+          <DialogDescription className="text-sm">
+            Heeft u juridische vragen of twijfels? Stel uw vraag aan een van onze ervaren juristen.
             {context && ` Context: ${context}`}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 mt-4">
-          <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <UserCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <h4 className="font-semibold text-sm text-blue-900 dark:text-blue-100 mb-1">
+        <div className="space-y-4 mt-2 sm:mt-4">
+          <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4">
+            <div className="flex items-start gap-2 sm:gap-3">
+              <UserCircle className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-xs sm:text-sm text-blue-900 dark:text-blue-100 mb-1">
                   Direct contact met een jurist
                 </h4>
-                <p className="text-sm text-blue-800 dark:text-blue-200">
+                <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-200">
                   Een ervaren jurist zal uw vraag beoordelen en binnen 24 uur contact met u opnemen. 
                   In de toekomst zal uw dossier automatisch worden meegestuurd voor complete context.
                 </p>
@@ -66,7 +66,7 @@ export function AskJuristDialog({ open, onOpenChange, context }: AskJuristDialog
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="jurist-question" className="text-base">
+            <Label htmlFor="jurist-question" className="text-sm sm:text-base">
               Uw vraag aan de jurist
             </Label>
             <Textarea
@@ -75,7 +75,7 @@ export function AskJuristDialog({ open, onOpenChange, context }: AskJuristDialog
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               rows={6}
-              className="resize-none"
+              className="resize-none text-sm sm:text-base"
               data-testid="textarea-jurist-question"
             />
             <p className="text-xs text-muted-foreground">
@@ -83,11 +83,12 @@ export function AskJuristDialog({ open, onOpenChange, context }: AskJuristDialog
             </p>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-2 sm:pt-4">
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
               data-testid="button-cancel-jurist"
+              className="w-full sm:w-auto"
             >
               Annuleren
             </Button>
@@ -95,6 +96,7 @@ export function AskJuristDialog({ open, onOpenChange, context }: AskJuristDialog
               onClick={handleSubmit}
               disabled={!question.trim()}
               data-testid="button-submit-jurist-question"
+              className="w-full sm:w-auto"
             >
               <Send className="h-4 w-4 mr-2" />
               Verstuur vraag

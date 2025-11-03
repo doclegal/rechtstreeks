@@ -30,7 +30,7 @@ export function AskJuristButton({
         data-testid="button-ask-jurist"
       >
         <UserCircle className="h-4 w-4" />
-        {showText && <span className="ml-2">Vraag een jurist</span>}
+        {showText && <span className="ml-2 hidden sm:inline">Vraag een jurist</span>}
       </Button>
       <AskJuristDialog
         open={dialogOpen}
