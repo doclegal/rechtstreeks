@@ -1,0 +1,137 @@
+Ik wil nu de UI maken voor de /resolve pagina met de AI mediator.
+
+Kernprincipes (vertrouwen + mediatie-proof)
+
+Neutraal & transparant: noem het “AI-mediator” (en AI-juridische beoordeling i.p.v. “AI-rechter”). Toon altijd waarom de AI iets aanraadt (korte rationale + bron/regelverwijzing).
+
+Maak twee ruimtes:
+
+Gezamenlijke ruimte (beiden zien hetzelfde). Maak nog geen backend functionaliteit voor de tweede gebruiker (die nog uitgenodigd moet worden).
+
+Privé-caucus (ieder geeft vertrouwelijke input die de ander niet ziet; AI gebruikt het samengevat).
+
+Issues i.p.v. één kluwen: elk geschilpunt is een apart “issue” (met standpunten, belangen, bandbreedtes, bewijs).
+
+Overlap zichtbaar: direct laten zien waar partijen al (bijna) overeenstemming hebben, en waar niet.
+
+Iteratief voorstel: vraag AI om Voorstel v1 → partijen schuiven binnen bandbreedtes → v2, v3 → Eindvoorstel → Vaststellingsovereenkomst.
+
+Governance: duidelijke spelregels, logging, consent, privacy-toggle per invoerveld.
+
+Flow voor de gebruiker (van inloggen tot akkoord)
+
+Fase 0 – Toegang & rollen
+
+Inloggen (zoals dat nu al kan. Later maken we de mogelijkheid om de wederpartij uit te nodigen en ook te laten inloggen). Laat die mogelijkheid met UI al wel zien!
+
+Rol: Partij A of B (of gemachtigde).
+
+Onboarding: spelregels, privacy, wat AI wel/niet is.
+
+Fase 1 – Gezamenlijk vertrekpunt
+4) Overzicht (gezamenlijk): neutrale case-samenvatting, statusstappen, overlap-visual, snelle CTA’s.
+
+Fase 2 – Mijn inbreng (caucus/privé)
+5) Posities, belangen, must-haves & bandbreedtes per issue (met privacy-toggle: “Privé voor mediator”/“Delen met tegenpartij”).
+– AI-hints (“Wil je ook een betalingsregeling als alternatief?”).
+
+Fase 3 – AI-juridische beoordeling (niet bindend)
+6) Per issue: kansrange (laag/middel/hoog), normenkader (BW/Rv), korte duiding, risico’s (per partij). Duidelijke disclaimer.
+
+Fase 4 – Eerste neutrale AI-voorstel
+7) Knop “Vraag neutraal voorstel” → Voorstel v1 met per issue: kernafspraak, rationale, eventuele A/B-alternatieven.
+
+Fase 5 – Onderhandelen (gezamenlijk)
+8) Co-edit per issue met sliders/inputs binnen ingestelde bandbreedtes.
+– Ruilmotor (“Als A X toegeeft, kan B Y …”).
+– Impact-meter (juridische plausibiliteit + praktische haalbaarheid).
+
+Fase 6 – Convergentie & akkoord
+9) Consolideer naar Eindvoorstel (alles groen op de issues-checklist).
+10) Genereer vaststellingsovereenkomst (jullie template), identificeer partijen (KvK/NAW), e-sign of downloaden.
+
+Pagina-opzet (UI/UX)
+
+Route: /resolve
+Header: Oplossen – Online AI-Mediation · Case-naam · Rolbadge (A/B)
+Tabs (sticky): Overzicht · Issues · Voorstellen · Mijn inbreng (privé) · AI-juridische beoordeling · Chat · Documenten · Akkoord
+
+Overzicht (gezamenlijk)
+
+Case-kaart: neutrale samenvatting (bedrag, onderwerp, partijen).
+
+Statusbalk: Intake → Overlap → Beoordeling → Voorstel → Onderhandelen → Akkoord.
+
+Overlap-visual:
+
+Venn of matrix met chips per issue: Eens / Gedeeltelijk / Oneens.
+
+Heatmap-indicator (groen = dichtbij, rood = ver uit elkaar).
+
+CTA’s: “Bekijk Issues”, “Vul Mijn Inbreng aan”, “Vraag neutraal voorstel”.
+
+Issues (gezamenlijk)
+
+Issue-cards met: titel, korte omschrijving, standpunten A/B (gedeeld), overlap-score, juridische-badge (laag/middel/hoog), bewijslinks.
+
+Detaildrawer per issue: tijdlijn, argumenten A/B, AI-duiding, aanpasveld (bedrag/termijn/actie), commentaar.
+
+Voorstellen (gezamenlijk)
+
+Versie-timeline: v1 (AI), v2 (A-aanpassing), v3 (consolidatie), etc.
+
+Actieve versie in een grote card:
+
+Per issue: afspraken + sliders (bedrag/termijn/termijnen) binnen bandbreedtes.
+
+Impact-meter + compliance-check (rood/oranje/groen).
+
+Knoppen: “Opslaan als vX+1”, “Vraag mediator-advies”, “Consolideer naar eindvoorstel”.
+
+Mijn inbreng (privé/caucus)
+
+Form-secties: Positie, Belangen (waarom), Bandbreedtes, Must-haves, Concessies, Gevoeligheden.
+
+Privacy-toggle per veld + badge “Privé – niet zichtbaar voor de ander”.
+
+Samenvatting gedeelde info (zodat je ziet wat de ander wel zal zien).
+
+AI-juridische beoordeling (gezamenlijk)
+
+Per issue: kansrange + 2–3 kernartikelen + kernoverwegingen + risico per partij.
+
+Info-box: uitleg dat dit hulpmiddel is, geen uitspraak.
+
+Chat (gezamenlijk)
+
+Korte berichten, taggen op issue.
+
+Mediator-assistent met slash-commands: /summarize, /propose, /check-legal, /compare v2 v3.
+
+Escalatie: “Vraag menselijke mediator”.
+
+Documenten (gezamenlijk)
+
+Upload/preview, labels (contract, factuur, e-mail), koppeling aan issues.
+
+Akkoord (gezamenlijk)
+
+Checklist: alle issues groen.
+
+Genereer vaststellingsovereenkomst → preview → e-sign/download.
+
+Mobiel: tabs onderin als nav-bar; detaildrawers full-screen; grote CTA’s; progress-chips blijven zichtbaar.
+
+Componenten die vertrouwen geven
+
+“Waarom dit voorstel?”: mini-rationale + verwijzingen (artikel/beleidslijn).
+
+Versie-diff: highlight wijzigingen per issue.
+
+Ruilmotor (give-get): expliciet laten zien welke concessie welke tegenprestatie triggert.
+
+Audit-trail: wie deed wat wanneer (tijdstempel).
+
+Menselijke mediator: altijd zichtbaar als optie.
+
+LET OP! HET HOEFT NOG NIET TE WERKEN! MAAK GEEN INGEWIKKELDE BACKEND FUNCTIONALITITEN VOOR NU. IK WIL VOOR DIT ONDERDEEL NU ALLEEN EEN KLIKBARE DEMO!

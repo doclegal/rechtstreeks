@@ -26,6 +26,7 @@ import Warranty from "@/pages/Warranty";
 import Dossier from "@/pages/Dossier";
 import Chat from "@/pages/Chat";
 import QnA from "@/pages/QnA";
+import ResolvePage from "@/pages/ResolvePage";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -56,6 +57,7 @@ function Router() {
           <Route path="/volledige-analyse" component={VolledigeAnalyseDetails} />
           <Route path="/analysis/:id/full" component={FullAnalysis} />
           <Route path="/letters" component={Letters} />
+          <Route path="/resolve" component={ResolvePage} />
           <Route path="/summons" component={SummonsEditor} />
           <Route path="/dossier" component={Dossier} />
           <Route path="/chat" component={Chat} />
