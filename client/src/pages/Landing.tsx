@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Upload, FileSearch, CheckCircle, Mail, AlertTriangle, FileText, Scale, ArrowRight, UserCircle } from "lucide-react";
+import { Upload, FileSearch, CheckCircle, Mail, AlertTriangle, FileText, Scale, ArrowRight, UserCircle, Handshake } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -264,7 +264,58 @@ export default function Landing() {
               </CardContent>
             </Card>
 
-            {/* Feature 7: Dagvaarding maken */}
+            {/* Feature 7: Oplossen (Online Mediation) */}
+            <Card className="overflow-hidden md:col-span-2">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Handshake className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg text-foreground mb-2">
+                      7. Oplossen via online mediation
+                    </h3>
+                    <p className="text-muted-foreground mb-3">
+                      Los je geschil online op met behulp van een mediator, zonder naar de rechter te hoeven. 
+                      Sneller, goedkoper en vaak met een beter resultaat voor beide partijen.
+                    </p>
+                    <div className="bg-muted/50 rounded-lg p-4 border border-border">
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div>
+                          <div className="text-sm font-medium text-foreground mb-2">
+                            Voordelen van mediation:
+                          </div>
+                          <ul className="text-sm space-y-1.5 text-foreground/80">
+                            <li>✓ Sneller dan rechtszaak</li>
+                            <li>✓ Lagere kosten</li>
+                            <li>✓ Behoud van relatie mogelijk</li>
+                            <li>✓ Zelf controle over uitkomst</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-foreground mb-2">
+                            Hoe werkt het:
+                          </div>
+                          <ul className="text-sm space-y-1.5 text-foreground/80">
+                            <li>• Nodig wederpartij uit</li>
+                            <li>• Online gesprek met mediator</li>
+                            <li>• Samen naar oplossing</li>
+                            <li>• Bindende afspraken</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div className="mt-4 pt-4 border-t border-border">
+                        <p className="text-xs text-muted-foreground">
+                          💡 80% van de mediations leidt tot een oplossing waar beide partijen tevreden mee zijn.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Feature 8: Dagvaarding maken */}
             <Card className="overflow-hidden md:col-span-2 border-2 border-primary/20">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
@@ -273,7 +324,7 @@ export default function Landing() {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg text-foreground mb-2">
-                      7. Maak zelf een dagvaarding
+                      8. Maak zelf een dagvaarding
                     </h3>
                     <p className="text-muted-foreground mb-3">
                       Wij begeleiden je stap voor stap bij het maken van een dagvaarding voor de kantonrechter. 
