@@ -16,6 +16,7 @@ import {
   CheckCircle,
   Scale,
   ArrowRight,
+  ArrowLeft,
   Info
 } from "lucide-react";
 
@@ -174,6 +175,27 @@ export default function ResolvePage() {
     }
   };
 
+  const handleGoBack = () => {
+    // Bepaal vorige stap
+    const stepOrder: MediationStep[] = ["intro", "party-input", "conversation", "summary", "solution"];
+    const currentIndex = stepOrder.indexOf(currentStep);
+    if (currentIndex > 0) {
+      setCurrentStep(stepOrder[currentIndex - 1]);
+      
+      // Reset states als we teruggaan
+      if (stepOrder[currentIndex - 1] === "party-input") {
+        setConversationMessages(mockConversation);
+        setPartyAReady(false);
+        setPartyBReady(false);
+      }
+      if (stepOrder[currentIndex - 1] === "intro") {
+        setPartyAInputSubmitted(false);
+        setPartyBInputReceived(false);
+        setPartyAInput("");
+      }
+    }
+  };
+
   const renderSharedContent = () => {
     switch (currentStep) {
       case "intro":
@@ -239,6 +261,17 @@ export default function ResolvePage() {
         return (
           <ScrollArea className="h-[600px]">
             <div className="p-6 space-y-6">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleGoBack}
+                className="mb-2"
+                data-testid="button-go-back"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Terug
+              </Button>
+              
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
                   <Scale className="h-6 w-6 text-white" />
@@ -382,6 +415,17 @@ export default function ResolvePage() {
         return (
           <ScrollArea className="h-[600px]">
             <div className="p-6 space-y-6">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleGoBack}
+                className="mb-2"
+                data-testid="button-go-back"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Terug
+              </Button>
+              
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
                   <Scale className="h-6 w-6 text-white" />
@@ -556,6 +600,17 @@ export default function ResolvePage() {
         return (
           <ScrollArea className="h-[600px]">
             <div className="p-6 space-y-6">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleGoBack}
+                className="mb-2"
+                data-testid="button-go-back"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Terug
+              </Button>
+              
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
                   <Scale className="h-6 w-6 text-white" />
@@ -683,6 +738,17 @@ export default function ResolvePage() {
         return (
           <ScrollArea className="h-[600px]">
             <div className="p-6 space-y-6">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleGoBack}
+                className="mb-2"
+                data-testid="button-go-back"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Terug
+              </Button>
+              
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
                   <Lightbulb className="h-6 w-6 text-white" />
