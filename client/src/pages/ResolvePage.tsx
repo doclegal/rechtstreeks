@@ -75,6 +75,7 @@ const mockPrivateTips = [
 export default function ResolvePage() {
   const [currentStep, setCurrentStep] = useState<MediationStep>("intro");
   const [partyAInput, setPartyAInput] = useState("");
+  const [partyAInputSubmitted, setPartyAInputSubmitted] = useState(false);
   const [partyBInputReceived, setPartyBInputReceived] = useState(false);
   const [conversationMessage, setConversationMessage] = useState("");
   const [conversationMessages, setConversationMessages] = useState<typeof mockConversation>([]);
@@ -85,6 +86,7 @@ export default function ResolvePage() {
 
   const handleSubmitPartyAInput = () => {
     if (partyAInput.trim()) {
+      setPartyAInputSubmitted(true);
       // Simuleer dat partij B ook antwoord heeft gegeven
       setTimeout(() => {
         setPartyBInputReceived(true);
@@ -240,7 +242,7 @@ export default function ResolvePage() {
                 </div>
 
                 {/* Input veld voor Partij A */}
-                {!partyAInput && (
+                {!partyAInputSubmitted && (
                   <div className="space-y-3">
                     <label className="text-sm font-medium">Uw antwoord</label>
                     <Textarea 
@@ -263,7 +265,7 @@ export default function ResolvePage() {
                 )}
 
                 {/* Partij A antwoord (rechts uitgelijnd, chat-stijl) */}
-                {partyAInput && (
+                {partyAInputSubmitted && (
                   <div className="flex justify-end">
                     <div className="max-w-[75%]">
                       <div className="flex items-baseline gap-2 mb-1 justify-end">
@@ -277,7 +279,7 @@ export default function ResolvePage() {
                 )}
 
                 {/* Mediator vraagt aan Partij B */}
-                {partyAInput && (
+                {partyAInputSubmitted && (
                   <>
                     <div className="w-full mt-6">
                       <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
