@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
-import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle, ArrowLeft, Shield, FileText, FileSearch, Mail, Palette, Briefcase, MessageCircle } from "lucide-react";
+import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle, ArrowLeft, Shield, FileText, FileSearch, Mail, Palette, Briefcase, MessageCircle, Handshake } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { AskJuristDialog } from "@/components/AskJuristDialog";
@@ -143,6 +143,15 @@ export default function Layout({ children }: LayoutProps) {
                   Brieven
                 </Link>
                 <Link 
+                  href="/resolve" 
+                  className={`font-medium transition-colors ${
+                    isActiveRoute('/resolve') ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  data-testid="link-resolve"
+                >
+                  Oplossen
+                </Link>
+                <Link 
                   href="/summons" 
                   className={`font-medium transition-colors ${
                     isActiveRoute('/summons') ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
@@ -251,6 +260,12 @@ export default function Layout({ children }: LayoutProps) {
                     <Link href="/letters" data-testid="link-letters-mobile">
                       <Mail className="mr-2 h-4 w-4" />
                       Brieven
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/resolve" data-testid="link-resolve-mobile">
+                      <Handshake className="mr-2 h-4 w-4" />
+                      Oplossen
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
