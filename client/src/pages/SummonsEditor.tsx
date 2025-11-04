@@ -15,6 +15,8 @@ import { RIcon } from "@/components/RIcon";
 import { useCases, useAnalyzeCase } from "@/hooks/useCase";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { AskJuristButton } from "@/components/AskJuristButton";
+import { UnauthorizedMessage } from "@/components/UnauthorizedMessage";
+import { isUnauthorizedError } from "@/lib/authUtils";
 
 // Define the 8 sections in strict order
 const SUMMONS_SECTIONS = [
@@ -113,6 +115,7 @@ export default function SummonsEditor() {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [kantonDialogOpen, setKantonDialogOpen] = useState(false);
   const [kantonCheckResult, setKantonCheckResult] = useState<any>(null);
+  const [isUnauthorized, setIsUnauthorized] = useState(false);
 
   // Get selected case from localStorage
   const selectedCaseId = localStorage.getItem('selectedCaseId');
@@ -178,6 +181,13 @@ export default function SummonsEditor() {
 
         // First, check if a multi-step summons already exists for this case
         const listResponse = await fetch(`/api/cases/${selectedCaseId}/summons-v2`);
+        
+        if (listResponse.status === 401) {
+          setIsUnauthorized(true);
+          setIsInitializing(false);
+          return;
+        }
+        
         if (listResponse.ok) {
           const summonsList = await listResponse.json();
           
@@ -210,7 +220,9 @@ export default function SummonsEditor() {
           })
         });
 
-        if (response.ok) {
+        if (response.status === 401) {
+          setIsUnauthorized(true);
+        } else if (response.ok) {
           const data = await response.json();
           setSummonsId(data.summonsId);
         } else {
@@ -223,11 +235,16 @@ export default function SummonsEditor() {
         }
       } catch (error) {
         console.error("Error initializing summons:", error);
-        toast({
-          title: "Error",
-          description: "Failed to initialize summons",
-          variant: "destructive"
-        });
+        const err = error as Error;
+        if (isUnauthorizedError(err)) {
+          setIsUnauthorized(true);
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to initialize summons",
+            variant: "destructive"
+          });
+        }
       } finally {
         setIsInitializing(false);
       }
@@ -239,15 +256,26 @@ export default function SummonsEditor() {
   // Fetch sections for the summons
   const { data: sections, isLoading: sectionsLoading, error: sectionsError } = useQuery<SummonsSection[]>({
     queryKey: ['/api/cases', selectedCaseId, 'summons', summonsId, 'sections'],
-    enabled: !!selectedCaseId && !!summonsId,
+    enabled: !!selectedCaseId && !!summonsId && !isUnauthorized,
     queryFn: async () => {
       const response = await fetch(`/api/cases/${selectedCaseId}/summons/${summonsId}/sections`);
+      if (response.status === 401) {
+        setIsUnauthorized(true);
+        throw new Error('401: Unauthorized');
+      }
       if (!response.ok) {
         throw new Error('Failed to fetch sections');
       }
       return response.json();
     }
   });
+  
+  // Check for unauthorized error in sections query
+  useEffect(() => {
+    if (sectionsError && isUnauthorizedError(sectionsError as Error)) {
+      setIsUnauthorized(true);
+    }
+  }, [sectionsError]);
 
   // Generate section mutation
   const generateMutation = useMutation({
@@ -262,11 +290,15 @@ export default function SummonsEditor() {
       queryClient.invalidateQueries({ queryKey: ['/api/cases', selectedCaseId, 'summons', summonsId, 'sections'] });
     },
     onError: (error: any) => {
-      toast({
-        title: "Generation Error",
-        description: error.message || "Failed to generate section",
-        variant: "destructive"
-      });
+      if (isUnauthorizedError(error)) {
+        setIsUnauthorized(true);
+      } else {
+        toast({
+          title: "Generation Error",
+          description: error.message || "Failed to generate section",
+          variant: "destructive"
+        });
+      }
     }
   });
 
@@ -283,11 +315,15 @@ export default function SummonsEditor() {
       });
     },
     onError: (error: any) => {
-      toast({
-        title: "Approval Error",
-        description: error.message || "Failed to approve section",
-        variant: "destructive"
-      });
+      if (isUnauthorizedError(error)) {
+        setIsUnauthorized(true);
+      } else {
+        toast({
+          title: "Approval Error",
+          description: error.message || "Failed to approve section",
+          variant: "destructive"
+        });
+      }
     }
   });
 
@@ -302,6 +338,10 @@ export default function SummonsEditor() {
       queryClient.invalidateQueries({ queryKey: ['/api/cases', selectedCaseId, 'summons', summonsId, 'sections'] });
     },
     onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        setIsUnauthorized(true);
+        return;
+      }
       toast({
         title: "Rejection Error",
         description: error.message || "Failed to mark section as needs changes",
@@ -379,6 +419,11 @@ export default function SummonsEditor() {
         </div>
       </div>
     );
+  }
+
+  // Unauthorized state
+  if (isUnauthorized) {
+    return <UnauthorizedMessage />;
   }
 
   // No case selected
