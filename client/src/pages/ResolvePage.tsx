@@ -20,10 +20,49 @@ import {
 } from "lucide-react";
 
 // Mediatie stappen
-type MediationStep = "intro" | "party-a-input" | "party-b-input" | "summary" | "solution";
+type MediationStep = "intro" | "party-input" | "conversation" | "summary" | "solution";
 
 // Mock data voor partij B antwoorden (voor demo)
 const partyBResponse = "Ik erken dat er werk is verricht, maar de kwaliteit voldeed niet helemaal aan de verwachtingen. Daarom vind ik €6.200 een redelijk bedrag. Ik heb ook financiële problemen en heb minimaal 12 maanden nodig om te betalen.";
+
+// Mock conversatie berichten
+const mockConversation = [
+  {
+    id: "1",
+    sender: "mediator",
+    message: "Beide partijen hebben hun standpunt gegeven. Laten we nu dieper ingaan op de kernpunten. Partij A, kunt u uitleggen waarom u vindt dat het volledige bedrag betaald moet worden?"
+  },
+  {
+    id: "2", 
+    sender: "party-a",
+    message: "Het werk is volledig volgens afspraak uitgevoerd. We hebben extra uren gestoken in het project om het op tijd af te krijgen."
+  },
+  {
+    id: "3",
+    sender: "mediator", 
+    message: "Dank u. Partij B, u noemde kwaliteitsproblemen. Kunt u daar specifieker over zijn?"
+  },
+  {
+    id: "4",
+    sender: "party-b",
+    message: "Er waren een paar panelen die niet goed aangesloten waren. Dat heb ik zelf moeten laten repareren door een andere partij."
+  },
+  {
+    id: "5",
+    sender: "mediator",
+    message: "Partij A, was u hiervan op de hoogte? Heeft u de kans gehad om dit te herstellen?"
+  },
+  {
+    id: "6",
+    sender: "party-a",
+    message: "Nee, daar ben ik nooit over geïnformeerd. We staan altijd open om zaken te herstellen binnen de garantieperiode."
+  },
+  {
+    id: "7",
+    sender: "mediator",
+    message: "Interessant. Het lijkt erop dat er een communicatieprobleem was. Partij B, had u Partij A kunnen benaderen voor herstel?"
+  }
+];
 
 // Mock privé tips
 const mockPrivateTips = [
@@ -36,13 +75,22 @@ const mockPrivateTips = [
 export default function ResolvePage() {
   const [currentStep, setCurrentStep] = useState<MediationStep>("intro");
   const [partyAInput, setPartyAInput] = useState("");
+  const [partyBInputReceived, setPartyBInputReceived] = useState(false);
+  const [conversationMessage, setConversationMessage] = useState("");
   const [minAmount, setMinAmount] = useState("7000");
   const [maxMonths, setMaxMonths] = useState("6");
 
   const handleSubmitPartyAInput = () => {
     if (partyAInput.trim()) {
-      setCurrentStep("party-b-input");
+      // Simuleer dat partij B ook antwoord heeft gegeven
+      setTimeout(() => {
+        setPartyBInputReceived(true);
+      }, 500);
     }
+  };
+
+  const handleContinueToConversation = () => {
+    setCurrentStep("conversation");
   };
 
   const renderSharedContent = () => {
@@ -85,9 +133,9 @@ export default function ResolvePage() {
                     <strong>Hoe werkt het:</strong>
                   </p>
                   <ol className="list-decimal list-inside space-y-1 ml-2">
-                    <li>Beide partijen geven hun visie op het geschil</li>
-                    <li>Ik maak een overzicht van de standpunten</li>
-                    <li>Ik geef juridische context (zonder te oordelen)</li>
+                    <li>Beide partijen geven hun eerste visie op het geschil</li>
+                    <li>We voeren een gesprek om alles te verduidelijken</li>
+                    <li>Ik maak een samenvatting en geef juridische context</li>
                     <li>Samen zoeken we naar een oplossing die voor beiden werkt</li>
                   </ol>
                 </div>
@@ -96,7 +144,7 @@ export default function ResolvePage() {
               <Button 
                 className="w-full" 
                 size="lg"
-                onClick={() => setCurrentStep("party-a-input")}
+                onClick={() => setCurrentStep("party-input")}
                 data-testid="button-start-mediation"
               >
                 Start mediation
@@ -106,99 +154,260 @@ export default function ResolvePage() {
           </div>
         );
 
-      case "party-a-input":
+      case "party-input":
         return (
-          <div className="p-6 space-y-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-                <Scale className="h-6 w-6 text-white" />
+          <ScrollArea className="h-[600px]">
+            <div className="p-6 space-y-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                  <Scale className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">Stap 1: Eerste standpunten</h2>
+                  <Badge variant="outline">Hoor en wederhoor</Badge>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold">Stap 1: Uw verhaal</h2>
-                <Badge variant="outline">Partij A aan het woord</Badge>
+
+              <div className="space-y-4">
+                {/* Mediator vraagt aan Partij A */}
+                <div className="w-full">
+                  <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                        AI
+                      </div>
+                      <span className="font-semibold text-sm">AI Mediator</span>
+                    </div>
+                    <p className="text-sm">
+                      <strong>Partij A</strong>, kunt u in uw eigen woorden uitleggen wat er is gebeurd 
+                      en wat volgens u een eerlijke oplossing zou zijn?
+                    </p>
+                  </div>
+                </div>
+
+                {/* Input veld voor Partij A */}
+                {!partyAInput && (
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium">Uw antwoord</label>
+                    <Textarea 
+                      placeholder="Vertel uw verhaal..."
+                      className="min-h-[120px]"
+                      value={partyAInput}
+                      onChange={(e) => setPartyAInput(e.target.value)}
+                      data-testid="textarea-party-a-input"
+                    />
+                    <Button 
+                      className="w-full" 
+                      onClick={handleSubmitPartyAInput}
+                      disabled={!partyAInput.trim()}
+                      data-testid="button-submit-party-a"
+                    >
+                      Verstuur antwoord
+                      <Send className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+
+                {/* Partij A antwoord (rechts uitgelijnd, chat-stijl) */}
+                {partyAInput && (
+                  <div className="flex justify-end">
+                    <div className="max-w-[75%]">
+                      <div className="flex items-baseline gap-2 mb-1 justify-end">
+                        <span className="text-xs text-muted-foreground">U (Partij A)</span>
+                      </div>
+                      <div className="p-3 bg-primary text-primary-foreground rounded-lg rounded-tr-none">
+                        <p className="text-sm">{partyAInput}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Mediator vraagt aan Partij B */}
+                {partyAInput && (
+                  <>
+                    <div className="w-full mt-6">
+                      <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                            AI
+                          </div>
+                          <span className="font-semibold text-sm">AI Mediator</span>
+                        </div>
+                        <p className="text-sm">
+                          Dank u Partij A. <strong>Partij B</strong>, wat is uw kant van het verhaal? 
+                          Wat vindt u een eerlijke oplossing?
+                        </p>
+                      </div>
+                    </div>
+
+                    {!partyBInputReceived && (
+                      <Alert>
+                        <Info className="h-4 w-4" />
+                        <AlertDescription>
+                          Wachten op antwoord van Partij B... (Voor deze demo gebruiken we een voorbeeld)
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {/* Partij B antwoord (links uitgelijnd, chat-stijl) */}
+                    {partyBInputReceived && (
+                      <>
+                        <div className="flex justify-start">
+                          <div className="max-w-[75%]">
+                            <div className="flex items-baseline gap-2 mb-1">
+                              <span className="text-xs text-muted-foreground">Partij B</span>
+                            </div>
+                            <div className="p-3 bg-green-50 border border-green-200 rounded-lg rounded-tl-none">
+                              <p className="text-sm">{partyBResponse}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="w-full mt-6">
+                          <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                                AI
+                              </div>
+                              <span className="font-semibold text-sm">AI Mediator</span>
+                            </div>
+                            <p className="text-sm">
+                              Dank u beiden voor het delen van uw standpunten. 
+                              Ik zie dat beide partijen willen tot een oplossing komen. 
+                              Laten we nu dieper ingaan op enkele kernpunten in een gesprek.
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button 
+                          className="w-full" 
+                          size="lg"
+                          onClick={handleContinueToConversation}
+                          data-testid="button-continue-to-conversation"
+                        >
+                          Ga verder naar het gesprek
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </>
+                )}
               </div>
             </div>
-
-            <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-              <p className="text-sm font-medium mb-2">AI Mediator vraagt:</p>
-              <p className="text-sm">
-                <strong>Partij A</strong>, kunt u in uw eigen woorden uitleggen wat er is gebeurd 
-                en wat volgens u een eerlijke oplossing zou zijn? 
-              </p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Let op: Dit wordt gedeeld met de andere partij.
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-sm font-medium">Uw antwoord</label>
-              <Textarea 
-                placeholder="Vertel uw verhaal..."
-                className="min-h-[150px]"
-                value={partyAInput}
-                onChange={(e) => setPartyAInput(e.target.value)}
-                data-testid="textarea-party-a-input"
-              />
-            </div>
-
-            <Button 
-              className="w-full" 
-              onClick={handleSubmitPartyAInput}
-              disabled={!partyAInput.trim()}
-              data-testid="button-submit-party-a"
-            >
-              Verstuur antwoord
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
+          </ScrollArea>
         );
 
-      case "party-b-input":
+      case "conversation":
         return (
-          <div className="p-6 space-y-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-                <Scale className="h-6 w-6 text-white" />
+          <ScrollArea className="h-[600px]">
+            <div className="p-6 space-y-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                  <Scale className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">Stap 2: Het gesprek</h2>
+                  <Badge variant="outline">Mediator leidt het gesprek</Badge>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold">Stap 2: De andere partij</h2>
-                <Badge variant="outline">Partij B aan het woord</Badge>
+
+              <div className="space-y-4">
+                {mockConversation.map((msg) => {
+                  if (msg.sender === "mediator") {
+                    return (
+                      <div key={msg.id} className="w-full">
+                        <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                              AI
+                            </div>
+                            <span className="font-semibold text-sm">AI Mediator</span>
+                          </div>
+                          <p className="text-sm">{msg.message}</p>
+                        </div>
+                      </div>
+                    );
+                  } else if (msg.sender === "party-a") {
+                    return (
+                      <div key={msg.id} className="flex justify-end">
+                        <div className="max-w-[75%]">
+                          <div className="flex items-baseline gap-2 mb-1 justify-end">
+                            <span className="text-xs text-muted-foreground">U (Partij A)</span>
+                          </div>
+                          <div className="p-3 bg-primary text-primary-foreground rounded-lg rounded-tr-none">
+                            <p className="text-sm">{msg.message}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div key={msg.id} className="flex justify-start">
+                        <div className="max-w-[75%]">
+                          <div className="flex items-baseline gap-2 mb-1">
+                            <span className="text-xs text-muted-foreground">Partij B</span>
+                          </div>
+                          <div className="p-3 bg-green-50 border border-green-200 rounded-lg rounded-tl-none">
+                            <p className="text-sm">{msg.message}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                })}
+
+                {/* Mediator geeft aan dat gesprek afgerond is */}
+                <div className="w-full mt-6">
+                  <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-300 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                        AI
+                      </div>
+                      <span className="font-semibold text-sm">AI Mediator</span>
+                    </div>
+                    <p className="text-sm mb-3">
+                      Ik denk dat we nu alle belangrijke punten hebben besproken. 
+                      Beide partijen hebben hun standpunt kunnen toelichten en ik heb een goed beeld 
+                      van de situatie. Laten we nu een samenvatting maken.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Input voor nieuw bericht */}
+                <div className="space-y-2 pt-4 border-t">
+                  <p className="text-sm font-medium">Wilt u nog iets toevoegen?</p>
+                  <div className="flex gap-2">
+                    <Textarea 
+                      placeholder="Typ uw bericht..."
+                      className="min-h-[60px]"
+                      value={conversationMessage}
+                      onChange={(e) => setConversationMessage(e.target.value)}
+                      data-testid="textarea-conversation-message"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline"
+                      className="flex-1"
+                      disabled={!conversationMessage.trim()}
+                      data-testid="button-send-conversation-message"
+                    >
+                      <Send className="mr-2 h-4 w-4" />
+                      Verstuur
+                    </Button>
+                    <Button 
+                      className="flex-1"
+                      onClick={() => setCurrentStep("summary")}
+                      data-testid="button-continue-to-summary"
+                    >
+                      Ga naar samenvatting
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
-
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm font-medium mb-2">Partij A heeft gezegd:</p>
-              <p className="text-sm italic">"{partyAInput}"</p>
-            </div>
-
-            <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-              <p className="text-sm font-medium mb-2">AI Mediator vraagt nu aan Partij B:</p>
-              <p className="text-sm">
-                <strong>Partij B</strong>, wat is uw kant van het verhaal? Wat vindt u een eerlijke oplossing?
-              </p>
-            </div>
-
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                Partij B is uitgenodigd maar heeft nog niet gereageerd. Voor deze demo tonen we een voorbeeld antwoord.
-              </AlertDescription>
-            </Alert>
-
-            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-sm font-medium mb-2">Partij B antwoordt (demo):</p>
-              <p className="text-sm italic">"{partyBResponse}"</p>
-            </div>
-
-            <Button 
-              className="w-full" 
-              onClick={() => setCurrentStep("summary")}
-              data-testid="button-continue-to-summary"
-            >
-              Ga verder naar samenvatting
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
+          </ScrollArea>
         );
 
       case "summary":
