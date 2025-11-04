@@ -6,39 +6,24 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Lock,
   Users,
   Send,
   Lightbulb,
   UserPlus,
-  CheckCircle
+  CheckCircle,
+  Scale,
+  ArrowRight,
+  Info
 } from "lucide-react";
 
-// Mock berichten
-const mockMessages = [
-  {
-    id: "1",
-    sender: "AI Mediator",
-    type: "ai",
-    message: "Welkom bij de online mediation. Ik help beide partijen om tot een oplossing te komen. U kunt hier berichten sturen en voorstellen delen.",
-    time: "10:00"
-  },
-  {
-    id: "2",
-    sender: "U (Partij A)",
-    type: "user",
-    message: "Ik wil graag tot een betalingsregeling komen voor het openstaande bedrag.",
-    time: "10:15"
-  },
-  {
-    id: "3",
-    sender: "AI Mediator",
-    type: "ai-proposal",
-    message: "Op basis van de informatie stel ik voor: \n\n💰 Bedrag: €7.200 inclusief BTW\n📅 Betaling: 6 maanden, €1.200 per maand\n💡 Rente: 50% van wettelijke rente\n\nDit is een middenweg tussen beide standpunten.",
-    time: "10:20"
-  }
-];
+// Mediatie stappen
+type MediationStep = "intro" | "party-a-input" | "party-b-input" | "summary" | "solution";
+
+// Mock data voor partij B antwoorden (voor demo)
+const partyBResponse = "Ik erken dat er werk is verricht, maar de kwaliteit voldeed niet helemaal aan de verwachtingen. Daarom vind ik €6.200 een redelijk bedrag. Ik heb ook financiële problemen en heb minimaal 12 maanden nodig om te betalen.";
 
 // Mock privé tips
 const mockPrivateTips = [
@@ -49,14 +34,417 @@ const mockPrivateTips = [
 ];
 
 export default function ResolvePage() {
-  const [newMessage, setNewMessage] = useState("");
+  const [currentStep, setCurrentStep] = useState<MediationStep>("intro");
+  const [partyAInput, setPartyAInput] = useState("");
   const [minAmount, setMinAmount] = useState("7000");
   const [maxMonths, setMaxMonths] = useState("6");
 
-  const handleSendMessage = () => {
-    if (newMessage.trim()) {
-      // Hier zou de message verzonden worden
-      setNewMessage("");
+  const handleSubmitPartyAInput = () => {
+    if (partyAInput.trim()) {
+      setCurrentStep("party-b-input");
+    }
+  };
+
+  const renderSharedContent = () => {
+    switch (currentStep) {
+      case "intro":
+        return (
+          <div className="p-6 space-y-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                <Scale className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">AI Mediator</h2>
+                <p className="text-sm text-muted-foreground">Onpartijdig & neutraal</p>
+              </div>
+            </div>
+
+            <Alert className="border-blue-200 bg-blue-50">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                De AI Mediator is volledig onpartijdig en behartigt de belangen van beide partijen gelijk.
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-4">
+              <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+                <h3 className="font-semibold mb-3">Welkom bij de online mediation</h3>
+                <div className="space-y-3 text-sm">
+                  <p>
+                    <strong>Wat ik begrijp:</strong> Er is een geschil over onbetaalde facturen voor een bouwproject. 
+                    Beide partijen willen tot een oplossing komen zonder naar de rechter te gaan.
+                  </p>
+                  <Separator />
+                  <p>
+                    <strong>Mijn doel:</strong> Ik help beide partijen om samen tot een eerlijke oplossing te komen 
+                    die voor iedereen acceptabel is. Ik ben volledig onpartijdig en behandel beide partijen gelijk.
+                  </p>
+                  <Separator />
+                  <p>
+                    <strong>Hoe werkt het:</strong>
+                  </p>
+                  <ol className="list-decimal list-inside space-y-1 ml-2">
+                    <li>Beide partijen geven hun visie op het geschil</li>
+                    <li>Ik maak een overzicht van de standpunten</li>
+                    <li>Ik geef juridische context (zonder te oordelen)</li>
+                    <li>Samen zoeken we naar een oplossing die voor beiden werkt</li>
+                  </ol>
+                </div>
+              </div>
+
+              <Button 
+                className="w-full" 
+                size="lg"
+                onClick={() => setCurrentStep("party-a-input")}
+                data-testid="button-start-mediation"
+              >
+                Start mediation
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        );
+
+      case "party-a-input":
+        return (
+          <div className="p-6 space-y-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                <Scale className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Stap 1: Uw verhaal</h2>
+                <Badge variant="outline">Partij A aan het woord</Badge>
+              </div>
+            </div>
+
+            <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+              <p className="text-sm font-medium mb-2">AI Mediator vraagt:</p>
+              <p className="text-sm">
+                <strong>Partij A</strong>, kunt u in uw eigen woorden uitleggen wat er is gebeurd 
+                en wat volgens u een eerlijke oplossing zou zijn? 
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Let op: Dit wordt gedeeld met de andere partij.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Uw antwoord</label>
+              <Textarea 
+                placeholder="Vertel uw verhaal..."
+                className="min-h-[150px]"
+                value={partyAInput}
+                onChange={(e) => setPartyAInput(e.target.value)}
+                data-testid="textarea-party-a-input"
+              />
+            </div>
+
+            <Button 
+              className="w-full" 
+              onClick={handleSubmitPartyAInput}
+              disabled={!partyAInput.trim()}
+              data-testid="button-submit-party-a"
+            >
+              Verstuur antwoord
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        );
+
+      case "party-b-input":
+        return (
+          <div className="p-6 space-y-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                <Scale className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Stap 2: De andere partij</h2>
+                <Badge variant="outline">Partij B aan het woord</Badge>
+              </div>
+            </div>
+
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm font-medium mb-2">Partij A heeft gezegd:</p>
+              <p className="text-sm italic">"{partyAInput}"</p>
+            </div>
+
+            <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+              <p className="text-sm font-medium mb-2">AI Mediator vraagt nu aan Partij B:</p>
+              <p className="text-sm">
+                <strong>Partij B</strong>, wat is uw kant van het verhaal? Wat vindt u een eerlijke oplossing?
+              </p>
+            </div>
+
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                Partij B is uitgenodigd maar heeft nog niet gereageerd. Voor deze demo tonen we een voorbeeld antwoord.
+              </AlertDescription>
+            </Alert>
+
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm font-medium mb-2">Partij B antwoordt (demo):</p>
+              <p className="text-sm italic">"{partyBResponse}"</p>
+            </div>
+
+            <Button 
+              className="w-full" 
+              onClick={() => setCurrentStep("summary")}
+              data-testid="button-continue-to-summary"
+            >
+              Ga verder naar samenvatting
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        );
+
+      case "summary":
+        return (
+          <ScrollArea className="h-[600px]">
+            <div className="p-6 space-y-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                  <Scale className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">Stap 3: Samenvatting & Juridische context</h2>
+                  <Badge variant="outline">AI Analyse</Badge>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+                  <h3 className="font-semibold mb-3">Samenvatting van de standpunten</h3>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm font-medium text-blue-700 mb-1">Partij A (u) wil:</p>
+                      <ul className="text-sm space-y-1 ml-4 list-disc">
+                        <li>Het volledige bedrag ontvangen voor het uitgevoerde werk</li>
+                        <li>Bij voorkeur binnen 6 maanden betaald krijgen</li>
+                        <li>De klantrelatie behouden voor de toekomst</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-medium text-green-700 mb-1">Partij B wil:</p>
+                      <ul className="text-sm space-y-1 ml-4 list-disc">
+                        <li>Een lager bedrag betalen vanwege kwaliteitskwesties</li>
+                        <li>Een langere betalingstermijn (12 maanden)</li>
+                        <li>Rekening houden met financiële situatie</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <h3 className="font-semibold mb-2 flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    Waar zijn partijen het WEL over eens
+                  </h3>
+                  <ul className="text-sm space-y-1 ml-4 list-disc">
+                    <li>Er is werk verricht door Partij A</li>
+                    <li>Er moet een bedrag worden betaald</li>
+                    <li>Beide partijen willen een oplossing zonder rechter</li>
+                    <li>Een betalingsregeling is mogelijk</li>
+                  </ul>
+                </div>
+
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <h3 className="font-semibold mb-2">Wat is in geschil</h3>
+                  <ul className="text-sm space-y-1 ml-4 list-disc">
+                    <li>De hoogte van het bedrag (€8.500 vs €6.200)</li>
+                    <li>De kwaliteit van het geleverde werk</li>
+                    <li>De duur van de betalingsregeling (6 vs 12 maanden)</li>
+                    <li>Rente en extra kosten</li>
+                  </ul>
+                </div>
+
+                <Separator />
+
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h3 className="font-semibold mb-3">Juridische context (informatief, geen oordeel)</h3>
+                  <p className="text-sm mb-3">
+                    <strong>Hoe zou een rechter hier waarschijnlijk naar kijken?</strong>
+                  </p>
+                  
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <p className="font-medium mb-1">📋 Bewijs van werk:</p>
+                      <p className="text-muted-foreground">
+                        Een rechter kijkt naar offertes, facturen en bewijzen van uitgevoerd werk. 
+                        Als het werk volgens afspraak is gedaan, heeft Partij A meestal recht op betaling.
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="font-medium mb-1">⚖️ Kwaliteitskwesties:</p>
+                      <p className="text-muted-foreground">
+                        Partij B moet concrete bewijzen leveren van slechte kwaliteit. 
+                        Algemene klachten zonder bewijs worden vaak niet gehonoreerd.
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="font-medium mb-1">💰 Betalingsregeling:</p>
+                      <p className="text-muted-foreground">
+                        Een rechter kan een betalingsregeling opleggen, maar dit hangt af van de 
+                        financiële situatie. Meestal 6-12 maanden voor particulieren.
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="font-medium mb-1">💡 Wettelijke rente:</p>
+                      <p className="text-muted-foreground">
+                        Bij te late betaling heeft Partij A recht op wettelijke handelsrente. 
+                        Dit is een percentage over het openstaande bedrag.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Alert className="mt-3">
+                    <Info className="h-4 w-4" />
+                    <AlertDescription className="text-xs">
+                      <strong>Let op:</strong> Dit is geen juridisch advies maar een algemene schets. 
+                      Een rechter oordeelt altijd op basis van alle specifieke feiten en bewijzen.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+
+                <Button 
+                  className="w-full" 
+                  size="lg"
+                  onClick={() => setCurrentStep("solution")}
+                  data-testid="button-continue-to-solution"
+                >
+                  Ga naar oplossingen zoeken
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </ScrollArea>
+        );
+
+      case "solution":
+        return (
+          <ScrollArea className="h-[600px]">
+            <div className="p-6 space-y-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                  <Lightbulb className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">Stap 4: Op zoek naar een oplossing</h2>
+                  <Badge variant="outline">Samen tot een voorstel</Badge>
+                </div>
+              </div>
+
+              <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-300 rounded-lg">
+                <h3 className="font-semibold mb-3">AI Mediator Voorstel</h3>
+                <p className="text-sm mb-4">
+                  Op basis van jullie standpunten en de juridische context stel ik het volgende voor:
+                </p>
+
+                <div className="space-y-3">
+                  <div className="p-3 bg-white rounded border">
+                    <p className="font-medium text-sm mb-1">💰 Bedrag</p>
+                    <p className="text-lg font-bold text-primary">€7.200 inclusief BTW</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Een middenweg: Partij B erkent de waarde van het werk, Partij A doet een kleine concessie
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-white rounded border">
+                    <p className="font-medium text-sm mb-1">📅 Betalingsregeling</p>
+                    <p className="text-lg font-bold text-primary">8 maanden, €900 per maand</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Tussenweg: Langer dan Partij A wil, korter dan Partij B vraagt
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-white rounded border">
+                    <p className="font-medium text-sm mb-1">💡 Wettelijke rente</p>
+                    <p className="text-lg font-bold text-primary">50% van wettelijke rente</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Compromis: Partij A krijgt gedeeltelijke vergoeding, Partij B krijgt korting
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-white rounded border">
+                    <p className="font-medium text-sm mb-1">🤝 Extra afspraak</p>
+                    <p className="text-sm">Bij tijdige betaling: geen extra kosten</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Stimulans voor Partij B om op tijd te betalen
+                    </p>
+                  </div>
+                </div>
+
+                <Separator className="my-4" />
+
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Waarom dit voorstel?</p>
+                  <ul className="text-sm space-y-1 ml-4 list-disc text-muted-foreground">
+                    <li>Het houdt rekening met de belangen van beide partijen</li>
+                    <li>Het is juridisch haalbaar en realistisch</li>
+                    <li>Het voorkomt een dure en tijdrovende rechtszaak</li>
+                    <li>Beide partijen doen een concessie voor een snelle oplossing</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-sm font-medium">Wat vindt u van dit voorstel?</p>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <Button 
+                    className="w-full" 
+                    variant="default"
+                    data-testid="button-accept-solution"
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Akkoord
+                  </Button>
+                  <Button 
+                    className="w-full" 
+                    variant="outline"
+                    data-testid="button-counter-solution"
+                  >
+                    Tegenvoorstel
+                  </Button>
+                </div>
+
+                <Textarea 
+                  placeholder="Uw reactie op dit voorstel (optioneel)..."
+                  className="min-h-[80px]"
+                  data-testid="textarea-solution-feedback"
+                />
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  data-testid="button-send-feedback"
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  Verstuur reactie
+                </Button>
+              </div>
+
+              <Alert className="bg-blue-50 border-blue-200">
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  Als beide partijen akkoord gaan, wordt automatisch een vaststellingsovereenkomst opgesteld 
+                  die u beiden kunt ondertekenen.
+                </AlertDescription>
+              </Alert>
+            </div>
+          </ScrollArea>
+        );
+
+      default:
+        return null;
     }
   };
 
@@ -180,121 +568,11 @@ export default function ResolvePage() {
               <CardTitle className="text-blue-900">Gedeeld - Iedereen ziet dit</CardTitle>
             </div>
             <p className="text-sm text-blue-800">
-              Berichten, voorstellen en AI-advies. Dit zien u, de andere partij en de mediator.
+              De AI Mediator begeleidt beide partijen stap voor stap naar een oplossing.
             </p>
           </CardHeader>
           <CardContent className="p-0">
-            
-            {/* Chat berichten */}
-            <ScrollArea className="h-[500px] p-6">
-              <div className="space-y-4">
-                {mockMessages.map((msg) => (
-                  <div key={msg.id} className="space-y-2">
-                    {msg.type === "ai" && (
-                      <div className="flex gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                          AI
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-baseline gap-2 mb-1">
-                            <span className="font-semibold text-sm">AI Mediator</span>
-                            <span className="text-xs text-muted-foreground">{msg.time}</span>
-                          </div>
-                          <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                            <p className="text-sm">{msg.message}</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {msg.type === "ai-proposal" && (
-                      <div className="flex gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                          AI
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-baseline gap-2 mb-1">
-                            <span className="font-semibold text-sm">AI Mediator</span>
-                            <Badge variant="secondary" className="text-xs">Voorstel</Badge>
-                            <span className="text-xs text-muted-foreground">{msg.time}</span>
-                          </div>
-                          <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-300 rounded-lg">
-                            <p className="text-sm whitespace-pre-line">{msg.message}</p>
-                            <div className="flex gap-2 mt-4">
-                              <Button size="sm" className="flex-1" data-testid="button-accept-proposal">
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                                Akkoord
-                              </Button>
-                              <Button size="sm" variant="outline" className="flex-1" data-testid="button-counter-proposal">
-                                Tegenvoorstel
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {msg.type === "user" && (
-                      <div className="flex gap-3 justify-end">
-                        <div className="flex-1 flex flex-col items-end">
-                          <div className="flex items-baseline gap-2 mb-1">
-                            <span className="text-xs text-muted-foreground">{msg.time}</span>
-                            <span className="font-semibold text-sm">{msg.sender}</span>
-                          </div>
-                          <div className="p-3 bg-primary text-primary-foreground rounded-lg max-w-[80%]">
-                            <p className="text-sm">{msg.message}</p>
-                          </div>
-                        </div>
-                        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold flex-shrink-0">
-                          U
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-
-            {/* Input voor nieuw bericht */}
-            <div className="p-4 border-t bg-white">
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <Input 
-                    placeholder="Typ uw bericht of voorstel..." 
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                    data-testid="input-message"
-                  />
-                  <Button 
-                    onClick={handleSendMessage}
-                    data-testid="button-send-message"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1"
-                    data-testid="button-ask-ai-proposal"
-                  >
-                    <Lightbulb className="mr-2 h-4 w-4" />
-                    Vraag AI om voorstel
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1"
-                    data-testid="button-make-proposal"
-                  >
-                    Doe een voorstel
-                  </Button>
-                </div>
-              </div>
-            </div>
-
+            {renderSharedContent()}
           </CardContent>
         </Card>
 
