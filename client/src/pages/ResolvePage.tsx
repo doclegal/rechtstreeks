@@ -259,7 +259,7 @@ export default function ResolvePage() {
 
       case "party-input":
         return (
-          <ScrollArea className="h-[600px]">
+          <ScrollArea className="h-[calc(100vh-280px)]">
             <div className="p-6 space-y-6">
               <Button
                 variant="ghost"
@@ -413,7 +413,7 @@ export default function ResolvePage() {
 
       case "conversation":
         return (
-          <ScrollArea className="h-[600px]">
+          <ScrollArea className="h-[calc(100vh-280px)]">
             <div className="p-6 space-y-6">
               <Button
                 variant="ghost"
@@ -598,7 +598,7 @@ export default function ResolvePage() {
 
       case "summary":
         return (
-          <ScrollArea className="h-[600px]">
+          <ScrollArea className="h-[calc(100vh-280px)]">
             <div className="p-6 space-y-6">
               <Button
                 variant="ghost"
@@ -736,7 +736,7 @@ export default function ResolvePage() {
 
       case "solution":
         return (
-          <ScrollArea className="h-[600px]">
+          <ScrollArea className="h-[calc(100vh-280px)]">
             <div className="p-6 space-y-6">
               <Button
                 variant="ghost"
