@@ -100,24 +100,36 @@ export default function ResolvePage() {
 
   const handleSendConversationMessage = () => {
     if (conversationMessage.trim()) {
+      console.log("Versturen bericht:", conversationMessage);
+      
       // Voeg bericht van Partij A toe
       const newMessage = {
         id: `user-${Date.now()}`,
-        sender: "party-a",
+        sender: "party-a" as const,
         message: conversationMessage
       };
-      setConversationMessages([...conversationMessages, newMessage]);
+      
+      const updatedMessages = [...conversationMessages, newMessage];
+      setConversationMessages(updatedMessages);
       setConversationMessage("");
 
-      // Simuleer automatisch antwoord van Partij B na 1 seconde
+      console.log("Bericht toegevoegd, wachten op Partij B antwoord...");
+      
+      // Simuleer automatisch antwoord van Partij B na 1.5 seconde
       setTimeout(() => {
+        console.log("Partij B antwoordt nu");
         const partyBReply = {
           id: `party-b-${Date.now()}`,
-          sender: "party-b",
+          sender: "party-b" as const,
           message: "Dat begrijp ik. Laten we kijken of we hier samen uit kunnen komen."
         };
-        setConversationMessages(prev => [...prev, partyBReply]);
-      }, 1000);
+        setConversationMessages(prev => {
+          console.log("Huidige berichten:", prev.length);
+          const newMessages = [...prev, partyBReply];
+          console.log("Nieuwe berichten:", newMessages.length);
+          return newMessages;
+        });
+      }, 1500);
     }
   };
 
