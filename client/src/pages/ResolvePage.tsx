@@ -25,7 +25,7 @@ type MediationStep = "intro" | "party-input" | "conversation" | "summary" | "sol
 // Mock data voor partij B antwoorden (voor demo)
 const partyBResponse = "Ik erken dat er werk is verricht, maar de kwaliteit voldeed niet helemaal aan de verwachtingen. Daarom vind ik €6.200 een redelijk bedrag. Ik heb ook financiële problemen en heb minimaal 12 maanden nodig om te betalen.";
 
-// Mock conversatie berichten
+// Mock conversatie berichten - volledige demo met meerdere berichten van beide partijen
 const mockConversation = [
   {
     id: "1",
@@ -61,6 +61,31 @@ const mockConversation = [
     id: "7",
     sender: "mediator",
     message: "Interessant. Het lijkt erop dat er een communicatieprobleem was. Partij B, had u Partij A kunnen benaderen voor herstel?"
+  },
+  {
+    id: "8",
+    sender: "party-b",
+    message: "Ja, achteraf had ik dat kunnen doen. Ik dacht dat het te laat was. Maar ik ben wel bereid om te praten over een oplossing."
+  },
+  {
+    id: "9",
+    sender: "mediator",
+    message: "Goed om te horen dat beide partijen open staan voor een oplossing. Partij A, zou u bereid zijn om een gebaar te maken qua betalingstermijn?"
+  },
+  {
+    id: "10",
+    sender: "party-a",
+    message: "Als het bedrag compleet betaald wordt, dan kan ik wel akkoord gaan met een langere betalingsregeling. Bijvoorbeeld 6-8 maanden."
+  },
+  {
+    id: "11",
+    sender: "mediator",
+    message: "En Partij B, zou een betalingsregeling van 6-8 maanden haalbaar zijn voor u?"
+  },
+  {
+    id: "12",
+    sender: "party-b",
+    message: "6 maanden zou ik kunnen doen als we het bedrag iets verlagen. Bij het volledige bedrag zou ik liever 12 maanden zien."
   }
 ];
 
@@ -436,20 +461,23 @@ export default function ResolvePage() {
                   </div>
                 )}
 
-                {/* Toggle voor klaar zijn */}
+                {/* Status van beide partijen */}
                 <div className="space-y-3 pt-4 border-t">
+                  <p className="text-sm font-semibold mb-3">Status gesprek</p>
+                  
+                  {/* Partij A status */}
                   <div className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-lg">
                     <div className="flex-1">
-                      <p className="font-medium text-sm">Ik heb niets meer toe te voegen</p>
+                      <p className="font-medium text-sm">U (Partij A): Ik heb niets meer toe te voegen</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Klik hier als u klaar bent met het gesprek
+                        Klik om aan te geven dat u klaar bent met het gesprek
                       </p>
                     </div>
                     <Button
                       variant={partyAReady ? "default" : "outline"}
                       size="sm"
                       onClick={handlePartyAToggleReady}
-                      data-testid="button-toggle-ready"
+                      data-testid="button-toggle-ready-party-a"
                     >
                       {partyAReady ? (
                         <>
@@ -462,21 +490,31 @@ export default function ResolvePage() {
                     </Button>
                   </div>
 
-                  {/* Status van andere partij */}
-                  {partyAReady && (
-                    <Alert className={partyBReady ? "bg-green-50 border-green-200" : "bg-blue-50 border-blue-200"}>
-                      <Info className="h-4 w-4" />
-                      <AlertDescription>
-                        {partyBReady ? (
-                          <span className="font-medium">
-                            ✓ Partij B heeft ook aangegeven klaar te zijn met het gesprek
-                          </span>
-                        ) : (
-                          "Wachten op Partij B..."
-                        )}
-                      </AlertDescription>
-                    </Alert>
-                  )}
+                  {/* Partij B status (alleen kijken) */}
+                  <div className={`flex items-center justify-between p-4 rounded-lg ${
+                    partyBReady 
+                      ? "bg-green-50 border border-green-200" 
+                      : "bg-gray-50 border border-gray-200"
+                  }`}>
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">Partij B: Niets meer toe te voegen</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Status van de andere partij
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {partyBReady ? (
+                        <Badge variant="default" className="bg-green-600">
+                          <CheckCircle className="mr-1 h-3 w-3" />
+                          Klaar
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">
+                          Nog bezig
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Ga verder naar samenvatting (alleen als beide klaar zijn) */}
