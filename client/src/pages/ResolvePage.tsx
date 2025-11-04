@@ -77,6 +77,9 @@ export default function ResolvePage() {
   const [partyAInput, setPartyAInput] = useState("");
   const [partyBInputReceived, setPartyBInputReceived] = useState(false);
   const [conversationMessage, setConversationMessage] = useState("");
+  const [conversationMessages, setConversationMessages] = useState<typeof mockConversation>([]);
+  const [partyAReady, setPartyAReady] = useState(false);
+  const [partyBReady, setPartyBReady] = useState(false);
   const [minAmount, setMinAmount] = useState("7000");
   const [maxMonths, setMaxMonths] = useState("6");
 
@@ -91,6 +94,45 @@ export default function ResolvePage() {
 
   const handleContinueToConversation = () => {
     setCurrentStep("conversation");
+    // Laad de mock conversatie
+    setConversationMessages(mockConversation);
+  };
+
+  const handleSendConversationMessage = () => {
+    if (conversationMessage.trim()) {
+      // Voeg bericht van Partij A toe
+      const newMessage = {
+        id: `user-${Date.now()}`,
+        sender: "party-a",
+        message: conversationMessage
+      };
+      setConversationMessages([...conversationMessages, newMessage]);
+      setConversationMessage("");
+
+      // Simuleer automatisch antwoord van Partij B na 1 seconde
+      setTimeout(() => {
+        const partyBReply = {
+          id: `party-b-${Date.now()}`,
+          sender: "party-b",
+          message: "Dat begrijp ik. Laten we kijken of we hier samen uit kunnen komen."
+        };
+        setConversationMessages(prev => [...prev, partyBReply]);
+      }, 1000);
+    }
+  };
+
+  const handlePartyAToggleReady = () => {
+    const newReadyState = !partyAReady;
+    setPartyAReady(newReadyState);
+    
+    // Simuleer dat Partij B ook klaar is wanneer Partij A klaar is
+    if (newReadyState) {
+      setTimeout(() => {
+        setPartyBReady(true);
+      }, 800);
+    } else {
+      setPartyBReady(false);
+    }
   };
 
   const renderSharedContent = () => {
@@ -312,7 +354,7 @@ export default function ResolvePage() {
               </div>
 
               <div className="space-y-4">
-                {mockConversation.map((msg) => {
+                {conversationMessages.map((msg) => {
                   if (msg.sender === "mediator") {
                     return (
                       <div key={msg.id} className="w-full">
@@ -356,27 +398,10 @@ export default function ResolvePage() {
                   }
                 })}
 
-                {/* Mediator geeft aan dat gesprek afgerond is */}
-                <div className="w-full mt-6">
-                  <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-300 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
-                        AI
-                      </div>
-                      <span className="font-semibold text-sm">AI Mediator</span>
-                    </div>
-                    <p className="text-sm mb-3">
-                      Ik denk dat we nu alle belangrijke punten hebben besproken. 
-                      Beide partijen hebben hun standpunt kunnen toelichten en ik heb een goed beeld 
-                      van de situatie. Laten we nu een samenvatting maken.
-                    </p>
-                  </div>
-                </div>
-
                 {/* Input voor nieuw bericht */}
-                <div className="space-y-2 pt-4 border-t">
-                  <p className="text-sm font-medium">Wilt u nog iets toevoegen?</p>
-                  <div className="flex gap-2">
+                {!partyAReady && (
+                  <div className="space-y-3 pt-4 border-t">
+                    <p className="text-sm font-medium">Wilt u nog iets toevoegen aan het gesprek?</p>
                     <Textarea 
                       placeholder="Typ uw bericht..."
                       className="min-h-[60px]"
@@ -384,19 +409,84 @@ export default function ResolvePage() {
                       onChange={(e) => setConversationMessage(e.target.value)}
                       data-testid="textarea-conversation-message"
                     />
-                  </div>
-                  <div className="flex gap-2">
                     <Button 
                       variant="outline"
-                      className="flex-1"
+                      className="w-full"
                       disabled={!conversationMessage.trim()}
+                      onClick={handleSendConversationMessage}
                       data-testid="button-send-conversation-message"
                     >
                       <Send className="mr-2 h-4 w-4" />
-                      Verstuur
+                      Verstuur bericht
                     </Button>
+                  </div>
+                )}
+
+                {/* Toggle voor klaar zijn */}
+                <div className="space-y-3 pt-4 border-t">
+                  <div className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">Ik heb niets meer toe te voegen</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Klik hier als u klaar bent met het gesprek
+                      </p>
+                    </div>
+                    <Button
+                      variant={partyAReady ? "default" : "outline"}
+                      size="sm"
+                      onClick={handlePartyAToggleReady}
+                      data-testid="button-toggle-ready"
+                    >
+                      {partyAReady ? (
+                        <>
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Klaar
+                        </>
+                      ) : (
+                        "Markeer als klaar"
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Status van andere partij */}
+                  {partyAReady && (
+                    <Alert className={partyBReady ? "bg-green-50 border-green-200" : "bg-blue-50 border-blue-200"}>
+                      <Info className="h-4 w-4" />
+                      <AlertDescription>
+                        {partyBReady ? (
+                          <span className="font-medium">
+                            ✓ Partij B heeft ook aangegeven klaar te zijn met het gesprek
+                          </span>
+                        ) : (
+                          "Wachten op Partij B..."
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+
+                {/* Ga verder naar samenvatting (alleen als beide klaar zijn) */}
+                {partyAReady && partyBReady && (
+                  <div className="space-y-3">
+                    <div className="w-full">
+                      <div className="p-4 bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-300 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                            AI
+                          </div>
+                          <span className="font-semibold text-sm">AI Mediator</span>
+                        </div>
+                        <p className="text-sm">
+                          Beide partijen hebben aangegeven dat het gesprek compleet is. 
+                          Uitstekend! Ik ga nu een samenvatting maken van alle besproken punten 
+                          en juridische context geven.
+                        </p>
+                      </div>
+                    </div>
+
                     <Button 
-                      className="flex-1"
+                      className="w-full"
+                      size="lg"
                       onClick={() => setCurrentStep("summary")}
                       data-testid="button-continue-to-summary"
                     >
@@ -404,7 +494,7 @@ export default function ResolvePage() {
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </ScrollArea>
