@@ -516,6 +516,149 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Online Mediation Section */}
+      <section className="py-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-foreground mb-4">
+              Eerst proberen op te lossen
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Voordat je naar de rechter gaat, probeer je geschil eerst via online mediation op te lossen. 
+              Sneller, goedkoper en vaak met een beter resultaat voor beide partijen.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 mb-8">
+            <Card className="border-2 border-primary/20">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Handshake className="h-6 w-6 text-primary" />
+                  <h3 className="font-semibold text-lg text-foreground">
+                    Waarom eerst mediation?
+                  </h3>
+                </div>
+                <p className="text-muted-foreground mb-4">
+                  Een rechtszaak is vaak de laatste stap. Mediation biedt een kans om samen met de wederpartij 
+                  tot een oplossing te komen, met hulp van een neutrale mediator.
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 bg-green-50 dark:bg-green-950/20 p-3 rounded-lg">
+                    <div className="text-2xl">⚡</div>
+                    <div>
+                      <h4 className="font-medium text-foreground mb-1">Sneller resultaat</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Mediation duurt gemiddeld 1-2 weken, een rechtszaak kan maanden tot jaren duren.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg">
+                    <div className="text-2xl">💰</div>
+                    <div>
+                      <h4 className="font-medium text-foreground mb-1">Lagere kosten</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Mediation kost een fractie van een rechtszaak en voorkomt proceskosten.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 bg-purple-50 dark:bg-purple-950/20 p-3 rounded-lg">
+                    <div className="text-2xl">🤝</div>
+                    <div>
+                      <h4 className="font-medium text-foreground mb-1">Behoud van relatie</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Samen werken aan een oplossing in plaats van tegen elkaar procederen.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <CheckCircle className="h-6 w-6 text-primary" />
+                  <h3 className="font-semibold text-lg text-foreground">
+                    Hoe werkt online mediation?
+                  </h3>
+                </div>
+                <p className="text-muted-foreground mb-4">
+                  Via ons platform kun je eenvoudig een mediation starten. De mediator helpt beide partijen 
+                  naar een oplossing toe te werken.
+                </p>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold">
+                      1
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-foreground mb-1">Nodig wederpartij uit</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Stuur een uitnodiging voor mediation naar de wederpartij via ons platform.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold">
+                      2
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-foreground mb-1">Online gesprek</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Een professionele mediator voert online gesprekken met beide partijen.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold">
+                      3
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-foreground mb-1">Samen naar oplossing</h4>
+                      <p className="text-sm text-muted-foreground">
+                        De mediator helpt jullie een voor beide partijen acceptabele oplossing te vinden.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold">
+                      4
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-foreground mb-1">Bindende afspraken</h4>
+                      <p className="text-sm text-muted-foreground">
+                        De gemaakte afspraken worden vastgelegd in een bindende overeenkomst.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-6 border border-primary/20">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <CheckCircle className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg text-foreground mb-2">
+                  Succesvol in 80% van de gevallen
+                </h3>
+                <p className="text-muted-foreground mb-3">
+                  Studies tonen aan dat in ongeveer 80% van de mediations beide partijen tot een 
+                  overeenkomst komen waar ze tevreden mee zijn. Dit voorkomt een langdurige en kostbare rechtszaak.
+                </p>
+                <p className="text-sm text-muted-foreground italic">
+                  💡 <strong>Tip:</strong> Ook als mediation niet slaagt, kun je daarna nog altijd een dagvaarding opstellen. 
+                  Je hebt dan in ieder geval geprobeerd het op een goede manier op te lossen.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Kantonzaken Uitleg Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
