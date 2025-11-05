@@ -34,12 +34,11 @@ export default function Landing() {
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-primary/5 to-background">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-6">
-            Begrijp je juridische zaak
+            Los je juridische probleem op
             <span className="text-primary block mt-2">met hulp van AI</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Upload je zaak. AI brengt jouw geschil in kaart en helpt met juridische documenten. 
-            Eenvoudig en duidelijk. Indien nodig, altijd een jurist dichtbij.
+            Rechtstreeks zelf aan de slag. AI analyseert je zaak, helpt met documenten en begeleidt je stap voor stap.
           </p>
           {isAuthenticated ? (
             <Button size="lg" asChild data-testid="button-open-app">
@@ -50,7 +49,7 @@ export default function Landing() {
           ) : (
             <Button size="lg" asChild data-testid="button-get-started">
               <a href="/api/login" className="px-8 py-4 text-lg">
-                Gratis beginnen
+                Starten
               </a>
             </Button>
           )}
@@ -376,10 +375,10 @@ export default function Landing() {
             Zo werkt het
           </h2>
           <p className="text-center text-muted-foreground mb-12">
-            In 4 eenvoudige stappen naar een oplossing
+            Begeleiding bij elke stap
           </p>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-8">
             <div className="text-center">
               <div className="w-16 h-16 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
                 1
@@ -419,6 +418,18 @@ export default function Landing() {
             <div className="text-center">
               <div className="w-16 h-16 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
                 4
+              </div>
+              <h3 className="font-semibold text-lg text-foreground mb-2">
+                Oplossen
+              </h3>
+              <p className="text-muted-foreground text-sm">
+                Probeer eerst online mediation voor een snelle oplossing
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-16 h-16 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
+                5
               </div>
               <h3 className="font-semibold text-lg text-foreground mb-2">
                 Maak een dagvaarding
@@ -482,7 +493,7 @@ export default function Landing() {
             <div className="relative">
               <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 border border-border">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-lg">Je Analyse</h3>
+                  <h3 className="font-semibold text-lg">Jouw zaak uitgelegd</h3>
                   <Button variant="outline" size="sm" className="gap-2">
                     <UserCircle className="h-4 w-4" />
                     <span className="hidden sm:inline">Vraag een jurist</span>
@@ -658,14 +669,60 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Disclaimer Section */}
+      <section className="py-8 px-4 sm:px-6 lg:px-8 bg-amber-50 dark:bg-amber-950/20 border-y border-amber-200 dark:border-amber-900">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-amber-900 dark:text-amber-100">
+              <strong className="font-semibold">Belangrijke opmerking:</strong> Rechtstreeks is een DIY (Do-It-Yourself) hulpdienst voor juridische geschillen. 
+              Het platform biedt hulpmiddelen en begeleiding, maar is geen vervanging voor professioneel juridisch advies. 
+              Voor complexe zaken raden wij aan altijd een erkende jurist te raadplegen.
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="bg-card border-t border-border py-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center gap-2 mb-4 md:mb-0">
-              <RIcon size="sm" />
-              <span className="font-bold text-foreground">Rechtstreeks.ai</span>
+          <div className="grid md:grid-cols-3 gap-8 mb-8">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <RIcon size="sm" />
+                <span className="font-bold text-foreground">Rechtstreeks.ai</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                DIY juridische hulp voor kantonzaken. Direct zelf aan de slag met AI-ondersteuning.
+              </p>
             </div>
+            
+            <div>
+              <h4 className="font-semibold text-foreground mb-3">Contact</h4>
+              <p className="text-sm text-muted-foreground mb-2">
+                Vragen over het platform?
+              </p>
+              <Button variant="outline" size="sm" asChild data-testid="button-contact">
+                <a href="mailto:info@rechtstreeks.ai">
+                  Contact opnemen
+                </a>
+              </Button>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold text-foreground mb-3">Afspraak met jurist</h4>
+              <p className="text-sm text-muted-foreground mb-2">
+                Wil je persoonlijk advies?
+              </p>
+              <Button variant="default" size="sm" asChild data-testid="button-appointment">
+                <a href="mailto:afspraak@rechtstreeks.ai">
+                  Afspraak maken
+                </a>
+              </Button>
+            </div>
+          </div>
+          
+          <div className="pt-8 border-t border-border text-center">
             <p className="text-sm text-muted-foreground">
               © 2024 Rechtstreeks.ai. Alle rechten voorbehouden.
             </p>
