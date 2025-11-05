@@ -27,6 +27,44 @@ import Dossier from "@/pages/Dossier";
 import Chat from "@/pages/Chat";
 import QnA from "@/pages/QnA";
 import ResolvePage from "@/pages/ResolvePage";
+import RequireAuth from "@/components/RequireAuth";
+
+// Protected route definitions
+const protectedRoutes = [
+  { path: "/cases", component: AllCases },
+  { path: "/dashboard", component: Dashboard },
+  { path: "/my-case", component: MyCase },
+  { path: "/case-details", component: CaseDetails },
+  { path: "/analysis", component: Analysis },
+  { path: "/analyse-details", component: JuridischeAnalyseDetails },
+  { path: "/volledige-analyse", component: VolledigeAnalyseDetails },
+  { path: "/analysis/:id/full", component: FullAnalysis },
+  { path: "/letters", component: Letters },
+  { path: "/resolve", component: ResolvePage },
+  { path: "/summons", component: SummonsEditor },
+  { path: "/dossier", component: Dossier },
+  { path: "/chat", component: Chat },
+  { path: "/qna", component: QnA },
+  { path: "/edit-case/:id", component: EditCase },
+  { path: "/step/:stepId", component: StepView },
+  { path: "/warranty", component: Warranty },
+  { path: "/help", component: Help },
+  { path: "/new-case", component: NewCase },
+];
+
+function ProtectedRoute({ 
+  component: Component, 
+  isAuthenticated 
+}: { 
+  component: React.ComponentType;
+  isAuthenticated: boolean;
+}) {
+  if (!isAuthenticated) {
+    return <RequireAuth />;
+  }
+  
+  return <Component />;
+}
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -48,27 +86,21 @@ function Router() {
       
       {isAuthenticated ? (
         <Layout>
-          <Route path="/cases" component={AllCases} />
-          <Route path="/dashboard" component={Dashboard} />
-          <Route path="/my-case" component={MyCase} />
-          <Route path="/case-details" component={CaseDetails} />
-          <Route path="/analysis" component={Analysis} />
-          <Route path="/analyse-details" component={JuridischeAnalyseDetails} />
-          <Route path="/volledige-analyse" component={VolledigeAnalyseDetails} />
-          <Route path="/analysis/:id/full" component={FullAnalysis} />
-          <Route path="/letters" component={Letters} />
-          <Route path="/resolve" component={ResolvePage} />
-          <Route path="/summons" component={SummonsEditor} />
-          <Route path="/dossier" component={Dossier} />
-          <Route path="/chat" component={Chat} />
-          <Route path="/qna" component={QnA} />
-          <Route path="/edit-case/:id" component={EditCase} />
-          <Route path="/step/:stepId" component={StepView} />
-          <Route path="/warranty" component={Warranty} />
-          <Route path="/help" component={Help} />
-          <Route path="/new-case" component={NewCase} />
+          {protectedRoutes.map(({ path, component }) => (
+            <Route key={path} path={path} component={component} />
+          ))}
         </Layout>
-      ) : null}
+      ) : (
+        <>
+          {protectedRoutes.map(({ path, component }) => (
+            <Route 
+              key={path} 
+              path={path} 
+              component={() => <ProtectedRoute component={component} isAuthenticated={isAuthenticated} />} 
+            />
+          ))}
+        </>
+      )}
       
       <Route component={NotFound} />
     </Switch>
