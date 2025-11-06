@@ -93,32 +93,38 @@ export default function Dashboard() {
     {
       label: "Zaak aangemaakt",
       date: createdAt,
-      completed: !!createdAt
+      completed: !!createdAt,
+      href: "/my-case"
     },
     {
       label: "Analyse gedaan",
       date: analysisDate,
-      completed: !!analysis
+      completed: !!analysis,
+      href: "/analysis"
     },
     {
       label: "Laatste brief",
       date: lastLetterDate,
-      completed: letters.length > 0
+      completed: letters.length > 0,
+      href: "/letters"
     },
     {
       label: "Oplossen",
       date: null,
-      completed: false
+      completed: false,
+      href: "/mediation"
     },
     {
       label: "Dagvaarding opgesteld",
       date: summonsDate,
-      completed: summons.length > 0
+      completed: summons.length > 0,
+      href: "/summons"
     },
     {
       label: "Procedure gestart",
       date: procedureStarted ? caseData.updatedAt : null,
-      completed: procedureStarted
+      completed: procedureStarted,
+      href: "/my-case"
     }
   ];
 
@@ -172,23 +178,25 @@ export default function Dashboard() {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {stages.map((stage, index) => (
-              <div key={index} className="text-center" data-testid={`status-stage-${index}`}>
-                <div className="flex justify-center mb-2">
-                  {stage.completed ? (
-                    <CheckCircle className="h-8 w-8 text-primary" data-testid={`icon-completed-${index}`} />
-                  ) : (
-                    <RIcon size="md" className="opacity-30" data-testid={`icon-pending-${index}`} />
+              <Link key={index} href={stage.href} data-testid={`link-stage-${index}`}>
+                <div className="text-center cursor-pointer hover:opacity-80 transition-opacity" data-testid={`status-stage-${index}`}>
+                  <div className="flex justify-center mb-2">
+                    {stage.completed ? (
+                      <CheckCircle className="h-8 w-8 text-primary" data-testid={`icon-completed-${index}`} />
+                    ) : (
+                      <RIcon size="md" className="opacity-30" data-testid={`icon-pending-${index}`} />
+                    )}
+                  </div>
+                  <p className="text-xs font-medium text-foreground mb-1" data-testid={`label-${index}`}>
+                    {stage.label}
+                  </p>
+                  {stage.date && (
+                    <p className="text-xs text-muted-foreground" data-testid={`date-${index}`}>
+                      {formatDate(stage.date)}
+                    </p>
                   )}
                 </div>
-                <p className="text-xs font-medium text-foreground mb-1" data-testid={`label-${index}`}>
-                  {stage.label}
-                </p>
-                {stage.date && (
-                  <p className="text-xs text-muted-foreground" data-testid={`date-${index}`}>
-                    {formatDate(stage.date)}
-                  </p>
-                )}
-              </div>
+              </Link>
             ))}
           </div>
         </CardContent>
