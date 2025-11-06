@@ -14,7 +14,8 @@ import {
   PlusCircle,
   FolderOpen,
   AlertCircle,
-  UserCircle
+  UserCircle,
+  Handshake
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
@@ -346,6 +347,30 @@ export default function Dashboard() {
                   {letterCount > 0 
                     ? "Beheer en genereer juridische brieven"
                     : "Genereer juridische brieven voor uw zaak"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* Oplossen */}
+        <Link href="/mediation" data-testid="tile-oplossen">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full relative">
+            <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <Handshake className="h-6 w-6 text-primary" />
+                Oplossen
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Status:</span>{" "}
+                  <span className="font-medium" data-testid="summary-mediation-status">Binnenkort beschikbaar</span>
+                </div>
+                <p className="text-muted-foreground pt-2">
+                  Probeer het geschil op te lossen via online mediation, voordat u naar de rechter gaat
                 </p>
               </div>
             </CardContent>
