@@ -119,11 +119,6 @@ export default function Dashboard() {
       label: "Procedure gestart",
       date: procedureStarted ? caseData.updatedAt : null,
       completed: procedureStarted
-    },
-    {
-      label: "Zaak opgelost",
-      date: caseResolved ? caseData.updatedAt : null,
-      completed: caseResolved
     }
   ];
 
@@ -175,7 +170,7 @@ export default function Dashboard() {
           <CardTitle>Acties</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {stages.map((stage, index) => (
               <div key={index} className="text-center" data-testid={`status-stage-${index}`}>
                 <div className="flex justify-center mb-2">
