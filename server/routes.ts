@@ -212,8 +212,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For each case, include analysis and other related data
       const casesWithDetails = await Promise.all(
         userCases.map(async (caseData) => {
-          // Only show documents uploaded by the current user
-          const documents = await storage.getDocumentsByCaseForUser(caseData.id, userId);
+          // Owner sees all documents, counterparty only sees their own
+          const documents = caseData.ownerUserId === userId
+            ? await storage.getDocumentsByCase(caseData.id)
+            : await storage.getDocumentsByCaseForUser(caseData.id, userId);
           const analysis = await storage.getLatestAnalysis(caseData.id);
           const kantonAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-kanton-check');
           let fullAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-full-analysis');
@@ -258,8 +260,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Unauthorized access to case" });
       }
       
-      // Include related data - only show documents uploaded by the current user
-      const documents = await storage.getDocumentsByCaseForUser(caseData.id, userId);
+      // Include related data - owner sees all documents, counterparty only sees their own
+      const documents = caseData.ownerUserId === userId
+        ? await storage.getDocumentsByCase(caseData.id)
+        : await storage.getDocumentsByCaseForUser(caseData.id, userId);
       const analysis = await storage.getLatestAnalysis(caseData.id);
       const kantonAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-kanton-check');
       let fullAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-full-analysis');
@@ -840,12 +844,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const caseData = await storage.getCase(req.params.id);
       
-      if (!caseData || caseData.ownerUserId !== userId) {
+      // Check if user has access to this case (owner or counterparty)
+      if (!caseData || !canAccessCase(userId, caseData)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
-      // Only return documents uploaded by the current user
-      const documents = await storage.getDocumentsByCaseForUser(req.params.id, userId);
+      // Owner sees all documents, counterparty only sees their own
+      const documents = caseData.ownerUserId === userId
+        ? await storage.getDocumentsByCase(req.params.id)
+        : await storage.getDocumentsByCaseForUser(req.params.id, userId);
       res.json(documents);
     } catch (error) {
       console.error("Error fetching documents:", error);
