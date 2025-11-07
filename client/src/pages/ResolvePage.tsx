@@ -104,7 +104,6 @@ const mockPrivateTips = [
 
 export default function ResolvePage() {
   const { selectedCaseId } = useCaseContext();
-  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState<MediationStep>("intro");
   const [partyAInput, setPartyAInput] = useState("");
   const [partyAInputSubmitted, setPartyAInputSubmitted] = useState(false);
@@ -907,18 +906,7 @@ export default function ResolvePage() {
           </p>
           <Badge variant="outline" className="mt-2">U bent Partij A</Badge>
         </div>
-        <Button 
-          variant="outline" 
-          className="gap-2 whitespace-nowrap" 
-          size="sm"
-          data-testid="button-invite-party"
-          onClick={() => setInviteDialogOpen(true)}
-          disabled={!selectedCaseId}
-        >
-          <UserPlus className="h-4 w-4" />
-          <span className="hidden sm:inline">Nodig andere partij uit</span>
-          <span className="sm:hidden">Uitnodigen</span>
-        </Button>
+        {selectedCaseId && <InviteCounterpartyDialog caseId={selectedCaseId} />}
       </div>
 
       {/* Twee-panelen layout */}
@@ -1043,15 +1031,6 @@ export default function ResolvePage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Invite Counterparty Dialog */}
-      {selectedCaseId && (
-        <InviteCounterpartyDialog
-          caseId={selectedCaseId}
-          open={inviteDialogOpen}
-          onOpenChange={setInviteDialogOpen}
-        />
-      )}
     </div>
   );
 }
