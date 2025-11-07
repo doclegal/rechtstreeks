@@ -18,6 +18,7 @@ const editCaseSchema = z.object({
   description: z.string().min(10, "Beschrijving moet minimaal 10 karakters bevatten"),
   category: z.string().min(1, "Selecteer een categorie"),
   claimAmount: z.string().optional(),
+  userRole: z.enum(["EISER", "GEDAAGDE"]),
   claimantName: z.string().optional(),
   claimantAddress: z.string().optional(),
   claimantCity: z.string().min(1, "Woonplaats is verplicht voor het bepalen van bevoegdheid"),
@@ -47,6 +48,7 @@ export default function EditCase() {
       description: "",
       category: "",
       claimAmount: "",
+      userRole: "EISER",
       claimantName: "",
       claimantAddress: "",
       claimantCity: "",
@@ -67,6 +69,7 @@ export default function EditCase() {
         description: caseData.description || "",
         category: caseData.category || "",
         claimAmount: caseData.claimAmount || "",
+        userRole: caseData.userRole || "EISER",
         claimantName: caseData.claimantName || "",
         claimantAddress: caseData.claimantAddress || "",
         claimantCity: caseData.claimantCity || "",
@@ -187,6 +190,30 @@ export default function EditCase() {
               {form.formState.errors.description && (
                 <p className="text-sm text-destructive mt-1">
                   {form.formState.errors.description.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Label>Uw rol in deze zaak *</Label>
+              <Select 
+                value={form.watch("userRole")} 
+                onValueChange={(value) => form.setValue("userRole", value as "EISER" | "GEDAAGDE")}
+              >
+                <SelectTrigger data-testid="select-user-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="EISER">Eiser (u stelt een vordering in)</SelectItem>
+                  <SelectItem value="GEDAAGDE">Gedaagde (u wordt aangesproken)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Bepaal uw rol in deze juridische zaak. Als eiser bent u degene die de claim indient. Als gedaagde wordt u aangesproken door de wederpartij.
+              </p>
+              {form.formState.errors.userRole && (
+                <p className="text-sm text-destructive mt-1">
+                  {form.formState.errors.userRole.message}
                 </p>
               )}
             </div>

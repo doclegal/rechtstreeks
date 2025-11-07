@@ -63,6 +63,13 @@ export default function CaseInfo({ caseData, onExport, onEdit, isFullWidth = fal
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
+                <label className="text-sm font-medium text-muted-foreground">Uw rol in deze zaak</label>
+                <p className="text-foreground font-medium" data-testid="text-user-role-full">
+                  {caseData.userRole === "EISER" ? "Eiser (u bent degene die de vordering instelt)" : "Gedaagde (u wordt aangesproken)"}
+                </p>
+              </div>
+
+              <div>
                 <label className="text-sm font-medium text-muted-foreground">Titel van de zaak</label>
                 <p className="text-foreground font-medium" data-testid="text-case-title-full">
                   {caseData.title || "Geen titel opgegeven"}
@@ -102,6 +109,13 @@ export default function CaseInfo({ caseData, onExport, onEdit, isFullWidth = fal
               <CardTitle>Wederpartij gegevens</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Rol wederpartij</label>
+                <p className="text-foreground font-medium" data-testid="text-counterparty-role-full">
+                  {caseData.userRole === "EISER" ? "Gedaagde (tegen wie u de vordering instelt)" : "Eiser (degene die u aanspreekt)"}
+                </p>
+              </div>
+
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Type wederpartij</label>
                 <p className="text-foreground font-medium" data-testid="text-counterparty-type-full">
