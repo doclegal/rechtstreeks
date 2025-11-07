@@ -9,6 +9,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface PageInfoDialogProps {
   title: string;
@@ -22,16 +28,26 @@ export function PageInfoDialog({ title, description, features, importance }: Pag
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="ml-2 h-8 w-8 p-0 hover:bg-primary/10"
-          data-testid="button-page-info"
-        >
-          <Info className="h-5 w-5 text-primary" />
-        </Button>
-      </DialogTrigger>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="ml-2 h-9 px-3 gap-1.5 border-green-500 bg-green-50 hover:bg-green-100 dark:bg-green-950/30 dark:hover:bg-green-950/50 dark:border-green-600 text-green-700 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-medium shadow-sm"
+                data-testid="button-page-info"
+              >
+                <Info className="h-4 w-4" />
+                <span className="text-xs">Info</span>
+              </Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="bg-green-700 dark:bg-green-800 text-white border-green-600">
+            <p>Klik voor uitleg over deze pagina</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-2">
