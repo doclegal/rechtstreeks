@@ -17,6 +17,7 @@ export default function InviteCounterpartyDialog({ caseId, counterpartyEmail }: 
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState(counterpartyEmail || '');
   const [invitationCode, setInvitationCode] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
   const { toast } = useToast();
 
   const inviteMutation = useMutation({
@@ -35,9 +36,12 @@ export default function InviteCounterpartyDialog({ caseId, counterpartyEmail }: 
     },
     onSuccess: (data) => {
       setInvitationCode(data.invitation.invitationCode);
+      setEmailSent(data.emailSent);
       toast({
-        title: 'Uitnodiging verstuurd!',
-        description: `Een uitnodigingslink is aangemaakt voor ${email}`,
+        title: data.emailSent ? 'Email verstuurd!' : 'Uitnodiging aangemaakt',
+        description: data.emailSent 
+          ? `Een email met de uitnodiging is verstuurd naar ${email}`
+          : `Uitnodiging aangemaakt. Deel de code handmatig met ${email}`,
       });
     },
   });
@@ -113,7 +117,9 @@ export default function InviteCounterpartyDialog({ caseId, counterpartyEmail }: 
             <Alert className="bg-green-50 dark:bg-green-950/20 border-green-200">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-900 dark:text-green-100">
-                Uitnodiging succesvol aangemaakt!
+                {emailSent 
+                  ? `Email verstuurd naar ${email}!`
+                  : 'Uitnodiging aangemaakt - deel de code handmatig'}
               </AlertDescription>
             </Alert>
 
@@ -141,9 +147,19 @@ export default function InviteCounterpartyDialog({ caseId, counterpartyEmail }: 
             <div className="bg-slate-50 dark:bg-slate-900/30 p-4 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
               <p className="text-sm font-medium">Volgende stappen:</p>
               <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                <li>Deel de uitnodigingscode met de wederpartij</li>
-                <li>Ze kunnen deze code gebruiken op: {window.location.origin}/invitation/{invitationCode}</li>
-                <li>Na acceptatie verschijnt de zaak in hun overzicht</li>
+                {emailSent ? (
+                  <>
+                    <li>De wederpartij ontvangt een email met de uitnodigingslink</li>
+                    <li>Ze kunnen ook de code invoeren op: {window.location.origin}/invitation/{invitationCode}</li>
+                    <li>Na acceptatie verschijnt de zaak in hun overzicht</li>
+                  </>
+                ) : (
+                  <>
+                    <li>Deel de uitnodigingscode met de wederpartij</li>
+                    <li>Ze kunnen deze code gebruiken op: {window.location.origin}/invitation/{invitationCode}</li>
+                    <li>Na acceptatie verschijnt de zaak in hun overzicht</li>
+                  </>
+                )}
               </ul>
             </div>
 

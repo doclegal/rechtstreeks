@@ -12,6 +12,7 @@ import { getConversationHistory, saveChatMessage, callChatFlow } from "./service
 import { callInfoQnAFlow, saveQnAPairs, getQnAItems, appendQnAPairs } from "./services/qnaService";
 import { validateSummonsV1 } from "@shared/summonsValidation";
 import { parseTemplateText, extractTextFromFile, validateParsedTemplate } from "./services/templateParser";
+import { sendInvitationEmail } from "./email";
 import multer from "multer";
 import { z } from "zod";
 
@@ -394,8 +395,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expiresAt,
       });
       
+      // Get inviter info
+      const inviter = await storage.getUser(userId);
+      const inviterName = inviter?.firstName || inviter?.email?.split('@')[0] || 'Een gebruiker';
+      
+      // Send invitation email
+      const emailResult = await sendInvitationEmail({
+        to: email,
+        invitationCode: invitation.invitationCode,
+        caseTitle: caseData.title,
+        inviterName,
+      });
+      
+      if (!emailResult.success) {
+        console.warn('⚠️ Failed to send invitation email, but invitation was created:', emailResult.error);
+      }
+      
       res.json({
         success: true,
+        emailSent: emailResult.success,
         invitation: {
           id: invitation.id,
           invitationCode: invitation.invitationCode,
