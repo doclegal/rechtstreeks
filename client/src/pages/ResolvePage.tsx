@@ -511,7 +511,7 @@ export default function ResolvePage() {
                   <p className="text-sm font-semibold mb-3">Status gesprek</p>
                   
                   {/* Partij A status */}
-                  <div className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-lg">
                     <div className="flex-1">
                       <p className="font-medium text-sm">U (Partij A): Ik heb niets meer toe te voegen</p>
                       <p className="text-xs text-muted-foreground mt-1">
@@ -660,7 +660,7 @@ export default function ResolvePage() {
                   </ul>
                 </div>
 
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-lg">
                   <h3 className="font-semibold mb-2">Wat is in geschil</h3>
                   <ul className="text-sm space-y-1 ml-4 list-disc">
                     <li>De hoogte van het bedrag (€8.500 vs €6.200)</li>
@@ -906,13 +906,13 @@ export default function ResolvePage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         
         {/* LINKS: Privé Sectie - Alleen voor u */}
-        <Card className="border-2 border-amber-200 bg-amber-50/30" data-testid="card-private-section">
-          <CardHeader className="bg-amber-100/50">
+        <Card className="border-2 border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30" data-testid="card-private-section">
+          <CardHeader className="bg-slate-100/70 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-2">
-              <Lock className="h-5 w-5 text-amber-700" />
-              <CardTitle className="text-amber-900">Privé - Alleen voor u</CardTitle>
+              <Lock className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+              <CardTitle className="text-slate-800 dark:text-slate-200">Privé - Alleen voor u</CardTitle>
             </div>
-            <p className="text-sm text-amber-800">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               Deze informatie ziet alleen u. De AI gebruikt dit om u persoonlijk advies te geven.
             </p>
           </CardHeader>
@@ -921,12 +921,12 @@ export default function ResolvePage() {
             {/* AI Tips voor u */}
             <div className="space-y-3">
               <div className="flex items-center gap-2 mb-3">
-                <Lightbulb className="h-5 w-5 text-amber-600" />
-                <h3 className="font-semibold text-amber-900">Persoonlijke tips van AI</h3>
+                <Lightbulb className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+                <h3 className="font-semibold text-slate-700 dark:text-slate-300">Persoonlijke tips van AI</h3>
               </div>
               
               {mockPrivateTips.map((tip, index) => (
-                <div key={index} className="p-3 bg-white border border-amber-200 rounded-lg">
+                <div key={index} className="p-3 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
                   <div className="flex gap-2">
                     <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
                     <p className="text-sm">{tip}</p>
@@ -939,7 +939,7 @@ export default function ResolvePage() {
 
             {/* Uw grenzen */}
             <div className="space-y-3">
-              <h3 className="font-semibold text-amber-900">Uw grenzen</h3>
+              <h3 className="font-semibold text-slate-700 dark:text-slate-300">Uw grenzen</h3>
               <p className="text-sm text-muted-foreground">
                 Geef aan wat voor u belangrijk is. De AI gebruikt dit om voorstellen te maken.
               </p>
@@ -993,13 +993,13 @@ export default function ResolvePage() {
         </Card>
 
         {/* RECHTS: Gedeelde Sectie - Voor alle partijen */}
-        <Card className="border-2 border-blue-200" data-testid="card-shared-section">
-          <CardHeader className="bg-blue-50">
+        <Card className="border-2 border-slate-200 dark:border-slate-700" data-testid="card-shared-section">
+          <CardHeader className="bg-slate-50 dark:bg-slate-900/30 border-b border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-700" />
-              <CardTitle className="text-blue-900">Gedeeld - Iedereen ziet dit</CardTitle>
+              <Users className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+              <CardTitle className="text-slate-800 dark:text-slate-200">Gedeeld - Iedereen ziet dit</CardTitle>
             </div>
-            <p className="text-sm text-blue-800">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               De AI Mediator begeleidt beide partijen stap voor stap naar een oplossing.
             </p>
           </CardHeader>
