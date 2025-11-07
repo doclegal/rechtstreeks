@@ -909,13 +909,15 @@ export default function ResolvePage() {
         </div>
         <Button 
           variant="outline" 
-          className="gap-2" 
+          className="gap-2 whitespace-nowrap" 
+          size="sm"
           data-testid="button-invite-party"
           onClick={() => setInviteDialogOpen(true)}
           disabled={!selectedCaseId}
         >
           <UserPlus className="h-4 w-4" />
-          Nodig andere partij uit
+          <span className="hidden sm:inline">Nodig andere partij uit</span>
+          <span className="sm:hidden">Uitnodigen</span>
         </Button>
       </div>
 
