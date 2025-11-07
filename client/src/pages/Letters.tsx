@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { AskJuristButton } from "@/components/AskJuristButton";
+import { PageInfoDialog } from "@/components/PageInfoDialog";
 
 export default function Letters() {
   const { user, isLoading: authLoading } = useAuth();
@@ -189,14 +190,28 @@ export default function Letters() {
       {/* Header */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         <div className="flex items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
-              <Mail className="h-8 w-8 text-primary" />
-              Brieven
-            </h1>
-            <p className="text-muted-foreground">
-              Genereer en beheer juridische brieven voor uw zaak
-            </p>
+          <div className="flex items-start gap-2">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
+                <Mail className="h-8 w-8 text-primary" />
+                Brieven
+              </h1>
+              <p className="text-muted-foreground">
+                Genereer en beheer juridische brieven voor uw zaak
+              </p>
+            </div>
+            <PageInfoDialog
+              title="Brieven"
+              description="Genereer professionele juridische brieven met AI-ondersteuning om uw zaak formeel aan te kaarten bij de wederpartij."
+              features={[
+                "Genereer verschillende soorten juridische brieven (aanmaning, ingebrekestelling, informatieverzoek)",
+                "Kies de juiste toon voor uw brief (zakelijk-vriendelijk tot formeel-juridisch)",
+                "AI gebruikt uw zaakgegevens en analyse om een op maat gemaakte brief te schrijven",
+                "Download brieven als PDF voor verzending",
+                "Bewaar alle gegenereerde brieven voor later gebruik"
+              ]}
+              importance="Juridische brieven zijn essentiële stappen voordat u naar de rechter kunt. Een goed opgestelde brief kan helpen het conflict op te lossen zonder rechterlijke tussenkomst. Bovendien toont het aan dat u geprobeerd hebt het probleem op te lossen, wat verplicht is voor sommige juridische procedures."
+            />
           </div>
         </div>
         <div className="flex items-start lg:hidden">

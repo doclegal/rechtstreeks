@@ -11,6 +11,7 @@ import { Link, useLocation } from "wouter";
 import { PlusCircle, Headset, MessageSquare, FileText, CheckCircle, Files, ArrowLeft, AlertCircle, FolderOpen, FileSearch } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 import { useActiveCase } from "@/contexts/CaseContext";
+import { PageInfoDialog } from "@/components/PageInfoDialog";
 
 export default function MyCase() {
   const { user, isLoading: authLoading } = useAuth();
@@ -119,9 +120,22 @@ export default function MyCase() {
       </Button>
       
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Mijn zaak</h2>
-          <p className="text-muted-foreground">Overzicht van uw zaakgegevens</p>
+        <div className="flex items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Mijn zaak</h2>
+            <p className="text-muted-foreground">Overzicht van uw zaakgegevens</p>
+          </div>
+          <PageInfoDialog
+            title="Mijn Zaak"
+            description="Dit is het centrale overzicht van uw juridische zaak. Hier vindt u alle belangrijke informatie over uw zaak en heeft u toegang tot het dossier."
+            features={[
+              "Bekijk en bewerk uw zaakgegevens zoals titel, beschrijving en claim bedrag",
+              "Zie uw rol in de zaak (eiser of gedaagde) en de gegevens van de wederpartij",
+              "Beheer uw dossier met alle documenten en bewijsstukken",
+              "Monitor de voortgang en status van uw zaak"
+            ]}
+            importance="Een goed georganiseerde zaak met complete informatie en documenten is essentieel voor een succesvol juridisch traject. Dit overzicht helpt u alles op één plek te beheren."
+          />
         </div>
       </div>
 

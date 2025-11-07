@@ -19,6 +19,7 @@ import {
   ArrowLeft,
   Info
 } from "lucide-react";
+import { PageInfoDialog } from "@/components/PageInfoDialog";
 
 // Mediatie stappen
 type MediationStep = "intro" | "party-input" | "conversation" | "summary" | "solution";
@@ -870,11 +871,25 @@ export default function ResolvePage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <Users className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-bold" data-testid="heading-resolve">
-              Oplossen met AI
-            </h1>
+          <div className="flex items-start gap-2 mb-2">
+            <div className="flex items-center gap-3">
+              <Users className="h-8 w-8 text-primary" />
+              <h1 className="text-3xl font-bold" data-testid="heading-resolve">
+                Oplossen met AI
+              </h1>
+            </div>
+            <PageInfoDialog
+              title="Oplossen (Mediation)"
+              description="Los uw juridisch geschil op via online mediation met AI-ondersteuning, zonder naar de rechter te hoeven."
+              features={[
+                "Online mediatie met beide partijen en een AI-mediator",
+                "Privé advies van AI speciaal voor u (niet zichtbaar voor wederpartij)",
+                "Gestructureerd gesprek om tot een gezamenlijke oplossing te komen",
+                "Automatische vaststellingsovereenkomst bij akkoord",
+                "Sneller, goedkoper en minder stressvol dan een rechtszaak"
+              ]}
+              importance="Mediation is vaak de beste manier om geschillen op te lossen. Het is sneller en goedkoper dan naar de rechter, en u houdt zelf controle over de uitkomst. Bovendien blijft de relatie met de wederpartij meestal beter. Probeer dit altijd eerst voordat u een dagvaarding opstelt."
+            />
           </div>
           <p className="text-muted-foreground">
             Onbetaalde facturen Bouwproject Zonnepanelen

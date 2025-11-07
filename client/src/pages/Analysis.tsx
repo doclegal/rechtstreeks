@@ -14,6 +14,7 @@ import DocumentList from "@/components/DocumentList";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { AskJuristButton } from "@/components/AskJuristButton";
+import { PageInfoDialog } from "@/components/PageInfoDialog";
 
 export default function Analysis() {
   const { user, isLoading: authLoading } = useAuth();
@@ -236,9 +237,23 @@ export default function Analysis() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         <div className="flex items-start">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground">Analyse</h2>
-            <p className="text-muted-foreground">Juridische analyse van uw zaak</p>
+          <div className="flex items-start gap-2">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground">Analyse</h2>
+              <p className="text-muted-foreground">Juridische analyse van uw zaak</p>
+            </div>
+            <PageInfoDialog
+              title="Analyse"
+              description="Laat AI uw juridische zaak analyseren voor een gedetailleerde beoordeling van uw positie, kansen op succes en vervolgstappen."
+              features={[
+                "Krijg een volledige juridische analyse van uw zaak met AI",
+                "Bekijk uw kansen op succes en risico's",
+                "Ontvang advies over de juridische grondslag van uw claim",
+                "Identificeer ontbrekende informatie of bewijsstukken",
+                "Verkrijg gestructureerd juridisch advies met vervolgstappen"
+              ]}
+              importance="Een goede analyse vormt de basis voor alle vervolgstappen. Het helpt u te begrijpen waar u juridisch staat, wat uw kansen zijn, en wat de beste strategie is om uw doel te bereiken. De AI analyseert uw documenten en situatie volgens Nederlandse wetgeving."
+            />
           </div>
         </div>
         <div className="flex items-start lg:hidden">

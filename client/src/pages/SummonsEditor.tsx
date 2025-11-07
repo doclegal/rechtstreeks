@@ -17,6 +17,7 @@ import { useActiveCase } from "@/contexts/CaseContext";
 import { AskJuristButton } from "@/components/AskJuristButton";
 import { UnauthorizedMessage } from "@/components/UnauthorizedMessage";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { PageInfoDialog } from "@/components/PageInfoDialog";
 
 // Define the 8 sections in strict order
 const SUMMONS_SECTIONS = [
@@ -486,14 +487,28 @@ export default function SummonsEditor() {
       
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3" data-testid="heading-summons-builder">
-            <Scale className="h-8 w-8 text-primary" />
-            Dagvaarding Opstellen
-          </h1>
-          <p className="text-muted-foreground">
-            Genereer uw dagvaarding sectie voor sectie met AI-ondersteuning
-          </p>
+        <div className="flex items-start gap-2">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3" data-testid="heading-summons-builder">
+              <Scale className="h-8 w-8 text-primary" />
+              Dagvaarding Opstellen
+            </h1>
+            <p className="text-muted-foreground">
+              Genereer uw dagvaarding sectie voor sectie met AI-ondersteuning
+            </p>
+          </div>
+          <PageInfoDialog
+            title="Dagvaarding"
+            description="Stel een volledige dagvaarding op om uw zaak voor de kantonrechter te brengen wanneer andere oplossingsmethoden niet hebben gewerkt."
+            features={[
+              "Genereer alle benodigde secties van een dagvaarding met AI",
+              "Inclusief aanzegging, jurisdictie, feiten, rechtsgronden en vorderingen",
+              "Bewerk en goedkeur elke sectie afzonderlijk",
+              "Download de complete dagvaarding als PDF",
+              "Volledig volgens Nederlandse rechtspraak en procesrecht"
+            ]}
+            importance="Een dagvaarding is het formele startdocument voor een rechtszaak. Dit is vaak de laatste stap nadat mediation en brieven niet tot een oplossing hebben geleid. Een goed opgestelde dagvaarding is cruciaal voor het slagen van uw rechtszaak bij de kantonrechter."
+          />
         </div>
 
         <div className="flex gap-2">
