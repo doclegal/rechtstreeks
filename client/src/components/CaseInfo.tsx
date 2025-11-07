@@ -143,46 +143,6 @@ export default function CaseInfo({ caseData, onExport, onEdit, isFullWidth = fal
             </CardContent>
           </Card>
         </div>
-        
-        {/* Status Information */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Huidige status</label>
-                <div className="flex items-center space-x-2 mt-1">
-                  <Badge variant="secondary" data-testid="badge-status-full">
-                    {caseData.status?.replace(/_/g, ' ') || "Onbekend"}
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">
-                    ({caseData.progress}% voltooid)
-                  </span>
-                </div>
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Zaak gestart</label>
-                <p className="text-foreground font-medium" data-testid="text-created-date-full">
-                  {formatDate(caseData.createdAt)}
-                </p>
-              </div>
-              
-              {onExport && (
-                <div className="flex items-end">
-                  <Button
-                    variant="outline"
-                    onClick={onExport}
-                    size="sm"
-                    data-testid="button-export-case-full"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Export zaakmap
-                  </Button>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     );
   }
