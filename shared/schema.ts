@@ -58,6 +58,14 @@ export const caseStatusEnum = pgEnum("case_status", [
   "JUDGMENT"
 ]);
 
+// Invitation status enum
+export const invitationStatusEnum = pgEnum("invitation_status", [
+  "PENDING",    // Invitation sent, awaiting response
+  "ACCEPTED",   // Counterparty accepted and linked to case
+  "EXPIRED",    // Invitation expired
+  "CANCELLED"   // Invitation cancelled by sender
+]);
+
 export const cases = pgTable("cases", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   ownerUserId: varchar("owner_user_id").notNull().references(() => users.id),
@@ -78,8 +86,10 @@ export const cases = pgTable("cases", {
   counterpartyPhone: varchar("counterparty_phone"),
   counterpartyAddress: text("counterparty_address"),
   counterpartyCity: varchar("counterparty_city"),
+  counterpartyUserId: varchar("counterparty_user_id").references(() => users.id), // Set when counterparty accepts invitation
   
   userRole: userRoleEnum("user_role").default("EISER").notNull(), // Who is the user? Default: claimant (for dagvaarding)
+  counterpartyDescriptionApproved: boolean("counterparty_description_approved").default(false), // Has counterparty approved case description?
   status: caseStatusEnum("status").default("NEW_INTAKE"),
   currentStep: varchar("current_step"),
   nextActionLabel: varchar("next_action_label"),
@@ -91,6 +101,25 @@ export const cases = pgTable("cases", {
   index("idx_cases_owner").on(table.ownerUserId),
   index("idx_cases_status").on(table.status),
   index("idx_cases_created").on(table.createdAt),
+  index("idx_cases_counterparty").on(table.counterpartyUserId),
+]);
+
+// Case invitations for mediation
+export const caseInvitations = pgTable("case_invitations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  caseId: varchar("case_id").notNull().references(() => cases.id, { onDelete: "cascade" }),
+  invitedByUserId: varchar("invited_by_user_id").notNull().references(() => users.id),
+  invitedEmail: varchar("invited_email").notNull(),
+  invitationCode: varchar("invitation_code").notNull().unique(), // Short code like "ABC-123"
+  status: invitationStatusEnum("status").default("PENDING").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  acceptedByUserId: varchar("accepted_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_invitations_code").on(table.invitationCode),
+  index("idx_invitations_email").on(table.invitedEmail),
+  index("idx_invitations_case").on(table.caseId),
 ]);
 
 export const caseDocuments = pgTable("case_documents", {
@@ -474,6 +503,12 @@ export const insertCaseSchema = createInsertSchema(cases).omit({
     })
 });
 
+export const insertInvitationSchema = createInsertSchema(caseInvitations).omit({
+  id: true,
+  createdAt: true,
+  acceptedAt: true,
+});
+
 export const insertDocumentSchema = createInsertSchema(caseDocuments).omit({
   id: true,
   createdAt: true,
@@ -579,6 +614,9 @@ export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type Case = typeof cases.$inferSelect;
 export type InsertCase = z.infer<typeof insertCaseSchema>;
+export type CaseInvitation = typeof caseInvitations.$inferSelect;
+export type InsertCaseInvitation = z.infer<typeof insertInvitationSchema>;
+export type InvitationStatus = typeof caseInvitations.status.enumValues[number];
 export type CaseDocument = typeof caseDocuments.$inferSelect;
 export type InsertCaseDocument = z.infer<typeof insertDocumentSchema>;
 export type Analysis = typeof analyses.$inferSelect;

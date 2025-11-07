@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertCaseSchema, insertDocumentSchema, type CaseStatus } from "@shared/schema";
+import { insertCaseSchema, insertDocumentSchema, insertInvitationSchema, type CaseStatus } from "@shared/schema";
 import { aiService, AIService } from "./services/aiService";
 import { fileService } from "./services/fileService";
 import { pdfService } from "./services/pdfService";
@@ -19,6 +19,26 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB aligned with route validation
 });
+
+// Helper function to generate unique invitation code
+function generateInvitationCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude confusing chars like O, 0, I, 1
+  const segments = 3;
+  const segmentLength = 3;
+  
+  const code = Array.from({ length: segments }, () => {
+    return Array.from({ length: segmentLength }, () => 
+      chars[Math.floor(Math.random() * chars.length)]
+    ).join('');
+  }).join('-');
+  
+  return code; // e.g., "ABC-DEF-123"
+}
+
+// Helper function to check if user can access case
+function canAccessCase(userId: string, caseData: any): boolean {
+  return caseData.ownerUserId === userId || caseData.counterpartyUserId === userId;
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -233,7 +253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Case not found" });
       }
       
-      if (caseData.ownerUserId !== userId) {
+      if (!canAccessCase(userId, caseData)) {
         return res.status(403).json({ message: "Unauthorized access to case" });
       }
       
@@ -311,6 +331,230 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // === INVITATION ROUTES ===
+  
+  // Send invitation to counterparty
+  app.post('/api/cases/:id/invite', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseData = await storage.getCase(req.params.id);
+      
+      if (!caseData) {
+        return res.status(404).json({ message: "Zaak niet gevonden" });
+      }
+      
+      // Only owner can send invitations
+      if (caseData.ownerUserId !== userId) {
+        return res.status(403).json({ message: "Alleen de eigenaar kan uitnodigingen versturen" });
+      }
+      
+      // Check if counterparty already accepted
+      if (caseData.counterpartyUserId) {
+        return res.status(400).json({ message: "Wederpartij heeft al een account gekoppeld aan deze zaak" });
+      }
+      
+      // Check if there's already a pending invitation
+      const existingInvitations = await storage.getInvitationsByCase(caseData.id);
+      const pendingInvitation = existingInvitations.find(inv => inv.status === 'PENDING');
+      if (pendingInvitation) {
+        return res.status(400).json({ 
+          message: "Er bestaat al een openstaande uitnodiging voor deze zaak",
+          invitationCode: pendingInvitation.invitationCode
+        });
+      }
+      
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ message: "Email is verplicht" });
+      }
+      
+      // Generate unique invitation code
+      let invitationCode = generateInvitationCode();
+      let attempts = 0;
+      while (await storage.getInvitationByCode(invitationCode) && attempts < 10) {
+        invitationCode = generateInvitationCode();
+        attempts++;
+      }
+      
+      // Create invitation (expires in 30 days)
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+      
+      const invitation = await storage.createInvitation({
+        caseId: caseData.id,
+        invitedByUserId: userId,
+        invitedEmail: email.toLowerCase(),
+        invitationCode,
+        status: 'PENDING',
+        expiresAt,
+      });
+      
+      res.json({
+        success: true,
+        invitation: {
+          id: invitation.id,
+          invitationCode: invitation.invitationCode,
+          invitedEmail: invitation.invitedEmail,
+          expiresAt: invitation.expiresAt,
+        }
+      });
+    } catch (error) {
+      console.error("Error creating invitation:", error);
+      res.status(500).json({ message: "Fout bij versturen uitnodiging" });
+    }
+  });
+  
+  // Get invitation info by code (public - no auth required)
+  app.get('/api/invitations/:code', async (req: any, res) => {
+    try {
+      const invitation = await storage.getInvitationByCode(req.params.code);
+      
+      if (!invitation) {
+        return res.status(404).json({ message: "Uitnodiging niet gevonden" });
+      }
+      
+      // Check if expired
+      if (invitation.status === 'EXPIRED' || new Date() > new Date(invitation.expiresAt)) {
+        return res.status(410).json({ message: "Uitnodiging is verlopen" });
+      }
+      
+      if (invitation.status !== 'PENDING') {
+        return res.status(400).json({ message: "Uitnodiging is al gebruikt" });
+      }
+      
+      // Get case info
+      const caseData = await storage.getCase(invitation.caseId);
+      if (!caseData) {
+        return res.status(404).json({ message: "Zaak niet gevonden" });
+      }
+      
+      // Return limited case info for the invitation page
+      res.json({
+        invitation: {
+          invitedEmail: invitation.invitedEmail,
+          expiresAt: invitation.expiresAt,
+        },
+        case: {
+          id: caseData.id,
+          title: caseData.title,
+          description: caseData.description,
+          category: caseData.category,
+          claimAmount: caseData.claimAmount,
+          claimantName: caseData.claimantName,
+          counterpartyName: caseData.counterpartyName,
+          userRole: caseData.userRole, // EISER or GEDAAGDE (from owner's perspective)
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching invitation:", error);
+      res.status(500).json({ message: "Fout bij ophalen uitnodiging" });
+    }
+  });
+  
+  // Accept invitation (requires authentication)
+  app.post('/api/invitations/:code/accept', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const invitation = await storage.getInvitationByCode(req.params.code);
+      
+      if (!invitation) {
+        return res.status(404).json({ message: "Uitnodiging niet gevonden" });
+      }
+      
+      // Check if expired
+      if (invitation.status === 'EXPIRED' || new Date() > new Date(invitation.expiresAt)) {
+        return res.status(410).json({ message: "Uitnodiging is verlopen" });
+      }
+      
+      if (invitation.status !== 'PENDING') {
+        return res.status(400).json({ message: "Uitnodiging is al gebruikt" });
+      }
+      
+      // Check if email matches (case-insensitive)
+      if (user?.email?.toLowerCase() !== invitation.invitedEmail.toLowerCase()) {
+        return res.status(403).json({ 
+          message: "Deze uitnodiging is verstuurd naar een ander e-mailadres",
+          invitedEmail: invitation.invitedEmail,
+          yourEmail: user?.email
+        });
+      }
+      
+      // Get case
+      const caseData = await storage.getCase(invitation.caseId);
+      if (!caseData) {
+        return res.status(404).json({ message: "Zaak niet gevonden" });
+      }
+      
+      // Check if case already has counterparty
+      if (caseData.counterpartyUserId) {
+        return res.status(400).json({ message: "Deze zaak heeft al een wederpartij" });
+      }
+      
+      // Link user to case as counterparty
+      await storage.updateCase(caseData.id, {
+        counterpartyUserId: userId,
+      });
+      
+      // Mark invitation as accepted
+      await storage.updateInvitation(invitation.id, {
+        status: 'ACCEPTED',
+        acceptedAt: new Date(),
+        acceptedByUserId: userId,
+      });
+      
+      // Create event
+      await storage.createEvent({
+        caseId: caseData.id,
+        actorUserId: userId,
+        type: "counterparty_joined",
+        payloadJson: { invitationCode: invitation.invitationCode },
+      });
+      
+      res.json({
+        success: true,
+        caseId: caseData.id,
+        message: "Uitnodiging geaccepteerd! Je bent nu toegevoegd aan de zaak."
+      });
+    } catch (error) {
+      console.error("Error accepting invitation:", error);
+      res.status(500).json({ message: "Fout bij accepteren uitnodiging" });
+    }
+  });
+  
+  // Approve case description (counterparty only)
+  app.patch('/api/cases/:id/approve-description', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseData = await storage.getCase(req.params.id);
+      
+      if (!caseData) {
+        return res.status(404).json({ message: "Zaak niet gevonden" });
+      }
+      
+      // Only counterparty can approve description
+      if (caseData.counterpartyUserId !== userId) {
+        return res.status(403).json({ message: "Alleen de wederpartij kan de omschrijving goedkeuren" });
+      }
+      
+      await storage.updateCase(req.params.id, {
+        counterpartyDescriptionApproved: true,
+      });
+      
+      await storage.createEvent({
+        caseId: caseData.id,
+        actorUserId: userId,
+        type: "description_approved",
+        payloadJson: {},
+      });
+      
+      res.json({ success: true, message: "Zaak omschrijving goedgekeurd" });
+    } catch (error) {
+      console.error("Error approving description:", error);
+      res.status(500).json({ message: "Fout bij goedkeuren omschrijving" });
+    }
+  });
+
   // Case deadlines endpoint
   app.get('/api/cases/:id/deadlines', isAuthenticated, async (req: any, res) => {
     try {
@@ -321,7 +565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Case not found" });
       }
       
-      if (caseData.ownerUserId !== userId) {
+      if (!canAccessCase(userId, caseData)) {
         return res.status(403).json({ message: "Unauthorized access to case" });
       }
       

@@ -2,6 +2,7 @@ import {
   users,
   cases,
   caseDocuments,
+  caseInvitations,
   analyses,
   letters,
   summons,
@@ -15,6 +16,8 @@ import {
   type UpsertUser,
   type Case,
   type InsertCase,
+  type CaseInvitation,
+  type InsertCaseInvitation,
   type CaseDocument,
   type InsertCaseDocument,
   type Analysis,
@@ -45,6 +48,14 @@ export interface IStorage {
   getCasesByUser(userId: string): Promise<Case[]>;
   updateCaseStatus(id: string, status: CaseStatus, currentStep?: string, nextActionLabel?: string): Promise<Case>;
   updateCase(id: string, updates: Partial<InsertCase>): Promise<Case>;
+  
+  // Invitation operations
+  createInvitation(invitationData: InsertCaseInvitation): Promise<CaseInvitation>;
+  getInvitationByCode(code: string): Promise<CaseInvitation | undefined>;
+  getInvitationsByCase(caseId: string): Promise<CaseInvitation[]>;
+  getPendingInvitationByEmail(email: string): Promise<CaseInvitation | undefined>;
+  updateInvitation(id: string, updates: Partial<InsertCaseInvitation>): Promise<CaseInvitation>;
+  expireOldInvitations(): Promise<void>;
   
   // Document operations
   createDocument(docData: InsertCaseDocument): Promise<CaseDocument>;
@@ -144,10 +155,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCasesByUser(userId: string): Promise<Case[]> {
+    const { or } = await import('drizzle-orm');
     return await db
       .select()
       .from(cases)
-      .where(eq(cases.ownerUserId, userId))
+      .where(
+        or(
+          eq(cases.ownerUserId, userId),
+          eq(cases.counterpartyUserId, userId)
+        )
+      )
       .orderBy(desc(cases.updatedAt));
   }
 
@@ -177,6 +194,67 @@ export class DatabaseStorage implements IStorage {
       .where(eq(cases.id, id))
       .returning();
     return updatedCase;
+  }
+
+  // Invitation operations
+  async createInvitation(invitationData: InsertCaseInvitation): Promise<CaseInvitation> {
+    const [invitation] = await db
+      .insert(caseInvitations)
+      .values(invitationData)
+      .returning();
+    return invitation;
+  }
+
+  async getInvitationByCode(code: string): Promise<CaseInvitation | undefined> {
+    const [invitation] = await db
+      .select()
+      .from(caseInvitations)
+      .where(eq(caseInvitations.invitationCode, code));
+    return invitation;
+  }
+
+  async getInvitationsByCase(caseId: string): Promise<CaseInvitation[]> {
+    return await db
+      .select()
+      .from(caseInvitations)
+      .where(eq(caseInvitations.caseId, caseId))
+      .orderBy(desc(caseInvitations.createdAt));
+  }
+
+  async getPendingInvitationByEmail(email: string): Promise<CaseInvitation | undefined> {
+    const [invitation] = await db
+      .select()
+      .from(caseInvitations)
+      .where(
+        and(
+          eq(caseInvitations.invitedEmail, email.toLowerCase()),
+          eq(caseInvitations.status, 'PENDING')
+        )
+      )
+      .orderBy(desc(caseInvitations.createdAt));
+    return invitation;
+  }
+
+  async updateInvitation(id: string, updates: Partial<InsertCaseInvitation>): Promise<CaseInvitation> {
+    const [updatedInvitation] = await db
+      .update(caseInvitations)
+      .set(updates)
+      .where(eq(caseInvitations.id, id))
+      .returning();
+    return updatedInvitation;
+  }
+
+  async expireOldInvitations(): Promise<void> {
+    const { lt } = await import('drizzle-orm');
+    await db
+      .update(caseInvitations)
+      .set({ status: 'EXPIRED' })
+      .where(
+        and(
+          eq(caseInvitations.status, 'PENDING'),
+          lt(caseInvitations.expiresAt, new Date())
+        )
+      );
   }
 
   // Document operations
