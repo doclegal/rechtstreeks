@@ -20,6 +20,9 @@ import {
   Info
 } from "lucide-react";
 import { PageInfoDialog } from "@/components/PageInfoDialog";
+import InviteCounterpartyDialog from "@/components/InviteCounterpartyDialog";
+import { useCaseContext } from "@/contexts/CaseContext";
+import { useQuery } from "@tanstack/react-query";
 
 // Mediatie stappen
 type MediationStep = "intro" | "party-input" | "conversation" | "summary" | "solution";
@@ -100,6 +103,8 @@ const mockPrivateTips = [
 ];
 
 export default function ResolvePage() {
+  const { selectedCaseId } = useCaseContext();
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState<MediationStep>("intro");
   const [partyAInput, setPartyAInput] = useState("");
   const [partyAInputSubmitted, setPartyAInputSubmitted] = useState(false);
@@ -110,6 +115,12 @@ export default function ResolvePage() {
   const [partyBReady, setPartyBReady] = useState(false);
   const [minAmount, setMinAmount] = useState("7000");
   const [maxMonths, setMaxMonths] = useState("6");
+
+  // Fetch selected case data
+  const { data: selectedCase } = useQuery({
+    queryKey: ['/api/cases', selectedCaseId],
+    enabled: !!selectedCaseId,
+  });
 
   const handleSubmitPartyAInput = () => {
     if (partyAInput.trim()) {
@@ -896,7 +907,13 @@ export default function ResolvePage() {
           </p>
           <Badge variant="outline" className="mt-2">U bent Partij A</Badge>
         </div>
-        <Button variant="outline" className="gap-2" data-testid="button-invite-party">
+        <Button 
+          variant="outline" 
+          className="gap-2" 
+          data-testid="button-invite-party"
+          onClick={() => setInviteDialogOpen(true)}
+          disabled={!selectedCaseId}
+        >
           <UserPlus className="h-4 w-4" />
           Nodig andere partij uit
         </Button>
@@ -1024,6 +1041,15 @@ export default function ResolvePage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Invite Counterparty Dialog */}
+      {selectedCaseId && (
+        <InviteCounterpartyDialog
+          caseId={selectedCaseId}
+          open={inviteDialogOpen}
+          onOpenChange={setInviteDialogOpen}
+        />
+      )}
     </div>
   );
 }
