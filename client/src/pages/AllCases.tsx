@@ -4,14 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Link, useLocation } from "wouter";
-import { PlusCircle, FileText, Calendar } from "lucide-react";
+import { PlusCircle, FileText, Calendar, UserPlus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
 import { useCaseContext } from "@/contexts/CaseContext";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AllCases() {
   const { data: cases, isLoading } = useCases();
   const { setSelectedCaseId } = useCaseContext();
+  const { user } = useAuth();
   const [, setLocation] = useLocation();
 
   const handleCaseSelect = (caseId: string) => {
@@ -114,6 +116,18 @@ export default function AllCases() {
                     >
                       {getStatusDisplayName(caseItem.status)}
                     </Badge>
+                    
+                    {/* Invited as counterparty badge */}
+                    {(caseItem as any).counterpartyUserId === user?.id && (
+                      <Badge 
+                        variant="outline" 
+                        className="w-fit bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700"
+                        data-testid={`badge-invited-${caseItem.id}`}
+                      >
+                        <UserPlus className="h-3 w-3 mr-1" />
+                        Uitgenodigd als wederpartij
+                      </Badge>
+                    )}
                     
                     {/* Success Chance Badge */}
                     {(caseItem as any).fullAnalysis?.succesKansAnalysis?.chance_of_success !== undefined && (

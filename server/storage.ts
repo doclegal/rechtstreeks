@@ -54,12 +54,13 @@ export interface IStorage {
   getInvitationByCode(code: string): Promise<CaseInvitation | undefined>;
   getInvitationsByCase(caseId: string): Promise<CaseInvitation[]>;
   getPendingInvitationByEmail(email: string): Promise<CaseInvitation | undefined>;
-  updateInvitation(id: string, updates: Partial<InsertCaseInvitation>): Promise<CaseInvitation>;
+  updateInvitation(id: string, updates: Partial<CaseInvitation>): Promise<CaseInvitation>;
   expireOldInvitations(): Promise<void>;
   
   // Document operations
   createDocument(docData: InsertCaseDocument): Promise<CaseDocument>;
   getDocumentsByCase(caseId: string): Promise<CaseDocument[]>;
+  getDocumentsByCaseForUser(caseId: string, userId: string): Promise<CaseDocument[]>; // Only user's own documents
   getDocument(id: string): Promise<CaseDocument | undefined>;
   updateDocument(id: string, updates: Partial<InsertCaseDocument>): Promise<CaseDocument>;
   deleteDocument(id: string): Promise<void>;
@@ -235,10 +236,10 @@ export class DatabaseStorage implements IStorage {
     return invitation;
   }
 
-  async updateInvitation(id: string, updates: Partial<InsertCaseInvitation>): Promise<CaseInvitation> {
+  async updateInvitation(id: string, updates: Partial<CaseInvitation>): Promise<CaseInvitation> {
     const [updatedInvitation] = await db
       .update(caseInvitations)
-      .set(updates)
+      .set(updates as any)
       .where(eq(caseInvitations.id, id))
       .returning();
     return updatedInvitation;
@@ -271,6 +272,19 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(caseDocuments)
       .where(eq(caseDocuments.caseId, caseId))
+      .orderBy(desc(caseDocuments.createdAt));
+  }
+
+  async getDocumentsByCaseForUser(caseId: string, userId: string): Promise<CaseDocument[]> {
+    return await db
+      .select()
+      .from(caseDocuments)
+      .where(
+        and(
+          eq(caseDocuments.caseId, caseId),
+          eq(caseDocuments.uploadedByUserId, userId)
+        )
+      )
       .orderBy(desc(caseDocuments.createdAt));
   }
 

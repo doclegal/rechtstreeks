@@ -212,7 +212,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For each case, include analysis and other related data
       const casesWithDetails = await Promise.all(
         userCases.map(async (caseData) => {
-          const documents = await storage.getDocumentsByCase(caseData.id);
+          // Only show documents uploaded by the current user
+          const documents = await storage.getDocumentsByCaseForUser(caseData.id, userId);
           const analysis = await storage.getLatestAnalysis(caseData.id);
           const kantonAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-kanton-check');
           let fullAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-full-analysis');
@@ -257,8 +258,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Unauthorized access to case" });
       }
       
-      // Include related data
-      const documents = await storage.getDocumentsByCase(caseData.id);
+      // Include related data - only show documents uploaded by the current user
+      const documents = await storage.getDocumentsByCaseForUser(caseData.id, userId);
       const analysis = await storage.getLatestAnalysis(caseData.id);
       const kantonAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-kanton-check');
       let fullAnalysis = await storage.getAnalysisByType(caseData.id, 'mindstudio-full-analysis');
@@ -843,7 +844,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Case not found" });
       }
       
-      const documents = await storage.getDocumentsByCase(req.params.id);
+      // Only return documents uploaded by the current user
+      const documents = await storage.getDocumentsByCaseForUser(req.params.id, userId);
       res.json(documents);
     } catch (error) {
       console.error("Error fetching documents:", error);

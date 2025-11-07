@@ -27,6 +27,7 @@ import Dossier from "@/pages/Dossier";
 import Chat from "@/pages/Chat";
 import QnA from "@/pages/QnA";
 import ResolvePage from "@/pages/ResolvePage";
+import InvitationAccept from "@/pages/InvitationAccept";
 import RequireAuth from "@/components/RequireAuth";
 
 // Protected route definitions
@@ -83,6 +84,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
+      <Route path="/invitation/:code" component={InvitationAccept} />
       
       {isAuthenticated ? (
         <Layout>
