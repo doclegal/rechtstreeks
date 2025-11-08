@@ -24,7 +24,7 @@ export async function sendInvitationEmail({
     const invitationLink = `${process.env.PUBLIC_BASE_URL || 'http://localhost:5000'}/invitation/${invitationCode}`;
 
     const { data, error } = await resend.emails.send({
-      from: 'Rechtstreeks.ai <onboarding@resend.dev>',
+      from: 'Rechtstreeks.ai <noreply@rechtstreeks.ai>',
       to: [to],
       subject: `Uitnodiging voor mediation - ${caseTitle}`,
       html: `
