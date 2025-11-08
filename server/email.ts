@@ -38,7 +38,6 @@ export async function sendInvitationEmail({
               .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
               .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
               .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: 600; }
-              .code { background: white; border: 2px dashed #667eea; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 3px; margin: 20px 0; border-radius: 6px; }
               .footer { text-align: center; color: #6b7280; font-size: 14px; margin-top: 30px; }
             </style>
           </head>
@@ -58,7 +57,7 @@ export async function sendInvitationEmail({
                 
                 <h3 style="color: #1f2937;">Hoe werkt het?</h3>
                 <ol style="padding-left: 20px;">
-                  <li>Klik op de knop hieronder of gebruik de uitnodigingscode</li>
+                  <li>Klik op de knop hieronder om de uitnodiging te accepteren</li>
                   <li>Maak een gratis account aan (of log in)</li>
                   <li>Bekijk de zaak informatie en keur deze goed</li>
                   <li>Upload je eigen documenten</li>
@@ -69,11 +68,8 @@ export async function sendInvitationEmail({
                   <a href="${invitationLink}" class="button">Accepteer uitnodiging</a>
                 </div>
 
-                <p style="margin-top: 30px; font-size: 14px; color: #6b7280;">Of gebruik deze uitnodigingscode:</p>
-                <div class="code">${invitationCode}</div>
-
-                <p style="font-size: 14px; color: #6b7280;">
-                  Deze uitnodiging is 7 dagen geldig. Na deze periode verloopt de code automatisch.
+                <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">
+                  Deze uitnodiging is 30 dagen geldig. Na deze periode verloopt de link automatisch.
                 </p>
               </div>
               <div class="footer">
