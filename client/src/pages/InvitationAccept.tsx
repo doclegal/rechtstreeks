@@ -4,7 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle, AlertCircle, Clock, User, FileText, Euro } from 'lucide-react';
+import { CheckCircle, AlertCircle, Clock, User, FileText, Euro, LogIn } from 'lucide-react';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { Separator } from '@/components/ui/separator';
 
@@ -12,6 +12,12 @@ export default function InvitationAccept() {
   const { code } = useParams();
   const [, navigate] = useLocation();
   const [accepted, setAccepted] = useState(false);
+
+  // Check if user is logged in
+  const { data: currentUser, isLoading: userLoading } = useQuery({
+    queryKey: ['/api/auth/user'],
+    retry: false,
+  });
 
   // Fetch invitation info (public endpoint, no auth)
   const { data: invitationData, isLoading, error } = useQuery({
@@ -43,7 +49,7 @@ export default function InvitationAccept() {
     },
   });
 
-  if (isLoading) {
+  if (isLoading || userLoading) {
     return (
       <div className="container mx-auto p-6 max-w-2xl">
         <Card>
@@ -77,6 +83,10 @@ export default function InvitationAccept() {
   }
 
   const { invitation, case: caseInfo } = invitationData as any;
+  
+  // Check if user is logged in and email matches
+  const isLoggedIn = !!currentUser;
+  const emailMatches = (currentUser as any)?.email?.toLowerCase() === invitation.invitedEmail.toLowerCase();
 
   if (accepted) {
     return (
@@ -212,27 +222,70 @@ export default function InvitationAccept() {
             </ul>
           </div>
 
+          {/* Authentication Section */}
+          {!isLoggedIn && (
+            <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+              <LogIn className="h-4 w-4 text-blue-600" />
+              <AlertDescription>
+                <p className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                  Je moet eerst inloggen of een account aanmaken
+                </p>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Maak een gratis account aan met het emailadres <strong>{invitation.invitedEmail}</strong> om deze uitnodiging te accepteren.
+                  Als je al een account hebt, log dan in.
+                </p>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="default" 
+                    size="sm"
+                    onClick={() => window.location.href = `/`}
+                    data-testid="button-login"
+                  >
+                    Inloggen / Account aanmaken
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {isLoggedIn && !emailMatches && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <p className="font-semibold mb-2">Verkeerd emailadres</p>
+                <p className="text-sm">
+                  Deze uitnodiging is verstuurd naar <strong>{invitation.invitedEmail}</strong>, maar je bent ingelogd met <strong>{(currentUser as any)?.email}</strong>.
+                </p>
+                <p className="text-sm mt-2">
+                  Log uit en maak een account aan met het uitgenodigde emailadres, of vraag de andere partij om een nieuwe uitnodiging te sturen naar jouw huidige emailadres.
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Accept Button */}
-          <div className="pt-4">
-            <Button 
-              className="w-full" 
-              size="lg"
-              onClick={() => acceptMutation.mutate()}
-              disabled={acceptMutation.isPending}
-              data-testid="button-accept-invitation"
-            >
-              {acceptMutation.isPending ? 'Accepteren...' : 'Accepteer uitnodiging en ga naar zaak'}
-            </Button>
-            
-            {acceptMutation.error && (
-              <Alert variant="destructive" className="mt-4">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  {(acceptMutation.error as any)?.message || 'Er is een fout opgetreden bij het accepteren van de uitnodiging'}
-                </AlertDescription>
-              </Alert>
-            )}
-          </div>
+          {isLoggedIn && emailMatches && (
+            <div className="pt-4">
+              <Button 
+                className="w-full" 
+                size="lg"
+                onClick={() => acceptMutation.mutate()}
+                disabled={acceptMutation.isPending}
+                data-testid="button-accept-invitation"
+              >
+                {acceptMutation.isPending ? 'Accepteren...' : 'Accepteer uitnodiging en ga naar zaak'}
+              </Button>
+              
+              {acceptMutation.error && (
+                <Alert variant="destructive" className="mt-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    {(acceptMutation.error as any)?.message || 'Er is een fout opgetreden bij het accepteren van de uitnodiging'}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
