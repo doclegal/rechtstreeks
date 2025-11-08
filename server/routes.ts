@@ -359,19 +359,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Wederpartij heeft al een account gekoppeld aan deze zaak" });
       }
       
-      // Check if there's already a pending invitation
-      const existingInvitations = await storage.getInvitationsByCase(caseData.id);
-      const pendingInvitation = existingInvitations.find(inv => inv.status === 'PENDING');
-      if (pendingInvitation) {
-        return res.status(400).json({ 
-          message: "Er bestaat al een openstaande uitnodiging voor deze zaak",
-          invitationCode: pendingInvitation.invitationCode
-        });
-      }
-      
       const { email } = req.body;
       if (!email) {
         return res.status(400).json({ message: "Email is verplicht" });
+      }
+      
+      // Cancel any existing pending invitations for this case
+      const existingInvitations = await storage.getInvitationsByCase(caseData.id);
+      const pendingInvitations = existingInvitations.filter(inv => inv.status === 'PENDING');
+      for (const inv of pendingInvitations) {
+        await storage.updateInvitation(inv.id, { status: 'CANCELLED' });
       }
       
       // Generate unique invitation code
