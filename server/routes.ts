@@ -634,16 +634,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
       
-      // Construct public download URL for MindStudio
-      // Use PUBLIC_BASE_URL if available (set by Replit), otherwise use REPLIT_DOMAINS
-      const publicBaseUrl = process.env.PUBLIC_BASE_URL 
-        || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : 'http://localhost:5000');
+      // Generate a fresh signed URL for MindStudio access (24h validity)
+      // This ensures the URL is always valid and publicly accessible
+      let downloadUrl: string;
       
-      // IMPORTANT: URL must end with .pdf extension for MindStudio to recognize file type
-      const encodedFilename = encodeURIComponent(document.filename);
-      const downloadUrl = `${publicBaseUrl}/api/documents/${documentId}/download/${encodedFilename}`;
+      if (document.storageKey) {
+        // Try to generate a fresh signed URL from object storage
+        const freshSignedUrl = await fileService.generateSignedUrl(document.storageKey, 24);
+        
+        if (freshSignedUrl) {
+          downloadUrl = freshSignedUrl;
+          console.log('🔗 Generated fresh signed URL for MindStudio (24h validity):', downloadUrl);
+          
+          // Update document with new publicUrl for future reference
+          await storage.updateDocument(documentId, { publicUrl: freshSignedUrl });
+        } else {
+          // Fallback: Use existing publicUrl or construct dev URL
+          if (document.publicUrl) {
+            downloadUrl = document.publicUrl;
+            console.log('🔗 Using existing publicUrl (may be expired):', downloadUrl);
+          } else {
+            const publicBaseUrl = process.env.PUBLIC_BASE_URL 
+              || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : 'http://localhost:5000');
+            const encodedFilename = encodeURIComponent(document.filename);
+            downloadUrl = `${publicBaseUrl}/api/documents/${documentId}/download/${encodedFilename}`;
+            console.log('🔗 Generated dev download URL for MindStudio:', downloadUrl);
+          }
+        }
+      } else {
+        // No storage key, use dev URL
+        const publicBaseUrl = process.env.PUBLIC_BASE_URL 
+          || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : 'http://localhost:5000');
+        const encodedFilename = encodeURIComponent(document.filename);
+        downloadUrl = `${publicBaseUrl}/api/documents/${documentId}/download/${encodedFilename}`;
+        console.log('🔗 Generated dev download URL (no storageKey):', downloadUrl);
+      }
       
-      console.log('🔗 Generated download URL for MindStudio:', downloadUrl);
       console.log('📋 Document filename:', document.filename);
       
       const inputJsonData = {
@@ -1416,10 +1442,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           // Note: DOCX, TXT, GIF are not in the contract, default to PDF for now
           
+          // Prefer publicUrl from object storage (signed URL), fallback to dev URL
+          const file_url = doc.publicUrl || (doc.storageKey ? `${publicBaseUrl}/api/documents/${doc.id}/download` : '');
+          
           return {
             name: doc.filename,
             type,
-            file_url: doc.storageKey ? `${publicBaseUrl}/api/documents/${doc.id}/download` : ''
+            file_url
           };
         });
 
@@ -2395,10 +2424,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const publicBaseUrl = process.env.PUBLIC_BASE_URL || 
         (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000');
       
+      // Prefer publicUrl from object storage (signed URL), fallback to dev URL
       const uploaded_files = documents.map(doc => ({
         name: doc.filename,
         type: doc.mimetype as "application/pdf" | "image/jpeg" | "image/png",
-        file_url: `${publicBaseUrl}/api/documents/${doc.id}/download`
+        file_url: doc.publicUrl || `${publicBaseUrl}/api/documents/${doc.id}/download`
       }));
 
       // Extract prev_analysis_json from previous analysis

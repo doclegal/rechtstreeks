@@ -1,0 +1,153 @@
+
+Action
+Duration
+Run Started
+64 ms
+1
+Action started on AgentDispatcher
+Instance ID: wvgrk
+ at Nov 11, 2025 4:24:11.172 PM GMT+1
+2
+ New run with ID "663ea1b6-2a70-4c05-af86-bcad034a6676"
+3
+ Preparing launch variables
+4
+ Running workflow Dossier_check.flow
+5
+ Initializing {{currentDate}} with value "Nov 11, 2025 3:24:11 PM"
+6
+ Initializing {{global.userId}} with value "cea0889c-9c7e-46fb-ba63-0a5f3bfc9de2"
+7
+ Initializing {{global.threadId}} with value "663ea1b6-2a70-4c05-af86-bcad034a6676"
+8
+ Initializing {{global.username}} with value "Pieter D."
+9
+ Initializing {{global.userEmail}} with value "pdelaat@gmail.com"
+10
+ Initializing {{global.companyName}} with value "Notforlawyers"
+11
+ Initializing {{$launchVariables->input_json}} with value JSON
+{
+file_url: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/330ff742-2d86-40b1-90e0-1e5f63430711/download/Eerste%20brief%20feb.pdf"
+file_name: "Eerste brief feb.pdf"
+}
+12
+ Dispatching run request to Agent Runner
+13
+ Action completed
+Extract Text from File
+2,66 s
+1
+Action started on CloudRunner
+Instance ID: g5mr9
+ at Nov 11, 2025 4:24:11.406 PM GMT+1
+2
+ Extracting text from files: "{{input_json.file_url}}"
+3
+ Resolving variables
+4
+ Extracting text from file: "https://5e2d79df-905f-4240-b2b1-2c0e6db835ee-00-2mou5jmg9z0vn.kirk.replit.dev/api/documents/330ff742-2d86-40b1-90e0-1e5f63430711/download/Eerste%20brief%20feb.pdf"
+5
+ Downloading file from URL
+6
+ Download failed, attempting to download using proxy
+7
+ Proxy failed to download file.
+8
+ Extraction complete: "There has been a problem during text extraction: Error: Failed to download file"
+9
+ Saving results to variable {{extracted_text}}
+10
+ Action completed
+Generate Legal Analysis - Background Message
+3,78 s
+1
+Action started on CloudRunner
+Instance ID: g5mr9
+ at Nov 11, 2025 4:24:14.101 PM GMT+1
+2
+ Sending message: "You are a specialized Dutch legal document analyzer for civil disputes. Analyze the following document text for a Dutch civil case.
+
+<document>
+{{extracted_text}}..."
+3
+ Loading message history
+4
+ Preparing to query 
+Claude 3.5 Haiku at 0.2° with a maximum response size of 1,701 tokens
+5
+ Resolving variables
+6
+ Sending resolved message: "You are a specialized Dutch legal document analyzer for civil disputes. Analyze the following document text for a Dutch civil case.
+
+<document>
+There has been a problem during text extraction: Error: Failed to download file..."
+7
+ Waiting for model response...
+8
+ Received first response token
+9
+ Received full result: 571 tokens (406 sent, 165 received) at 44.450 tokens/second
+10
+ Received result: JSON
+{
+document_name: "undefined"
+document_type: "technische fout"
+is_readable: false
+belongs_to_case: false
+submitted_by: "onbekend"
+evidential_value: "neutraal"
+reasoning: "Er is een downloadfout opgetreden waardoor de inhoud van het document niet kan worden geanalyseerd."
+summary: "Geen document beschikbaar door technische extractiefout."
+tags: [
+0: "technische fout"
+1: "niet-leesbaar"
+]
+note: "Document kon niet worden gedownload of geëxtraheerd"
+}
+11
+ Saving result to variable {{result}}
+12
+ Action completed
+Billing Events
+claude-3-5-haiku-llm_inference-prompt
+(406 units at $0,000000800 per unit)
+$0,000324800
+claude-3-5-haiku-llm_inference-response
+(165 units at $0,000004000 per unit)
+$0,000660000
+Action Total
+$0,000984800
+Sending Output
+32 ms
+1
+Action started on CloudRunner
+Instance ID: g5mr9
+ at Nov 11, 2025 4:24:17.924 PM GMT+1
+2
+ Sending JSON: JSON
+{
+result: "{{result}}"
+}
+3
+ Resolving variables
+4
+ Sending message: JSON
+{
+result: {
+document_name: "undefined"
+document_type: "technische fout"
+is_readable: false
+belongs_to_case: false
+submitted_by: "onbekend"
+evidential_value: "neutraal"
+reasoning: "Er is een downloadfout opgetreden waardoor de inhoud van het document niet kan worden geanalyseerd."
+summary: "Geen document beschikbaar door technische extractiefout."
+tags: []
+note: "Document kon niet worden gedownload of geëxtraheerd"
+}
+}
+5
+ Action completed
+Run Completed
+6,536 s
