@@ -217,12 +217,20 @@ export default function ResolvePage() {
     enabled: !!selectedCaseId,
   });
 
-  // Extract mediation tips from analysis
+  // Extract mediation tips from analysis (check both latestAnalysis and fullAnalysis)
   const mediationTips = useMemo(() => {
-    if (!selectedCase || !selectedCase.latestAnalysis) {
+    if (!selectedCase) {
       return ["Start eerst met een juridische analyse van uw zaak voordat u de mediation begint."];
     }
-    return buildMediationTipsFromAnalysis(selectedCase.latestAnalysis);
+    
+    // Try fullAnalysis first (contains RKOS data), then latestAnalysis
+    const analysis = selectedCase.fullAnalysis || selectedCase.latestAnalysis;
+    
+    if (!analysis) {
+      return ["Start eerst met een juridische analyse van uw zaak voordat u de mediation begint."];
+    }
+    
+    return buildMediationTipsFromAnalysis(analysis);
   }, [selectedCase]);
 
   // Extract case title
