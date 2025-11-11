@@ -224,23 +224,39 @@ export class ObjectStorageService {
   }
 
   // Generate signed URL for downloading (used for MindStudio access)
+  // Returns null if file doesn't exist in object storage (to trigger fallback)
   async generateSignedUrl(
     storageKey: string,
     expiresInHours: number = 1
-  ): Promise<string> {
-    let entityDir = this.getPrivateObjectDir();
-    if (!entityDir.endsWith("/")) {
-      entityDir = `${entityDir}/`;
-    }
-    const fullPath = `${entityDir}${storageKey}`;
-    const { bucketName, objectName } = parseObjectPath(fullPath);
+  ): Promise<string | null> {
+    try {
+      let entityDir = this.getPrivateObjectDir();
+      if (!entityDir.endsWith("/")) {
+        entityDir = `${entityDir}/`;
+      }
+      const fullPath = `${entityDir}${storageKey}`;
+      const { bucketName, objectName } = parseObjectPath(fullPath);
 
-    return signObjectURL({
-      bucketName,
-      objectName,
-      method: "GET",
-      ttlSec: expiresInHours * 3600,
-    });
+      // CRITICAL: Check if file exists in object storage before generating signed URL
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+      const [exists] = await file.exists();
+      
+      if (!exists) {
+        console.log(`⚠️ File not in object storage, cannot generate signed URL: ${storageKey}`);
+        return null;
+      }
+
+      return signObjectURL({
+        bucketName,
+        objectName,
+        method: "GET",
+        ttlSec: expiresInHours * 3600,
+      });
+    } catch (error) {
+      console.error(`Error generating signed URL for ${storageKey}:`, error);
+      return null;
+    }
   }
 
   normalizeObjectEntityPath(rawPath: string): string {

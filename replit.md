@@ -31,6 +31,13 @@ Preferred communication style: Simple, everyday language.
 - **Schema Management**: Drizzle migrations.
 - **Key Tables**: Users (with roles), Cases (status tracking), Document storage, AI analyses (structured JSON), Generated letters/summons, Event logging.
 
+### File Storage (Production)
+- **Storage Backend**: Replit Object Storage via Google Cloud Storage client (production-ready).
+- **Implementation**: `server/objectStorage.ts` - ObjectStorageService with sidecar credentials.
+- **Security**: Time-bound signed URLs (1-hour expiry) for MindStudio document access.
+- **ACL Management**: `server/objectAcl.ts` - Owner-based access control with defensive error handling.
+- **Fallback**: Local filesystem for development/testing when object storage unavailable.
+
 ### Process Flow & AI Integration
 - **Status Progression**: Automated transitions through 9 legal process steps.
 - **Document Processing**: Multi-format parsing with text extraction.
