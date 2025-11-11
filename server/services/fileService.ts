@@ -6,8 +6,27 @@ import { storage } from "../storage";
 import { Client } from "@replit/object-storage";
 import { Readable } from "stream";
 
-// Replit Object Storage client (works automatically in both dev and production)
-const objectStorageClient = new Client();
+// Replit Object Storage client (lazy initialization to avoid startup crash)
+let objectStorageClient: Client | null = null;
+
+function getObjectStorageClient(): Client | null {
+  if (objectStorageClient) return objectStorageClient;
+  
+  const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+  if (!bucketId) {
+    console.warn('⚠️ Object storage not configured (no DEFAULT_OBJECT_STORAGE_BUCKET_ID)');
+    return null;
+  }
+  
+  try {
+    objectStorageClient = new Client();
+    console.log('✅ Object storage client initialized');
+    return objectStorageClient;
+  } catch (error) {
+    console.error('❌ Failed to initialize object storage client:', error);
+    return null;
+  }
+}
 
 export class FileService {
   private uploadDir: string;
@@ -40,6 +59,11 @@ export class FileService {
   }
 
   async storeFileToObjectStorage(caseId: string, file: Express.Multer.File): Promise<{ storageKey: string; publicUrl: string }> {
+    const client = getObjectStorageClient();
+    if (!client) {
+      throw new Error("Object storage not configured");
+    }
+    
     const fileExtension = path.extname(file.originalname);
     const fileName = `${randomUUID()}${fileExtension}`;
     const objectPath = `.private/cases/${caseId}/uploads/${fileName}`;
@@ -47,7 +71,7 @@ export class FileService {
     console.log(`📤 Uploading to object storage: ${objectPath}`);
     
     // Upload file to Replit Object Storage using SDK
-    const result = await objectStorageClient.uploadFromBytes(
+    const result = await client.uploadFromBytes(
       objectPath,
       file.buffer
     );
@@ -106,10 +130,16 @@ export class FileService {
 
   async getFileFromObjectStorage(storageKey: string): Promise<NodeJS.ReadableStream | null> {
     try {
+      const client = getObjectStorageClient();
+      if (!client) {
+        console.error("Object storage not configured");
+        return null;
+      }
+      
       console.log(`📥 Downloading from object storage: ${storageKey}`);
       
       // Download file from Replit Object Storage using SDK
-      const result = await objectStorageClient.downloadAsBytes(storageKey);
+      const result = await client.downloadAsBytes(storageKey);
       
       if (!result.ok) {
         console.error(`❌ Object storage download failed:`, result.error);

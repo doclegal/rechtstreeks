@@ -638,38 +638,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // This ensures the URL is always valid and publicly accessible
       let downloadUrl: string;
       
-      if (document.storageKey) {
-        // Try to generate a fresh signed URL from object storage (1 hour)
-        const freshSignedUrl = await fileService.generateSignedUrl(document.storageKey, 1);
-        
-        if (freshSignedUrl) {
-          downloadUrl = freshSignedUrl;
-          console.log('🔗 Generated fresh signed URL for MindStudio (1 hour validity):', downloadUrl);
-          
-          // Update document with new publicUrl for future reference
-          await storage.updateDocument(documentId, { publicUrl: freshSignedUrl });
-        } else {
-          // Fallback: Use existing publicUrl or construct dev URL
-          if (document.publicUrl) {
-            downloadUrl = document.publicUrl;
-            console.log('🔗 Using existing publicUrl (may be expired):', downloadUrl);
-          } else {
-            const publicBaseUrl = process.env.PUBLIC_BASE_URL 
-              || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : 'http://localhost:5000');
-            const encodedFilename = encodeURIComponent(document.filename);
-            downloadUrl = `${publicBaseUrl}/api/documents/${documentId}/download/${encodedFilename}`;
-            console.log('🔗 Generated dev download URL for MindStudio:', downloadUrl);
-          }
-        }
-      } else {
-        // No storage key, use dev URL
-        const publicBaseUrl = process.env.PUBLIC_BASE_URL 
-          || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : 'http://localhost:5000');
-        const encodedFilename = encodeURIComponent(document.filename);
-        downloadUrl = `${publicBaseUrl}/api/documents/${documentId}/download/${encodedFilename}`;
-        console.log('🔗 Generated dev download URL (no storageKey):', downloadUrl);
-      }
+      // Use proxy endpoint for all downloads (works in dev and production)
+      // MindStudio will call this endpoint to download the file
+      const publicBaseUrl = process.env.PUBLIC_BASE_URL 
+        || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : 'http://localhost:5000');
       
+      const encodedFilename = encodeURIComponent(document.filename);
+      downloadUrl = `${publicBaseUrl}/api/documents/${documentId}/download/${encodedFilename}`;
+      
+      console.log('🔗 Using proxy download URL for MindStudio:', downloadUrl);
       console.log('📋 Document filename:', document.filename);
       
       const inputJsonData = {
