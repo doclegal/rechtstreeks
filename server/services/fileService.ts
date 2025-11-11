@@ -85,14 +85,15 @@ export class FileService {
       }
     });
     
-    // Generate signed URL (valid for 24 hours) instead of making public
+    // Generate signed URL (valid for 7 days) for production compatibility
     // This works even with public access prevention enabled
+    // Longer validity ensures URLs don't expire during document analysis
     const [signedUrl] = await fileObject.getSignedUrl({
       action: 'read',
-      expires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+      expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
     });
     
-    console.log('✅ Generated signed URL for MindStudio access:', signedUrl);
+    console.log('✅ Generated signed URL (7 days validity) for external access:', signedUrl);
     
     return {
       storageKey: objectPath,
@@ -167,7 +168,7 @@ export class FileService {
     }
   }
 
-  async generateSignedUrl(storageKey: string, expiresInHours: number = 24): Promise<string | null> {
+  async generateSignedUrl(storageKey: string, expiresInHours: number = 168): Promise<string | null> {
     try {
       const privateObjectDir = process.env.PRIVATE_OBJECT_DIR;
       if (!privateObjectDir) {
@@ -189,13 +190,13 @@ export class FileService {
         return null;
       }
       
-      // Generate signed URL (valid for specified hours)
+      // Generate signed URL (valid for specified hours, default 7 days)
       const [signedUrl] = await fileObject.getSignedUrl({
         action: 'read',
         expires: Date.now() + expiresInHours * 60 * 60 * 1000,
       });
       
-      console.log(`✅ Generated signed URL for ${storageKey} (valid for ${expiresInHours}h)`);
+      console.log(`✅ Generated signed URL for ${storageKey} (valid for ${expiresInHours}h = ${Math.round(expiresInHours/24)} days)`);
       
       return signedUrl;
     } catch (error) {

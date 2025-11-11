@@ -639,12 +639,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let downloadUrl: string;
       
       if (document.storageKey) {
-        // Try to generate a fresh signed URL from object storage
-        const freshSignedUrl = await fileService.generateSignedUrl(document.storageKey, 24);
+        // Try to generate a fresh signed URL from object storage (7 days for production)
+        const freshSignedUrl = await fileService.generateSignedUrl(document.storageKey, 168); // 7 days
         
         if (freshSignedUrl) {
           downloadUrl = freshSignedUrl;
-          console.log('🔗 Generated fresh signed URL for MindStudio (24h validity):', downloadUrl);
+          console.log('🔗 Generated fresh signed URL for MindStudio (7 days validity):', downloadUrl);
           
           // Update document with new publicUrl for future reference
           await storage.updateDocument(documentId, { publicUrl: freshSignedUrl });
@@ -815,17 +815,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Case not found" });
       }
       
-      // Store file in both local storage and object storage
-      const storageKey = await fileService.storeFile(caseId, file);
-      
+      // Store file in object storage (required for production deployments)
+      // Local storage is used as backup in dev only
+      let storageKey: string;
       let publicUrl = '';
+      
       try {
-        // Also store in object storage for public access
+        // Primary: Store in object storage for production compatibility
         const objectStorage = await fileService.storeFileToObjectStorage(caseId, file);
+        storageKey = objectStorage.storageKey;
         publicUrl = objectStorage.publicUrl;
+        console.log('✅ Stored in object storage:', storageKey);
       } catch (error) {
-        console.warn('Failed to store file in object storage:', error);
-        // Continue with local storage only
+        console.error('❌ Object storage failed, falling back to local storage (dev only):', error);
+        // Fallback to local storage (only works in dev environment)
+        storageKey = await fileService.storeFile(caseId, file);
+        console.warn('⚠️ Using local storage - this will NOT work in production!');
       }
       
       // Extract text content
