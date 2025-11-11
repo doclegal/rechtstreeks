@@ -6,27 +6,9 @@ import { storage } from "../storage";
 import { Client } from "@replit/object-storage";
 import { Readable } from "stream";
 
-// Replit Object Storage client (lazy initialization to avoid startup crash)
-let objectStorageClient: Client | null = null;
-
-function getObjectStorageClient(): Client | null {
-  if (objectStorageClient) return objectStorageClient;
-  
-  const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
-  if (!bucketId) {
-    console.warn('⚠️ Object storage not configured (no DEFAULT_OBJECT_STORAGE_BUCKET_ID)');
-    return null;
-  }
-  
-  try {
-    objectStorageClient = new Client();
-    console.log('✅ Object storage client initialized');
-    return objectStorageClient;
-  } catch (error) {
-    console.error('❌ Failed to initialize object storage client:', error);
-    return null;
-  }
-}
+// USE LOCAL STORAGE FOR NOW - Object storage SDK has initialization issues
+// Will migrate to proper object storage once SDK issues are resolved
+const USE_OBJECT_STORAGE = false;
 
 export class FileService {
   private uploadDir: string;
@@ -59,36 +41,14 @@ export class FileService {
   }
 
   async storeFileToObjectStorage(caseId: string, file: Express.Multer.File): Promise<{ storageKey: string; publicUrl: string }> {
-    const client = getObjectStorageClient();
-    if (!client) {
-      throw new Error("Object storage not configured");
+    if (!USE_OBJECT_STORAGE) {
+      // Use local storage instead
+      const storageKey = await this.storeFile(caseId, file);
+      return { storageKey, publicUrl: '' };
     }
     
-    const fileExtension = path.extname(file.originalname);
-    const fileName = `${randomUUID()}${fileExtension}`;
-    const objectPath = `.private/cases/${caseId}/uploads/${fileName}`;
-    
-    console.log(`📤 Uploading to object storage: ${objectPath}`);
-    
-    // Upload file to Replit Object Storage using SDK
-    const result = await client.uploadFromBytes(
-      objectPath,
-      file.buffer
-    );
-    
-    if (!result.ok) {
-      console.error(`❌ Object storage upload failed:`, result.error);
-      throw new Error(`Failed to upload to object storage: ${result.error.message}`);
-    }
-    
-    console.log('✅ Uploaded to object storage successfully');
-    
-    // Return storage path (publicUrl will be empty - we use proxy endpoint instead)
-    // The download endpoint will stream the file from object storage
-    return {
-      storageKey: objectPath,
-      publicUrl: '' // Proxy endpoint will handle downloads
-    };
+    // Object storage code (disabled for now)
+    throw new Error("Object storage is disabled");
   }
 
   private parseObjectPath(path: string): { bucketName: string; objectName: string } {
@@ -129,32 +89,13 @@ export class FileService {
   }
 
   async getFileFromObjectStorage(storageKey: string): Promise<NodeJS.ReadableStream | null> {
-    try {
-      const client = getObjectStorageClient();
-      if (!client) {
-        console.error("Object storage not configured");
-        return null;
-      }
-      
-      console.log(`📥 Downloading from object storage: ${storageKey}`);
-      
-      // Download file from Replit Object Storage using SDK
-      const result = await client.downloadAsBytes(storageKey);
-      
-      if (!result.ok) {
-        console.error(`❌ Object storage download failed:`, result.error);
-        return null;
-      }
-      
-      console.log('✅ Downloaded from object storage successfully');
-      
-      // Convert Uint8Array to Node.js readable stream
-      const buffer = Buffer.from(result.value);
-      return Readable.from(buffer);
-    } catch (error) {
-      console.error(`Error getting file from object storage: ${storageKey}`, error);
-      return null;
+    if (!USE_OBJECT_STORAGE) {
+      // Use local storage instead
+      return this.getFileFromLocalStorage(storageKey);
     }
+    
+    // Object storage code (disabled for now)
+    return null;
   }
 
   async generateSignedUrl(storageKey: string, expiresInHours: number = 1): Promise<string | null> {
