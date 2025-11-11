@@ -3,28 +3,11 @@ import fs from "fs/promises";
 import path from "path";
 import archiver from "archiver";
 import { storage } from "../storage";
-import { Storage, File } from "@google-cloud/storage";
+import { Client } from "@replit/object-storage";
+import { Readable } from "stream";
 
-const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
-
-// Object storage client
-const objectStorageClient = new Storage({
-  credentials: {
-    audience: "replit",
-    subject_token_type: "access_token",
-    token_url: `${REPLIT_SIDECAR_ENDPOINT}/token`,
-    type: "external_account",
-    credential_source: {
-      url: `${REPLIT_SIDECAR_ENDPOINT}/credential`,
-      format: {
-        type: "json",
-        subject_token_field_name: "access_token",
-      },
-    },
-    universe_domain: "googleapis.com",
-  },
-  projectId: "",
-});
+// Replit Object Storage client (works automatically in both dev and production)
+const objectStorageClient = new Client();
 
 export class FileService {
   private uploadDir: string;
@@ -59,44 +42,28 @@ export class FileService {
   async storeFileToObjectStorage(caseId: string, file: Express.Multer.File): Promise<{ storageKey: string; publicUrl: string }> {
     const fileExtension = path.extname(file.originalname);
     const fileName = `${randomUUID()}${fileExtension}`;
-    const objectPath = `cases/${caseId}/uploads/${fileName}`;
+    const objectPath = `.private/cases/${caseId}/uploads/${fileName}`;
     
-    // Get private object directory from environment
-    const privateObjectDir = process.env.PRIVATE_OBJECT_DIR;
-    if (!privateObjectDir) {
-      throw new Error("PRIVATE_OBJECT_DIR not set. Object storage not configured.");
+    console.log(`📤 Uploading to object storage: ${objectPath}`);
+    
+    // Upload file to Replit Object Storage using SDK
+    const result = await objectStorageClient.uploadFromBytes(
+      objectPath,
+      file.buffer
+    );
+    
+    if (!result.ok) {
+      console.error(`❌ Object storage upload failed:`, result.error);
+      throw new Error(`Failed to upload to object storage: ${result.error.message}`);
     }
     
-    // Parse bucket and path from private object directory
-    const { bucketName, objectName } = this.parseObjectPath(`${privateObjectDir}/${objectPath}`);
+    console.log('✅ Uploaded to object storage successfully');
     
-    // Upload file to object storage
-    const bucket = objectStorageClient.bucket(bucketName);
-    const fileObject = bucket.file(objectName);
-    
-    await fileObject.save(file.buffer, {
-      metadata: {
-        contentType: file.mimetype,
-        metadata: {
-          originalName: file.originalname,
-          caseId: caseId,
-          uploadedAt: new Date().toISOString()
-        }
-      }
-    });
-    
-    // Generate signed URL (valid for 1 hour) for production compatibility
-    // This works even with public access prevention enabled
-    const [signedUrl] = await fileObject.getSignedUrl({
-      action: 'read',
-      expires: Date.now() + 60 * 60 * 1000, // 1 hour
-    });
-    
-    console.log('✅ Generated signed URL (1 hour validity) for external access:', signedUrl);
-    
+    // Return storage path (publicUrl will be empty - we use proxy endpoint instead)
+    // The download endpoint will stream the file from object storage
     return {
       storageKey: objectPath,
-      publicUrl: signedUrl
+      publicUrl: '' // Proxy endpoint will handle downloads
     };
   }
 
@@ -139,28 +106,21 @@ export class FileService {
 
   async getFileFromObjectStorage(storageKey: string): Promise<NodeJS.ReadableStream | null> {
     try {
-      const privateObjectDir = process.env.PRIVATE_OBJECT_DIR;
-      if (!privateObjectDir) {
-        console.error("PRIVATE_OBJECT_DIR not set. Object storage not configured.");
+      console.log(`📥 Downloading from object storage: ${storageKey}`);
+      
+      // Download file from Replit Object Storage using SDK
+      const result = await objectStorageClient.downloadAsBytes(storageKey);
+      
+      if (!result.ok) {
+        console.error(`❌ Object storage download failed:`, result.error);
         return null;
       }
       
-      // Parse bucket and path from private object directory
-      const fullPath = `${privateObjectDir}/${storageKey}`;
-      const { bucketName, objectName } = this.parseObjectPath(fullPath);
+      console.log('✅ Downloaded from object storage successfully');
       
-      const bucket = objectStorageClient.bucket(bucketName);
-      const fileObject = bucket.file(objectName);
-      
-      // Check if file exists
-      const [exists] = await fileObject.exists();
-      if (!exists) {
-        console.error(`File not found in object storage: ${storageKey}`);
-        return null;
-      }
-      
-      // Create read stream from object storage
-      return fileObject.createReadStream();
+      // Convert Uint8Array to Node.js readable stream
+      const buffer = Buffer.from(result.value);
+      return Readable.from(buffer);
     } catch (error) {
       console.error(`Error getting file from object storage: ${storageKey}`, error);
       return null;
