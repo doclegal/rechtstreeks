@@ -634,17 +634,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
       
-      // Generate a fresh signed URL for MindStudio access (24h validity)
+      // Generate a fresh signed URL for MindStudio access (1 hour validity)
       // This ensures the URL is always valid and publicly accessible
       let downloadUrl: string;
       
       if (document.storageKey) {
-        // Try to generate a fresh signed URL from object storage (7 days for production)
-        const freshSignedUrl = await fileService.generateSignedUrl(document.storageKey, 168); // 7 days
+        // Try to generate a fresh signed URL from object storage (1 hour)
+        const freshSignedUrl = await fileService.generateSignedUrl(document.storageKey, 1);
         
         if (freshSignedUrl) {
           downloadUrl = freshSignedUrl;
-          console.log('🔗 Generated fresh signed URL for MindStudio (7 days validity):', downloadUrl);
+          console.log('🔗 Generated fresh signed URL for MindStudio (1 hour validity):', downloadUrl);
           
           // Update document with new publicUrl for future reference
           await storage.updateDocument(documentId, { publicUrl: freshSignedUrl });
