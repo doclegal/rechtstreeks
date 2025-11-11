@@ -3,12 +3,8 @@ import fs from "fs/promises";
 import path from "path";
 import archiver from "archiver";
 import { storage } from "../storage";
-import { Client } from "@replit/object-storage";
 import { Readable } from "stream";
-
-// USE LOCAL STORAGE FOR NOW - Object storage SDK has initialization issues
-// Will migrate to proper object storage once SDK issues are resolved
-const USE_OBJECT_STORAGE = false;
+import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
 
 export class FileService {
   private uploadDir: string;
@@ -41,14 +37,27 @@ export class FileService {
   }
 
   async storeFileToObjectStorage(caseId: string, file: Express.Multer.File): Promise<{ storageKey: string; publicUrl: string }> {
-    if (!USE_OBJECT_STORAGE) {
-      // Use local storage instead
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const fileExtension = path.extname(file.originalname);
+      const storageKey = `cases/${caseId}/uploads/${randomUUID()}${fileExtension}`;
+      
+      // Upload to object storage using Google Cloud Storage client
+      await objectStorageService.uploadFile(
+        storageKey,
+        file.buffer,
+        file.mimetype || 'application/octet-stream'
+      );
+      
+      console.log(`✅ File uploaded to object storage: ${storageKey}`);
+      
+      return { storageKey, publicUrl: '' };
+    } catch (error) {
+      console.error(`❌ Object storage upload failed, falling back to local storage:`, error);
+      // Fallback to local storage for dev/testing
       const storageKey = await this.storeFile(caseId, file);
       return { storageKey, publicUrl: '' };
     }
-    
-    // Object storage code (disabled for now)
-    throw new Error("Object storage is disabled");
   }
 
   private parseObjectPath(path: string): { bucketName: string; objectName: string } {
@@ -89,45 +98,44 @@ export class FileService {
   }
 
   async getFileFromObjectStorage(storageKey: string): Promise<NodeJS.ReadableStream | null> {
-    if (!USE_OBJECT_STORAGE) {
-      // Use local storage instead
-      return this.getFileFromLocalStorage(storageKey);
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const objectFile = await objectStorageService.getObjectFileFromStorageKey(storageKey);
+      
+      // Create a readable stream from the object file
+      const stream = objectFile.createReadStream();
+      console.log(`✅ File retrieved from object storage: ${storageKey}`);
+      return stream as unknown as NodeJS.ReadableStream;
+    } catch (error) {
+      if (error instanceof ObjectNotFoundError) {
+        console.log(`📁 File not in object storage, trying local storage: ${storageKey}`);
+        return this.getFileFromLocalFileSystem(storageKey);
+      }
+      console.error(`Error getting file from object storage: ${storageKey}`, error);
+      // Fallback to local storage
+      return this.getFileFromLocalFileSystem(storageKey);
     }
-    
-    // Object storage code (disabled for now)
-    return null;
+  }
+
+  private async getFileFromLocalFileSystem(storageKey: string): Promise<NodeJS.ReadableStream | null> {
+    try {
+      const filePath = path.join(this.uploadDir, storageKey);
+      await fs.access(filePath);
+      
+      const { createReadStream } = await import("fs");
+      return createReadStream(filePath);
+    } catch (error) {
+      console.error(`File not found in local storage: ${storageKey}`);
+      return null;
+    }
   }
 
   async generateSignedUrl(storageKey: string, expiresInHours: number = 1): Promise<string | null> {
     try {
-      const privateObjectDir = process.env.PRIVATE_OBJECT_DIR;
-      if (!privateObjectDir) {
-        console.error("PRIVATE_OBJECT_DIR not set. Object storage not configured.");
-        return null;
-      }
-      
-      // Parse bucket and path from private object directory
-      const fullPath = `${privateObjectDir}/${storageKey}`;
-      const { bucketName, objectName } = this.parseObjectPath(fullPath);
-      
-      const bucket = objectStorageClient.bucket(bucketName);
-      const fileObject = bucket.file(objectName);
-      
-      // Check if file exists
-      const [exists] = await fileObject.exists();
-      if (!exists) {
-        console.error(`File not found in object storage: ${storageKey}`);
-        return null;
-      }
-      
-      // Generate signed URL (valid for specified hours, default 1 hour)
-      const [signedUrl] = await fileObject.getSignedUrl({
-        action: 'read',
-        expires: Date.now() + expiresInHours * 60 * 60 * 1000,
-      });
+      const objectStorageService = new ObjectStorageService();
+      const signedUrl = await objectStorageService.generateSignedUrl(storageKey, expiresInHours);
       
       console.log(`✅ Generated signed URL for ${storageKey} (valid for ${expiresInHours}h)`);
-      
       return signedUrl;
     } catch (error) {
       console.error(`Error generating signed URL for ${storageKey}:`, error);
