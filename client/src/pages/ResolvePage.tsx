@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -94,13 +94,109 @@ const mockConversation = [
   }
 ];
 
-// Mock privé tips
-const mockPrivateTips = [
-  "Uw juridische positie is sterk (75%). De vordering lijkt gegrond.",
-  "Een betalingsregeling van 6 maanden is realistisch en haalbaar.",
-  "Overweeg om gedeeltelijk toe te geven op de rente als gebaar van goodwill.",
-  "U heeft aangegeven minimaal €7.000 te willen ontvangen. Het huidige voorstel zit hier boven."
-];
+// Helper function to extract mediation tips from analysis
+function buildMediationTipsFromAnalysis(analysis: any): string[] {
+  const tips: string[] = [];
+  
+  if (!analysis) {
+    return ["Start eerst met een juridische analyse van uw zaak voordat u de mediation begint."];
+  }
+
+  try {
+    // Parse succesKansAnalysis (comes as JSON string from backend)
+    let rkos = analysis.succesKansAnalysis;
+    if (typeof rkos === 'string') {
+      try {
+        rkos = JSON.parse(rkos);
+      } catch (e) {
+        console.error('Failed to parse succesKansAnalysis:', e);
+        rkos = null;
+      }
+    }
+    
+    // Extract from succesKansAnalysis (RKOS)
+    if (rkos && typeof rkos === 'object') {
+      // Coerce percentage to number (it arrives as string from backend)
+      const percentageRaw = rkos.percentage || rkos.kans_percentage;
+      const percentage = percentageRaw ? Number(percentageRaw) : null;
+      
+      if (percentage !== null && !isNaN(percentage)) {
+        tips.push(`Uw juridische positie heeft een succeskans van ${percentage}%. ${
+          percentage >= 70 ? "Dit is een sterke positie." : 
+          percentage >= 50 ? "Dit is een redelijke positie." : 
+          "Overweeg goed of mediation hier de juiste stap is."
+        }`);
+      }
+      
+      const advies = rkos.advies || rkos.samenvatting;
+      if (advies && typeof advies === 'string' && advies.trim()) {
+        tips.push(advies.trim());
+      }
+    }
+
+    // Parse legalAdviceJson (comes as JSON string from backend)
+    let legalAdvice = analysis.legalAdviceJson;
+    if (typeof legalAdvice === 'string') {
+      try {
+        legalAdvice = JSON.parse(legalAdvice);
+      } catch (e) {
+        console.error('Failed to parse legalAdviceJson:', e);
+        legalAdvice = null;
+      }
+    }
+    
+    // Extract from legalAdviceJson
+    if (legalAdvice && typeof legalAdvice === 'object') {
+      // Extract vervolgstappen (array of strings or objects)
+      const vervolgstappen = legalAdvice.vervolgstappen;
+      if (Array.isArray(vervolgstappen) && vervolgstappen.length > 0) {
+        for (const stap of vervolgstappen) {
+          const stapText = typeof stap === 'string' ? stap : stap?.text || stap?.title;
+          if (stapText && typeof stapText === 'string') {
+            if (stapText.toLowerCase().includes('mediation') || 
+                stapText.toLowerCase().includes('oplossen') ||
+                stapText.toLowerCase().includes('schikking')) {
+              tips.push(stapText.trim());
+              break; // Only add first mediation-related step
+            }
+          }
+        }
+      }
+
+      // Extract samenvatting_advies
+      const samenvattingAdvies = legalAdvice.samenvatting_advies;
+      if (samenvattingAdvies && typeof samenvattingAdvies === 'string' && samenvattingAdvies.trim()) {
+        // Only add if it's not too long
+        if (samenvattingAdvies.length < 250) {
+          tips.push(samenvattingAdvies.trim());
+        }
+      }
+
+      // Extract key facts from de_feiten (array of objects with title/description)
+      const feiten = legalAdvice.de_feiten;
+      if (Array.isArray(feiten) && feiten.length > 0) {
+        const firstFeit = feiten[0];
+        if (firstFeit && typeof firstFeit === 'object') {
+          const feitText = firstFeit.title || firstFeit.description;
+          if (feitText && typeof feitText === 'string' && feitText.length < 150) {
+            tips.push(`Belangrijk feit: ${feitText.trim()}`);
+          }
+        }
+      }
+    }
+
+    // If we have no tips yet, add a default one
+    if (tips.length === 0) {
+      tips.push("Analyseer eerst uw zaak volledig voordat u start met mediation.");
+    }
+
+  } catch (error) {
+    console.error('Error building mediation tips:', error);
+    tips.push("Er is een fout opgetreden bij het ophalen van uw juridische advies.");
+  }
+
+  return tips.slice(0, 4); // Max 4 tips
+}
 
 export default function ResolvePage() {
   const { selectedCaseId } = useCaseContext();
@@ -115,11 +211,22 @@ export default function ResolvePage() {
   const [minAmount, setMinAmount] = useState("7000");
   const [maxMonths, setMaxMonths] = useState("6");
 
-  // Fetch selected case data
-  const { data: selectedCase } = useQuery({
-    queryKey: ['/api/cases', selectedCaseId],
+  // Fetch selected case data with latest analysis
+  const { data: selectedCase, isLoading: isCaseLoading } = useQuery<any>({
+    queryKey: [`/api/cases/${selectedCaseId}`],
     enabled: !!selectedCaseId,
   });
+
+  // Extract mediation tips from analysis
+  const mediationTips = useMemo(() => {
+    if (!selectedCase || !selectedCase.latestAnalysis) {
+      return ["Start eerst met een juridische analyse van uw zaak voordat u de mediation begint."];
+    }
+    return buildMediationTipsFromAnalysis(selectedCase.latestAnalysis);
+  }, [selectedCase]);
+
+  // Extract case title
+  const caseTitle = selectedCase?.title || "Uw zaak";
 
   const handleSubmitPartyAInput = () => {
     if (partyAInput.trim()) {
@@ -902,7 +1009,7 @@ export default function ResolvePage() {
             />
           </div>
           <p className="text-muted-foreground">
-            Onbetaalde facturen Bouwproject Zonnepanelen
+            {caseTitle}
           </p>
           <Badge variant="outline" className="mt-2">U bent Partij A</Badge>
         </div>
@@ -932,14 +1039,20 @@ export default function ResolvePage() {
                 <h3 className="font-semibold text-slate-700 dark:text-slate-300">Persoonlijke tips van AI</h3>
               </div>
               
-              {mockPrivateTips.map((tip, index) => (
-                <div key={index} className="p-3 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
-                  <div className="flex gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm">{tip}</p>
-                  </div>
+              {isCaseLoading ? (
+                <div className="p-3 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Laden van advies...</p>
                 </div>
-              ))}
+              ) : (
+                mediationTips.map((tip: string, index: number) => (
+                  <div key={index} className="p-3 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
+                    <div className="flex gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-sm">{tip}</p>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
             <Separator />
