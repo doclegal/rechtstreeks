@@ -98,6 +98,12 @@ const mockConversation = [
 function buildMediationTipsFromAnalysis(analysis: any): string[] {
   const tips: string[] = [];
   
+  console.log('🔍 buildMediationTipsFromAnalysis called with analysis:', {
+    hasAnalysis: !!analysis,
+    analysisType: typeof analysis,
+    keys: analysis ? Object.keys(analysis).slice(0, 5) : []
+  });
+  
   if (!analysis) {
     return ["Start eerst met een juridische analyse van uw zaak voordat u de mediation begint."];
   }
@@ -105,20 +111,32 @@ function buildMediationTipsFromAnalysis(analysis: any): string[] {
   try {
     // Parse succesKansAnalysis (comes as JSON string from backend)
     let rkos = analysis.succesKansAnalysis;
+    console.log('🔍 rkos before parse:', { type: typeof rkos, isString: typeof rkos === 'string' });
+    
     if (typeof rkos === 'string') {
       try {
         rkos = JSON.parse(rkos);
+        console.log('✅ rkos parsed successfully:', rkos);
       } catch (e) {
-        console.error('Failed to parse succesKansAnalysis:', e);
+        console.error('❌ Failed to parse succesKansAnalysis:', e);
         rkos = null;
       }
     }
     
     // Extract from succesKansAnalysis (RKOS)
+    console.log('🔍 rkos object:', { 
+      isObject: typeof rkos === 'object',
+      keys: rkos ? Object.keys(rkos) : [],
+      chance: (rkos as any)?.chance_of_success,
+      percentage: (rkos as any)?.percentage,
+      kans_percentage: (rkos as any)?.kans_percentage
+    });
+    
     if (rkos && typeof rkos === 'object') {
       // Coerce percentage to number (it arrives as string from backend)
-      const percentageRaw = rkos.percentage || rkos.kans_percentage;
+      const percentageRaw = (rkos as any).percentage || (rkos as any).kans_percentage || (rkos as any).chance_of_success;
       const percentage = percentageRaw ? Number(percentageRaw) : null;
+      console.log('🔍 Extracted percentage:', { percentageRaw, percentage });
       
       if (percentage !== null && !isNaN(percentage)) {
         tips.push(`Uw juridische positie heeft een succeskans van ${percentage}%. ${
@@ -128,19 +146,24 @@ function buildMediationTipsFromAnalysis(analysis: any): string[] {
         }`);
       }
       
-      const advies = rkos.advies || rkos.samenvatting;
+      const advies = (rkos as any).advies || (rkos as any).samenvatting || (rkos as any).summary_verdict;
       if (advies && typeof advies === 'string' && advies.trim()) {
         tips.push(advies.trim());
       }
+      
+      console.log('🔍 RKOS extraction done:', { tipsCount: tips.length });
     }
 
     // Parse legalAdviceJson (comes as JSON string from backend)
     let legalAdvice = analysis.legalAdviceJson;
+    console.log('🔍 legalAdvice before parse:', { type: typeof legalAdvice, isString: typeof legalAdvice === 'string' });
+    
     if (typeof legalAdvice === 'string') {
       try {
         legalAdvice = JSON.parse(legalAdvice);
+        console.log('✅ legalAdvice parsed successfully');
       } catch (e) {
-        console.error('Failed to parse legalAdviceJson:', e);
+        console.error('❌ Failed to parse legalAdviceJson:', e);
         legalAdvice = null;
       }
     }
@@ -187,14 +210,18 @@ function buildMediationTipsFromAnalysis(analysis: any): string[] {
 
     // If we have no tips yet, add a default one
     if (tips.length === 0) {
+      console.log('⚠️ No tips generated, using default');
       tips.push("Analyseer eerst uw zaak volledig voordat u start met mediation.");
+    } else {
+      console.log('✅ Generated tips:', tips.length);
     }
 
   } catch (error) {
-    console.error('Error building mediation tips:', error);
+    console.error('❌ Error building mediation tips:', error);
     tips.push("Er is een fout opgetreden bij het ophalen van uw juridische advies.");
   }
 
+  console.log('📊 Final tips:', tips);
   return tips.slice(0, 4); // Max 4 tips
 }
 
@@ -220,15 +247,30 @@ export default function ResolvePage() {
   // Extract mediation tips from analysis (check both latestAnalysis and fullAnalysis)
   const mediationTips = useMemo(() => {
     if (!selectedCase) {
+      console.log('❌ ResolvePage: No selectedCase');
       return ["Start eerst met een juridische analyse van uw zaak voordat u de mediation begint."];
     }
+    
+    console.log('📊 ResolvePage: selectedCase:', {
+      hasLatestAnalysis: !!selectedCase.latestAnalysis,
+      hasFullAnalysis: !!selectedCase.fullAnalysis,
+      latestAnalysisKeys: selectedCase.latestAnalysis ? Object.keys(selectedCase.latestAnalysis) : [],
+      fullAnalysisKeys: selectedCase.fullAnalysis ? Object.keys(selectedCase.fullAnalysis) : []
+    });
     
     // Try fullAnalysis first (contains RKOS data), then latestAnalysis
     const analysis = selectedCase.fullAnalysis || selectedCase.latestAnalysis;
     
     if (!analysis) {
+      console.log('❌ ResolvePage: No analysis found');
       return ["Start eerst met een juridische analyse van uw zaak voordat u de mediation begint."];
     }
+    
+    console.log('✅ ResolvePage: Using analysis:', {
+      source: selectedCase.fullAnalysis ? 'fullAnalysis' : 'latestAnalysis',
+      hasSuccesKans: !!(analysis as any).succesKansAnalysis,
+      hasLegalAdvice: !!(analysis as any).legalAdviceJson
+    });
     
     return buildMediationTipsFromAnalysis(analysis);
   }, [selectedCase]);
