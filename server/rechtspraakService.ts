@@ -69,7 +69,7 @@ function buildSearchUrl(request: RechtspraakSearchRequest): { url: string; appli
     appliedFilters.periode = `${periode.from} tot ${periode.to}`;
   }
 
-  params.set('sort', 'date:desc');
+  params.set('sort', 'DESC');
 
   const url = `${BASE_URL}?${params.toString()}`;
   return { url, appliedFilters };
