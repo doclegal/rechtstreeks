@@ -65,7 +65,8 @@ function buildSearchUrl(request: RechtspraakSearchRequest): { url: string; appli
 
   const periode = normalizePeriode(request.filters?.periode);
   if (periode) {
-    params.set('date', `${periode.from}..${periode.to}`);
+    params.append('date', periode.from);
+    params.append('date', periode.to);
     appliedFilters.periode = `${periode.from} tot ${periode.to}`;
   }
 
