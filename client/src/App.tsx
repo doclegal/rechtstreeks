@@ -28,6 +28,7 @@ import Chat from "@/pages/Chat";
 import QnA from "@/pages/QnA";
 import ResolvePage from "@/pages/ResolvePage";
 import InvitationAccept from "@/pages/InvitationAccept";
+import Jurisprudentie from "@/pages/Jurisprudentie";
 import RequireAuth from "@/components/RequireAuth";
 
 // Protected route definitions
@@ -39,6 +40,7 @@ const protectedRoutes = [
   { path: "/analysis", component: Analysis },
   { path: "/analyse-details", component: JuridischeAnalyseDetails },
   { path: "/volledige-analyse", component: VolledigeAnalyseDetails },
+  { path: "/jurisprudentie", component: Jurisprudentie },
   { path: "/analysis/:id/full", component: FullAnalysis },
   { path: "/letters", component: Letters },
   { path: "/resolve", component: ResolvePage },

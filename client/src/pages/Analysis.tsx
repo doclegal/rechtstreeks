@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useLocation } from "wouter";
-import { PlusCircle, FileSearch, Scale, CheckCircle, XCircle, ArrowRight, FileText, Users, AlertTriangle, AlertCircle, TrendingUp, Info, ArrowLeft, Lightbulb } from "lucide-react";
+import { PlusCircle, FileSearch, Scale, CheckCircle, XCircle, ArrowRight, FileText, Users, AlertTriangle, AlertCircle, TrendingUp, Info, ArrowLeft, Lightbulb, BookOpen } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 import { useActiveCase } from "@/contexts/CaseContext";
 import DocumentList from "@/components/DocumentList";
@@ -340,6 +340,38 @@ export default function Analysis() {
                 <div>
                   <span className="text-muted-foreground">Actie:</span>{" "}
                   <span className="font-medium">{(legalAdviceFull || legalAdviceJson) ? 'Klik voor volledig advies' : 'Klik om te bekijken'}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* JURISPRUDENTIE CARD */}
+        <Link href="/jurisprudentie">
+          <Card 
+            className="relative cursor-pointer hover:shadow-lg transition-shadow h-full"
+            data-testid="card-jurisprudentie"
+          >
+            <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <BookOpen className="h-6 w-6 text-primary" />
+                Jurisprudentie
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Status:</span>{" "}
+                  <span className="font-medium">Nog niet beschikbaar</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Bron:</span>{" "}
+                  <span className="font-medium">Rechtspraak.nl</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Actie:</span>{" "}
+                  <span className="font-medium">Klik om te bekijken</span>
                 </div>
               </div>
             </CardContent>
