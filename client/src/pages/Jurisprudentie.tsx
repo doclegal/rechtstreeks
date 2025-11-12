@@ -187,6 +187,10 @@ export default function Jurisprudentie() {
                     <SelectValue placeholder="Laatste 5 jaar" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="laatste 3 dagen">Laatste 3 dagen</SelectItem>
+                    <SelectItem value="afgelopen week">Afgelopen week</SelectItem>
+                    <SelectItem value="afgelopen maand">Afgelopen maand</SelectItem>
+                    <SelectItem value="afgelopen jaar">Afgelopen jaar</SelectItem>
                     <SelectItem value="laatste 3 jaar">Laatste 3 jaar</SelectItem>
                     <SelectItem value="laatste 5 jaar">Laatste 5 jaar</SelectItem>
                     <SelectItem value="laatste 10 jaar">Laatste 10 jaar</SelectItem>

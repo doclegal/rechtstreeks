@@ -51,6 +51,46 @@ export function normalizePeriode(input: string | null | undefined): { from: stri
 
   const normalized = input.toLowerCase().trim();
   
+  if (normalized === 'laatste 3 dagen' || normalized === 'laatste drie dagen') {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - 3);
+    return {
+      from: from.toISOString().split('T')[0],
+      to: to.toISOString().split('T')[0]
+    };
+  }
+  
+  if (normalized === 'afgelopen week') {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - 7);
+    return {
+      from: from.toISOString().split('T')[0],
+      to: to.toISOString().split('T')[0]
+    };
+  }
+  
+  if (normalized === 'afgelopen maand') {
+    const to = new Date();
+    const from = new Date();
+    from.setMonth(from.getMonth() - 1);
+    return {
+      from: from.toISOString().split('T')[0],
+      to: to.toISOString().split('T')[0]
+    };
+  }
+  
+  if (normalized === 'afgelopen jaar') {
+    const to = new Date();
+    const from = new Date();
+    from.setFullYear(from.getFullYear() - 1);
+    return {
+      from: from.toISOString().split('T')[0],
+      to: to.toISOString().split('T')[0]
+    };
+  }
+  
   const laastMatch = normalized.match(/laatste\s+(\d+)\s+jaar/);
   if (laastMatch) {
     const years = parseInt(laastMatch[1], 10);
