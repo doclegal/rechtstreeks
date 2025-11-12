@@ -13,6 +13,7 @@ import { callInfoQnAFlow, saveQnAPairs, getQnAItems, appendQnAPairs } from "./se
 import { validateSummonsV1 } from "@shared/summonsValidation";
 import { parseTemplateText, extractTextFromFile, validateParsedTemplate } from "./services/templateParser";
 import { sendInvitationEmail } from "./email";
+import { searchRechtspraak, type RechtspraakSearchRequest } from "./rechtspraakService";
 import multer from "multer";
 import { z } from "zod";
 
@@ -7023,6 +7024,54 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
     } catch (error) {
       console.error('Error building case snapshot:', error);
       res.status(500).json({ message: 'Failed to build case snapshot' });
+    }
+  });
+
+  // Rechtspraak search endpoint for MindStudio integration
+  app.post('/api/rechtspraak/search', async (req, res) => {
+    try {
+      const searchRequest: RechtspraakSearchRequest = {
+        query: req.body.query,
+        filters: req.body.filters || {},
+        page: req.body.page || 1,
+        page_size: req.body.page_size || 25
+      };
+
+      if (!searchRequest.query || !searchRequest.query.trim()) {
+        return res.status(400).json({ 
+          error: 'Query parameter is required and cannot be empty' 
+        });
+      }
+
+      const result = await searchRechtspraak(searchRequest);
+      res.json(result);
+    } catch (error: any) {
+      console.error('Rechtspraak search error:', error);
+      
+      if (error.name === 'AbortError' || error.message?.includes('timeout') || error.message?.includes('Timeout')) {
+        return res.status(504).json({ 
+          error: 'Request timeout: Rechtspraak API did not respond in time',
+          upstream_status: 504
+        });
+      }
+      
+      if (error.message?.includes('Upstream API returned')) {
+        return res.status(502).json({ 
+          error: error.message,
+          upstream_status: 502
+        });
+      }
+      
+      if (error.message?.includes('fetch') || error.message?.includes('network') || error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+        return res.status(502).json({ 
+          error: 'Failed to connect to Rechtspraak API',
+          upstream_status: 502
+        });
+      }
+      
+      res.status(500).json({ 
+        error: error.message || 'Internal server error while searching rechtspraak' 
+      });
     }
   });
 

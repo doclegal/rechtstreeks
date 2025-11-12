@@ -1,0 +1,217 @@
+Implement a small HTTP service in our Replit app that MindStudio can call to fetch relevant Dutch case law (Open Data Rechtspraak). Input comes from MindStudio (query + optional filters). Output is a normalized JSON list with ECLI, title/court/date, a public link, and a short snippet (or empty if unavailable), plus basic metadata.
+
+Endpoints to implement (Replit → public)
+
+POST /api/rechtspraak/search
+
+Purpose: receive MindStudio’s intent (“search jurisprudence”) and return search hits from Rechtspraak Open Data.
+
+Request payload (JSON):
+
+{
+  "query": "<string from MindStudio>",
+  "filters": {
+    "rechtsgebied": "<string or null>",   // e.g., "huurrecht", "arbeidsrecht", "consumentenkoop"
+    "instantie": "<string or null>",      // e.g., "kantonrechter", "Hoge Raad"
+    "periode": "<string or null>"         // e.g., "laatste 3 jaar", "laatste 5 jaar", or "YYYY–YYYY"
+  }
+}
+
+
+Response payload (JSON), contract:
+
+{
+  "items": [
+    {
+      "ecli": "ECLI:NL:XX:YYYY:1234",
+      "title": "Short display title (if available)",
+      "court": "Court/section if resolvable",
+      "date": "YYYY-MM-DD",
+      "url": "https://uitspraken.rechtspraak.nl/#!/details?id=ECLI:NL:XX:YYYY:1234",
+      "snippet": "One to three sentences extracted from the document or summary, may be empty",
+      "score": 0.0
+    }
+  ],
+  "meta": {
+    "total": 0,
+    "fetch_ms": 0,
+    "source": "rechtspraak_open_data",
+    "query": "<echoed final query string>",
+    "applied_filters": { /* normalized filters used */ },
+    "page": 1,
+    "page_size": 25
+  }
+}
+
+
+Status codes:
+
+200 on success (even if zero hits),
+
+400 if input invalid,
+
+502/504 if upstream fetch fails or times out (with error message field),
+
+429 if we’re applying local rate limiting.
+
+Data sources (Replit → Rechtspraak Open Data)
+
+Use the official Open Data endpoints:
+
+Index/search (ECLI metadata feed)
+GET https://data.rechtspraak.nl/uitspraken/zoeken?...
+Key query params to support:
+
+return=DOC (only items that have a document)
+
+max= (page size, ≤ 1000; we will default to 25 per API page to keep response fast)
+
+from= (offset for pagination)
+
+Optional filters we map (see “Filter normalization” below):
+
+date=YYYY-MM-DD (single or range—use for “periode”)
+
+modified=ISO_DATETIME (incremental sync if we add cron later; not needed for ad-hoc queries)
+
+creator= (court/instance identifier)
+
+subject= (rechtsgebied URI)
+
+Sort: default newest first (if the API supports a sort parameter; otherwise rely on feed order).
+
+Content for one ECLI (to enrich with snippet when needed)
+GET https://data.rechtspraak.nl/uitspraken/content?id=ECLI:...
+
+If light mode needed: &return=META to avoid full content.
+
+Prefer fetching content only for top N results (e.g., first 5–10) to cap latency.
+
+How the MindStudio → Replit call works
+
+MindStudio’s Rechtspraak.flow constructs:
+
+search_query (plain string)
+
+search_filters (object with rechtsgebied, instantie, periode)
+
+The Run-Function/HTTP block in MindStudio POSTs the above to /api/rechtspraak/search.
+
+Your Replit service returns the normalized JSON in the Response payload format above.
+
+MindStudio uses this JSON for ranking/summarization and for surfacing ECLI + link back to the user.
+
+Filter normalization (Replit side)
+
+Translate MindStudio’s human-friendly filters to Rechtspraak parameters:
+
+Rechtsgebied → subject (URI)
+
+Maintain a small local mapping table (JSON config) for common domains:
+
+"huurrecht" → <subject-URI-for-housing/lease>
+
+"arbeidsrecht" → <subject-URI-for-labour>
+
+"consumentenkoop" → <subject-URI-for-consumer-purchase>
+
+If no match, omit subject.
+
+Instantie → creator (court/instance ID)
+
+Mapping table with known values:
+
+"Hoge Raad" → corresponding creator ID
+
+"Gerechtshof" (optionally per region)
+
+"Rechtbank (kanton)" (map to district courts / sections)
+
+If the user says “kantonrechter”, prefer district courts (kanton) creators. If unknown, omit creator.
+
+Periode → date= range
+
+Interpret strings like “laatste 3 jaar”, “laatste 5 jaar” as [today - N years, today].
+
+Accept explicit ranges “YYYY–YYYY” or “YYYY-MM-DD..YYYY-MM-DD”.
+
+If unspecified, default to a reasonable window (e.g., last 5 years).
+
+Query assembly
+
+Start with the plain MindStudio search_query.
+
+Do not add ECLI or special syntax—keep it simple.
+
+Apply Rechtspraak parameters separately (subject/creator/date).
+
+Use return=DOC and a small max for the first page (e.g., 25).
+
+Parsing & normalization
+
+The search endpoint returns an Atom/RDF feed with metadata. Extract for each entry:
+
+ECLI, title/identifier, court/creator label, issued/published date, available link(s).
+
+Construct the public URL in this format:
+https://uitspraken.rechtspraak.nl/#!/details?id=<ECLI>
+(Fallback to any link present in the feed if needed.)
+
+For snippet:
+
+If the feed includes summary/abstract, use 1–3 sentences trimmed to ~280 chars.
+
+Else, optionally fetch content for the top N results and extract the first meaningful sentences (strip HTML/markup).
+
+If nothing available, set snippet to "".
+
+Compute a simple score for initial ranking (e.g., recency + whether filters matched). Keep it deterministic.
+
+Pagination
+
+Accept optional page and page_size query params on our own API (defaults page=1, size=25).
+
+Map to Rechtspraak from= and max=.
+
+Return meta.total if derivable; if not, return the count of received items and omit a misleading total.
+
+Resilience & performance
+
+Rate limiting / politeness: cap concurrent upstream requests; apply small retry with exponential backoff on 429/5xx; timeouts ~5–10s.
+
+Error handling: on upstream failure, return 502 with { "error": "...", "upstream_status": 5xx }.
+
+Input validation: reject empty query with 400 and a clear message.
+
+Logging: log final upstream URL (without secrets), elapsed time, item counts.
+
+Security & compliance
+
+No user secrets sent upstream. Only query text and normalized filters.
+
+Respect Open Data usage guidelines (no aggressive crawling; keep requests minimal and paginated).
+
+Acceptance criteria
+
+POST /api/rechtspraak/search accepts the MindStudio payload and returns a 200 with the Response payload schema when valid.
+
+Given an example like:
+
+query: "huurverlaging lekkage verhuurder reageert niet"
+
+filters: { "rechtsgebied": "huurrecht", "instantie": "kantonrechter", "periode": "laatste 3 jaar" }
+The service returns a list of items with realistic ECLI values, dates within the time window, and valid links.
+
+Latency for a first page (25 items, snippet for top 5) is typically under 2 seconds on warm cache.
+
+Empty results return 200 with items: [] and a populated meta.
+
+Upstream errors are surfaced as 502/504 with an error field.
+
+The service gracefully handles unknown filters by omitting them (no hard failures).
+
+Handover to MindStudio
+
+MindStudio will display ECLI, title/court/date, url, and snippet.
+
+If we later add enrichment (e.g., pulling full content), we keep the same response shape so the flow remains stable.
