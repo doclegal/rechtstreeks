@@ -143,33 +143,9 @@ export default function Jurisprudentie() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Alle rechtsgebieden</SelectItem>
-                    <SelectItem value="huurrecht">Huurrecht</SelectItem>
-                    <SelectItem value="arbeidsrecht">Arbeidsrecht</SelectItem>
-                    <SelectItem value="consumentenkoop">Consumentenkoop</SelectItem>
-                    <SelectItem value="contractenrecht">Contractenrecht</SelectItem>
-                    <SelectItem value="aansprakelijkheidsrecht">Aansprakelijkheidsrecht</SelectItem>
-                    <SelectItem value="bestuursrecht">Bestuursrecht</SelectItem>
-                    <SelectItem value="belastingrecht">Belastingrecht</SelectItem>
-                    <SelectItem value="strafrecht">Strafrecht</SelectItem>
                     <SelectItem value="civielrecht">Civiel recht</SelectItem>
-                    <SelectItem value="familierecht">Familierecht</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="instantie">Instantie (optioneel)</Label>
-                <Select value={instantie} onValueChange={(value) => setInstantie(value === "all" ? undefined : value)}>
-                  <SelectTrigger id="instantie" data-testid="select-instantie">
-                    <SelectValue placeholder="Alle instanties" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Alle instanties</SelectItem>
-                    <SelectItem value="hoge raad">Hoge Raad</SelectItem>
-                    <SelectItem value="gerechtshof">Gerechtshof</SelectItem>
-                    <SelectItem value="rechtbank">Rechtbank</SelectItem>
-                    <SelectItem value="kantonrechter">Kantonrechter</SelectItem>
-                    <SelectItem value="centrale raad van beroep">Centrale Raad van Beroep</SelectItem>
+                    <SelectItem value="bestuursrecht">Bestuursrecht</SelectItem>
+                    <SelectItem value="strafrecht">Strafrecht</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

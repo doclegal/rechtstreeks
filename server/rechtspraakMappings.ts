@@ -1,29 +1,10 @@
 export const rechtsgebiedMappings: Record<string, string> = {
-  "huurrecht": "http://psi.rechtspraak.nl/rechtsgebied#huurrecht",
-  "arbeidsrecht": "http://psi.rechtspraak.nl/rechtsgebied#arbeidsrecht",
-  "consumentenkoop": "http://psi.rechtspraak.nl/rechtsgebied#consumentenkoop",
-  "contractenrecht": "http://psi.rechtspraak.nl/rechtsgebied#contractenrecht",
-  "aansprakelijkheidsrecht": "http://psi.rechtspraak.nl/rechtsgebied#aansprakelijkheidsrecht",
+  "civielrecht": "http://psi.rechtspraak.nl/rechtsgebied#civielRecht",
   "bestuursrecht": "http://psi.rechtspraak.nl/rechtsgebied#bestuursrecht",
-  "belastingrecht": "http://psi.rechtspraak.nl/rechtsgebied#belastingrecht",
-  "strafrecht": "http://psi.rechtspraak.nl/rechtsgebied#strafrecht",
-  "civielrecht": "http://psi.rechtspraak.nl/rechtsgebied#civielrecht",
-  "familierecht": "http://psi.rechtspraak.nl/rechtsgebied#familierecht",
-  "insolventierecht": "http://psi.rechtspraak.nl/rechtsgebied#insolventierecht",
+  "strafrecht": "http://psi.rechtspraak.nl/rechtsgebied#strafRecht",
 };
 
 export const instantieMappings: Record<string, string> = {
-  "hoge raad": "http://psi.rechtspraak.nl/creator#hogeraad",
-  "hogeraad": "http://psi.rechtspraak.nl/creator#hogeraad",
-  "gerechtshof": "http://psi.rechtspraak.nl/creator#gerechtshof",
-  "gerechtshof amsterdam": "http://psi.rechtspraak.nl/creator#gerechtshofamsterdam",
-  "gerechtshof arnhem-leeuwarden": "http://psi.rechtspraak.nl/creator#gerechtshofarnhemleeuwarden",
-  "gerechtshof den haag": "http://psi.rechtspraak.nl/creator#gerechtshofdenhaag",
-  "gerechtshof 's-hertogenbosch": "http://psi.rechtspraak.nl/creator#gerechtshofshertogenbosch",
-  "rechtbank": "http://psi.rechtspraak.nl/creator#rechtbank",
-  "kantonrechter": "http://psi.rechtspraak.nl/creator#rechtbank",
-  "centrale raad van beroep": "http://psi.rechtspraak.nl/creator#centraleraadberoep",
-  "college van beroep voor het bedrijfsleven": "http://psi.rechtspraak.nl/creator#collegeberoepbedrijfsleven",
 };
 
 export function normalizeRechtsgebied(input: string | null | undefined): string | null {
