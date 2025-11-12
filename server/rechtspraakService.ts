@@ -2,8 +2,7 @@ import { normalizeRechtsgebied, normalizeInstantie, normalizePeriode } from './r
 import { parseStringPromise } from 'xml2js';
 
 export interface RechtspraakSearchRequest {
-  query: string;
-  filters?: {
+  filters: {
     rechtsgebied?: string | null;
     instantie?: string | null;
     periode?: string | null;
@@ -28,7 +27,6 @@ export interface RechtspraakSearchResponse {
     total: number;
     fetch_ms: number;
     source: string;
-    query: string;
     applied_filters: Record<string, any>;
     page: number;
     page_size: number;
@@ -51,11 +49,6 @@ function buildSearchUrl(request: RechtspraakSearchRequest): { url: string; appli
   const offset = (page - 1) * pageSize;
   if (offset > 0) {
     params.set('from', offset.toString());
-  }
-
-  if (request.query && request.query.trim()) {
-    params.set('q', request.query.trim());
-    appliedFilters.query = request.query.trim();
   }
 
   const rechtsgebiedUri = request.filters?.rechtsgebied ? normalizeRechtsgebied(request.filters.rechtsgebied) : null;
@@ -196,10 +189,6 @@ async function parseAtomFeed(xmlText: string): Promise<RechtspraakItem[]> {
 
 export async function searchRechtspraak(request: RechtspraakSearchRequest): Promise<RechtspraakSearchResponse> {
   const startTime = Date.now();
-  
-  if (!request.query || !request.query.trim()) {
-    throw new Error('Query parameter is required and cannot be empty');
-  }
 
   const { url, appliedFilters } = buildSearchUrl(request);
   
@@ -223,7 +212,6 @@ export async function searchRechtspraak(request: RechtspraakSearchRequest): Prom
         total: items.length,
         fetch_ms: fetchMs,
         source: 'rechtspraak_open_data',
-        query: request.query,
         applied_filters: appliedFilters,
         page: request.page || 1,
         page_size: request.page_size || 25

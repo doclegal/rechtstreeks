@@ -7027,21 +7027,14 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
     }
   });
 
-  // Rechtspraak search endpoint for MindStudio integration
+  // Rechtspraak search endpoint - metadata filters only
   app.post('/api/rechtspraak/search', async (req, res) => {
     try {
       const searchRequest: RechtspraakSearchRequest = {
-        query: req.body.query,
         filters: req.body.filters || {},
         page: req.body.page || 1,
         page_size: req.body.page_size || 25
       };
-
-      if (!searchRequest.query || !searchRequest.query.trim()) {
-        return res.status(400).json({ 
-          error: 'Query parameter is required and cannot be empty' 
-        });
-      }
 
       const result = await searchRechtspraak(searchRequest);
       res.json(result);

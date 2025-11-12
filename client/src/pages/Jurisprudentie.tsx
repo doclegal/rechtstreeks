@@ -29,7 +29,6 @@ interface RechtspraakSearchResponse {
     total: number;
     fetch_ms: number;
     source: string;
-    query: string;
     applied_filters: Record<string, any>;
     page: number;
     page_size: number;
@@ -41,7 +40,6 @@ export default function Jurisprudentie() {
   const currentCase = useActiveCase();
   const { toast } = useToast();
   
-  const [query, setQuery] = useState("");
   const [rechtsgebied, setRechtsgebied] = useState<string | undefined>(undefined);
   const [instantie, setInstantie] = useState<string | undefined>(undefined);
   const [periode, setPeriode] = useState<string>("laatste 5 jaar");
@@ -50,7 +48,6 @@ export default function Jurisprudentie() {
   const searchMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest('POST', '/api/rechtspraak/search', {
-        query: query || currentCase?.description || "algemeen",
         filters: {
           rechtsgebied: rechtsgebied || null,
           instantie: instantie || null,
@@ -76,14 +73,6 @@ export default function Jurisprudentie() {
   });
 
   const handleSearch = () => {
-    if (!query && !currentCase?.description) {
-      toast({
-        title: "Zoekopdracht vereist",
-        description: "Voer een zoekopdracht in",
-        variant: "destructive",
-      });
-      return;
-    }
     searchMutation.mutate();
   };
 
@@ -137,25 +126,14 @@ export default function Jurisprudentie() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Search className="h-5 w-5" />
-            Zoeken in jurisprudentie
+            Filteren in jurisprudentie
           </CardTitle>
           <CardDescription>
-            Vind relevante rechterlijke uitspraken voor uw zaak
+            Vind rechterlijke uitspraken met filters (periode, rechtsgebied, instantie)
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="query">Zoekopdracht</Label>
-              <Input
-                id="query"
-                placeholder="Bijv: huurverlaging lekkage verhuurder reageert niet"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                data-testid="input-search-query"
-              />
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="rechtsgebied">Rechtsgebied (optioneel)</Label>
@@ -220,12 +198,12 @@ export default function Jurisprudentie() {
               {searchMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Zoeken...
+                  Uitspraken ophalen...
                 </>
               ) : (
                 <>
                   <Search className="mr-2 h-4 w-4" />
-                  Zoeken
+                  Uitspraken ophalen
                 </>
               )}
             </Button>
