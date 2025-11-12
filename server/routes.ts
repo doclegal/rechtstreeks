@@ -7068,6 +7068,147 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
     }
   });
 
+  // Pinecone vector endpoints
+  const { upsertVectors, searchVectors, checkIndexExists } = await import('./pineconeService');
+  const { fetchFullDocument, chunkText } = await import('./rechtspraakDocumentService');
+
+  // Index a single rechtspraak document to Pinecone
+  app.post('/api/rechtspraak/index', async (req, res) => {
+    try {
+      const { ecli } = req.body;
+      
+      if (!ecli || typeof ecli !== 'string') {
+        return res.status(400).json({ error: 'ECLI is required' });
+      }
+
+      console.log(`📥 Indexing document: ${ecli}`);
+      
+      const document = await fetchFullDocument(ecli);
+      
+      if (!document.fullText || document.fullText.length < 100) {
+        return res.status(400).json({ error: 'Document has insufficient text content' });
+      }
+
+      const chunks = chunkText(document.fullText, 1000, 200);
+      console.log(`✂️ Split into ${chunks.length} chunks`);
+
+      const records = chunks.map(chunk => ({
+        id: `${ecli}#${chunk.index.toString().padStart(3, '0')}`,
+        text: chunk.text,
+        metadata: {
+          ecli: document.ecli,
+          court: document.court,
+          date: document.date,
+          url: document.url,
+          chunkIndex: chunk.index,
+          totalChunks: chunk.totalChunks
+        }
+      }));
+
+      await upsertVectors(records);
+
+      res.json({
+        success: true,
+        ecli: document.ecli,
+        title: document.title,
+        chunksIndexed: chunks.length,
+        totalCharacters: document.fullText.length
+      });
+
+    } catch (error: any) {
+      console.error('Error indexing document:', error);
+      res.status(500).json({ 
+        error: error.message || 'Failed to index document' 
+      });
+    }
+  });
+
+  // Semantic search in indexed rechtspraak documents
+  app.post('/api/rechtspraak/vector-search', async (req, res) => {
+    try {
+      const { query, rechtsgebied, topK } = req.body;
+      
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ error: 'Search query is required' });
+      }
+
+      const filter: any = {};
+      if (rechtsgebied) {
+        filter.rechtsgebied = { $eq: rechtsgebied };
+      }
+
+      console.log(`🔍 Vector search: "${query.substring(0, 50)}..."`);
+      
+      const results = await searchVectors({
+        text: query,
+        filter: Object.keys(filter).length > 0 ? filter : undefined,
+        topK: topK || 10
+      });
+
+      const groupedResults = new Map<string, any>();
+      
+      results.forEach(result => {
+        const ecli = result.metadata.ecli;
+        
+        if (!groupedResults.has(ecli)) {
+          groupedResults.set(ecli, {
+            ecli,
+            title: result.metadata.court || ecli,
+            court: result.metadata.court || 'Onbekend',
+            date: result.metadata.date || '',
+            url: result.metadata.url || `https://uitspraken.rechtspraak.nl/details?id=${ecli}`,
+            maxScore: result.score,
+            relevantChunks: []
+          });
+        }
+
+        const doc = groupedResults.get(ecli)!;
+        doc.relevantChunks.push({
+          text: result.text || '',
+          score: result.score,
+          chunkIndex: result.metadata.chunkIndex || 0
+        });
+        
+        if (result.score > doc.maxScore) {
+          doc.maxScore = result.score;
+        }
+      });
+
+      const uniqueResults = Array.from(groupedResults.values())
+        .sort((a, b) => b.maxScore - a.maxScore)
+        .slice(0, topK || 10);
+
+      res.json({
+        query,
+        results: uniqueResults,
+        totalResults: uniqueResults.length
+      });
+
+    } catch (error: any) {
+      console.error('Error in vector search:', error);
+      res.status(500).json({ 
+        error: error.message || 'Failed to search vectors' 
+      });
+    }
+  });
+
+  // Check Pinecone connection
+  app.get('/api/rechtspraak/pinecone-status', async (req, res) => {
+    try {
+      const exists = await checkIndexExists();
+      res.json({ 
+        connected: exists,
+        indexName: 'rechtstreeks',
+        status: exists ? 'ready' : 'index not found'
+      });
+    } catch (error: any) {
+      res.status(500).json({ 
+        connected: false,
+        error: error.message || 'Failed to connect to Pinecone'
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
