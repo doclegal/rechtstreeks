@@ -46,18 +46,16 @@ function getPineconeClient(): Pinecone {
 export async function upsertVectors(records: VectorRecord[]): Promise<void> {
   try {
     const pc = getPineconeClient();
-    const index = pc.index(INDEX_NAME);
+    const namespace = pc.index(INDEX_NAME).namespace(NAMESPACE);
     
     const formattedRecords = records.map(record => ({
       id: record.id,
-      metadata: {
-        ...record.metadata,
-        text: record.text
-      }
+      text: record.text,
+      ...record.metadata
     }));
 
-    await index.namespace(NAMESPACE).upsert(formattedRecords as any);
-    console.log(`✅ Upserted ${records.length} vectors to Pinecone`);
+    await namespace.upsertRecords(formattedRecords);
+    console.log(`✅ Upserted ${records.length} vectors to Pinecone with integrated embedding`);
   } catch (error) {
     console.error("❌ Error upserting to Pinecone:", error);
     throw error;

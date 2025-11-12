@@ -2,13 +2,14 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { ArrowLeft, Scale, FileText, ExternalLink, Calendar, Building2, Search, Loader2 } from "lucide-react";
+import { ArrowLeft, Scale, FileText, ExternalLink, Calendar, Building2, Search, Loader2, Database, Sparkles } from "lucide-react";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -35,15 +36,33 @@ interface RechtspraakSearchResponse {
   };
 }
 
+interface VectorSearchResult {
+  ecli: string;
+  title: string;
+  court: string;
+  date: string;
+  url: string;
+  maxScore: number;
+  relevantChunks: Array<{
+    text: string;
+    score: number;
+    chunkIndex: number;
+  }>;
+}
+
 export default function Jurisprudentie() {
   const { isLoading: authLoading } = useAuth();
   const currentCase = useActiveCase();
   const { toast } = useToast();
   
+  const [searchMode, setSearchMode] = useState<"metadata" | "vector">("metadata");
   const [rechtsgebied, setRechtsgebied] = useState<string | undefined>(undefined);
   const [instantie, setInstantie] = useState<string | undefined>(undefined);
   const [periode, setPeriode] = useState<string>("laatste 5 jaar");
   const [results, setResults] = useState<RechtspraakSearchResponse | null>(null);
+  
+  const [vectorQuery, setVectorQuery] = useState("");
+  const [vectorResults, setVectorResults] = useState<VectorSearchResult[]>([]);
 
   const searchMutation = useMutation({
     mutationFn: async () => {
@@ -72,8 +91,69 @@ export default function Jurisprudentie() {
     }
   });
 
+  const vectorSearchMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/rechtspraak/vector-search', {
+        query: vectorQuery,
+        rechtsgebied: rechtsgebied || null,
+        topK: 10
+      });
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      setVectorResults(data.results || []);
+      toast({
+        title: "Semantisch zoeken voltooid",
+        description: `${data.results?.length || 0} relevante uitspraken gevonden`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout bij semantisch zoeken",
+        description: error.message || "Kon niet zoeken in vector database",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const indexMutation = useMutation({
+    mutationFn: async (ecli: string) => {
+      const response = await apiRequest('POST', '/api/rechtspraak/index', { ecli });
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Uitspraak geïndexeerd",
+        description: `${data.chunksIndexed} chunks opgeslagen in vector database`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout bij indexeren",
+        description: error.message || "Kon uitspraak niet indexeren",
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleSearch = () => {
     searchMutation.mutate();
+  };
+
+  const handleVectorSearch = () => {
+    if (!vectorQuery.trim()) {
+      toast({
+        title: "Geen zoekvraag",
+        description: "Voer een zoekvraag in",
+        variant: "destructive",
+      });
+      return;
+    }
+    vectorSearchMutation.mutate();
+  };
+
+  const handleIndex = (ecli: string) => {
+    indexMutation.mutate(ecli);
   };
 
   if (authLoading) {
@@ -121,18 +201,31 @@ export default function Jurisprudentie() {
         </p>
       </div>
 
-      {/* Search filters */}
+      {/* Search tabs */}
       <Card className="mb-6" data-testid="card-search-filters">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Search className="h-5 w-5" />
-            Filteren in jurisprudentie
+            Zoeken in jurisprudentie
           </CardTitle>
           <CardDescription>
-            Vind rechterlijke uitspraken met filters (periode, rechtsgebied, instantie)
+            Kies tussen metadata filters of semantisch zoeken in geïndexeerde uitspraken
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <Tabs defaultValue="metadata" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="metadata">
+                <Database className="mr-2 h-4 w-4" />
+                Metadata filters
+              </TabsTrigger>
+              <TabsTrigger value="vector">
+                <Sparkles className="mr-2 h-4 w-4" />
+                Semantisch zoeken
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="metadata" className="space-y-4 mt-4">
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -199,25 +292,69 @@ export default function Jurisprudentie() {
               </div>
             </div>
 
-            <Button 
-              onClick={handleSearch} 
-              disabled={searchMutation.isPending}
-              data-testid="button-search"
-              className="w-full md:w-auto"
-            >
-              {searchMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Uitspraken ophalen...
-                </>
-              ) : (
-                <>
-                  <Search className="mr-2 h-4 w-4" />
-                  Uitspraken ophalen
-                </>
-              )}
-            </Button>
-          </div>
+              <Button 
+                onClick={handleSearch} 
+                disabled={searchMutation.isPending}
+                data-testid="button-search"
+                className="w-full md:w-auto"
+              >
+                {searchMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Uitspraken ophalen...
+                  </>
+                ) : (
+                  <>
+                    <Search className="mr-2 h-4 w-4" />
+                    Uitspraken ophalen
+                  </>
+                )}
+              </Button>
+            </div>
+            </TabsContent>
+
+            <TabsContent value="vector" className="space-y-4 mt-4">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="vectorQuery">Zoekvraag</Label>
+                  <Input 
+                    id="vectorQuery"
+                    value={vectorQuery}
+                    onChange={(e) => setVectorQuery(e.target.value)}
+                    placeholder="Bijvoorbeeld: ontbinding huurovereenkomst wegens overlast door huurder"
+                    data-testid="input-vector-query"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleVectorSearch();
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Semantisch zoeken doorzoekt de volledige tekst van geïndexeerde uitspraken
+                  </p>
+                </div>
+
+                <Button 
+                  onClick={handleVectorSearch} 
+                  disabled={vectorSearchMutation.isPending || !vectorQuery.trim()}
+                  data-testid="button-vector-search"
+                  className="w-full md:w-auto"
+                >
+                  {vectorSearchMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Zoeken...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Semantisch zoeken
+                    </>
+                  )}
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
@@ -269,20 +406,31 @@ export default function Jurisprudentie() {
                           {item.ecli}
                         </p>
                       </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        asChild
-                        data-testid={`button-view-${index}`}
-                      >
-                        <a 
-                          href={item.url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="secondary" 
+                          size="sm" 
+                          onClick={() => handleIndex(item.ecli)}
+                          disabled={indexMutation.isPending}
+                          data-testid={`button-index-${index}`}
                         >
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
-                      </Button>
+                          <Database className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          asChild
+                          data-testid={`button-view-${index}`}
+                        >
+                          <a 
+                            href={item.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   {item.snippet && (
@@ -299,7 +447,83 @@ export default function Jurisprudentie() {
         </div>
       )}
 
-      {!results && !searchMutation.isPending && (
+      {/* Vector search results */}
+      {vectorResults.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Sparkles className="h-5 w-5" />
+              {vectorResults.length} relevante uitspraken gevonden
+            </h2>
+          </div>
+
+          <div className="space-y-4">
+            {vectorResults.map((result, index) => (
+              <Card key={result.ecli} data-testid={`card-vector-result-${index}`}>
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <CardTitle className="text-lg mb-2">
+                        {result.title || result.ecli}
+                      </CardTitle>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        <Badge variant="secondary" className="text-xs">
+                          <Building2 className="h-3 w-3 mr-1" />
+                          {result.court || 'Onbekend'}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {result.date || 'Geen datum'}
+                        </Badge>
+                        <Badge variant="default" className="text-xs">
+                          Score: {(result.maxScore * 100).toFixed(1)}%
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground font-mono">
+                        {result.ecli}
+                      </p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      asChild
+                      data-testid={`button-view-vector-${index}`}
+                    >
+                      <a 
+                        href={result.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  </div>
+                </CardHeader>
+                {result.relevantChunks && result.relevantChunks.length > 0 && (
+                  <CardContent>
+                    <h4 className="text-sm font-semibold mb-2">Relevante fragmenten:</h4>
+                    <div className="space-y-3">
+                      {result.relevantChunks.slice(0, 3).map((chunk, chunkIdx) => (
+                        <div key={chunkIdx} className="border-l-2 border-primary pl-3">
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            {chunk.text.substring(0, 300)}
+                            {chunk.text.length > 300 && '...'}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Score: {(chunk.score * 100).toFixed(1)}%
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!results && !vectorResults.length && !searchMutation.isPending && !vectorSearchMutation.isPending && (
         <Card data-testid="card-jurisprudentie-empty">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
