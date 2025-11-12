@@ -1,7 +1,7 @@
 import { Pinecone } from "@pinecone-database/pinecone";
 
 const INDEX_NAME = "rechtstreeks";
-const NAMESPACE = "default";
+const NAMESPACE = "_default_";
 
 let pineconeClient: Pinecone | null = null;
 
