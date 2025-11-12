@@ -71,20 +71,26 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
       query: {
         topK: query.topK || 10,
         inputs: { text: query.text }
-      }
+      },
+      fields: ['text', 'ecli', 'title', 'court', 'date', 'url', 'chunkIndex', 'totalChunks']
     };
 
     if (query.filter) {
       searchParams.query.filter = query.filter;
     }
 
-    const results = await namespace.searchRecords(searchParams);
+    const response = await namespace.searchRecords(searchParams);
     
-    return results.records.map((match: any) => ({
-      id: match.id,
-      score: match.score || 0,
-      metadata: match.metadata as VectorRecord['metadata'],
-      text: (match.metadata as any)?.text
+    if (!response.result?.hits || response.result.hits.length === 0) {
+      console.log('ℹ️ No results found in Pinecone');
+      return [];
+    }
+    
+    return response.result.hits.map((hit: any) => ({
+      id: hit._id,
+      score: hit._score || 0,
+      metadata: hit.fields as VectorRecord['metadata'],
+      text: hit.fields?.text
     }));
   } catch (error) {
     console.error("❌ Error searching Pinecone:", error);
