@@ -50,7 +50,7 @@ export async function upsertVectors(records: VectorRecord[]): Promise<void> {
     
     const formattedRecords = records.map(record => ({
       id: record.id,
-      chunk_text: record.text,
+      text: record.text,
       ...record.metadata
     }));
 
@@ -72,14 +72,16 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
         topK: query.topK || 10,
         inputs: { text: query.text }
       },
-      fields: ['chunk_text', 'ecli', 'title', 'court', 'date', 'url', 'chunkIndex', 'totalChunks']
+      fields: ['text', 'ecli', 'title', 'court', 'date', 'url', 'chunkIndex', 'totalChunks']
     };
 
     if (query.filter) {
       searchParams.query.filter = query.filter;
     }
 
+    console.log(`🔎 Pinecone search params:`, JSON.stringify(searchParams, null, 2));
     const response = await namespace.searchRecords(searchParams);
+    console.log(`📊 Pinecone response:`, JSON.stringify(response, null, 2));
     
     if (!response.result?.hits || response.result.hits.length === 0) {
       console.log('ℹ️ No results found in Pinecone');
@@ -90,7 +92,7 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
       id: hit._id,
       score: hit._score || 0,
       metadata: hit.fields as VectorRecord['metadata'],
-      text: hit.fields?.chunk_text
+      text: hit.fields?.text
     }));
   } catch (error) {
     console.error("❌ Error searching Pinecone:", error);
