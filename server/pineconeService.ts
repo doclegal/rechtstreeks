@@ -88,12 +88,19 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
       return [];
     }
     
-    return response.result.hits.map((hit: any) => ({
-      id: hit._id,
-      score: hit._score || 0,
-      metadata: hit.fields as VectorRecord['metadata'],
-      text: hit.fields?.text
-    }));
+    const MINIMUM_SCORE = 0.25;
+    
+    const filteredResults = response.result.hits
+      .filter((hit: any) => hit._score >= MINIMUM_SCORE)
+      .map((hit: any) => ({
+        id: hit._id,
+        score: hit._score || 0,
+        metadata: hit.fields as VectorRecord['metadata'],
+        text: hit.fields?.text
+      }));
+    
+    console.log(`✅ Filtered ${filteredResults.length} results above ${MINIMUM_SCORE} score threshold`);
+    return filteredResults;
   } catch (error) {
     console.error("❌ Error searching Pinecone:", error);
     throw error;
