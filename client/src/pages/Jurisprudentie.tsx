@@ -42,8 +42,8 @@ export default function Jurisprudentie() {
   const { toast } = useToast();
   
   const [query, setQuery] = useState("");
-  const [rechtsgebied, setRechtsgebied] = useState<string>("");
-  const [instantie, setInstantie] = useState<string>("");
+  const [rechtsgebied, setRechtsgebied] = useState<string | undefined>(undefined);
+  const [instantie, setInstantie] = useState<string | undefined>(undefined);
   const [periode, setPeriode] = useState<string>("laatste 5 jaar");
   const [results, setResults] = useState<RechtspraakSearchResponse | null>(null);
 
@@ -159,12 +159,12 @@ export default function Jurisprudentie() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="rechtsgebied">Rechtsgebied (optioneel)</Label>
-                <Select value={rechtsgebied} onValueChange={setRechtsgebied}>
+                <Select value={rechtsgebied} onValueChange={(value) => setRechtsgebied(value === "all" ? undefined : value)}>
                   <SelectTrigger id="rechtsgebied" data-testid="select-rechtsgebied">
                     <SelectValue placeholder="Alle rechtsgebieden" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Alle rechtsgebieden</SelectItem>
+                    <SelectItem value="all">Alle rechtsgebieden</SelectItem>
                     <SelectItem value="huurrecht">Huurrecht</SelectItem>
                     <SelectItem value="arbeidsrecht">Arbeidsrecht</SelectItem>
                     <SelectItem value="consumentenkoop">Consumentenkoop</SelectItem>
@@ -181,12 +181,12 @@ export default function Jurisprudentie() {
 
               <div>
                 <Label htmlFor="instantie">Instantie (optioneel)</Label>
-                <Select value={instantie} onValueChange={setInstantie}>
+                <Select value={instantie} onValueChange={(value) => setInstantie(value === "all" ? undefined : value)}>
                   <SelectTrigger id="instantie" data-testid="select-instantie">
                     <SelectValue placeholder="Alle instanties" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Alle instanties</SelectItem>
+                    <SelectItem value="all">Alle instanties</SelectItem>
                     <SelectItem value="hoge raad">Hoge Raad</SelectItem>
                     <SelectItem value="gerechtshof">Gerechtshof</SelectItem>
                     <SelectItem value="rechtbank">Rechtbank</SelectItem>
