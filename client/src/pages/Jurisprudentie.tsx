@@ -151,6 +151,36 @@ export default function Jurisprudentie() {
               </div>
 
               <div>
+                <Label htmlFor="instantie">Instantie (optioneel)</Label>
+                <Select value={instantie} onValueChange={(value) => setInstantie(value === "all" ? undefined : value)}>
+                  <SelectTrigger id="instantie" data-testid="select-instantie">
+                    <SelectValue placeholder="Alle instanties" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alle instanties</SelectItem>
+                    <SelectItem value="hoge raad">Hoge Raad</SelectItem>
+                    <SelectItem value="gerechtshof amsterdam">Gerechtshof Amsterdam</SelectItem>
+                    <SelectItem value="gerechtshof arnhem-leeuwarden">Gerechtshof Arnhem-Leeuwarden</SelectItem>
+                    <SelectItem value="gerechtshof den haag">Gerechtshof Den Haag</SelectItem>
+                    <SelectItem value="gerechtshof 's-hertogenbosch">Gerechtshof 's-Hertogenbosch</SelectItem>
+                    <SelectItem value="rechtbank amsterdam">Rechtbank Amsterdam</SelectItem>
+                    <SelectItem value="rechtbank rotterdam">Rechtbank Rotterdam</SelectItem>
+                    <SelectItem value="rechtbank den haag">Rechtbank Den Haag</SelectItem>
+                    <SelectItem value="rechtbank midden-nederland">Rechtbank Midden-Nederland</SelectItem>
+                    <SelectItem value="rechtbank noord-nederland">Rechtbank Noord-Nederland</SelectItem>
+                    <SelectItem value="rechtbank oost-brabant">Rechtbank Oost-Brabant</SelectItem>
+                    <SelectItem value="rechtbank zeeland-west-brabant">Rechtbank Zeeland-West-Brabant</SelectItem>
+                    <SelectItem value="rechtbank limburg">Rechtbank Limburg</SelectItem>
+                    <SelectItem value="rechtbank gelderland">Rechtbank Gelderland</SelectItem>
+                    <SelectItem value="rechtbank overijssel">Rechtbank Overijssel</SelectItem>
+                    <SelectItem value="centrale raad van beroep">Centrale Raad van Beroep</SelectItem>
+                    <SelectItem value="college van beroep voor het bedrijfsleven">College van Beroep voor het Bedrijfsleven</SelectItem>
+                    <SelectItem value="raad van state">Raad van State</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
                 <Label htmlFor="periode">Periode</Label>
                 <Select value={periode} onValueChange={setPeriode}>
                   <SelectTrigger id="periode" data-testid="select-periode">

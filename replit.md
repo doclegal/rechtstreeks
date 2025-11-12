@@ -56,6 +56,17 @@ Preferred communication style: Simple, everyday language.
 - **Template Upload Flow**: Admin uploads templates, system extracts fields, admin configures MindStudio flow and field mappings.
 - **Multi-Format Support**: Parses templates from .txt, .docx, or .pdf files.
 
+### Jurisprudentie Integration (Rechtspraak.nl Open Data)
+- **Data Source**: Rechtspraak.nl Open Data API for Dutch court decisions.
+- **Metadata Filtering**: Supports rechtsgebied (legal area), instantie (court), and periode (time period) filters.
+- **API Constraints**: No full-text search support; metadata-only filtering using official URIs.
+- **Rechtsgebied URIs**: `http://psi.rechtspraak.nl/rechtsgebied#[area]` (civielRecht, bestuursrecht, strafRecht).
+- **Instantie URIs**: `http://standaarden.overheid.nl/owms/terms/[CourtName]` for all Dutch courts (Hoge Raad, Rechtbanken, Gerechtshoven, etc.).
+- **Date Filtering**: Two separate `date` parameters for range queries (from/to), not single parameter with `..` separator.
+- **Sort Order**: `DESC` for newest first, `ASC` for oldest first.
+- **Implementation**: `server/rechtspraakService.ts` for API interaction, `server/rechtspraakMappings.ts` for URI mappings.
+- **Frontend**: Dedicated `/jurisprudentie` page with filter UI and ECLI-based result cards.
+
 ### Authentication & Authorization
 - **Primary Auth**: Replit Auth with OpenID Connect.
 - **Session Management**: PostgreSQL-backed sessions.
