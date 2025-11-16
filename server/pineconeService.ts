@@ -11,9 +11,11 @@ export interface VectorRecord {
   metadata: {
     ecli: string;
     court?: string;
-    date?: string;
-    rechtsgebied?: string;
-    url?: string;
+    decision_date?: string;
+    legal_area?: string;
+    procedure_type?: string;
+    source_url?: string;
+    title?: string;
     chunkIndex?: number;
     totalChunks?: number;
   };
@@ -72,7 +74,7 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
         topK: query.topK || 10,
         inputs: { text: query.text }
       },
-      fields: ['text', 'ecli', 'title', 'court', 'date', 'url', 'chunkIndex', 'totalChunks']
+      fields: ['text', 'ecli', 'title', 'court', 'decision_date', 'legal_area', 'procedure_type', 'source_url', 'chunkIndex', 'totalChunks']
     };
 
     if (query.filter) {

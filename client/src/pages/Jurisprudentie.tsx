@@ -2,52 +2,28 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { ArrowLeft, Scale, FileText, ExternalLink, Calendar, Building2, Search, Loader2, Database, Sparkles } from "lucide-react";
+import { ArrowLeft, Scale, FileText, ExternalLink, Calendar, Building2, Search, Loader2, Sparkles } from "lucide-react";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-interface RechtspraakItem {
-  ecli: string;
-  title: string;
-  court: string;
-  date: string;
-  url: string;
-  snippet: string;
-  score: number;
-}
-
-interface RechtspraakSearchResponse {
-  items: RechtspraakItem[];
-  meta: {
-    total: number;
-    fetch_ms: number;
-    source: string;
-    applied_filters: Record<string, any>;
-    page: number;
-    page_size: number;
-  };
-}
-
 interface VectorSearchResult {
+  id: string;
+  score: number;
   ecli: string;
-  title: string;
-  court: string;
-  date: string;
-  url: string;
-  maxScore: number;
-  relevantChunks: Array<{
-    text: string;
-    score: number;
-    chunkIndex: number;
-  }>;
+  title?: string;
+  court?: string;
+  decision_date?: string;
+  legal_area?: string;
+  procedure_type?: string;
+  source_url?: string;
+  text?: string;
 }
 
 export default function Jurisprudentie() {
@@ -55,105 +31,53 @@ export default function Jurisprudentie() {
   const currentCase = useActiveCase();
   const { toast } = useToast();
   
-  const [searchMode, setSearchMode] = useState<"metadata" | "vector">("metadata");
-  const [rechtsgebied, setRechtsgebied] = useState<string | undefined>(undefined);
-  const [instantie, setInstantie] = useState<string | undefined>(undefined);
-  const [periode, setPeriode] = useState<string>("laatste 5 jaar");
-  const [results, setResults] = useState<RechtspraakSearchResponse | null>(null);
-  
-  const [vectorQuery, setVectorQuery] = useState("");
-  const [vectorResults, setVectorResults] = useState<VectorSearchResult[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [legalArea, setLegalArea] = useState<string | undefined>(undefined);
+  const [court, setCourt] = useState<string | undefined>(undefined);
+  const [procedureType, setProcedureType] = useState<string | undefined>(undefined);
+  const [results, setResults] = useState<VectorSearchResult[]>([]);
 
   const searchMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest('POST', '/api/rechtspraak/search', {
-        filters: {
-          rechtsgebied: rechtsgebied || null,
-          instantie: instantie || null,
-          periode: periode || null
-        }
-      });
-      return response.json();
-    },
-    onSuccess: (data: RechtspraakSearchResponse) => {
-      setResults(data);
-      toast({
-        title: "Zoekresultaten geladen",
-        description: `${data.items.length} relevante uitspraken gevonden`,
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Fout bij zoeken",
-        description: error.message || "Kon jurisprudentie niet ophalen",
-        variant: "destructive",
-      });
-    }
-  });
+      const filters: Record<string, any> = {};
+      
+      if (legalArea) filters.legal_area = { $eq: legalArea };
+      if (court) filters.court = { $eq: court };
+      if (procedureType) filters.procedure_type = { $eq: procedureType };
 
-  const vectorSearchMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest('POST', '/api/rechtspraak/vector-search', {
-        query: vectorQuery,
-        rechtsgebied: rechtsgebied || null,
-        topK: 10
+      const response = await apiRequest('POST', '/api/pinecone/search', {
+        query: searchQuery,
+        filters: Object.keys(filters).length > 0 ? filters : undefined,
+        topK: 20
       });
       return response.json();
     },
     onSuccess: (data: any) => {
-      setVectorResults(data.results || []);
+      setResults(data.results || []);
       toast({
-        title: "Semantisch zoeken voltooid",
+        title: "Zoekresultaten geladen",
         description: `${data.results?.length || 0} relevante uitspraken gevonden`,
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Fout bij semantisch zoeken",
-        description: error.message || "Kon niet zoeken in vector database",
-        variant: "destructive",
-      });
-    }
-  });
-
-  const indexMutation = useMutation({
-    mutationFn: async (ecli: string) => {
-      const response = await apiRequest('POST', '/api/rechtspraak/index', { ecli });
-      return response.json();
-    },
-    onSuccess: (data: any) => {
-      toast({
-        title: "Uitspraak geïndexeerd",
-        description: `${data.chunksIndexed} chunks opgeslagen in vector database`,
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Fout bij indexeren",
-        description: error.message || "Kon uitspraak niet indexeren",
+        title: "Fout bij zoeken",
+        description: error.message || "Kon niet zoeken in database",
         variant: "destructive",
       });
     }
   });
 
   const handleSearch = () => {
-    searchMutation.mutate();
-  };
-
-  const handleVectorSearch = () => {
-    if (!vectorQuery.trim()) {
+    if (!searchQuery.trim()) {
       toast({
         title: "Geen zoekvraag",
-        description: "Voer een zoekvraag in",
+        description: "Voer een zoekvraag in om te zoeken",
         variant: "destructive",
       });
       return;
     }
-    vectorSearchMutation.mutate();
-  };
-
-  const handleIndex = (ecli: string) => {
-    indexMutation.mutate(ecli);
+    searchMutation.mutate();
   };
 
   if (authLoading) {
@@ -197,269 +121,131 @@ export default function Jurisprudentie() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Jurisprudentie</h1>
         <p className="text-muted-foreground">
-          Relevante uitspraken van Rechtspraak.nl voor {currentCase.title || 'uw zaak'}
+          Zoek relevante rechterlijke uitspraken voor {currentCase.title || 'uw zaak'}
         </p>
       </div>
 
-      {/* Search tabs */}
+      {/* Search form */}
       <Card className="mb-6" data-testid="card-search-filters">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Zoeken in jurisprudentie
+            <Sparkles className="h-5 w-5" />
+            Semantisch zoeken in jurisprudentie
           </CardTitle>
           <CardDescription>
-            Kies tussen metadata filters of semantisch zoeken in geïndexeerde uitspraken
+            Doorzoek de volledige tekst van Nederlandse rechterlijke uitspraken met AI-powered semantische zoekopdrachten
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="metadata" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="metadata">
-                <Database className="mr-2 h-4 w-4" />
-                Metadata filters
-              </TabsTrigger>
-              <TabsTrigger value="vector">
-                <Sparkles className="mr-2 h-4 w-4" />
-                Semantisch zoeken
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="metadata" className="space-y-4 mt-4">
           <div className="space-y-4">
+            <div>
+              <Label htmlFor="searchQuery">Zoekvraag</Label>
+              <Input 
+                id="searchQuery"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Bijvoorbeeld: ontbinding huurovereenkomst wegens geluidsoverlast"
+                data-testid="input-search-query"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSearch();
+                  }
+                }}
+                className="text-base"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Beschrijf uw juridische vraag in natuurlijke taal
+              </p>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <Label htmlFor="rechtsgebied">Rechtsgebied (optioneel)</Label>
-                <Select value={rechtsgebied} onValueChange={(value) => setRechtsgebied(value === "all" ? undefined : value)}>
-                  <SelectTrigger id="rechtsgebied" data-testid="select-rechtsgebied">
+                <Label htmlFor="legal-area">Rechtsgebied (optioneel)</Label>
+                <Select value={legalArea} onValueChange={(value) => setLegalArea(value === "all" ? undefined : value)}>
+                  <SelectTrigger id="legal-area" data-testid="select-legal-area">
                     <SelectValue placeholder="Alle rechtsgebieden" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Alle rechtsgebieden</SelectItem>
-                    <SelectItem value="civielrecht">Civiel recht</SelectItem>
-                    <SelectItem value="bestuursrecht">Bestuursrecht</SelectItem>
-                    <SelectItem value="strafrecht">Strafrecht</SelectItem>
+                    <SelectItem value="Civiel recht">Civiel recht</SelectItem>
+                    <SelectItem value="Bestuursrecht">Bestuursrecht</SelectItem>
+                    <SelectItem value="Strafrecht">Strafrecht</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <Label htmlFor="instantie">Instantie (optioneel)</Label>
-                <Select value={instantie} onValueChange={(value) => setInstantie(value === "all" ? undefined : value)}>
-                  <SelectTrigger id="instantie" data-testid="select-instantie">
-                    <SelectValue placeholder="Alle instanties" />
+                <Label htmlFor="court">Rechtbank (optioneel)</Label>
+                <Select value={court} onValueChange={(value) => setCourt(value === "all" ? undefined : value)}>
+                  <SelectTrigger id="court" data-testid="select-court">
+                    <SelectValue placeholder="Alle rechtbanken" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Alle instanties</SelectItem>
-                    <SelectItem value="hoge raad">Hoge Raad</SelectItem>
-                    <SelectItem value="gerechtshof amsterdam">Gerechtshof Amsterdam</SelectItem>
-                    <SelectItem value="gerechtshof arnhem-leeuwarden">Gerechtshof Arnhem-Leeuwarden</SelectItem>
-                    <SelectItem value="gerechtshof den haag">Gerechtshof Den Haag</SelectItem>
-                    <SelectItem value="gerechtshof 's-hertogenbosch">Gerechtshof 's-Hertogenbosch</SelectItem>
-                    <SelectItem value="rechtbank amsterdam">Rechtbank Amsterdam</SelectItem>
-                    <SelectItem value="rechtbank rotterdam">Rechtbank Rotterdam</SelectItem>
-                    <SelectItem value="rechtbank den haag">Rechtbank Den Haag</SelectItem>
-                    <SelectItem value="rechtbank midden-nederland">Rechtbank Midden-Nederland</SelectItem>
-                    <SelectItem value="rechtbank noord-nederland">Rechtbank Noord-Nederland</SelectItem>
-                    <SelectItem value="rechtbank oost-brabant">Rechtbank Oost-Brabant</SelectItem>
-                    <SelectItem value="rechtbank zeeland-west-brabant">Rechtbank Zeeland-West-Brabant</SelectItem>
-                    <SelectItem value="rechtbank limburg">Rechtbank Limburg</SelectItem>
-                    <SelectItem value="rechtbank gelderland">Rechtbank Gelderland</SelectItem>
-                    <SelectItem value="rechtbank overijssel">Rechtbank Overijssel</SelectItem>
-                    <SelectItem value="centrale raad van beroep">Centrale Raad van Beroep</SelectItem>
-                    <SelectItem value="college van beroep voor het bedrijfsleven">College van Beroep voor het Bedrijfsleven</SelectItem>
-                    <SelectItem value="raad van state">Raad van State</SelectItem>
+                    <SelectItem value="all">Alle rechtbanken</SelectItem>
+                    <SelectItem value="Hoge Raad">Hoge Raad</SelectItem>
+                    <SelectItem value="Rechtbank Amsterdam">Rechtbank Amsterdam</SelectItem>
+                    <SelectItem value="Rechtbank Rotterdam">Rechtbank Rotterdam</SelectItem>
+                    <SelectItem value="Rechtbank Den Haag">Rechtbank Den Haag</SelectItem>
+                    <SelectItem value="Rechtbank Utrecht">Rechtbank Utrecht</SelectItem>
+                    <SelectItem value="Gerechtshof Amsterdam">Gerechtshof Amsterdam</SelectItem>
+                    <SelectItem value="Gerechtshof Den Haag">Gerechtshof Den Haag</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <Label htmlFor="periode">Periode</Label>
-                <Select value={periode} onValueChange={setPeriode}>
-                  <SelectTrigger id="periode" data-testid="select-periode">
-                    <SelectValue placeholder="Laatste 5 jaar" />
+                <Label htmlFor="procedure-type">Procedure type (optioneel)</Label>
+                <Select value={procedureType} onValueChange={(value) => setProcedureType(value === "all" ? undefined : value)}>
+                  <SelectTrigger id="procedure-type" data-testid="select-procedure-type">
+                    <SelectValue placeholder="Alle procedures" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="laatste 3 dagen">Laatste 3 dagen</SelectItem>
-                    <SelectItem value="afgelopen week">Afgelopen week</SelectItem>
-                    <SelectItem value="afgelopen maand">Afgelopen maand</SelectItem>
-                    <SelectItem value="afgelopen jaar">Afgelopen jaar</SelectItem>
-                    <SelectItem value="laatste 3 jaar">Laatste 3 jaar</SelectItem>
-                    <SelectItem value="laatste 5 jaar">Laatste 5 jaar</SelectItem>
-                    <SelectItem value="laatste 10 jaar">Laatste 10 jaar</SelectItem>
+                    <SelectItem value="all">Alle procedures</SelectItem>
+                    <SelectItem value="Bodemzaak">Bodemzaak</SelectItem>
+                    <SelectItem value="Kort geding">Kort geding</SelectItem>
+                    <SelectItem value="Hoger beroep">Hoger beroep</SelectItem>
+                    <SelectItem value="Cassatie">Cassatie</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-              <Button 
-                onClick={handleSearch} 
-                disabled={searchMutation.isPending}
-                data-testid="button-search"
-                className="w-full md:w-auto"
-              >
-                {searchMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Uitspraken ophalen...
-                  </>
-                ) : (
-                  <>
-                    <Search className="mr-2 h-4 w-4" />
-                    Uitspraken ophalen
-                  </>
-                )}
-              </Button>
-            </div>
-            </TabsContent>
-
-            <TabsContent value="vector" className="space-y-4 mt-4">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="vectorQuery">Zoekvraag</Label>
-                  <Input 
-                    id="vectorQuery"
-                    value={vectorQuery}
-                    onChange={(e) => setVectorQuery(e.target.value)}
-                    placeholder="Bijvoorbeeld: ontbinding huurovereenkomst wegens overlast door huurder"
-                    data-testid="input-vector-query"
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        handleVectorSearch();
-                      }
-                    }}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Semantisch zoeken doorzoekt de volledige tekst van geïndexeerde uitspraken
-                  </p>
-                </div>
-
-                <Button 
-                  onClick={handleVectorSearch} 
-                  disabled={vectorSearchMutation.isPending || !vectorQuery.trim()}
-                  data-testid="button-vector-search"
-                  className="w-full md:w-auto"
-                >
-                  {vectorSearchMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Zoeken...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Semantisch zoeken
-                    </>
-                  )}
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
+            <Button 
+              onClick={handleSearch} 
+              disabled={searchMutation.isPending || !searchQuery.trim()}
+              data-testid="button-search"
+              className="w-full md:w-auto"
+              size="lg"
+            >
+              {searchMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Zoeken...
+                </>
+              ) : (
+                <>
+                  <Search className="mr-2 h-4 w-4" />
+                  Zoeken in jurisprudentie
+                </>
+              )}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
       {/* Results */}
-      {results && (
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">
-              {results.items.length} {results.items.length === 1 ? 'uitspraak' : 'uitspraken'} gevonden
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Gezocht in {results.meta.fetch_ms}ms
-            </p>
-          </div>
-
-          {results.items.length === 0 ? (
-            <Card data-testid="card-no-results">
-              <CardContent className="pt-6">
-                <div className="text-center py-8">
-                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Geen resultaten gevonden</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Probeer andere zoektermen of filters
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {results.items.map((item, index) => (
-                <Card key={item.ecli} data-testid={`card-result-${index}`}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg mb-2">
-                          {item.title || 'Geen titel'}
-                        </CardTitle>
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          <Badge variant="secondary" className="text-xs">
-                            <Building2 className="h-3 w-3 mr-1" />
-                            {item.court || 'Onbekend'}
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {item.date || 'Geen datum'}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground font-mono">
-                          {item.ecli}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="secondary" 
-                          size="sm" 
-                          onClick={() => handleIndex(item.ecli)}
-                          disabled={indexMutation.isPending}
-                          data-testid={`button-index-${index}`}
-                        >
-                          <Database className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          asChild
-                          data-testid={`button-view-${index}`}
-                        >
-                          <a 
-                            href={item.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  {item.snippet && (
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground">
-                        {item.snippet}
-                      </p>
-                    </CardContent>
-                  )}
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Vector search results */}
-      {vectorResults.length > 0 && (
+      {results.length > 0 && (
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold flex items-center gap-2">
               <Sparkles className="h-5 w-5" />
-              {vectorResults.length} relevante uitspraken gevonden
+              {results.length} relevante {results.length === 1 ? 'uitspraak' : 'uitspraken'} gevonden
             </h2>
           </div>
 
           <div className="space-y-4">
-            {vectorResults.map((result, index) => (
-              <Card key={result.ecli} data-testid={`card-vector-result-${index}`}>
+            {results.map((result, index) => (
+              <Card key={result.id} data-testid={`card-result-${index}`}>
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
@@ -467,53 +253,62 @@ export default function Jurisprudentie() {
                         {result.title || result.ecli}
                       </CardTitle>
                       <div className="flex flex-wrap gap-2 mb-2">
-                        <Badge variant="secondary" className="text-xs">
-                          <Building2 className="h-3 w-3 mr-1" />
-                          {result.court || 'Onbekend'}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          {result.date || 'Geen datum'}
-                        </Badge>
+                        {result.court && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Building2 className="h-3 w-3 mr-1" />
+                            {result.court}
+                          </Badge>
+                        )}
+                        {result.decision_date && (
+                          <Badge variant="outline" className="text-xs">
+                            <Calendar className="h-3 w-3 mr-1" />
+                            {result.decision_date}
+                          </Badge>
+                        )}
+                        {result.legal_area && (
+                          <Badge variant="outline" className="text-xs">
+                            <Scale className="h-3 w-3 mr-1" />
+                            {result.legal_area}
+                          </Badge>
+                        )}
+                        {result.procedure_type && (
+                          <Badge variant="outline" className="text-xs">
+                            {result.procedure_type}
+                          </Badge>
+                        )}
                         <Badge variant="default" className="text-xs">
-                          Score: {(result.maxScore * 100).toFixed(1)}%
+                          Relevantie: {(result.score * 100).toFixed(1)}%
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground font-mono">
                         {result.ecli}
                       </p>
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      asChild
-                      data-testid={`button-view-vector-${index}`}
-                    >
-                      <a 
-                        href={result.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
+                    {result.source_url && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        asChild
+                        data-testid={`button-view-${index}`}
                       >
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    </Button>
+                        <a 
+                          href={result.source_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    )}
                   </div>
                 </CardHeader>
-                {result.relevantChunks && result.relevantChunks.length > 0 && (
+                {result.text && (
                   <CardContent>
-                    <h4 className="text-sm font-semibold mb-2">Relevante fragmenten:</h4>
-                    <div className="space-y-3">
-                      {result.relevantChunks.slice(0, 3).map((chunk, chunkIdx) => (
-                        <div key={chunkIdx} className="border-l-2 border-primary pl-3">
-                          <p className="text-sm text-muted-foreground leading-relaxed">
-                            {chunk.text.substring(0, 300)}
-                            {chunk.text.length > 300 && '...'}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Score: {(chunk.score * 100).toFixed(1)}%
-                          </p>
-                        </div>
-                      ))}
+                    <div className="border-l-2 border-primary pl-3">
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {result.text.substring(0, 400)}
+                        {result.text.length > 400 && '...'}
+                      </p>
                     </div>
                   </CardContent>
                 )}
@@ -523,12 +318,12 @@ export default function Jurisprudentie() {
         </div>
       )}
 
-      {!results && !vectorResults.length && !searchMutation.isPending && !vectorSearchMutation.isPending && (
+      {!results.length && !searchMutation.isPending && (
         <Card data-testid="card-jurisprudentie-empty">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Scale className="h-5 w-5" />
-              Overzicht rechtspraak
+              Zoeken in jurisprudentie
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -536,7 +331,7 @@ export default function Jurisprudentie() {
               <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-xl font-semibold mb-2">Nog geen jurisprudentie gezocht</h3>
               <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                Gebruik de zoekopdracht hierboven om relevante rechterlijke uitspraken van Rechtspraak.nl te vinden die van toepassing zijn op uw zaak.
+                Gebruik de zoekopdracht hierboven om relevante rechterlijke uitspraken te vinden met AI-powered semantische zoekopdrachten.
               </p>
             </div>
           </CardContent>
