@@ -33,8 +33,8 @@ interface FullDocument {
   title: string;
   court: string;
   date: string;
-  summary: string;
-  fullText: string;
+  originalSummary: string;
+  aiSummary: string;
   url: string;
 }
 
@@ -322,14 +322,14 @@ export default function Jurisprudentie() {
                         size="sm" 
                         onClick={() => fetchDocumentMutation.mutate(result.ecli)}
                         disabled={fetchDocumentMutation.isPending}
-                        data-testid={`button-full-text-${index}`}
+                        data-testid={`button-ai-summary-${index}`}
                       >
                         {fetchDocumentMutation.isPending ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <>
-                            <FileText className="h-4 w-4 mr-2" />
-                            Gehele tekst
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            AI Samenvatting
                           </>
                         )}
                       </Button>
@@ -417,22 +417,25 @@ export default function Jurisprudentie() {
           </DialogHeader>
           
           <ScrollArea className="h-[60vh] mt-4">
-            <div className="space-y-4 pr-4">
-              {selectedDocument?.summary && (
+            <div className="space-y-6 pr-4">
+              <div className="bg-primary/5 p-4 rounded-lg border border-primary/10">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-sm">AI Samenvatting</h3>
+                </div>
+                <div className="prose prose-sm max-w-none text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                  {selectedDocument?.aiSummary}
+                </div>
+              </div>
+              
+              {selectedDocument?.originalSummary && (
                 <div>
-                  <h3 className="font-semibold text-sm mb-2">Samenvatting</h3>
+                  <h3 className="font-semibold text-sm mb-2">Originele samenvatting (Rechtspraak.nl)</h3>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {selectedDocument.summary}
+                    {selectedDocument.originalSummary}
                   </p>
                 </div>
               )}
-              
-              <div>
-                <h3 className="font-semibold text-sm mb-2">Volledige tekst</h3>
-                <div className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                  {selectedDocument?.fullText}
-                </div>
-              </div>
             </div>
           </ScrollArea>
 

@@ -2437,6 +2437,61 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     }
   }
 
+  // Summarize jurisprudence with structured output
+  async summarizeJurisprudence(fullText: string, ecli: string): Promise<{
+    summary: string;
+    error?: string;
+  }> {
+    console.log(`📝 Summarizing jurisprudence: ${ecli}`);
+
+    const systemPrompt = `Je bent een juridische assistent die Nederlandse rechterlijke uitspraken samenvat voor leken. 
+    
+Maak een heldere, gestructureerde samenvatting van 250-500 woorden met de volgende secties:
+
+## Feiten
+Een beknopt overzicht van de relevante feiten en achtergrond van de zaak.
+
+## Geschil
+Wat was het juridische geschil? Waar ging de procedure over?
+
+## Beslissing
+Wat heeft de rechter besloten?
+
+## Motivering
+Waarom heeft de rechter zo besloten? Welke juridische overwegingen waren belangrijk?
+
+Gebruik duidelijke, begrijpelijke taal zonder juridisch jargon. Focus op de kernpunten.`;
+
+    try {
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Vat deze uitspraak samen:\n\n${fullText.substring(0, 12000)}` }
+        ],
+        temperature: 0.3,
+        max_tokens: 800
+      });
+
+      const summary = response.choices[0]?.message?.content || "";
+      
+      if (!summary) {
+        throw new Error("No summary generated");
+      }
+
+      console.log(`✅ Summary generated for ${ecli} (${summary.split(' ').length} words)`);
+      
+      return { summary };
+
+    } catch (error) {
+      console.error("❌ Error summarizing jurisprudence:", error);
+      return {
+        summary: "",
+        error: `Failed to summarize: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
+  }
+
   // Missing Info Check - Consolidate missing information from RKOS and Create_advice flows
   async runMissingInfo(input_json: any): Promise<{ result?: any; thread?: any; error?: string }> {
     console.log("🔍 Calling MindStudio Missing_info.flow...");

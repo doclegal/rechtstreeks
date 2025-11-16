@@ -7128,7 +7128,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
     }
   });
 
-  // Fetch full document text from Rechtspraak.nl API
+  // Fetch full document text from Rechtspraak.nl API and generate AI summary
   app.get('/api/rechtspraak/document/:ecli', async (req, res) => {
     try {
       const { ecli } = req.params;
@@ -7137,18 +7137,25 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         return res.status(400).json({ error: 'ECLI parameter is required' });
       }
 
-      console.log(`📄 Fetching full document: ${ecli}`);
+      console.log(`📄 Fetching and summarizing document: ${ecli}`);
       
       const { fetchFullDocument } = await import('./rechtspraakDocumentService');
       const document = await fetchFullDocument(ecli);
+
+      console.log(`🤖 Generating AI summary for ${ecli}...`);
+      const summaryResult = await aiService.summarizeJurisprudence(document.fullText, ecli);
+      
+      if (summaryResult.error) {
+        console.error(`❌ Summary error: ${summaryResult.error}`);
+      }
 
       res.json({
         ecli: document.ecli,
         title: document.title,
         court: document.court,
         date: document.date,
-        summary: document.summary,
-        fullText: document.fullText,
+        originalSummary: document.summary,
+        aiSummary: summaryResult.summary || 'Samenvatting kon niet worden gegenereerd',
         url: document.url
       });
 
