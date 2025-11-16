@@ -95,7 +95,7 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
       return [];
     }
     
-    const MINIMUM_SCORE = 0.10;
+    const MINIMUM_SCORE = 0.05;
     
     const filteredResults = response.result.hits
       .filter((hit: any) => hit._score >= MINIMUM_SCORE)
