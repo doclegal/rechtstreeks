@@ -62,7 +62,7 @@ Preferred communication style: Simple, everyday language.
 - **Data Source**: Pre-indexed Dutch court decisions (ECLI documents) with AI-generated summaries.
 - **Semantic Search**: Full-text semantic search across combined text field (original inhoudsindicatie + all AI metadata).
 - **AI Metadata Fields**: ai_inhoudsindicatie, ai_feiten, ai_geschil, ai_beslissing, ai_motivering (pre-computed, stored in Pinecone).
-- **Relevance Filtering**: Minimum similarity score threshold of 2.5% to filter irrelevant results.
+- **Relevance Filtering**: Minimum similarity score threshold of 10% to filter irrelevant results.
 - **Metadata Filtering**: Supports legal_area, court, procedure_type filters.
 - **Implementation**: `server/pineconeService.ts` for vector operations, `server/routes.ts` for search endpoint.
 - **Frontend**: `/jurisprudentie` page with semantic search, metadata filters, and AI summary display.
