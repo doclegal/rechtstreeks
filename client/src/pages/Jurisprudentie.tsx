@@ -399,24 +399,26 @@ export default function Jurisprudentie() {
             <DialogTitle className="text-xl">
               {selectedDocument?.title || selectedDocument?.ecli}
             </DialogTitle>
-            <DialogDescription>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {selectedDocument?.court && (
-                  <Badge variant="secondary" className="text-xs">
-                    <Building2 className="h-3 w-3 mr-1" />
-                    {selectedDocument.court}
-                  </Badge>
-                )}
-                {selectedDocument?.date && (
-                  <Badge variant="outline" className="text-xs">
-                    <Calendar className="h-3 w-3 mr-1" />
-                    {selectedDocument.date}
-                  </Badge>
-                )}
+            <DialogDescription asChild>
+              <div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {selectedDocument?.court && (
+                    <Badge variant="secondary" className="text-xs">
+                      <Building2 className="h-3 w-3 mr-1" />
+                      {selectedDocument.court}
+                    </Badge>
+                  )}
+                  {selectedDocument?.date && (
+                    <Badge variant="outline" className="text-xs">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      {selectedDocument.date}
+                    </Badge>
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground font-mono mt-2">
+                  {selectedDocument?.ecli}
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground font-mono mt-2">
-                {selectedDocument?.ecli}
-              </p>
             </DialogDescription>
           </DialogHeader>
           
