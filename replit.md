@@ -56,16 +56,17 @@ Preferred communication style: Simple, everyday language.
 - **Template Upload Flow**: Admin uploads templates, system extracts fields, admin configures MindStudio flow and field mappings.
 - **Multi-Format Support**: Parses templates from .txt, .docx, or .pdf files.
 
-### Jurisprudentie Integration (Rechtspraak.nl Open Data)
-- **Data Source**: Rechtspraak.nl Open Data API for Dutch court decisions.
-- **Metadata Filtering**: Supports rechtsgebied (legal area), instantie (court), and periode (time period) filters.
-- **API Constraints**: No full-text search support; metadata-only filtering using official URIs.
-- **Rechtsgebied URIs**: `http://psi.rechtspraak.nl/rechtsgebied#[area]` (civielRecht, bestuursrecht, strafRecht).
-- **Instantie URIs**: `http://standaarden.overheid.nl/owms/terms/[CourtName]` for all Dutch courts (Hoge Raad, Rechtbanken, Gerechtshoven, etc.).
-- **Date Filtering**: Two separate `date` parameters for range queries (from/to), not single parameter with `..` separator.
-- **Sort Order**: `DESC` for newest first, `ASC` for oldest first.
-- **Implementation**: `server/rechtspraakService.ts` for API interaction, `server/rechtspraakMappings.ts` for URI mappings.
-- **Frontend**: Dedicated `/jurisprudentie` page with filter UI and ECLI-based result cards.
+### Jurisprudentie Integration (Pinecone Vector Search)
+- **Search Engine**: Pinecone serverless vector database with integrated inference (llama-text-embed-v2).
+- **Index**: "rechtstreeks" index, namespace "ECLI_NL".
+- **Data Source**: Pre-indexed Dutch court decisions (ECLI documents) with AI-generated summaries.
+- **Semantic Search**: Full-text semantic search across combined text field (original inhoudsindicatie + all AI metadata).
+- **AI Metadata Fields**: ai_inhoudsindicatie, ai_feiten, ai_geschil, ai_beslissing, ai_motivering (pre-computed, stored in Pinecone).
+- **Relevance Filtering**: Minimum similarity score threshold of 2.5% to filter irrelevant results.
+- **Metadata Filtering**: Supports legal_area, court, procedure_type filters.
+- **Implementation**: `server/pineconeService.ts` for vector operations, `server/routes.ts` for search endpoint.
+- **Frontend**: `/jurisprudentie` page with semantic search, metadata filters, and AI summary display.
+- **Cost Efficiency**: Pre-computed AI summaries eliminate runtime AI generation costs (~€0.0023 per summary).
 
 ### Authentication & Authorization
 - **Primary Auth**: Replit Auth with OpenID Connect.
