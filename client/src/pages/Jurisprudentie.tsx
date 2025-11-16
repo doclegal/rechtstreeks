@@ -26,16 +26,11 @@ interface VectorSearchResult {
   procedure_type?: string;
   source_url?: string;
   text?: string;
-}
-
-interface FullDocument {
-  ecli: string;
-  title: string;
-  court: string;
-  date: string;
-  originalSummary: string;
-  aiSummary: string;
-  url: string;
+  ai_feiten?: string;
+  ai_geschil?: string;
+  ai_beslissing?: string;
+  ai_motivering?: string;
+  ai_inhoudsindicatie?: string;
 }
 
 export default function Jurisprudentie() {
@@ -48,9 +43,8 @@ export default function Jurisprudentie() {
   const [court, setCourt] = useState<string | undefined>(undefined);
   const [procedureType, setProcedureType] = useState<string | undefined>(undefined);
   const [results, setResults] = useState<VectorSearchResult[]>([]);
-  const [selectedDocument, setSelectedDocument] = useState<FullDocument | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<VectorSearchResult | null>(null);
   const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
-  const [loadingEcli, setLoadingEcli] = useState<string | null>(null);
 
   const searchMutation = useMutation({
     mutationFn: async () => {
@@ -83,26 +77,10 @@ export default function Jurisprudentie() {
     }
   });
 
-  const fetchDocumentMutation = useMutation({
-    mutationFn: async (ecli: string) => {
-      setLoadingEcli(ecli);
-      const response = await apiRequest('GET', `/api/rechtspraak/document/${encodeURIComponent(ecli)}`);
-      return response.json();
-    },
-    onSuccess: (data: FullDocument) => {
-      setSelectedDocument(data);
-      setIsDocumentDialogOpen(true);
-      setLoadingEcli(null);
-    },
-    onError: (error: any) => {
-      setLoadingEcli(null);
-      toast({
-        title: "Fout bij ophalen document",
-        description: error.message || "Kon document niet ophalen",
-        variant: "destructive",
-      });
-    }
-  });
+  const handleViewSummary = (result: VectorSearchResult) => {
+    setSelectedDocument(result);
+    setIsDocumentDialogOpen(true);
+  };
 
   const handleSearch = () => {
     if (!searchQuery.trim()) {
@@ -324,18 +302,11 @@ export default function Jurisprudentie() {
                       <Button 
                         variant="default" 
                         size="sm" 
-                        onClick={() => fetchDocumentMutation.mutate(result.ecli)}
-                        disabled={loadingEcli === result.ecli}
+                        onClick={() => handleViewSummary(result)}
                         data-testid={`button-ai-summary-${index}`}
                       >
-                        {loadingEcli === result.ecli ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <Sparkles className="h-4 w-4 mr-2" />
-                            AI Samenvatting
-                          </>
-                        )}
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        AI Samenvatting
                       </Button>
                       {result.source_url && (
                         <Button 
@@ -408,10 +379,10 @@ export default function Jurisprudentie() {
                       {selectedDocument.court}
                     </Badge>
                   )}
-                  {selectedDocument?.date && (
+                  {selectedDocument?.decision_date && (
                     <Badge variant="outline" className="text-xs">
                       <Calendar className="h-3 w-3 mr-1" />
-                      {selectedDocument.date}
+                      {selectedDocument.decision_date}
                     </Badge>
                   )}
                 </div>
@@ -429,13 +400,11 @@ export default function Jurisprudentie() {
                   <Sparkles className="h-4 w-4 text-primary" />
                   <h3 className="font-semibold text-sm">Samenvatting</h3>
                 </div>
-                <div className="prose prose-sm max-w-none text-sm text-muted-foreground space-y-4">
-                  {selectedDocument?.originalSummary && 
-                   selectedDocument.originalSummary.trim() !== '' && 
-                   selectedDocument.originalSummary.trim() !== '-' && (
+                <div className="prose prose-sm max-w-none text-sm space-y-4">
+                  {selectedDocument?.ai_inhoudsindicatie && (
                     <div className="pb-4 mb-4 border-b border-primary/20">
                       <a 
-                        href={selectedDocument.url} 
+                        href={selectedDocument.source_url} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-red-600 dark:text-red-400 font-mono text-xs hover:underline mb-2 block"
@@ -443,14 +412,47 @@ export default function Jurisprudentie() {
                         {selectedDocument.ecli}
                       </a>
                       <h4 className="font-semibold text-base mb-2 text-foreground">Inhoudsindicatie</h4>
-                      <p className="whitespace-pre-wrap leading-relaxed">
-                        {selectedDocument.originalSummary}
+                      <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                        {selectedDocument.ai_inhoudsindicatie}
                       </p>
                     </div>
                   )}
-                  <div className="whitespace-pre-wrap leading-relaxed">
-                    {selectedDocument?.aiSummary}
-                  </div>
+                  
+                  {selectedDocument?.ai_feiten && (
+                    <div className="mb-4">
+                      <h4 className="font-semibold text-base mb-2 text-foreground">Feiten</h4>
+                      <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                        {selectedDocument.ai_feiten}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {selectedDocument?.ai_geschil && (
+                    <div className="mb-4">
+                      <h4 className="font-semibold text-base mb-2 text-foreground">Geschil</h4>
+                      <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                        {selectedDocument.ai_geschil}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {selectedDocument?.ai_beslissing && (
+                    <div className="mb-4">
+                      <h4 className="font-semibold text-base mb-2 text-foreground">Beslissing</h4>
+                      <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                        {selectedDocument.ai_beslissing}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {selectedDocument?.ai_motivering && (
+                    <div className="mb-4">
+                      <h4 className="font-semibold text-base mb-2 text-foreground">Motivering</h4>
+                      <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                        {selectedDocument.ai_motivering}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -463,7 +465,7 @@ export default function Jurisprudentie() {
               asChild
             >
               <a 
-                href={selectedDocument?.url} 
+                href={selectedDocument?.source_url} 
                 target="_blank" 
                 rel="noopener noreferrer"
               >
