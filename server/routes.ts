@@ -7059,7 +7059,12 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         legal_area: result.metadata.legal_area,
         procedure_type: result.metadata.procedure_type,
         source_url: result.metadata.source_url,
-        text: result.text
+        text: result.text,
+        ai_feiten: result.metadata.ai_feiten,
+        ai_geschil: result.metadata.ai_geschil,
+        ai_beslissing: result.metadata.ai_beslissing,
+        ai_motivering: result.metadata.ai_motivering,
+        ai_inhoudsindicatie: result.metadata.ai_inhoudsindicatie
       }));
 
       res.json({
