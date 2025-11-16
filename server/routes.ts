@@ -7128,6 +7128,38 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
     }
   });
 
+  // Fetch full document text from Rechtspraak.nl API
+  app.get('/api/rechtspraak/document/:ecli', async (req, res) => {
+    try {
+      const { ecli } = req.params;
+      
+      if (!ecli) {
+        return res.status(400).json({ error: 'ECLI parameter is required' });
+      }
+
+      console.log(`📄 Fetching full document: ${ecli}`);
+      
+      const { fetchFullDocument } = await import('./rechtspraakDocumentService');
+      const document = await fetchFullDocument(ecli);
+
+      res.json({
+        ecli: document.ecli,
+        title: document.title,
+        court: document.court,
+        date: document.date,
+        summary: document.summary,
+        fullText: document.fullText,
+        url: document.url
+      });
+
+    } catch (error: any) {
+      console.error('Error fetching document:', error);
+      res.status(500).json({ 
+        error: error.message || 'Failed to fetch document' 
+      });
+    }
+  });
+
   // Check Pinecone connection
   app.get('/api/rechtspraak/pinecone-status', async (req, res) => {
     try {

@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +28,16 @@ interface VectorSearchResult {
   text?: string;
 }
 
+interface FullDocument {
+  ecli: string;
+  title: string;
+  court: string;
+  date: string;
+  summary: string;
+  fullText: string;
+  url: string;
+}
+
 export default function Jurisprudentie() {
   const { isLoading: authLoading } = useAuth();
   const currentCase = useActiveCase();
@@ -36,6 +48,8 @@ export default function Jurisprudentie() {
   const [court, setCourt] = useState<string | undefined>(undefined);
   const [procedureType, setProcedureType] = useState<string | undefined>(undefined);
   const [results, setResults] = useState<VectorSearchResult[]>([]);
+  const [selectedDocument, setSelectedDocument] = useState<FullDocument | null>(null);
+  const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
 
   const searchMutation = useMutation({
     mutationFn: async () => {
@@ -63,6 +77,24 @@ export default function Jurisprudentie() {
       toast({
         title: "Fout bij zoeken",
         description: error.message || "Kon niet zoeken in database",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const fetchDocumentMutation = useMutation({
+    mutationFn: async (ecli: string) => {
+      const response = await apiRequest('GET', `/api/rechtspraak/document/${encodeURIComponent(ecli)}`);
+      return response.json();
+    },
+    onSuccess: (data: FullDocument) => {
+      setSelectedDocument(data);
+      setIsDocumentDialogOpen(true);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout bij ophalen document",
+        description: error.message || "Kon document niet ophalen",
         variant: "destructive",
       });
     }
@@ -284,22 +316,40 @@ export default function Jurisprudentie() {
                         {result.ecli}
                       </p>
                     </div>
-                    {result.source_url && (
+                    <div className="flex gap-2">
                       <Button 
-                        variant="outline" 
+                        variant="default" 
                         size="sm" 
-                        asChild
-                        data-testid={`button-view-${index}`}
+                        onClick={() => fetchDocumentMutation.mutate(result.ecli)}
+                        disabled={fetchDocumentMutation.isPending}
+                        data-testid={`button-full-text-${index}`}
                       >
-                        <a 
-                          href={result.source_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
+                        {fetchDocumentMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <FileText className="h-4 w-4 mr-2" />
+                            Gehele tekst
+                          </>
+                        )}
                       </Button>
-                    )}
+                      {result.source_url && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          asChild
+                          data-testid={`button-view-${index}`}
+                        >
+                          <a 
+                            href={result.source_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 {result.text && (
@@ -337,6 +387,80 @@ export default function Jurisprudentie() {
           </CardContent>
         </Card>
       )}
+
+      {/* Full text dialog */}
+      <Dialog open={isDocumentDialogOpen} onOpenChange={setIsDocumentDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="text-xl">
+              {selectedDocument?.title || selectedDocument?.ecli}
+            </DialogTitle>
+            <DialogDescription>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {selectedDocument?.court && (
+                  <Badge variant="secondary" className="text-xs">
+                    <Building2 className="h-3 w-3 mr-1" />
+                    {selectedDocument.court}
+                  </Badge>
+                )}
+                {selectedDocument?.date && (
+                  <Badge variant="outline" className="text-xs">
+                    <Calendar className="h-3 w-3 mr-1" />
+                    {selectedDocument.date}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground font-mono mt-2">
+                {selectedDocument?.ecli}
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+          
+          <ScrollArea className="h-[60vh] mt-4">
+            <div className="space-y-4 pr-4">
+              {selectedDocument?.summary && (
+                <div>
+                  <h3 className="font-semibold text-sm mb-2">Samenvatting</h3>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {selectedDocument.summary}
+                  </p>
+                </div>
+              )}
+              
+              <div>
+                <h3 className="font-semibold text-sm mb-2">Volledige tekst</h3>
+                <div className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                  {selectedDocument?.fullText}
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+
+          <div className="flex justify-between items-center mt-4 pt-4 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+            >
+              <a 
+                href={selectedDocument?.url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Open op Rechtspraak.nl
+              </a>
+            </Button>
+            <Button 
+              variant="default" 
+              onClick={() => setIsDocumentDialogOpen(false)}
+              data-testid="button-close-dialog"
+            >
+              Sluiten
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
