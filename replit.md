@@ -56,16 +56,19 @@ Preferred communication style: Simple, everyday language.
 - **Template Upload Flow**: Admin uploads templates, system extracts fields, admin configures MindStudio flow and field mappings.
 - **Multi-Format Support**: Parses templates from .txt, .docx, or .pdf files.
 
-### Jurisprudentie Integration (Pinecone Vector Search)
-- **Search Engine**: Pinecone serverless vector database with integrated inference (llama-text-embed-v2).
+### Jurisprudentie Integration (Pinecone Hybrid Search)
+- **Search Engine**: Pinecone serverless vector database with integrated inference.
 - **Index**: "rechtstreeks" index, namespace "ECLI_NL".
 - **Data Source**: Pre-indexed Dutch court decisions (ECLI documents) with AI-generated summaries.
-- **Semantic Search**: Full-text semantic search across combined text field (original inhoudsindicatie + all AI metadata).
+- **Hybrid Search**: Combines semantic (llama-text-embed-v2) + keyword (pinecone-sparse-english-v0) search.
+  - Alpha parameter: 0.6 default (60% semantic, 40% keyword) for balanced relevance.
+  - Semantic search finds conceptually similar cases; keyword search matches exact terms.
 - **AI Metadata Fields**: ai_inhoudsindicatie, ai_feiten, ai_geschil, ai_beslissing, ai_motivering (pre-computed, stored in Pinecone).
 - **Relevance Filtering**: Minimum similarity score threshold of 3% to filter irrelevant results.
 - **Metadata Filtering**: Supports legal_area, court, procedure_type filters.
+- **Fallback**: Automatic fallback to pure semantic search if hybrid search fails.
 - **Implementation**: `server/pineconeService.ts` for vector operations, `server/routes.ts` for search endpoint.
-- **Frontend**: `/jurisprudentie` page with semantic search, metadata filters, and AI summary display.
+- **Frontend**: `/jurisprudentie` page with hybrid search, metadata filters, and AI summary display.
 - **Cost Efficiency**: Pre-computed AI summaries eliminate runtime AI generation costs (~€0.0023 per summary).
 
 ### Authentication & Authorization
