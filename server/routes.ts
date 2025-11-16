@@ -7028,58 +7028,6 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
 
   // Pinecone vector endpoints
   const { upsertVectors, searchVectors, checkIndexExists } = await import('./pineconeService');
-  const { fetchFullDocument, chunkText } = await import('./rechtspraakDocumentService');
-
-  // Index a single rechtspraak document to Pinecone
-  app.post('/api/rechtspraak/index', async (req, res) => {
-    try {
-      const { ecli } = req.body;
-      
-      if (!ecli || typeof ecli !== 'string') {
-        return res.status(400).json({ error: 'ECLI is required' });
-      }
-
-      console.log(`📥 Indexing document: ${ecli}`);
-      
-      const document = await fetchFullDocument(ecli);
-      
-      if (!document.fullText || document.fullText.length < 100) {
-        return res.status(400).json({ error: 'Document has insufficient text content' });
-      }
-
-      const chunks = chunkText(document.fullText, 1000, 200);
-      console.log(`✂️ Split into ${chunks.length} chunks`);
-
-      const records = chunks.map(chunk => ({
-        id: `${ecli}#${chunk.index.toString().padStart(3, '0')}`,
-        text: chunk.text,
-        metadata: {
-          ecli: document.ecli,
-          court: document.court,
-          date: document.date,
-          url: document.url,
-          chunkIndex: chunk.index,
-          totalChunks: chunk.totalChunks
-        }
-      }));
-
-      await upsertVectors(records);
-
-      res.json({
-        success: true,
-        ecli: document.ecli,
-        title: document.title,
-        chunksIndexed: chunks.length,
-        totalCharacters: document.fullText.length
-      });
-
-    } catch (error: any) {
-      console.error('Error indexing document:', error);
-      res.status(500).json({ 
-        error: error.message || 'Failed to index document' 
-      });
-    }
-  });
 
   // Semantic search in Pinecone vector database
   app.post('/api/pinecone/search', async (req, res) => {
@@ -7128,44 +7076,6 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
     }
   });
 
-  // Fetch full document text from Rechtspraak.nl API and generate AI summary
-  app.get('/api/rechtspraak/document/:ecli', async (req, res) => {
-    try {
-      const { ecli } = req.params;
-      
-      if (!ecli) {
-        return res.status(400).json({ error: 'ECLI parameter is required' });
-      }
-
-      console.log(`📄 Fetching and summarizing document: ${ecli}`);
-      
-      const { fetchFullDocument } = await import('./rechtspraakDocumentService');
-      const document = await fetchFullDocument(ecli);
-
-      console.log(`🤖 Generating AI summary for ${ecli}...`);
-      const summaryResult = await aiService.summarizeJurisprudence(document.fullText, ecli);
-      
-      if (summaryResult.error) {
-        console.error(`❌ Summary error: ${summaryResult.error}`);
-      }
-
-      res.json({
-        ecli: document.ecli,
-        title: document.title,
-        court: document.court,
-        date: document.date,
-        originalSummary: document.summary,
-        aiSummary: summaryResult.summary || 'Samenvatting kon niet worden gegenereerd',
-        url: document.url
-      });
-
-    } catch (error: any) {
-      console.error('Error fetching document:', error);
-      res.status(500).json({ 
-        error: error.message || 'Failed to fetch document' 
-      });
-    }
-  });
 
   // Check Pinecone connection
   app.get('/api/rechtspraak/pinecone-status', async (req, res) => {
