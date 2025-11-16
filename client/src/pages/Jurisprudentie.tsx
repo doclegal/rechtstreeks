@@ -50,6 +50,7 @@ export default function Jurisprudentie() {
   const [results, setResults] = useState<VectorSearchResult[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<FullDocument | null>(null);
   const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
+  const [loadingEcli, setLoadingEcli] = useState<string | null>(null);
 
   const searchMutation = useMutation({
     mutationFn: async () => {
@@ -84,14 +85,17 @@ export default function Jurisprudentie() {
 
   const fetchDocumentMutation = useMutation({
     mutationFn: async (ecli: string) => {
+      setLoadingEcli(ecli);
       const response = await apiRequest('GET', `/api/rechtspraak/document/${encodeURIComponent(ecli)}`);
       return response.json();
     },
     onSuccess: (data: FullDocument) => {
       setSelectedDocument(data);
       setIsDocumentDialogOpen(true);
+      setLoadingEcli(null);
     },
     onError: (error: any) => {
+      setLoadingEcli(null);
       toast({
         title: "Fout bij ophalen document",
         description: error.message || "Kon document niet ophalen",
@@ -321,10 +325,10 @@ export default function Jurisprudentie() {
                         variant="default" 
                         size="sm" 
                         onClick={() => fetchDocumentMutation.mutate(result.ecli)}
-                        disabled={fetchDocumentMutation.isPending}
+                        disabled={loadingEcli === result.ecli}
                         data-testid={`button-ai-summary-${index}`}
                       >
-                        {fetchDocumentMutation.isPending ? (
+                        {loadingEcli === result.ecli ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <>
