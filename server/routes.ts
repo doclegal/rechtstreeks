@@ -7027,47 +7027,6 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
     }
   });
 
-  // Rechtspraak search endpoint - metadata filters only
-  app.post('/api/rechtspraak/search', async (req, res) => {
-    try {
-      const searchRequest: RechtspraakSearchRequest = {
-        filters: req.body.filters || {},
-        page: req.body.page || 1,
-        page_size: req.body.page_size || 25
-      };
-
-      const result = await searchRechtspraak(searchRequest);
-      res.json(result);
-    } catch (error: any) {
-      console.error('Rechtspraak search error:', error);
-      
-      if (error.name === 'AbortError' || error.message?.includes('timeout') || error.message?.includes('Timeout')) {
-        return res.status(504).json({ 
-          error: 'Request timeout: Rechtspraak API did not respond in time',
-          upstream_status: 504
-        });
-      }
-      
-      if (error.message?.includes('Upstream API returned')) {
-        return res.status(502).json({ 
-          error: error.message,
-          upstream_status: 502
-        });
-      }
-      
-      if (error.message?.includes('fetch') || error.message?.includes('network') || error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-        return res.status(502).json({ 
-          error: 'Failed to connect to Rechtspraak API',
-          upstream_status: 502
-        });
-      }
-      
-      res.status(500).json({ 
-        error: error.message || 'Internal server error while searching rechtspraak' 
-      });
-    }
-  });
-
   // Pinecone vector endpoints
   const { upsertVectors, searchVectors, checkIndexExists } = await import('./pineconeService');
   const { fetchFullDocument, chunkText } = await import('./rechtspraakDocumentService');
@@ -7123,71 +7082,49 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
     }
   });
 
-  // Semantic search in indexed rechtspraak documents
-  app.post('/api/rechtspraak/vector-search', async (req, res) => {
+  // Semantic search in Pinecone vector database
+  app.post('/api/pinecone/search', async (req, res) => {
     try {
-      const { query, rechtsgebied, topK } = req.body;
+      const { query, filters, topK } = req.body;
       
       if (!query || typeof query !== 'string') {
         return res.status(400).json({ error: 'Search query is required' });
       }
 
-      const filter: any = {};
-      if (rechtsgebied) {
-        filter.rechtsgebied = { $eq: rechtsgebied };
+      console.log(`🔍 Pinecone search: "${query.substring(0, 50)}..."`);
+      if (filters) {
+        console.log(`📋 Filters:`, JSON.stringify(filters, null, 2));
       }
-
-      console.log(`🔍 Vector search: "${query.substring(0, 50)}..."`);
       
       const results = await searchVectors({
         text: query,
-        filter: Object.keys(filter).length > 0 ? filter : undefined,
-        topK: topK || 10
+        filter: filters,
+        topK: topK || 20
       });
 
-      const groupedResults = new Map<string, any>();
-      
-      results.forEach(result => {
-        const ecli = result.metadata.ecli;
-        
-        if (!groupedResults.has(ecli)) {
-          groupedResults.set(ecli, {
-            ecli,
-            title: result.metadata.court || ecli,
-            court: result.metadata.court || 'Onbekend',
-            date: result.metadata.date || '',
-            url: result.metadata.url || `https://uitspraken.rechtspraak.nl/details?id=${ecli}`,
-            maxScore: result.score,
-            relevantChunks: []
-          });
-        }
-
-        const doc = groupedResults.get(ecli)!;
-        doc.relevantChunks.push({
-          text: result.text || '',
-          score: result.score,
-          chunkIndex: result.metadata.chunkIndex || 0
-        });
-        
-        if (result.score > doc.maxScore) {
-          doc.maxScore = result.score;
-        }
-      });
-
-      const uniqueResults = Array.from(groupedResults.values())
-        .sort((a, b) => b.maxScore - a.maxScore)
-        .slice(0, topK || 10);
+      const formattedResults = results.map(result => ({
+        id: result.id,
+        score: result.score,
+        ecli: result.metadata.ecli,
+        title: result.metadata.title,
+        court: result.metadata.court,
+        decision_date: result.metadata.decision_date,
+        legal_area: result.metadata.legal_area,
+        procedure_type: result.metadata.procedure_type,
+        source_url: result.metadata.source_url,
+        text: result.text
+      }));
 
       res.json({
         query,
-        results: uniqueResults,
-        totalResults: uniqueResults.length
+        results: formattedResults,
+        totalResults: formattedResults.length
       });
 
     } catch (error: any) {
-      console.error('Error in vector search:', error);
+      console.error('Error in Pinecone search:', error);
       res.status(500).json({ 
-        error: error.message || 'Failed to search vectors' 
+        error: error.message || 'Failed to search Pinecone' 
       });
     }
   });
