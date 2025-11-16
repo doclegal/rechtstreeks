@@ -425,21 +425,24 @@ export default function Jurisprudentie() {
               <div className="bg-primary/5 p-4 rounded-lg border border-primary/10">
                 <div className="flex items-center gap-2 mb-3">
                   <Sparkles className="h-4 w-4 text-primary" />
-                  <h3 className="font-semibold text-sm">AI Samenvatting</h3>
+                  <h3 className="font-semibold text-sm">Samenvatting</h3>
                 </div>
-                <div className="prose prose-sm max-w-none text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                  {selectedDocument?.aiSummary}
+                <div className="prose prose-sm max-w-none text-sm text-muted-foreground space-y-4">
+                  {selectedDocument?.originalSummary && 
+                   selectedDocument.originalSummary.trim() !== '' && 
+                   selectedDocument.originalSummary.trim() !== '-' && (
+                    <div className="pb-3 border-b border-primary/20">
+                      <p className="text-xs font-semibold text-primary mb-2">Inhoudsindicatie (Rechtspraak.nl)</p>
+                      <p className="whitespace-pre-wrap leading-relaxed">
+                        {selectedDocument.originalSummary}
+                      </p>
+                    </div>
+                  )}
+                  <div className="whitespace-pre-wrap leading-relaxed">
+                    {selectedDocument?.aiSummary}
+                  </div>
                 </div>
               </div>
-              
-              {selectedDocument?.originalSummary && (
-                <div>
-                  <h3 className="font-semibold text-sm mb-2">Originele samenvatting (Rechtspraak.nl)</h3>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {selectedDocument.originalSummary}
-                  </p>
-                </div>
-              )}
             </div>
           </ScrollArea>
 
