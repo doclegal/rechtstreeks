@@ -13,7 +13,6 @@ import { callInfoQnAFlow, saveQnAPairs, getQnAItems, appendQnAPairs } from "./se
 import { validateSummonsV1 } from "@shared/summonsValidation";
 import { parseTemplateText, extractTextFromFile, validateParsedTemplate } from "./services/templateParser";
 import { sendInvitationEmail } from "./email";
-import { searchRechtspraak, type RechtspraakSearchRequest } from "./rechtspraakService";
 import multer from "multer";
 import { z } from "zod";
 
