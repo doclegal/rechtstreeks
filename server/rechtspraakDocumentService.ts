@@ -31,6 +31,10 @@ function extractTextContent(obj: any): string {
 function cleanText(text: string): string {
   return text
     .replace(/<[^>]+>/g, ' ')
+    // Remove XML namespace references and attributes
+    .replace(/ECLI:[A-Z:0-9]+:[A-Z]+\s+/g, '')
+    .replace(/\b(nl|preserve|http:\/\/[^\s]+)\s*/g, '')
+    .replace(/xmlns[^\s]*/g, '')
     .replace(/\s+/g, ' ')
     .replace(/\n+/g, '\n')
     .trim();

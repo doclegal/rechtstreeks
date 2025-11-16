@@ -431,8 +431,16 @@ export default function Jurisprudentie() {
                   {selectedDocument?.originalSummary && 
                    selectedDocument.originalSummary.trim() !== '' && 
                    selectedDocument.originalSummary.trim() !== '-' && (
-                    <div className="pb-3 border-b border-primary/20">
-                      <p className="text-xs font-semibold text-primary mb-2">Inhoudsindicatie (Rechtspraak.nl)</p>
+                    <div className="pb-4 mb-4 border-b border-primary/20">
+                      <a 
+                        href={selectedDocument.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-red-600 dark:text-red-400 font-mono text-xs hover:underline mb-2 block"
+                      >
+                        {selectedDocument.ecli}
+                      </a>
+                      <h4 className="font-semibold text-base mb-2 text-foreground">Inhoudsindicatie</h4>
                       <p className="whitespace-pre-wrap leading-relaxed">
                         {selectedDocument.originalSummary}
                       </p>
