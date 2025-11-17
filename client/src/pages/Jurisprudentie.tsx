@@ -89,6 +89,13 @@ export default function Jurisprudentie() {
 
   const searchMutation = useMutation({
     mutationFn: async () => {
+      // Debug logging
+      console.log('🔍 Search mutation started');
+      console.log('📝 Search query:', searchQuery);
+      console.log('🔑 Required keywords state:', `"${requiredKeywords}"`);
+      console.log('🔑 Required keywords trimmed:', `"${requiredKeywords.trim()}"`);
+      console.log('🔑 Will apply filter:', requiredKeywords.trim() !== '');
+      
       const filters: Record<string, any> = {};
       
       if (legalArea) filters.legal_area = { $eq: legalArea };
@@ -106,9 +113,13 @@ export default function Jurisprudentie() {
     onSuccess: (data: any) => {
       let filteredResults = data.results || [];
       
+      console.log('📊 Backend returned:', data.results?.length || 0, 'results');
+      console.log('🔑 Applying required keywords filter with:', `"${requiredKeywords}"`);
+      
       // Apply required keywords filter (case-insensitive)
       if (requiredKeywords.trim()) {
         const keywords = requiredKeywords.toLowerCase().split(',').map(k => k.trim()).filter(k => k);
+        console.log('🔑 Parsed keywords:', keywords);
         
         filteredResults = filteredResults.filter((result: VectorSearchResult) => {
           const searchText = [
@@ -122,8 +133,15 @@ export default function Jurisprudentie() {
           ].join(' ').toLowerCase();
           
           // All keywords must be present
-          return keywords.every(keyword => searchText.includes(keyword));
+          const matches = keywords.every(keyword => searchText.includes(keyword));
+          if (!matches) {
+            console.log('❌ Filtered out result (missing keywords):', result.ecli);
+          }
+          return matches;
         });
+        console.log(`✅ After keyword filter: ${filteredResults.length}/${data.results?.length || 0} results`);
+      } else {
+        console.log('ℹ️ No keyword filter applied (requiredKeywords is empty)');
       }
       
       setResults(filteredResults);
