@@ -67,8 +67,13 @@ Preferred communication style: Simple, everyday language.
 - **Relevance Filtering**: Minimum similarity score threshold of 3% to filter irrelevant results.
 - **Metadata Filtering**: Supports legal_area, court, procedure_type filters.
 - **Fallback**: Automatic fallback to pure semantic search if hybrid search fails.
-- **Implementation**: `server/pineconeService.ts` for vector operations, `server/routes.ts` for search endpoint.
-- **Frontend**: `/jurisprudentie` page with hybrid search, metadata filters, and AI summary display.
+- **Automatic Query Generation**: AI-powered (OpenAI GPT-5) feature that analyzes complete legal advice to generate optimized search queries.
+  - Analyzes facts, legal issues, claims, defenses, and desired outcomes from user's case.
+  - Generates search queries specifically designed to find jurisprudence that strengthens user's position.
+  - Optimized for hybrid search with mix of semantic context and explicit keywords.
+  - Endpoint: `/api/pinecone/generate-query` (requires caseId with legal advice).
+- **Implementation**: `server/pineconeService.ts` for vector operations, `server/routes.ts` for search and query generation endpoints.
+- **Frontend**: `/jurisprudentie` page with manual search, automatic AI query generation, metadata filters, and AI summary display.
 - **Cost Efficiency**: Pre-computed AI summaries eliminate runtime AI generation costs (~€0.0023 per summary).
 
 ### Authentication & Authorization

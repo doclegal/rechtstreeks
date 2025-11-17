@@ -2,12 +2,13 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertCaseSchema, insertDocumentSchema, insertInvitationSchema, type CaseStatus } from "@shared/schema";
+import { insertCaseSchema, insertDocumentSchema, insertInvitationSchema, type CaseStatus, cases, analyses } from "@shared/schema";
 import { aiService, AIService } from "./services/aiService";
 import { fileService } from "./services/fileService";
 import { pdfService } from "./services/pdfService";
 import { mockIntegrations } from "./services/mockIntegrations";
-import { handleDatabaseError } from "./db";
+import { db, handleDatabaseError } from "./db";
+import { eq, desc } from "drizzle-orm";
 import { getConversationHistory, saveChatMessage, callChatFlow } from "./services/chatService";
 import { callInfoQnAFlow, saveQnAPairs, getQnAItems, appendQnAPairs } from "./services/qnaService";
 import { validateSummonsV1 } from "@shared/summonsValidation";
@@ -7028,6 +7029,114 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
 
   // Pinecone vector endpoints
   const { upsertVectors, searchVectors, checkIndexExists } = await import('./pineconeService');
+
+  // Generate AI-powered jurisprudence search query from legal advice
+  app.post('/api/pinecone/generate-query', async (req, res) => {
+    try {
+      const { caseId } = req.body;
+      
+      if (!caseId) {
+        return res.status(400).json({ error: 'Case ID is required' });
+      }
+
+      // Fetch case data
+      const [caseData] = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
+      if (!caseData) {
+        return res.status(404).json({ error: 'Case not found' });
+      }
+
+      // Fetch latest analysis with legal advice
+      const analysisRecords = await db
+        .select()
+        .from(analyses)
+        .where(eq(analyses.caseId, caseId))
+        .orderBy(desc(analyses.createdAt))
+        .limit(1);
+
+      const latestAnalysis = analysisRecords[0];
+      if (!latestAnalysis || !latestAnalysis.legalAdviceJson) {
+        return res.status(404).json({ error: 'No legal advice found for this case' });
+      }
+
+      const legalAdvice: any = latestAnalysis.legalAdviceJson;
+      
+      // Build comprehensive context for AI
+      const adviceText = [
+        legalAdvice.het_geschil || '',
+        legalAdvice.de_feiten || '',
+        legalAdvice.juridische_duiding || '',
+        legalAdvice.vervolgstappen || '',
+        legalAdvice.samenvatting_advies || ''
+      ].filter(Boolean).join('\n\n');
+
+      if (!adviceText.trim()) {
+        return res.status(400).json({ error: 'Legal advice is empty' });
+      }
+
+      // Generate search query using OpenAI
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      console.log('🤖 Generating jurisprudence search query using AI...');
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+        messages: [
+          {
+            role: "system",
+            content: `You are a Dutch legal research expert specialized in finding relevant jurisprudence (case law) to support legal arguments.
+
+Your task: Analyze the provided legal advice and generate ONE optimized search query for a hybrid vector database (Pinecone) that combines semantic search and keyword matching.
+
+The search query must:
+1. Retrieve jurisprudence that STRENGTHENS the user's legal position
+2. Support arguments that INCREASE the chance of winning the case
+3. Include key legal concepts, parties, obligations, violations, and relevant articles
+4. Mix semantic context (for conceptual similarity) with explicit keywords (for exact matches)
+5. Be concise but comprehensive (max 100 words)
+6. Focus on the legal issues, not just facts
+7. Prioritize jurisprudence favorable to the user's position
+
+Return ONLY the search query text, nothing else. No explanations, no formatting, just the optimized query.`
+          },
+          {
+            role: "user",
+            content: `Analyze this legal advice and generate the most effective jurisprudence search query:
+
+CASE TITLE: ${caseData.title}
+USER ROLE: ${caseData.userRole === 'EISER' ? 'Claimant (Eiser)' : 'Defendant (Gedaagde)'}
+CLAIM AMOUNT: €${caseData.claimAmount}
+
+LEGAL ADVICE:
+${adviceText}
+
+Generate ONE optimized search query that will find jurisprudence that strengthens this legal position.`
+          }
+        ],
+        max_completion_tokens: 200
+      });
+
+      const generatedQuery = response.choices[0].message.content?.trim() || '';
+
+      if (!generatedQuery) {
+        throw new Error('AI failed to generate search query');
+      }
+
+      console.log(`✅ Generated search query: "${generatedQuery.substring(0, 100)}..."`);
+
+      res.json({
+        query: generatedQuery,
+        caseTitle: caseData.title,
+        userRole: caseData.userRole
+      });
+
+    } catch (error: any) {
+      console.error('Error generating search query:', error);
+      res.status(500).json({ 
+        error: error.message || 'Failed to generate search query' 
+      });
+    }
+  });
 
   // Semantic search in Pinecone vector database
   app.post('/api/pinecone/search', async (req, res) => {
