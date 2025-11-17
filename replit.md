@@ -76,13 +76,15 @@ Preferred communication style: Simple, everyday language.
   - **inputType distinction**: Queries use `inputType: 'query'`, index uses `inputType: 'passage'` for optimal embedding compatibility.
   - **Performance**: Achieves 80-87% similarity scores for relevant Dutch legal queries.
 - **AI Metadata Fields**: ai_inhoudsindicatie, ai_feiten, ai_geschil, ai_beslissing, ai_motivering (pre-computed, stored in Pinecone).
-- **Smart Iterative Search Strategy**: Intelligent progressive search that automatically optimizes parameters to find best results.
-  - **Phase 1**: Starts with strict filters (30% threshold + all required keywords), progressively lowers threshold (30% → 25% → 20% → 15% → 10%) until ≥5 results found.
-  - **Phase 2**: If still <5 results, removes required keywords one-by-one while maintaining 10% threshold until ≥5 results.
-  - **Fallback**: Guarantees results with 10% threshold, no keywords if needed.
-  - **Result Limiting**: Always shows top 10 results maximum.
-  - **Transparency**: Full iteration log displayed to user showing each search attempt and its outcome.
-  - **UI Behavior**: Disables manual threshold slider when AI-generated query is active (smart search manages it).
+- **Court Level Field**: Native `court_level` field in Pinecone metadata with standardized values: "Rechtbank", "Gerechtshof", "Hoge Raad".
+- **Two-Pass Retrieval Strategy**: Intelligent single-query search with adjusted scoring and optional LLM reranking.
+  - **Phase 1**: Single Pinecone query (topK=200, threshold=12%) to maximize recall.
+  - **Adjusted Scoring**: Combines Pinecone similarity + court weighting + keyword bonuses (bounded [0,1]).
+    - Court weights: HR=+0.10, Hof=+0.05, Rechtbank=0, Unknown=-0.05 (uses native `court_level` field).
+    - Keyword bonus: +0.015 per match (max +0.045 for 3 keywords), soft matching without hard requirements.
+  - **Phase 2 (Optional)**: GPT-4o-mini reranker for top 20 candidates based on case context, with 15min cache TTL.
+  - **Final Output**: Top 40 candidates (20 reranked + 20 remaining by adjusted score), displayed limited to 10 in UI.
+  - **Fallback**: Reranker failure gracefully reverts to adjusted score ordering.
 - **Relevance Filtering**: Configurable score threshold (range 10-30%) for manual searches.
 - **Result Limiting**: Configurable topK parameter (default 20, range 5-50) to limit Pinecone query results.
 - **Display Limiting**: Configurable display filter (All/Top 3/Top 5/Top 10) to show only most relevant results.

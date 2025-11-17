@@ -13,6 +13,7 @@ export interface VectorRecord {
   metadata: {
     ecli: string;
     court?: string;
+    court_level?: string;
     decision_date?: string;
     legal_area?: string;
     procedure_type?: string;
