@@ -9,6 +9,7 @@ export interface ScoredResult extends SearchResult {
     keywordBonus: number;
   };
   courtType: CourtType;
+  rerankScore?: number; // Optional Pinecone rerank score (0-1)
 }
 
 // Map Pinecone court_level or court to CourtType (with comprehensive matching)

@@ -22,7 +22,7 @@ export const SEARCH_CONFIG = {
   
   // Reranking settings
   RERANK_ENABLED: true,
-  RERANK_MODEL: 'gpt-4o-mini',
+  RERANK_MODEL: 'bge-reranker-v2-m3', // Pinecone multilingual reranker
   RERANK_MAX_EXCERPT_TOKENS: 700,
   RERANK_CACHE_TTL_MS: 15 * 60 * 1000, // 15 minutes
   
