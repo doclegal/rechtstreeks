@@ -159,22 +159,29 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
       return [];
     }
     
-    // Return ALL results without score filtering (Pinecone already sorts by relevance)
-    const results = response.matches.map((match: any) => ({
+    // Pinecone sorts results by relevance (even with negative dot product scores)
+    // Higher (less negative) scores = more relevant
+    const allResults = response.matches.map((match: any) => ({
       id: match.id,
       score: match.score || 0,
       metadata: match.metadata as VectorRecord['metadata'],
       text: match.metadata?.text
     }));
     
-    if (results.length > 0) {
-      const scores = results.map(r => r.score);
-      console.log(`✅ Semantic search: ${results.length} results returned (scores range: ${Math.min(...scores).toFixed(4)} to ${Math.max(...scores).toFixed(4)})`);
+    // Filter based on score threshold for dot product similarity
+    // Scores are negative, so we want scores ABOVE a certain threshold
+    const SCORE_THRESHOLD = -0.05; // Only return results with score > -0.05
+    
+    const filteredResults = allResults.filter(r => r.score > SCORE_THRESHOLD);
+    
+    if (allResults.length > 0) {
+      const allScores = allResults.map(r => r.score);
+      console.log(`✅ Semantic search: ${filteredResults.length}/${allResults.length} results above threshold ${SCORE_THRESHOLD} (score range: ${Math.min(...allScores).toFixed(4)} to ${Math.max(...allScores).toFixed(4)})`);
     } else {
       console.log(`✅ Semantic search: 0 results returned`);
     }
     
-    return results;
+    return filteredResults;
   } catch (error) {
     console.error("❌ Error in hybrid search:", error);
     throw error;
