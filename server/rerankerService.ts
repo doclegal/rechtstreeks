@@ -25,6 +25,9 @@ interface CacheEntry {
 
 const rerankCache = new Map<string, CacheEntry>();
 
+// Cache version - increment to invalidate old cache entries after model/logic changes
+const CACHE_VERSION = 'v2-bge-reranker-m3-metadata-merge';
+
 // Generate cache key based on query, caseId, and filters
 function generateCacheKey(
   caseId: string,
@@ -33,7 +36,7 @@ function generateCacheKey(
 ): string {
   const hash = crypto
     .createHash('md5')
-    .update(`${caseId}-${query}-${JSON.stringify(filters || {})}`)
+    .update(`${CACHE_VERSION}-${caseId}-${query}-${JSON.stringify(filters || {})}`)
     .digest('hex');
   return hash;
 }
@@ -148,12 +151,41 @@ export async function rerankResults(options: RerankOptions): Promise<ScoredResul
   try {
     const pc = getPineconeClient();
     
-    // Format documents as Pinecone Document objects with metadata embedded in text
-    // Note: metadata is already included in the text via formatDocumentWithMetadata()
-    const documents = candidatesToRerank.map(candidate => ({
-      id: candidate.id,
-      text: formatDocumentWithMetadata(candidate)
-    }));
+    // Format documents as Pinecone Document objects with metadata embedded in text + structured metadata
+    const documents = candidatesToRerank.map(candidate => {
+      // Build structured metadata as Record<string, string> for Pinecone diagnostics
+      const metadata: Record<string, string> = {};
+      
+      // Add court level
+      const courtLevel = candidate.metadata.court_level || candidate.metadata.court;
+      if (courtLevel) {
+        metadata.court_level = courtLevel;
+      }
+      
+      // Add legal area
+      if (candidate.metadata.legal_area) {
+        metadata.legal_area = candidate.metadata.legal_area;
+      }
+      
+      // Add decision year
+      if (candidate.metadata.decision_date) {
+        const year = new Date(candidate.metadata.decision_date).getFullYear();
+        if (!isNaN(year)) {
+          metadata.decision_year = String(year);
+        }
+      }
+      
+      // Add ECLI
+      if (candidate.metadata.ecli) {
+        metadata.ecli = candidate.metadata.ecli;
+      }
+      
+      return {
+        id: candidate.id,
+        text: formatDocumentWithMetadata(candidate),
+        ...(Object.keys(metadata).length > 0 && { metadata }) // Only include if not empty
+      };
+    });
     
     console.log(`📄 Formatted ${documents.length} documents with metadata (court_level, legal_area, decision_year)`);
     
@@ -161,10 +193,10 @@ export async function rerankResults(options: RerankOptions): Promise<ScoredResul
     const rerankResponse = await pc.inference.rerank(
       SEARCH_CONFIG.RERANK_MODEL, // model
       query, // query
-      documents, // documents as objects with id + text
+      documents, // documents as objects with id + text + metadata
       {
         topN: candidatesToRerank.length, // Return all reranked
-        returnDocuments: false, // We already have the full documents
+        returnDocuments: true, // Return documents with metadata for diagnostics
         parameters: {
           truncate: 'END' // Auto-truncate at token limit vs error
         }
@@ -178,6 +210,15 @@ export async function rerankResults(options: RerankOptions): Promise<ScoredResul
     console.log(`✅ Pinecone reranked ${rerankResponse.data.length} results`);
     console.log(`📊 Top 5 rerank scores: ${rerankResponse.data.slice(0, 5).map(d => d.score.toFixed(4)).join(', ')}`);
     
+    // Log metadata from first returned document for verification
+    if (rerankResponse.data.length > 0 && rerankResponse.data[0].document) {
+      const firstDoc = rerankResponse.data[0].document;
+      console.log(`📋 Pinecone returned metadata sample:`, {
+        id: firstDoc.id,
+        metadata: firstDoc.metadata
+      });
+    }
+    
     // Reorder candidates based on Pinecone rerank scores
     // IMPORTANT: Clone candidates to avoid mutating cached objects
     const reranked: ScoredResult[] = [];
@@ -187,11 +228,31 @@ export async function rerankResults(options: RerankOptions): Promise<ScoredResul
       if (originalIndex >= 0 && originalIndex < candidatesToRerank.length) {
         // Deep clone the result (including nested metadata) and add rerank score
         const original = candidatesToRerank[originalIndex];
+        
+        // Merge Pinecone's structured metadata (if returned) with original metadata
+        // This ensures UI diagnostics have access to the reranker-validated metadata
+        // IMPORTANT: Use nullish coalescing to prevent overwriting with undefined
+        const mergedMetadata = {
+          ...original.metadata, // Original Pinecone query metadata
+          // Overwrite with reranker's structured metadata if present (fallback to original)
+          ...(item.document?.metadata && {
+            court_level: item.document.metadata.court_level ?? original.metadata.court_level,
+            legal_area: item.document.metadata.legal_area ?? original.metadata.legal_area,
+            decision_year: item.document.metadata.decision_year ?? original.metadata.decision_date, // String or original date
+            ecli: item.document.metadata.ecli ?? original.metadata.ecli
+          })
+        };
+        
         const result = {
           ...original,
-          metadata: { ...original.metadata }, // Deep clone metadata
+          metadata: mergedMetadata, // Merged metadata for UI diagnostics
           scoreBreakdown: { ...original.scoreBreakdown }, // Deep clone scoreBreakdown
-          rerankScore: item.score
+          rerankScore: item.score,
+          // Include Pinecone's returned document for debugging
+          pineconeDocument: item.document ? {
+            id: item.document.id,
+            metadata: item.document.metadata
+          } : undefined
         };
         reranked.push(result);
       }

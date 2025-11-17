@@ -10,6 +10,10 @@ export interface ScoredResult extends SearchResult {
   };
   courtType: CourtType;
   rerankScore?: number; // Optional Pinecone rerank score (0-1)
+  pineconeDocument?: { // Returned document from Pinecone reranker (for debugging)
+    id: string;
+    metadata?: Record<string, string>;
+  };
 }
 
 // Map Pinecone court_level or court to CourtType (with comprehensive matching)
