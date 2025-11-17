@@ -56,21 +56,20 @@ Preferred communication style: Simple, everyday language.
 - **Template Upload Flow**: Admin uploads templates, system extracts fields, admin configures MindStudio flow and field mappings.
 - **Multi-Format Support**: Parses templates from .txt, .docx, or .pdf files.
 
-### Jurisprudentie Integration (Pinecone Hybrid Search)
+### Jurisprudentie Integration (Pinecone Semantic Search)
 - **Search Engine**: Pinecone serverless vector database with integrated inference.
 - **Index**: "rechtstreeks" index, namespace "ECLI_NL".
 - **Data Source**: Pre-indexed Dutch court decisions (ECLI documents) with AI-generated summaries.
-- **Hybrid Search**: Combines semantic (llama-text-embed-v2) + keyword (pinecone-sparse-english-v0) search.
-  - Alpha parameter: 0.6 default (60% semantic, 40% keyword) for balanced relevance.
-  - Semantic search finds conceptually similar cases; keyword search matches exact terms.
+- **Semantic Search**: Pure semantic search using llama-text-embed-v2 embeddings.
+  - Dense vector embeddings (1024 dimensions) for conceptual similarity matching.
+  - Note: Sparse keyword search (pinecone-sparse-english-v0) disabled - optimized for English, not Dutch.
 - **AI Metadata Fields**: ai_inhoudsindicatie, ai_feiten, ai_geschil, ai_beslissing, ai_motivering (pre-computed, stored in Pinecone).
-- **Relevance Filtering**: Minimum similarity score threshold of 3% to filter irrelevant results.
+- **Relevance Filtering**: Minimum similarity score threshold of 1% to filter irrelevant results.
 - **Metadata Filtering**: Supports legal_area, court, procedure_type filters.
-- **Fallback**: Automatic fallback to pure semantic search if hybrid search fails.
-- **Automatic Query Generation**: AI-powered (OpenAI GPT-5) feature that analyzes complete legal advice to generate optimized search queries.
+- **Automatic Query Generation**: AI-powered (OpenAI GPT-4o-mini) feature that analyzes complete legal advice to generate optimized search queries.
   - Analyzes facts, legal issues, claims, defenses, and desired outcomes from user's case.
   - Generates search queries specifically designed to find jurisprudence that strengthens user's position.
-  - Optimized for hybrid search with mix of semantic context and explicit keywords.
+  - Optimized for semantic search with focus on legal concepts and key terms.
   - Endpoint: `/api/pinecone/generate-query` (requires caseId with legal advice).
 - **Implementation**: `server/pineconeService.ts` for vector operations, `server/routes.ts` for search and query generation endpoints.
 - **Frontend**: `/jurisprudentie` page with manual search, automatic AI query generation, metadata filters, and AI summary display.

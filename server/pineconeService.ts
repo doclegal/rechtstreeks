@@ -75,14 +75,14 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
     const pc = getPineconeClient();
     const namespace = pc.index(INDEX_NAME).namespace(NAMESPACE);
     
-    // Alpha parameter: 0=keyword, 1=semantic, default=0.6 (favor semantic slightly)
-    const alpha = query.alpha !== undefined ? query.alpha : 0.6;
+    // NOTE: Sparse embeddings (keyword matching) don't work well for Dutch text
+    // because pinecone-sparse-english-v0 is optimized for English
+    // We'll use pure semantic search instead
     
-    console.log(`🔎 Hybrid search with alpha=${alpha} (${alpha}=semantic, ${1-alpha}=keyword)`);
+    console.log(`🔎 Using pure semantic search (sparse encoder doesn't support Dutch)`);
     
-    // Generate both dense (semantic) and sparse (keyword) embeddings
+    // Generate dense embedding for semantic search
     let denseEmbedding: any;
-    let sparseEmbedding: any;
     
     try {
       // Dense embedding for semantic search
@@ -94,19 +94,7 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
       const denseData: any = denseResponse.data[0];
       denseEmbedding = denseData.values;
       
-      // Sparse embedding for keyword search
-      const sparseResponse = await pc.inference.embed(
-        "pinecone-sparse-english-v0",
-        [query.text],
-        { inputType: "query", truncate: "END" }
-      );
-      const sparseData: any = sparseResponse.data[0];
-      sparseEmbedding = {
-        indices: sparseData.indices || [],
-        values: sparseData.values || []
-      };
-      
-      console.log(`✅ Generated dense embedding (${denseEmbedding.length} dims) and sparse embedding (${sparseEmbedding.indices.length} terms)`);
+      console.log(`✅ Generated dense embedding (${denseEmbedding.length} dims)`);
     } catch (embedError: any) {
       console.warn(`⚠️ Hybrid search failed, falling back to simple semantic search:`, embedError.message);
       
@@ -144,34 +132,20 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
       return filteredResults;
     }
     
-    // Apply alpha weighting
-    const weightedDense = denseEmbedding.map((v: number) => v * alpha);
-    const weightedSparse = {
-      indices: sparseEmbedding.indices,
-      values: sparseEmbedding.values.map((v: number) => v * (1 - alpha))
-    };
-    
-    // Query with hybrid vectors
+    // Query with dense vector only (no sparse for Dutch)
     const index = pc.Index(INDEX_NAME);
     const queryParams: any = {
       topK: query.topK || 10,
-      vector: weightedDense,
+      vector: denseEmbedding,
       includeMetadata: true,
       includeValues: false
     };
-    
-    // Only include sparse vector if it has values
-    if (weightedSparse.indices.length > 0 && weightedSparse.values.length > 0) {
-      queryParams.sparseVector = weightedSparse;
-      console.log(`🔎 Querying with hybrid vectors (dense: ${weightedDense.length} dims, sparse: ${weightedSparse.indices.length} terms)`);
-    } else {
-      console.log(`🔎 Querying with dense-only vector (sparse embedding was empty)`);
-    }
     
     if (query.filter) {
       queryParams.filter = query.filter;
     }
     
+    console.log(`🔎 Querying Pinecone with semantic search (${denseEmbedding.length} dims)`);
     const response = await index.namespace(NAMESPACE).query(queryParams);
     
     if (!response.matches || response.matches.length === 0) {
@@ -179,7 +153,7 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
       return [];
     }
     
-    const MINIMUM_SCORE = 0.03;
+    const MINIMUM_SCORE = 0.01; // Lower threshold for better recall with pure semantic search
     
     const filteredResults = response.matches
       .filter((match: any) => match.score >= MINIMUM_SCORE)
@@ -190,7 +164,7 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
         text: match.metadata?.text
       }));
     
-    console.log(`✅ Hybrid search: ${filteredResults.length} results above ${MINIMUM_SCORE} threshold`);
+    console.log(`✅ Semantic search: ${filteredResults.length} results above ${MINIMUM_SCORE} threshold`);
     return filteredResults;
   } catch (error) {
     console.error("❌ Error in hybrid search:", error);
