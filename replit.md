@@ -65,13 +65,19 @@ Preferred communication style: Simple, everyday language.
   - **inputType distinction**: Queries use `inputType: 'query'`, index uses `inputType: 'passage'` for optimal embedding compatibility.
   - **Performance**: Achieves 80-87% similarity scores for relevant Dutch legal queries.
 - **AI Metadata Fields**: ai_inhoudsindicatie, ai_feiten, ai_geschil, ai_beslissing, ai_motivering (pre-computed, stored in Pinecone).
-- **Relevance Filtering**: Configurable score threshold (default 10%, range 5-30%) to filter irrelevant results.
+- **Smart Iterative Search Strategy**: Intelligent progressive search that automatically optimizes parameters to find best results.
+  - **Phase 1**: Starts with strict filters (30% threshold + all required keywords), progressively lowers threshold (30% → 25% → 20% → 15% → 10%) until ≥5 results found.
+  - **Phase 2**: If still <5 results, removes required keywords one-by-one while maintaining 10% threshold until ≥5 results.
+  - **Fallback**: Guarantees results with 10% threshold, no keywords if needed.
+  - **Result Limiting**: Always shows top 10 results maximum.
+  - **Transparency**: Full iteration log displayed to user showing each search attempt and its outcome.
+  - **UI Behavior**: Disables manual threshold slider when AI-generated query is active (smart search manages it).
+- **Relevance Filtering**: Configurable score threshold (range 10-30%) for manual searches.
 - **Result Limiting**: Configurable topK parameter (default 20, range 5-50) to limit Pinecone query results.
 - **Display Limiting**: Configurable display filter (All/Top 3/Top 5/Top 10) to show only most relevant results.
 - **Required Keywords**: Exact text match filter (case-insensitive) to ensure specific terms appear in results. Searches across all text fields including AI summaries. Multiple keywords can be specified (comma-separated) - all must be present.
 - **Metadata Filtering**: Supports legal_area, court, procedure_type filters.
 - **Advanced Settings UI**: Collapsible panel with sliders and buttons for real-time threshold and result limiting.
-- **Score Display**: Each result shows its relevance score as a percentage badge for transparency.
 - **Automatic Query Generation**: AI-powered (OpenAI GPT-4o-mini) feature that analyzes complete legal advice to generate optimized search queries AND required keywords.
   - Analyzes facts, legal issues, claims, defenses, and desired outcomes from user's case.
   - Generates search queries specifically designed to find jurisprudence that strengthens user's position.
@@ -80,9 +86,10 @@ Preferred communication style: Simple, everyday language.
   - Example keywords: "huurovereenkomst" for rental disputes, "merkinbreuk" for trademark infringement.
   - Avoids overly generic keywords that would exclude too many relevant cases.
   - Optimized for semantic search with focus on legal concepts and key terms.
+  - Automatically sets relevance threshold to 10% and triggers smart iterative search.
   - Endpoint: `/api/pinecone/generate-query` (requires caseId with legal advice, returns query + requiredKeywords array).
 - **Implementation**: `server/pineconeService.ts` for vector operations, `server/routes.ts` for search and query generation endpoints.
-- **Frontend**: `/jurisprudentie` page with manual search, automatic AI query generation, metadata filters, and AI summary display.
+- **Frontend**: `/jurisprudentie` page with manual search, automatic AI query generation, smart iterative search, metadata filters, and AI summary display with iteration log.
 - **Cost Efficiency**: Pre-computed AI summaries eliminate runtime AI generation costs (~€0.0023 per summary).
 
 ### Authentication & Authorization
