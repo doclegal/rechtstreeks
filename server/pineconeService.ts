@@ -156,16 +156,22 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
     const queryParams: any = {
       topK: query.topK || 10,
       vector: weightedDense,
-      sparseVector: weightedSparse,
       includeMetadata: true,
       includeValues: false
     };
+    
+    // Only include sparse vector if it has values
+    if (weightedSparse.indices.length > 0 && weightedSparse.values.length > 0) {
+      queryParams.sparseVector = weightedSparse;
+      console.log(`🔎 Querying with hybrid vectors (dense: ${weightedDense.length} dims, sparse: ${weightedSparse.indices.length} terms)`);
+    } else {
+      console.log(`🔎 Querying with dense-only vector (sparse embedding was empty)`);
+    }
     
     if (query.filter) {
       queryParams.filter = query.filter;
     }
     
-    console.log(`🔎 Querying with hybrid vectors (dense: ${weightedDense.length} dims, sparse: ${weightedSparse.indices.length} terms)`);
     const response = await index.namespace(NAMESPACE).query(queryParams);
     
     if (!response.matches || response.matches.length === 0) {
