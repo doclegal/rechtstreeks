@@ -57,24 +57,47 @@ function truncateText(text: string, maxTokens: number): string {
   return text.substring(0, maxChars) + '...';
 }
 
-// Format document with metadata for reranking
+// Format document with metadata for reranking (only include known metadata)
 function formatDocumentWithMetadata(candidate: ScoredResult): string {
   const summary = candidate.metadata.ai_inhoudsindicatie || candidate.text || '';
   const truncatedSummary = truncateText(summary, 700); // Leave room for metadata
   
-  // Extract year from decision_date
-  const decisionYear = candidate.metadata.decision_date 
-    ? new Date(candidate.metadata.decision_date).getFullYear()
-    : 'unknown';
+  // Build metadata block - ONLY include fields that have real values
+  const metadataLines: string[] = [];
   
-  // Format: Document text + metadata block
+  // Court level (most important for legal hierarchy)
+  const courtLevel = candidate.metadata.court_level || candidate.metadata.court;
+  if (courtLevel) {
+    metadataLines.push(`court_level: ${courtLevel}`);
+  }
+  
+  // Legal area
+  if (candidate.metadata.legal_area) {
+    metadataLines.push(`legal_area: ${candidate.metadata.legal_area}`);
+  }
+  
+  // Decision year
+  if (candidate.metadata.decision_date) {
+    const year = new Date(candidate.metadata.decision_date).getFullYear();
+    if (!isNaN(year)) {
+      metadataLines.push(`decision_year: ${year}`);
+    }
+  }
+  
+  // ECLI (if present)
+  if (candidate.metadata.ecli) {
+    metadataLines.push(`ecli: ${candidate.metadata.ecli}`);
+  }
+  
+  // Format: Document text + metadata block (only if metadata exists)
+  if (metadataLines.length === 0) {
+    return truncatedSummary;
+  }
+  
   return `${truncatedSummary}
 
 [METADATA]
-court_level: ${candidate.metadata.court_level || candidate.metadata.court || 'unknown'}
-legal_area: ${candidate.metadata.legal_area || 'unknown'}
-decision_year: ${decisionYear}
-ecli: ${candidate.metadata.ecli}`;
+${metadataLines.join('\n')}`;
 }
 
 export interface RerankOptions {
@@ -125,10 +148,12 @@ export async function rerankResults(options: RerankOptions): Promise<ScoredResul
   try {
     const pc = getPineconeClient();
     
-    // Format documents with metadata for better legal relevance
-    const documents = candidatesToRerank.map(candidate => 
-      formatDocumentWithMetadata(candidate)
-    );
+    // Format documents as Pinecone Document objects with metadata embedded in text
+    // Note: metadata is already included in the text via formatDocumentWithMetadata()
+    const documents = candidatesToRerank.map(candidate => ({
+      id: candidate.id,
+      text: formatDocumentWithMetadata(candidate)
+    }));
     
     console.log(`📄 Formatted ${documents.length} documents with metadata (court_level, legal_area, decision_year)`);
     
@@ -136,7 +161,7 @@ export async function rerankResults(options: RerankOptions): Promise<ScoredResul
     const rerankResponse = await pc.inference.rerank(
       SEARCH_CONFIG.RERANK_MODEL, // model
       query, // query
-      documents, // documents
+      documents, // documents as objects with id + text
       {
         topN: candidatesToRerank.length, // Return all reranked
         returnDocuments: false, // We already have the full documents
@@ -154,14 +179,18 @@ export async function rerankResults(options: RerankOptions): Promise<ScoredResul
     console.log(`📊 Top 5 rerank scores: ${rerankResponse.data.slice(0, 5).map(d => d.score.toFixed(4)).join(', ')}`);
     
     // Reorder candidates based on Pinecone rerank scores
+    // IMPORTANT: Clone candidates to avoid mutating cached objects
     const reranked: ScoredResult[] = [];
     
     for (const item of rerankResponse.data) {
       const originalIndex = item.index;
       if (originalIndex >= 0 && originalIndex < candidatesToRerank.length) {
-        // Add rerank score to the result metadata for debugging
+        // Deep clone the result (including nested metadata) and add rerank score
+        const original = candidatesToRerank[originalIndex];
         const result = {
-          ...candidatesToRerank[originalIndex],
+          ...original,
+          metadata: { ...original.metadata }, // Deep clone metadata
+          scoreBreakdown: { ...original.scoreBreakdown }, // Deep clone scoreBreakdown
           rerankScore: item.score
         };
         reranked.push(result);

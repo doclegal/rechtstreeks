@@ -77,12 +77,17 @@ Preferred communication style: Simple, everyday language.
   - **Performance**: Achieves 80-87% similarity scores for relevant Dutch legal queries.
 - **AI Metadata Fields**: ai_inhoudsindicatie, ai_feiten, ai_geschil, ai_beslissing, ai_motivering (pre-computed, stored in Pinecone).
 - **Court Level Field**: Native `court_level` field in Pinecone metadata with standardized values: "Rechtbank", "Gerechtshof", "Hoge Raad".
-- **Two-Pass Retrieval Strategy**: Intelligent single-query search with adjusted scoring and optional LLM reranking.
+- **Two-Pass Retrieval Strategy**: Intelligent single-query search with adjusted scoring and Pinecone native reranking.
   - **Phase 1**: Single Pinecone query (topK=200, threshold=12%) to maximize recall.
   - **Adjusted Scoring**: Combines Pinecone similarity + court weighting + keyword bonuses (bounded [0,1]).
     - Court weights: HR=+0.10, Hof=+0.05, Rechtbank=0, Unknown=-0.05 (uses native `court_level` field).
     - Keyword bonus: +0.015 per match (max +0.045 for 3 keywords), soft matching without hard requirements.
-  - **Phase 2 (Optional)**: GPT-4o-mini reranker for top 20 candidates based on case context, with 15min cache TTL.
+  - **Phase 2 (Reranking)**: Pinecone native reranker (bge-reranker-v2-m3) for top 20 candidates:
+    - **Model**: bge-reranker-v2-m3 (multilingual, 1024 tokens, optimized for Dutch legal text)
+    - **Document Format**: Summary text + metadata block (court_level, legal_area, decision_year, ECLI)
+    - **Scoring**: Cross-encoder architecture produces 0-1 relevance scores
+    - **Caching**: 15min TTL for cost optimization
+    - **Pricing**: ~$0.002 per rerank request (20 documents)
   - **Final Output**: Top 40 candidates (20 reranked + 20 remaining by adjusted score), displayed limited to 10 in UI.
   - **Fallback**: Reranker failure gracefully reverts to adjusted score ordering.
 - **Relevance Filtering**: Configurable score threshold (range 10-30%) for manual searches.
