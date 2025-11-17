@@ -7078,6 +7078,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
       console.log('🤖 Generating jurisprudence search query using AI...');
+      console.log(`📄 Legal advice length: ${adviceText.length} chars`);
 
       const response = await openai.chat.completions.create({
         model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
@@ -7116,10 +7117,17 @@ Generate ONE optimized search query that will find jurisprudence that strengthen
         max_completion_tokens: 200
       });
 
+      console.log('🤖 OpenAI response received:', {
+        choices: response.choices?.length,
+        finishReason: response.choices?.[0]?.finish_reason,
+        hasContent: !!response.choices?.[0]?.message?.content
+      });
+
       const generatedQuery = response.choices[0].message.content?.trim() || '';
 
       if (!generatedQuery) {
-        throw new Error('AI failed to generate search query');
+        console.error('❌ Empty response from OpenAI:', response);
+        throw new Error('AI returned empty response. Please try again.');
       }
 
       console.log(`✅ Generated search query: "${generatedQuery.substring(0, 100)}..."`);
