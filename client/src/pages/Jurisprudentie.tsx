@@ -52,6 +52,7 @@ export default function Jurisprudentie() {
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [maxResults, setMaxResults] = useState<number | null>(null); // Limit displayed results
   const [requiredKeywords, setRequiredKeywords] = useState(""); // Must-contain keywords
+  const [searchIterations, setSearchIterations] = useState<string[]>([]); // Track search iterations
 
   const generateQueryMutation = useMutation({
     mutationFn: async () => {
@@ -90,61 +91,115 @@ export default function Jurisprudentie() {
     }
   });
 
+  // Helper function to perform a single search with given parameters
+  const performSearch = async (threshold: number, keywords: string[]): Promise<VectorSearchResult[]> => {
+    const filters: Record<string, any> = {};
+    
+    if (legalArea) filters.legal_area = { $eq: legalArea };
+    if (court) filters.court = { $eq: court };
+    if (procedureType) filters.procedure_type = { $eq: procedureType };
+
+    const response = await apiRequest('POST', '/api/pinecone/search', {
+      query: searchQuery,
+      filters: Object.keys(filters).length > 0 ? filters : undefined,
+      topK: topK,
+      scoreThreshold: threshold
+    });
+    
+    const data = await response.json();
+    let filteredResults = data.results || [];
+    
+    // Apply required keywords filter (case-insensitive)
+    if (keywords.length > 0) {
+      filteredResults = filteredResults.filter((result: VectorSearchResult) => {
+        const searchText = [
+          result.text,
+          result.ai_inhoudsindicatie,
+          result.ai_feiten,
+          result.ai_geschil,
+          result.ai_beslissing,
+          result.ai_motivering,
+          result.title
+        ].join(' ').toLowerCase();
+        
+        // All keywords must be present
+        return keywords.every(keyword => searchText.includes(keyword));
+      });
+    }
+    
+    return filteredResults;
+  };
+
   const searchMutation = useMutation({
     mutationFn: async () => {
-      const filters: Record<string, any> = {};
+      const iterations: string[] = [];
+      const allKeywords = requiredKeywords.trim() 
+        ? requiredKeywords.toLowerCase().split(',').map(k => k.trim()).filter(k => k)
+        : [];
       
-      if (legalArea) filters.legal_area = { $eq: legalArea };
-      if (court) filters.court = { $eq: court };
-      if (procedureType) filters.procedure_type = { $eq: procedureType };
-
-      const response = await apiRequest('POST', '/api/pinecone/search', {
-        query: searchQuery,
-        filters: Object.keys(filters).length > 0 ? filters : undefined,
-        topK: topK,
-        scoreThreshold: scoreThreshold
-      });
-      return response.json();
+      // Strategy: Start strict, progressively relax
+      const thresholds = [0.30, 0.25, 0.20, 0.15, 0.10];
+      
+      // Step 1: Try with maximum threshold (30%) and all keywords
+      let currentThreshold = thresholds[0];
+      let currentKeywords = [...allKeywords];
+      let results: VectorSearchResult[] = [];
+      
+      // Try different thresholds first
+      for (let i = 0; i < thresholds.length; i++) {
+        currentThreshold = thresholds[i];
+        results = await performSearch(currentThreshold, currentKeywords);
+        
+        const keywordText = currentKeywords.length > 0 
+          ? ` met ${currentKeywords.length} verplichte ${currentKeywords.length === 1 ? 'woord' : 'woorden'}`
+          : ' zonder verplichte woorden';
+        
+        iterations.push(`Poging ${i + 1}: ${(currentThreshold * 100).toFixed(0)}% relevantiedrempel${keywordText} → ${results.length} resultaten`);
+        
+        // If we have at least 5 results, we're done
+        if (results.length >= 5) {
+          break;
+        }
+      }
+      
+      // Step 2: If still less than 5 results, remove keywords one by one
+      if (results.length < 5 && currentKeywords.length > 0) {
+        currentThreshold = 0.10; // Use minimum threshold
+        
+        while (currentKeywords.length > 0 && results.length < 5) {
+          currentKeywords.pop(); // Remove last keyword
+          results = await performSearch(currentThreshold, currentKeywords);
+          
+          const keywordText = currentKeywords.length > 0 
+            ? ` met ${currentKeywords.length} verplichte ${currentKeywords.length === 1 ? 'woord' : 'woorden'}`
+            : ' zonder verplichte woorden';
+          
+          iterations.push(`Extra poging: 10% relevantiedrempel${keywordText} → ${results.length} resultaten`);
+          
+          if (results.length >= 5) {
+            break;
+          }
+        }
+      }
+      
+      return { 
+        results: results.slice(0, 10), // Max 10 results
+        iterations,
+        finalThreshold: currentThreshold,
+        finalKeywords: currentKeywords
+      };
     },
     onSuccess: (data: any) => {
-      let filteredResults = data.results || [];
+      setResults(data.results);
+      setSearchIterations(data.iterations || []);
       
-      // Apply required keywords filter (case-insensitive)
-      if (requiredKeywords.trim()) {
-        const keywords = requiredKeywords.toLowerCase().split(',').map(k => k.trim()).filter(k => k);
-        
-        filteredResults = filteredResults.filter((result: VectorSearchResult) => {
-          const searchText = [
-            result.text,
-            result.ai_inhoudsindicatie,
-            result.ai_feiten,
-            result.ai_geschil,
-            result.ai_beslissing,
-            result.ai_motivering,
-            result.title
-          ].join(' ').toLowerCase();
-          
-          // All keywords must be present
-          return keywords.every(keyword => searchText.includes(keyword));
-        });
-      }
+      const resultCount = data.results.length;
+      const iterationCount = data.iterations.length;
       
-      setResults(filteredResults);
-      
-      const totalResults = data.results?.length || 0;
-      const afterFilter = filteredResults.length;
-      
-      if (requiredKeywords.trim() && totalResults !== afterFilter) {
-        toast({
-          title: "Zoekresultaten gefilterd",
-          description: `${afterFilter} van ${totalResults} uitspraken bevatten de verplichte woorden`,
-        });
-      } else {
-        toast({
-          title: "Zoekresultaten geladen",
-          description: `${afterFilter} relevante uitspraken gevonden`,
-        });
-      }
+      toast({
+        title: "Slimme zoekstrategie voltooid",
+        description: `${resultCount} resultaten gevonden na ${iterationCount} ${iterationCount === 1 ? 'poging' : 'pogingen'}. Top 10 getoond.`,
+      });
     },
     onError: (error: any) => {
       toast({
@@ -164,6 +219,11 @@ export default function Jurisprudentie() {
       });
       return;
     }
+    
+    // Clear previous results and iterations before starting new search
+    setResults([]);
+    setSearchIterations([]);
+    
     searchMutation.mutate();
   };
 
@@ -348,10 +408,18 @@ export default function Jurisprudentie() {
                       onValueChange={(value) => setScoreThreshold(value[0])}
                       data-testid="slider-score-threshold"
                       className="w-full"
+                      disabled={!!autoGeneratedQuery}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Minimale similarity score voor resultaten. Hogere waarde = strengere filtering (10% - 30%)
-                    </p>
+                    {autoGeneratedQuery ? (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                        <Sparkles className="h-3 w-3" />
+                        Bij AI-gegenereerde zoekopdrachten bepaalt de slimme zoekstrategie automatisch de optimale drempelwaarde
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Minimale similarity score voor resultaten. Hogere waarde = strengere filtering (10% - 30%)
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-3">
@@ -571,6 +639,31 @@ export default function Jurisprudentie() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Search Iterations - Show what the smart search did */}
+      {searchIterations.length > 0 && (
+        <Card className="mb-6 bg-primary/5 border-primary/20">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Slimme zoekstrategie
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {searchIterations.map((iteration, index) => (
+                <div key={index} className="flex items-start gap-2 text-sm">
+                  <span className="text-primary font-mono min-w-[20px]">{index + 1}.</span>
+                  <span className="text-muted-foreground">{iteration}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-3 pt-3 border-t">
+              De AI heeft automatisch de optimale zoekinstellingen bepaald om relevante resultaten te vinden
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Results */}
       {results.length > 0 && (
