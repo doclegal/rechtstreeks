@@ -53,6 +53,7 @@ export default function Jurisprudentie() {
   const [topK, setTopK] = useState(20);
   const [scoreThreshold, setScoreThreshold] = useState(0.01);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [maxResults, setMaxResults] = useState<number | null>(null); // Limit displayed results
 
   const generateQueryMutation = useMutation({
     mutationFn: async () => {
@@ -297,12 +298,12 @@ export default function Jurisprudentie() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="scoreThreshold" className="font-semibold">Relevantie drempel (score)</Label>
-                      <span className="text-sm font-mono bg-primary/10 px-2 py-1 rounded">{scoreThreshold.toFixed(3)}</span>
+                      <span className="text-sm font-mono bg-primary/10 px-2 py-1 rounded">{(scoreThreshold * 100).toFixed(1)}%</span>
                     </div>
                     <Slider
                       id="scoreThreshold"
                       min={0}
-                      max={0.03}
+                      max={0.1}
                       step={0.001}
                       value={[scoreThreshold]}
                       onValueChange={(value) => setScoreThreshold(value[0])}
@@ -310,14 +311,59 @@ export default function Jurisprudentie() {
                       className="w-full"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Minimale similarity score voor resultaten. Hogere waarde = strengere filtering (0.000-0.030)
+                      Minimale similarity score voor resultaten. Hogere waarde = strengere filtering (0.0% - 10.0%)
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="maxResults" className="font-semibold">Toon alleen top resultaten</Label>
+                      <span className="text-sm font-mono bg-primary/10 px-2 py-1 rounded">
+                        {maxResults || 'alle'}
+                      </span>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        variant={maxResults === null ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setMaxResults(null)}
+                        data-testid="button-show-all"
+                      >
+                        Alle
+                      </Button>
+                      <Button
+                        variant={maxResults === 3 ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setMaxResults(3)}
+                        data-testid="button-show-top3"
+                      >
+                        Top 3
+                      </Button>
+                      <Button
+                        variant={maxResults === 5 ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setMaxResults(5)}
+                        data-testid="button-show-top5"
+                      >
+                        Top 5
+                      </Button>
+                      <Button
+                        variant={maxResults === 10 ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setMaxResults(10)}
+                        data-testid="button-show-top10"
+                      >
+                        Top 10
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Beperk weergave tot alleen de meest relevante resultaten
                     </p>
                   </div>
 
                   <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded p-3">
                     <p className="text-xs text-blue-900 dark:text-blue-100">
-                      <strong>💡 Tip:</strong> Begin met de standaard instellingen (20 resultaten, 0.010 threshold). 
-                      Verhoog de threshold als u te veel irrelevante resultaten ziet, of verlaag deze als u te weinig resultaten krijgt.
+                      <strong>💡 Tip:</strong> Voor strengere filtering verhoog de threshold naar 3-5%. Voor zeer specifieke zaken gebruik "Top 3" om alleen de meest relevante uitspraken te zien.
                     </p>
                   </div>
                 </div>
@@ -445,12 +491,15 @@ export default function Jurisprudentie() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold flex items-center gap-2">
               <Sparkles className="h-5 w-5" />
-              {results.length} relevante {results.length === 1 ? 'uitspraak' : 'uitspraken'} gevonden
+              {maxResults && results.length > maxResults 
+                ? `${maxResults} van ${results.length} uitspraken getoond (top resultaten)`
+                : `${results.length} relevante ${results.length === 1 ? 'uitspraak' : 'uitspraken'} gevonden`
+              }
             </h2>
           </div>
 
           <div className="space-y-4">
-            {results.map((result, index) => (
+            {(maxResults ? results.slice(0, maxResults) : results).map((result, index) => (
               <Card key={result.id} data-testid={`card-result-${index}`}>
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
