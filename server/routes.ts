@@ -87,7 +87,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Helper function to parse fullAnalysis rawText and extract parsedAnalysis + new keys
   function enrichFullAnalysis(fullAnalysis: any) {
-    if (!fullAnalysis || !fullAnalysis.rawText) return fullAnalysis;
+    if (!fullAnalysis) return fullAnalysis;
+    
+    // IMPORTANT: If analysisJson is directly available, use it as parsedAnalysis
+    // This is the new standard format where parsedAnalysis is stored directly in the DB
+    if (fullAnalysis.analysisJson && typeof fullAnalysis.analysisJson === 'object') {
+      return {
+        ...fullAnalysis,
+        parsedAnalysis: fullAnalysis.analysisJson,
+        extractedTexts: fullAnalysis.extractedTexts || null,
+        allFiles: fullAnalysis.allFiles || null,
+        userContext: fullAnalysis.userContext || null,
+        procedureContext: fullAnalysis.procedureContext || null,
+        flags: fullAnalysis.analysisJson?.flags || null,
+        goNogoAdvice: fullAnalysis.analysisJson?.go_nogo_advice || null,
+        readyForSummons: fullAnalysis.analysisJson?.ready_for_summons,
+        succesKansAnalysis: fullAnalysis.succesKansAnalysis || null,
+        legalAdviceJson: fullAnalysis.legalAdviceJson || null,
+        missingInformation: fullAnalysis.missingInformation || null
+      };
+    }
+    
+    // Fallback: Try to parse from rawText if analysisJson is not available
+    if (!fullAnalysis.rawText) return fullAnalysis;
     
     try {
       const data = JSON.parse(fullAnalysis.rawText);
