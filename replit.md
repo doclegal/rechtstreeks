@@ -41,9 +41,20 @@ Preferred communication style: Simple, everyday language.
 ### Process Flow & AI Integration
 - **Status Progression**: Automated transitions through 9 legal process steps.
 - **Document Processing**: Multi-format parsing with text extraction.
-- **AI Integration**: Structured legal analysis (fact extraction, issue identification, risk assessment).
+- **RKOS Analysis (Redelijke Kans Op Succes)**: The PRIMARY and ONLY analysis mechanism via MindStudio (RKOS.flow). This replaces all previous analysis flows.
+  - **Full Analysis**: `/api/cases/:id/full-analyze` endpoint calls RKOS.flow to generate structured assessment with:
+    - `chance_of_success`: Overall success probability assessment
+    - `confidence_level`: AI's confidence in the assessment
+    - `strengths`: Array of strong points in the case with explanations
+    - `weaknesses`: Array of weak points and vulnerabilities
+    - `missing_elements`: Array of missing information/documents needed
+    - `recommendations`: Array of recommended next actions
+  - **Data Storage**: Results stored in `analyses.succesKansAnalysis` JSON field
+  - **UI Display**: VolledigeAnalyseDetails.tsx renders RKOS results (strengths, weaknesses, missing elements, recommendations)
+  - **Legal Advice Dependency**: Generate-advice endpoint requires RKOS analysis to be completed first
+  - **Endpoint**: Uses `MS_AGENT_APP_ID` environment variable for MindStudio integration
 - **Template System**: Configurable legal document templates with dynamic field population.
-- **Legal Advice Generation**: AI-powered via MindStudio (Create_advice.flow), supporting structured JSON or plain text output, and rendered in a popup dialog on the Analysis page.
+- **Legal Advice Generation**: AI-powered via MindStudio (Create_advice.flow), supporting structured JSON or plain text output, and rendered in a popup dialog on the Analysis page. Requires RKOS analysis data as input.
 - **Missing Information Check (Dossier Controle)**: AI-powered consolidation of missing information via MindStudio (missing_info.flow) from various analysis sources into a unified checklist.
 - **Summons Generation (Dagvaarding)**: AI-powered via MindStudio (CreateDagvaarding.flow), generating professional Dutch legal summons based on a strict JSON schema, sending complete case context without summarization, and generating PDFs via Puppeteer.
 - **Q&A Generation (Veelgestelde Vragen)**: AI-powered via MindStudio (InfoQnA.flow) to generate case-specific Q&A pairs. Supports both initial generation and incremental "add more questions" functionality. When adding more questions, existing Q&A items are sent as `{{qna_history}}` to prevent duplicate questions. New questions are appended (not replaced) to maintain full history.
