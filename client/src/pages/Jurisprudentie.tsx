@@ -48,7 +48,7 @@ export default function Jurisprudentie() {
   
   // Advanced search settings
   const [topK, setTopK] = useState(20);
-  const [scoreThreshold, setScoreThreshold] = useState(0.01);
+  const [scoreThreshold, setScoreThreshold] = useState(0.10); // 10% minimum for quality results
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [maxResults, setMaxResults] = useState<number | null>(null); // Limit displayed results
   const [requiredKeywords, setRequiredKeywords] = useState(""); // Must-contain keywords

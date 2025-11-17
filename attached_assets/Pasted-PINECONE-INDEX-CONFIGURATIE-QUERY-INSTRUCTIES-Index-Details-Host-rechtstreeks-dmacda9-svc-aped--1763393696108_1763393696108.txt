@@ -1,0 +1,107 @@
+PINECONE INDEX CONFIGURATIE - QUERY INSTRUCTIES
+Index Details
+Host: rechtstreeks-dmacda9.svc.aped-4627-b74a.pinecone.io
+Namespace: ECLI_NL (fixed)
+Model: multilingual-e5-large
+Vector type: Hybrid (dense + sparse)
+CRITICAL: Embedding Parameters
+Upload (onze kant):
+
+await pc.inference.embed('multilingual-e5-large', inputs, { inputType: 'passage' })
+
+Query (jouw kant) - MOET VERSCHILLEN:
+
+await pc.inference.embed('multilingual-e5-large', [queryText], { inputType: 'query' })
+
+⚠️ Mismatch = garbage results. Query MOET inputType: 'query' gebruiken.
+
+Complete Query Implementation
+import { Pinecone } from '@pinecone-database/pinecone';
+const pc = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
+const index = pc.index('rechtstreeks-dmacda9', 'rechtstreeks-dmacda9.svc.aped-4627-b74a.pinecone.io');
+async function searchLegalCases(queryText: string, topK: number = 10) {
+  // 1. Dense embedding (Pinecone Inference API)
+  const embeddingResponse = await pc.inference.embed(
+    'multilingual-e5-large',
+    [queryText],
+    { inputType: 'query' }  // ← CRITICAL: 'query' not 'passage'
+  );
+  
+  // 2. Sparse vector (DJB2 hashing - zie functie hieronder)
+  const sparseVector = generateSparseVector(queryText);
+  
+  // 3. Hybrid query
+  const results = await index.namespace('ECLI_NL').query({
+    vector: embeddingResponse.data[0].values,
+    sparseVector: sparseVector,
+    topK: topK,
+    includeMetadata: true
+  });
+  
+  // 4. Filter op similarity threshold (≥ 10%)
+  return results.matches.filter(match => match.score >= 0.10);
+}
+
+Sparse Vector Function (EXACT KOPIËREN)
+function generateSparseVector(text: string): { indices: number[]; values: number[] } {
+  if (!text?.trim()) return { indices: [], values: [] };
+  
+  const tokens = text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .split(/[^a-z0-9\u00C0-\u024F]+/i)
+    .filter(t => t.length >= 3);
+  
+  if (!tokens.length) return { indices: [], values: [] };
+  
+  const termFreq = new Map<string, number>();
+  tokens.forEach(t => termFreq.set(t, (termFreq.get(t) || 0) + 1));
+  
+  const maxFreq = Math.max(...termFreq.values());
+  const entries = Array.from(termFreq.entries()).map(([term, freq]) => ({
+    index: djb2Hash(term),
+    value: freq / maxFreq
+  }));
+  
+  entries.sort((a, b) => b.value - a.value);
+  const top = entries.slice(0, 1000).sort((a, b) => a.index - b.index);
+  
+  return {
+    indices: top.map(e => e.index),
+    values: top.map(e => e.value)
+  };
+}
+function djb2Hash(str: string): number {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i);
+  }
+  return Math.abs(hash) >>> 0;
+}
+
+Metadata Structure
+interface RecordMetadata {
+  ecli: string;
+  title: string;
+  court: string;
+  decision_date: string;
+  legal_area: string;          // comma-separated
+  procedure_type: string;
+  source_url: string;
+  text: string;                // full combined text (300-500+ words)
+  has_ai_summary?: boolean;    // true if AI-enriched
+  also_read_on?: string;       // comma-separated URLs (discovery sources)
+}
+
+Best Practices
+Threshold: Filter op score >= 0.10 (anders troep)
+TopK: Start met 10-20, niet 100+
+Query formulation: Gebruik concrete termen ("bedrijfsruimte huur ontbinding tekortkoming")
+Metadata filters: Optioneel, alle records zijn civiel recht
+Installation
+npm install @pinecone-database/pinecone
+
+PINECONE_API_KEY=your_api_key_here
+
+Dat's alles. Kopieer beide functies, gebruik inputType: 'query', filter op ≥ 0.10. Klaar

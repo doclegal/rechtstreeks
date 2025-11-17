@@ -56,16 +56,17 @@ Preferred communication style: Simple, everyday language.
 - **Template Upload Flow**: Admin uploads templates, system extracts fields, admin configures MindStudio flow and field mappings.
 - **Multi-Format Support**: Parses templates from .txt, .docx, or .pdf files.
 
-### Jurisprudentie Integration (Pinecone Semantic Search)
-- **Search Engine**: Pinecone serverless vector database with integrated inference.
-- **Index**: "rechtstreeks" index, namespace "ECLI_NL".
+### Jurisprudentie Integration (Pinecone Hybrid Search)
+- **Search Engine**: Pinecone serverless vector database with hybrid search (dense + sparse).
+- **Index**: "rechtstreeks-dmacda9" index, host: rechtstreeks-dmacda9.svc.aped-4627-b74a.pinecone.io, namespace "ECLI_NL".
 - **Data Source**: Pre-indexed Dutch court decisions (ECLI documents) with AI-generated summaries.
-- **Semantic Search**: Pure semantic search using llama-text-embed-v2 embeddings via Pinecone's integrated pipeline.
-  - Dense vector embeddings (1024 dimensions) for conceptual similarity matching.
-  - **Embedding Consistency**: Both indexing (`upsertRecords`) and querying (`searchRecords`) use Pinecone's integrated embedding pipeline to ensure vector space compatibility.
-  - Note: Sparse keyword search (pinecone-sparse-english-v0) disabled - optimized for English, not Dutch.
+- **Hybrid Search**: Combines semantic (dense) and keyword (sparse) matching for optimal Dutch text retrieval.
+  - **Dense vectors**: multilingual-e5-large embeddings for conceptual similarity.
+  - **Sparse vectors**: DJB2 hash-based keyword matching (top 1000 terms, TF-normalized).
+  - **inputType distinction**: Queries use `inputType: 'query'`, index uses `inputType: 'passage'` for optimal embedding.
+  - **Keyword extraction**: Dutch text normalized (NFD), diacritics removed, min 3 chars, hashed with DJB2.
 - **AI Metadata Fields**: ai_inhoudsindicatie, ai_feiten, ai_geschil, ai_beslissing, ai_motivering (pre-computed, stored in Pinecone).
-- **Relevance Filtering**: Configurable score threshold (default 1%, range 0-10%) to filter irrelevant results.
+- **Relevance Filtering**: Configurable score threshold (default 10%, range 5-30%) to filter irrelevant results.
 - **Result Limiting**: Configurable topK parameter (default 20, range 5-50) to limit Pinecone query results.
 - **Display Limiting**: Configurable display filter (All/Top 3/Top 5/Top 10) to show only most relevant results.
 - **Required Keywords**: Exact text match filter (case-insensitive) to ensure specific terms appear in results. Searches across all text fields including AI summaries. Multiple keywords can be specified (comma-separated) - all must be present.

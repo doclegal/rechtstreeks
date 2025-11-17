@@ -1,7 +1,9 @@
 import { Pinecone } from "@pinecone-database/pinecone";
 
-const INDEX_NAME = "rechtstreeks";
+const INDEX_NAME = "rechtstreeks-dmacda9";
+const INDEX_HOST = "rechtstreeks-dmacda9.svc.aped-4627-b74a.pinecone.io";
 const NAMESPACE = "ECLI_NL";
+const EMBEDDING_MODEL = "multilingual-e5-large";
 
 let pineconeClient: Pinecone | null = null;
 
@@ -71,49 +73,105 @@ export async function upsertVectors(records: VectorRecord[]): Promise<void> {
   }
 }
 
+// DJB2 hash function for sparse vector generation
+function djb2Hash(str: string): number {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i);
+  }
+  return Math.abs(hash) >>> 0;
+}
+
+// Generate sparse vector for keyword matching (Dutch text)
+function generateSparseVector(text: string): { indices: number[]; values: number[] } {
+  if (!text?.trim()) return { indices: [], values: [] };
+  
+  const tokens = text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .split(/[^a-z0-9\u00C0-\u024F]+/i)
+    .filter(t => t.length >= 3);
+  
+  if (!tokens.length) return { indices: [], values: [] };
+  
+  const termFreq = new Map<string, number>();
+  tokens.forEach(t => termFreq.set(t, (termFreq.get(t) || 0) + 1));
+  
+  const maxFreq = Math.max(...Array.from(termFreq.values()));
+  const entries = Array.from(termFreq.entries()).map(([term, freq]) => ({
+    index: djb2Hash(term),
+    value: freq / maxFreq
+  }));
+  
+  entries.sort((a, b) => b.value - a.value);
+  const top = entries.slice(0, 1000).sort((a, b) => a.index - b.index);
+  
+  return {
+    indices: top.map(e => e.index),
+    values: top.map(e => e.value)
+  };
+}
+
 export async function searchVectors(query: SearchQuery): Promise<SearchResult[]> {
   try {
     const pc = getPineconeClient();
-    const namespace = pc.index(INDEX_NAME).namespace(NAMESPACE);
+    const index = pc.index(INDEX_NAME, INDEX_HOST);
     
-    console.log(`🔎 Using Pinecone integrated semantic search (llama-text-embed-v2)`);
+    console.log(`🔎 Using Pinecone HYBRID search (dense + sparse)`);
     console.log(`📝 Query text: "${query.text.substring(0, 100)}..."`);
+    console.log(`🤖 Model: ${EMBEDDING_MODEL}`);
     
-    // Use Pinecone's integrated query pipeline (same as upsert)
-    // This ensures embedding consistency between indexing and searching
-    const searchParams: any = {
-      query: {
-        topK: query.topK || 20,
-        inputs: { text: query.text }
-      },
-      fields: ['text', 'ecli', 'title', 'court', 'decision_date', 'legal_area', 'procedure_type', 'source_url', 'ai_feiten', 'ai_geschil', 'ai_beslissing', 'ai_motivering', 'ai_inhoudsindicatie', 'chunkIndex', 'totalChunks']
+    // 1. Generate dense embedding with CORRECT inputType for query
+    const embeddingResponse = await pc.inference.embed(
+      EMBEDDING_MODEL,
+      [query.text],
+      { inputType: 'query' }  // CRITICAL: 'query' not 'passage'
+    );
+    
+    const embeddingData: any = embeddingResponse.data[0];
+    const denseVector = embeddingData.values;
+    console.log(`✅ Dense vector generated (${denseVector.length} dims)`);
+    
+    // 2. Generate sparse vector for keyword matching
+    const sparseVector = generateSparseVector(query.text);
+    console.log(`✅ Sparse vector generated (${sparseVector.indices.length} terms)`);
+    
+    // 3. Hybrid query
+    const queryParams: any = {
+      vector: denseVector,
+      sparseVector: sparseVector,
+      topK: query.topK || 20,
+      includeMetadata: true,
+      includeValues: false
     };
-
+    
     if (query.filter) {
-      searchParams.query.filter = query.filter;
+      queryParams.filter = query.filter;
       console.log(`🔍 Applying metadata filter:`, query.filter);
     }
-
-    const response = await namespace.searchRecords(searchParams);
     
-    console.log(`📊 Pinecone response: ${response.result?.hits?.length || 0} total hits`);
+    const response = await index.namespace(NAMESPACE).query(queryParams);
     
-    if (!response.result?.hits || response.result.hits.length === 0) {
+    console.log(`📊 Pinecone response: ${response.matches?.length || 0} total matches`);
+    
+    if (!response.matches || response.matches.length === 0) {
       console.log('ℹ️ No results found');
       return [];
     }
     
     // Log top scores for debugging
-    const topScores = response.result.hits.slice(0, 5).map((h: any) => h._score?.toFixed(4) || '0');
+    const topScores = response.matches.slice(0, 5).map((m: any) => m.score?.toFixed(4) || '0');
     console.log(`📊 Top 5 scores: ${topScores.join(', ')}`);
     
-    // Apply score threshold filter
-    const threshold = query.scoreThreshold !== undefined ? query.scoreThreshold : 0.01;
-    const allResults = response.result.hits.map((hit: any) => ({
-      id: hit._id,
-      score: hit._score || 0,
-      metadata: hit.fields as VectorRecord['metadata'],
-      text: hit.fields?.text
+    // Apply score threshold filter (minimum 10% similarity)
+    const threshold = query.scoreThreshold !== undefined ? query.scoreThreshold : 0.10;
+    
+    const allResults = response.matches.map((match: any) => ({
+      id: match.id,
+      score: match.score || 0,
+      metadata: match.metadata as VectorRecord['metadata'],
+      text: match.metadata?.text
     }));
     
     const filteredResults = allResults.filter(r => r.score >= threshold);
@@ -126,7 +184,7 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
     
     return filteredResults;
   } catch (error) {
-    console.error("❌ Error in semantic search:", error);
+    console.error("❌ Error in hybrid search:", error);
     throw error;
   }
 }
@@ -148,7 +206,16 @@ export async function checkIndexExists(): Promise<boolean> {
   try {
     const pc = getPineconeClient();
     const indexes = await pc.listIndexes();
-    return indexes.indexes?.some(idx => idx.name === INDEX_NAME) || false;
+    const exists = indexes.indexes?.some(idx => idx.name === INDEX_NAME) || false;
+    
+    if (exists) {
+      console.log(`✅ Pinecone index '${INDEX_NAME}' found`);
+      console.log(`📍 Host: ${INDEX_HOST}`);
+      console.log(`📦 Namespace: ${NAMESPACE}`);
+      console.log(`🤖 Model: ${EMBEDDING_MODEL}`);
+    }
+    
+    return exists;
   } catch (error) {
     console.error("❌ Error checking Pinecone index:", error);
     return false;
