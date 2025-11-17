@@ -30,6 +30,7 @@ export interface SearchQuery {
   text: string;
   filter?: Record<string, any>;
   topK?: number;
+  scoreThreshold?: number; // Minimum similarity score (e.g., 0.01 = 1%)
   alpha?: number; // 0-1: 0=pure keyword, 1=pure semantic, 0.5=balanced
 }
 
@@ -170,13 +171,13 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
     
     // Filter based on score threshold for dot product similarity
     // Higher scores = more relevant (can be positive or negative depending on vectors)
-    const SCORE_THRESHOLD = 0.01; // Only return results with score > 0.01 (1% similarity)
+    const threshold = query.scoreThreshold !== undefined ? query.scoreThreshold : 0.01;
     
-    const filteredResults = allResults.filter(r => r.score > SCORE_THRESHOLD);
+    const filteredResults = allResults.filter(r => r.score > threshold);
     
     if (allResults.length > 0) {
       const allScores = allResults.map(r => r.score);
-      console.log(`✅ Semantic search: ${filteredResults.length}/${allResults.length} results above threshold ${SCORE_THRESHOLD} (score range: ${Math.min(...allScores).toFixed(4)} to ${Math.max(...allScores).toFixed(4)})`);
+      console.log(`✅ Semantic search: ${filteredResults.length}/${allResults.length} results above threshold ${threshold} (score range: ${Math.min(...allScores).toFixed(4)} to ${Math.max(...allScores).toFixed(4)})`);
     } else {
       console.log(`✅ Semantic search: 0 results returned`);
     }

@@ -7149,7 +7149,7 @@ Generate ONE optimized search query that will find jurisprudence that strengthen
   // Semantic search in Pinecone vector database
   app.post('/api/pinecone/search', async (req, res) => {
     try {
-      const { query, filters, topK } = req.body;
+      const { query, filters, topK, scoreThreshold } = req.body;
       
       if (!query || typeof query !== 'string') {
         return res.status(400).json({ error: 'Search query is required' });
@@ -7159,11 +7159,15 @@ Generate ONE optimized search query that will find jurisprudence that strengthen
       if (filters) {
         console.log(`📋 Filters:`, JSON.stringify(filters, null, 2));
       }
+      if (scoreThreshold !== undefined) {
+        console.log(`🎯 Score threshold: ${scoreThreshold}`);
+      }
       
       const results = await searchVectors({
         text: query,
         filter: filters,
-        topK: topK || 20
+        topK: topK || 20,
+        scoreThreshold: scoreThreshold
       });
 
       const formattedResults = results.map(result => ({

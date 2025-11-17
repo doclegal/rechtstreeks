@@ -64,8 +64,10 @@ Preferred communication style: Simple, everyday language.
   - Dense vector embeddings (1024 dimensions) for conceptual similarity matching.
   - Note: Sparse keyword search (pinecone-sparse-english-v0) disabled - optimized for English, not Dutch.
 - **AI Metadata Fields**: ai_inhoudsindicatie, ai_feiten, ai_geschil, ai_beslissing, ai_motivering (pre-computed, stored in Pinecone).
-- **Relevance Filtering**: Score threshold of 0.01 (1% dot product similarity) to filter irrelevant results.
+- **Relevance Filtering**: Configurable score threshold (default 0.01, range 0.000-0.030) to filter irrelevant results.
+- **Result Limiting**: Configurable topK parameter (default 20, range 5-50) to limit maximum results.
 - **Metadata Filtering**: Supports legal_area, court, procedure_type filters.
+- **Advanced Settings UI**: Collapsible panel with sliders for real-time threshold and topK adjustment.
 - **Automatic Query Generation**: AI-powered (OpenAI GPT-4o-mini) feature that analyzes complete legal advice to generate optimized search queries.
   - Analyzes facts, legal issues, claims, defenses, and desired outcomes from user's case.
   - Generates search queries specifically designed to find jurisprudence that strengthens user's position.
