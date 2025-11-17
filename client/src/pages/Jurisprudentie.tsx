@@ -737,6 +737,28 @@ export default function Jurisprudentie() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
+                    {/* Relevantie Score */}
+                    <div className="flex items-center gap-2 text-sm">
+                      <Badge variant="secondary" className="text-xs" data-testid={`badge-score-${index}`}>
+                        Relevantie: {(result.score * 100).toFixed(1)}%
+                      </Badge>
+                    </div>
+
+                    {/* Tekst uit Pinecone record */}
+                    {result.text && (
+                      <div className="bg-muted/30 p-4 rounded-lg border" data-testid={`section-text-${index}`}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <FileText className="h-4 w-4 text-foreground" />
+                          <h4 className="font-semibold text-sm">Uitspraak tekst</h4>
+                        </div>
+                        <div className="prose prose-sm max-w-none text-sm">
+                          <p className="text-foreground whitespace-pre-wrap leading-relaxed" data-testid={`text-content-${index}`}>
+                            {result.text}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* AI Samenvatting */}
                     {(result.ai_inhoudsindicatie || result.ai_feiten || result.ai_geschil || result.ai_beslissing || result.ai_motivering) && (
                       <div className="bg-primary/5 p-4 rounded-lg border border-primary/10">
