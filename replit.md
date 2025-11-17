@@ -60,8 +60,9 @@ Preferred communication style: Simple, everyday language.
 - **Search Engine**: Pinecone serverless vector database with integrated inference.
 - **Index**: "rechtstreeks" index, namespace "ECLI_NL".
 - **Data Source**: Pre-indexed Dutch court decisions (ECLI documents) with AI-generated summaries.
-- **Semantic Search**: Pure semantic search using llama-text-embed-v2 embeddings.
+- **Semantic Search**: Pure semantic search using llama-text-embed-v2 embeddings via Pinecone's integrated pipeline.
   - Dense vector embeddings (1024 dimensions) for conceptual similarity matching.
+  - **Embedding Consistency**: Both indexing (`upsertRecords`) and querying (`searchRecords`) use Pinecone's integrated embedding pipeline to ensure vector space compatibility.
   - Note: Sparse keyword search (pinecone-sparse-english-v0) disabled - optimized for English, not Dutch.
 - **AI Metadata Fields**: ai_inhoudsindicatie, ai_feiten, ai_geschil, ai_beslissing, ai_motivering (pre-computed, stored in Pinecone).
 - **Relevance Filtering**: Configurable score threshold (default 1%, range 0-10%) to filter irrelevant results.

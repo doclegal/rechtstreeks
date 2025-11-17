@@ -76,115 +76,57 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
     const pc = getPineconeClient();
     const namespace = pc.index(INDEX_NAME).namespace(NAMESPACE);
     
-    // NOTE: Sparse embeddings (keyword matching) don't work well for Dutch text
-    // because pinecone-sparse-english-v0 is optimized for English
-    // We'll use pure semantic search instead
+    console.log(`🔎 Using Pinecone integrated semantic search (llama-text-embed-v2)`);
+    console.log(`📝 Query text: "${query.text.substring(0, 100)}..."`);
     
-    console.log(`🔎 Using pure semantic search (sparse encoder doesn't support Dutch)`);
-    
-    // Generate dense embedding for semantic search
-    let denseEmbedding: any;
-    
-    try {
-      // Dense embedding for semantic search
-      const denseResponse = await pc.inference.embed(
-        "llama-text-embed-v2",
-        [query.text],
-        { inputType: "query", truncate: "END" }
-      );
-      const denseData: any = denseResponse.data[0];
-      denseEmbedding = denseData.values;
-      
-      console.log(`✅ Generated dense embedding (${denseEmbedding.length} dims)`);
-    } catch (embedError: any) {
-      console.warn(`⚠️ Hybrid search failed, falling back to simple semantic search:`, embedError.message);
-      
-      // Fallback to simple search if hybrid fails
-      const searchParams: any = {
-        query: {
-          topK: query.topK || 10,
-          inputs: { text: query.text }
-        },
-        fields: ['text', 'ecli', 'title', 'court', 'decision_date', 'legal_area', 'procedure_type', 'source_url', 'ai_feiten', 'ai_geschil', 'ai_beslissing', 'ai_motivering', 'ai_inhoudsindicatie', 'chunkIndex', 'totalChunks']
-      };
-
-      if (query.filter) {
-        searchParams.query.filter = query.filter;
-      }
-
-      const response = await namespace.searchRecords(searchParams);
-      
-      if (!response.result?.hits || response.result.hits.length === 0) {
-        console.log('ℹ️ No results found');
-        return [];
-      }
-      
-      const MINIMUM_SCORE = 0.03;
-      const filteredResults = response.result.hits
-        .filter((hit: any) => hit._score >= MINIMUM_SCORE)
-        .map((hit: any) => ({
-          id: hit._id,
-          score: hit._score || 0,
-          metadata: hit.fields as VectorRecord['metadata'],
-          text: hit.fields?.text
-        }));
-      
-      console.log(`✅ Fallback search: ${filteredResults.length} results above ${MINIMUM_SCORE} threshold`);
-      return filteredResults;
-    }
-    
-    // Query with dense vector only (no sparse for Dutch)
-    const index = pc.Index(INDEX_NAME);
-    const queryParams: any = {
-      topK: query.topK || 10,
-      vector: denseEmbedding,
-      includeMetadata: true,
-      includeValues: false
+    // Use Pinecone's integrated query pipeline (same as upsert)
+    // This ensures embedding consistency between indexing and searching
+    const searchParams: any = {
+      query: {
+        topK: query.topK || 20,
+        inputs: { text: query.text }
+      },
+      fields: ['text', 'ecli', 'title', 'court', 'decision_date', 'legal_area', 'procedure_type', 'source_url', 'ai_feiten', 'ai_geschil', 'ai_beslissing', 'ai_motivering', 'ai_inhoudsindicatie', 'chunkIndex', 'totalChunks']
     };
-    
+
     if (query.filter) {
-      queryParams.filter = query.filter;
+      searchParams.query.filter = query.filter;
+      console.log(`🔍 Applying metadata filter:`, query.filter);
     }
+
+    const response = await namespace.searchRecords(searchParams);
     
-    console.log(`🔎 Querying Pinecone with semantic search (${denseEmbedding.length} dims)`);
-    const response = await index.namespace(NAMESPACE).query(queryParams);
+    console.log(`📊 Pinecone response: ${response.result?.hits?.length || 0} total hits`);
     
-    console.log(`📊 Raw Pinecone response: ${response.matches?.length || 0} total matches`);
-    if (response.matches && response.matches.length > 0) {
-      const scores = response.matches.slice(0, 5).map((m: any) => m.score);
-      console.log(`📊 Top 5 similarity scores: ${scores.join(', ')}`);
-    }
-    
-    if (!response.matches || response.matches.length === 0) {
-      console.log('ℹ️ No results found in Pinecone');
+    if (!response.result?.hits || response.result.hits.length === 0) {
+      console.log('ℹ️ No results found');
       return [];
     }
     
-    // Pinecone sorts results by relevance (even with negative dot product scores)
-    // Higher (less negative) scores = more relevant
-    const allResults = response.matches.map((match: any) => ({
-      id: match.id,
-      score: match.score || 0,
-      metadata: match.metadata as VectorRecord['metadata'],
-      text: match.metadata?.text
+    // Log top scores for debugging
+    const topScores = response.result.hits.slice(0, 5).map((h: any) => h._score?.toFixed(4) || '0');
+    console.log(`📊 Top 5 scores: ${topScores.join(', ')}`);
+    
+    // Apply score threshold filter
+    const threshold = query.scoreThreshold !== undefined ? query.scoreThreshold : 0.01;
+    const allResults = response.result.hits.map((hit: any) => ({
+      id: hit._id,
+      score: hit._score || 0,
+      metadata: hit.fields as VectorRecord['metadata'],
+      text: hit.fields?.text
     }));
     
-    // Filter based on score threshold for dot product similarity
-    // Higher scores = more relevant (can be positive or negative depending on vectors)
-    const threshold = query.scoreThreshold !== undefined ? query.scoreThreshold : 0.01;
-    
-    const filteredResults = allResults.filter(r => r.score > threshold);
+    const filteredResults = allResults.filter(r => r.score >= threshold);
     
     if (allResults.length > 0) {
       const allScores = allResults.map(r => r.score);
-      console.log(`✅ Semantic search: ${filteredResults.length}/${allResults.length} results above threshold ${threshold} (score range: ${Math.min(...allScores).toFixed(4)} to ${Math.max(...allScores).toFixed(4)})`);
-    } else {
-      console.log(`✅ Semantic search: 0 results returned`);
+      console.log(`✅ Filtered results: ${filteredResults.length}/${allResults.length} above threshold ${threshold}`);
+      console.log(`📊 Score range: ${Math.min(...allScores).toFixed(4)} to ${Math.max(...allScores).toFixed(4)}`);
     }
     
     return filteredResults;
   } catch (error) {
-    console.error("❌ Error in hybrid search:", error);
+    console.error("❌ Error in semantic search:", error);
     throw error;
   }
 }
