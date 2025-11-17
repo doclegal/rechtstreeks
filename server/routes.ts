@@ -92,7 +92,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // IMPORTANT: If analysisJson is directly available, use it as parsedAnalysis
     // This is the new standard format where parsedAnalysis is stored directly in the DB
     if (fullAnalysis.analysisJson && typeof fullAnalysis.analysisJson === 'object') {
-      const enriched = {
+      return {
         ...fullAnalysis,
         parsedAnalysis: fullAnalysis.analysisJson,
         extractedTexts: fullAnalysis.extractedTexts || null,
@@ -106,11 +106,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         legalAdviceJson: fullAnalysis.legalAdviceJson || null,
         missingInformation: fullAnalysis.missingInformation || null
       };
-      console.log('🔍 enrichFullAnalysis with analysisJson:', {
-        hasSuccesKansAnalysis: !!enriched.succesKansAnalysis,
-        succesKansAnalysisKeys: enriched.succesKansAnalysis ? Object.keys(enriched.succesKansAnalysis) : []
-      });
-      return enriched;
     }
     
     // Fallback: Try to parse from rawText if analysisJson is not available

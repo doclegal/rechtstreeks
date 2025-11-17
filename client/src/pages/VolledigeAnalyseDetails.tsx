@@ -56,18 +56,8 @@ export default function VolledigeAnalyseDetails() {
 
   let succesKansAnalysis = null;
   
-  console.log('🔍 VolledigeAnalyseDetails - currentCase:', {
-    hasCurrentCase: !!currentCase,
-    hasFullAnalysis: !!(currentCase?.fullAnalysis),
-    fullAnalysisKeys: currentCase?.fullAnalysis ? Object.keys(currentCase.fullAnalysis) : [],
-    hasSuccesKansAnalysis: !!(currentCase?.fullAnalysis as any)?.succesKansAnalysis
-  });
-  
   if ((currentCase?.fullAnalysis as any)?.succesKansAnalysis) {
     succesKansAnalysis = (currentCase.fullAnalysis as any).succesKansAnalysis;
-    console.log('✅ Found succesKansAnalysis:', succesKansAnalysis);
-  } else {
-    console.log('❌ No succesKansAnalysis found in currentCase.fullAnalysis');
   }
 
   if (authLoading || casesLoading) {
