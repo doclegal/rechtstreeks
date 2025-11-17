@@ -1393,13 +1393,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Full Analysis route - second phase after successful kanton check
+  // Full Analysis route - NOW USES RKOS FLOW (this is the ONLY analysis flow)
   app.post('/api/cases/:id/full-analyze', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const caseId = req.params.id;
       
-      // Rate limiting: 1 full analysis per case per 30 seconds (for testing)
+      // Rate limiting: 1 full analysis per case per 30 seconds
       const rateLimitKey = `${caseId}:full-analyze`;
       const lastAnalysis = analysisRateLimit.get(rateLimitKey) || 0;
       const now = Date.now();
@@ -1418,224 +1418,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Case not found" });
       }
 
-      // Check if case has been analyzed (kanton check passed)
-      const latestAnalysis = await storage.getLatestAnalysis(caseId);
-      if (!latestAnalysis) {
-        return res.status(400).json({ 
-          message: "Case must be analyzed first. Please run kanton check first." 
-        });
-      }
-
       // Verify MindStudio is available
-      if (!process.env.MINDSTUDIO_API_KEY || !process.env.MINDSTUDIO_WORKER_ID) {
+      if (!process.env.MINDSTUDIO_API_KEY || !process.env.MS_AGENT_APP_ID) {
         return res.status(503).json({ 
           message: "Sorry, de volledige analyse lukt niet. Mindstudio AI is niet beschikbaar." 
         });
       }
 
       try {
-        // Get user info
-        const user = await storage.getUser(userId);
-        const userName = user?.firstName || user?.email?.split('@')[0] || 'Gebruiker';
+        console.log(`📊 Running RKOS analysis (full-analyze endpoint) for case ${caseId}`);
         
-        // Get documents for analysis - convert to file URLs
+        // Get all documents for the case
         const documents = await storage.getDocumentsByCase(caseId);
-        console.log('📄 Found documents for full analysis:', documents.length);
-        
-        // Construct public base URL for document downloads
-        // MindStudio needs a publicly accessible URL
-        const publicBaseUrl = process.env.PUBLIC_BASE_URL || 
-          (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000');
-        
-        console.log('🌐 Using public base URL for MindStudio:', publicBaseUrl);
-        
-        const uploaded_files = documents.map(doc => {
-          // Map to proper MIME types as expected by MindStudio
-          const filename = doc.filename.toLowerCase();
-          let type: "application/pdf" | "image/jpeg" | "image/png" = "application/pdf";
-          
-          if (filename.endsWith('.pdf')) {
-            type = 'application/pdf';
-          } else if (filename.match(/\.(jpg|jpeg)$/)) {
-            type = 'image/jpeg';
-          } else if (filename.endsWith('.png')) {
-            type = 'image/png';
-          }
-          // Note: DOCX, TXT, GIF are not in the contract, default to PDF for now
-          
-          // Prefer publicUrl from object storage (signed URL), fallback to dev URL
-          const file_url = doc.publicUrl || (doc.storageKey ? `${publicBaseUrl}/api/documents/${doc.id}/download` : '');
-          
-          return {
-            name: doc.filename,
-            type,
-            file_url
-          };
-        });
+        console.log(`📄 Found ${documents.length} documents`);
 
-        // Check if there's a successful kanton check analysis
-        // Look for any analysis that contains kanton check results (ok: true)
-        const allAnalyses = await storage.getAnalysesByCase(caseId);
-        let hasSuccessfulKantonCheck = false;
-        let kantonCheckResult = null;
-        
-        for (const analysis of allAnalyses) {
-          try {
-            if (analysis.rawText) {
-              const parsed = JSON.parse(analysis.rawText);
-              if (parsed.ok === true && parsed.phase === 'kanton_check') {
-                hasSuccessfulKantonCheck = true;
-                kantonCheckResult = parsed;
-                break;
-              }
-            }
-          } catch (e) {
-            // Skip invalid JSON
-            continue;
-          }
-        }
-
-        // For now, allow full analysis without strict kanton check validation
-        // This removes the blocking behavior while keeping the check logic for future use
-        if (!hasSuccessfulKantonCheck) {
-          console.log('⚠️ No successful kanton check found, but allowing full analysis to proceed');
-          // Set default values for kantonCheckResult
-          kantonCheckResult = { ok: true, phase: 'kanton_check' };
-        }
-
-        // Prepare analysis parameters - parties as array per contract
-        const fullAnalysisParams = {
+        // Build context for RKOS assessment
+        const contextPayload = {
           case_id: caseId,
-          case_text: `Zaak: ${caseData.title}\n\nOmschrijving: ${caseData.description || 'Geen beschrijving'}\n\nTegenpartij: ${caseData.counterpartyName || 'Onbekend'}\n\nClaim bedrag: €${caseData.claimAmount || '0'}`,
-          amount_eur: Number(caseData.claimAmount) || 0,  // Ensure number type
-          parties: [
-            { name: userName, role: 'claimant' as const, type: 'individual' },
-            { name: caseData.counterpartyName || 'Onbekend', role: 'respondent' as const, type: caseData.counterpartyType || 'individual' }
-          ],
-          is_kantonzaak: kantonCheckResult?.ok || false,
-          contract_present: documents.some(doc => 
-            doc.filename.toLowerCase().includes('contract') || 
-            doc.filename.toLowerCase().includes('overeenkomst') ||
-            doc.filename.toLowerCase().includes('voorwaarden')
-          ),
-          forum_clause_text: null as null, // Explicit null type
-          uploaded_files,
-          prev_analysis_json: null as null,  // Explicit null for first run
-          missing_info_answers: null as null,  // Explicit null for first run
-          new_uploads: null as null  // Explicit null for first run
+          
+          // Complete case data
+          case_data: {
+            title: caseData.title || 'Zonder titel',
+            description: caseData.description || '',
+            claim_amount: Number(caseData.claimAmount) || 0,
+            status: caseData.status,
+            claimant_name: caseData.claimantName || '',
+            counterparty_name: caseData.counterpartyName || '',
+            counterparty_type: caseData.counterpartyType || '',
+            counterparty_address: caseData.counterpartyAddress || '',
+          },
+          
+          // Dossier (documents)
+          dossier: {
+            document_count: documents.length,
+            documents: documents.map(doc => ({
+              filename: doc.filename,
+              type: doc.mimetype,
+              extracted_text: doc.extractedText || '[Tekst niet beschikbaar]',
+              size_bytes: doc.sizeBytes
+            }))
+          }
         };
 
-        console.log('🚀 Starting full analysis with params:', {
-          case_id: fullAnalysisParams.case_id,
-          case_text_length: fullAnalysisParams.case_text.length,
-          amount_eur: fullAnalysisParams.amount_eur,
-          is_kantonzaak: fullAnalysisParams.is_kantonzaak,
-          contract_present: fullAnalysisParams.contract_present,
-          uploaded_files_count: fullAnalysisParams.uploaded_files.length
-        });
-        
-        // Run full analysis with MindStudio
-        const fullAnalysisResult = await aiService.runFullAnalysis(fullAnalysisParams);
-        
-        console.log('🔍 Full analysis result:', fullAnalysisResult);
-        
-        // Check if we actually got analysis data, not just a successful API call
-        const hasValidAnalysis = fullAnalysisResult.success && fullAnalysisResult.parsedAnalysis !== null;
-        
-        if (hasValidAnalysis) {
-          // Parse structured MindStudio analysis output
-          const analysisData = fullAnalysisResult.parsedAnalysis;
-          
-          // Create a new analysis record with structured data from MindStudio
-          const analysis = await storage.createAnalysis({
-            caseId,
-            model: 'mindstudio-full-analysis',
-            rawText: JSON.stringify(fullAnalysisResult, null, 2), // Save entire result including parsedAnalysis
-            analysisJson: fullAnalysisResult.parsedAnalysis,
-            extractedTexts: fullAnalysisResult.extractedTexts,
-            missingInfoStruct: fullAnalysisResult.missingInfoStruct,
-            allFiles: fullAnalysisResult.allFiles,
-            userContext: fullAnalysisResult.userContext,  // User's procedural role + legal role
-            procedureContext: fullAnalysisResult.procedureContext,  // Procedural info (kantonzaak, court, confidence)
-            // Legacy fields for backwards compatibility
-            factsJson: analysisData?.facts ? [
-              ...(analysisData.facts.known || []).map((fact: string) => ({ label: 'Vaststaande feiten', detail: fact })),
-              ...(analysisData.facts.disputed || []).map((fact: string) => ({ label: 'Betwiste feiten', detail: fact })),
-              ...(analysisData.facts.unclear || []).map((fact: string) => ({ label: 'Onduidelijke feiten', detail: fact }))
-            ] : [{ label: 'Volledige Analyse', detail: 'Analyse uitgevoerd met alle documenten en context' }],
-            issuesJson: analysisData?.legal_analysis?.legal_issues ? 
-              analysisData.legal_analysis.legal_issues.map((issue: string) => ({ issue, risk: 'Zie juridische analyse' })) :
-              [{ issue: 'Volledige juridische analyse voltooid', risk: 'Zie gedetailleerde resultaten' }],
-            legalBasisJson: analysisData?.legal_analysis ? [{
-              what_is_the_dispute: analysisData.legal_analysis.what_is_the_dispute || '',
-              preliminary_assessment: analysisData.legal_analysis.preliminary_assessment || '',
-              potential_defenses: analysisData.legal_analysis.potential_defenses || [],
-              next_actions: analysisData.legal_analysis.next_actions || []
-            }] : [],
-            missingDocsJson: analysisData?.evidence?.missing || [],
-            riskNotesJson: analysisData?.legal_analysis?.risks || []
-          });
-          
-          // Update case status to indicate full analysis is complete
-          await storage.updateCase(caseId, { 
-            status: "ANALYZED" as CaseStatus,
-            nextActionLabel: "Bekijk volledige analyse resultaten",
-          });
-          
-          // Update rate limit
-          analysisRateLimit.set(rateLimitKey, now);
-          
-          return res.json({ 
-            analysis,
-            fullAnalysisResult,
-            status: 'completed',
-            message: 'Volledige analyse succesvol voltooid'
-          });
-        } else {
-          // Check if MindStudio flow succeeded but produced no analysis (execution error)
-          if (fullAnalysisResult.success && !fullAnalysisResult.parsedAnalysis) {
-            console.error("❌ MindStudio flow execution error - no analysis data produced");
-            return res.status(500).json({ 
-              message: "De AI analyse kon niet worden voltooid. De MindStudio flow heeft een fout gegenereerd. Controleer de flow configuratie.",
-              error: "MindStudio flow execution error - no analysis_json produced"
-            });
-          }
-          
-          // Check if it's a timeout error
-          const isTimeout = fullAnalysisResult.rawText?.includes('524') || 
-                           fullAnalysisResult.rawText?.includes('timeout') ||
-                           fullAnalysisResult.rawText?.includes('timed out');
-          
-          if (isTimeout) {
-            return res.status(504).json({ 
-              message: "De AI analyse duurt te lang (timeout na 2 minuten). Dit kan gebeuren bij veel of grote documenten.",
-              error: "MindStudio API timeout"
-            });
-          }
-          
+        console.log('📤 Sending to RKOS.flow');
+
+        // Call MindStudio RKOS.flow
+        const flowResult = await aiService.runRKOS(contextPayload);
+
+        if (flowResult.error) {
+          console.error('❌ RKOS failed:', flowResult.error);
           return res.status(500).json({ 
-            message: "Volledige analyse mislukt. Probeer het opnieuw.",
-            error: fullAnalysisResult.rawText
+            message: "RKOS analyse mislukt. Probeer het opnieuw.",
+            error: flowResult.error
           });
         }
+
+        console.log('✅ RKOS.flow response received');
+
+        // Parse RKOS result
+        let rkosResult = null;
+        
+        if (flowResult.result?.rkos) {
+          rkosResult = flowResult.result.rkos;
+        } else if (flowResult.thread?.posts) {
+          for (const post of flowResult.thread.posts) {
+            if (post.debugLog?.newState?.variables?.rkos?.value) {
+              const value = post.debugLog.newState.variables.rkos.value;
+              rkosResult = typeof value === 'string' ? JSON.parse(value) : value;
+              break;
+            }
+          }
+        } else if (flowResult.thread?.variables?.rkos) {
+          const value = flowResult.thread.variables.rkos.value || flowResult.thread.variables.rkos;
+          rkosResult = typeof value === 'string' ? JSON.parse(value) : value;
+        }
+
+        if (!rkosResult) {
+          console.error('❌ No RKOS result');
+          return res.status(500).json({ 
+            message: "RKOS analyse heeft geen resultaat opgeleverd." 
+          });
+        }
+
+        console.log('📊 RKOS result:', {
+          chance_of_success: rkosResult.chance_of_success,
+          confidence_level: rkosResult.confidence_level
+        });
+
+        // Create/update full analysis record with RKOS data
+        let fullAnalysisRecord = await storage.getAnalysisByType(caseId, 'mindstudio-full-analysis');
+        
+        if (fullAnalysisRecord) {
+          // Update existing
+          await storage.updateAnalysis(fullAnalysisRecord.id, {
+            succesKansAnalysis: rkosResult
+          });
+          console.log('✅ Updated existing fullAnalysis with RKOS data');
+        } else {
+          // Create new
+          fullAnalysisRecord = await storage.createAnalysis({
+            caseId,
+            model: 'mindstudio-full-analysis',
+            rawText: JSON.stringify({ success: true, rkos: rkosResult }, null, 2),
+            succesKansAnalysis: rkosResult
+          });
+          console.log('✅ Created new fullAnalysis with RKOS data');
+        }
+
+        // Update case status
+        await storage.updateCase(caseId, { 
+          status: "ANALYZED" as CaseStatus,
+          nextActionLabel: "Bekijk volledige analyse",
+          hasUnseenMissingItems: rkosResult.missing_elements?.length > 0,
+          needsReanalysis: false
+        });
+        
+        // Update rate limit
+        analysisRateLimit.set(rateLimitKey, now);
+        
+        return res.json({ 
+          analysis: fullAnalysisRecord,
+          successChance: rkosResult,
+          status: 'completed',
+          message: 'Volledige analyse (RKOS) succesvol voltooid'
+        });
         
       } catch (error) {
-        console.error("Full analysis failed:", error);
+        console.error("RKOS analysis failed:", error);
         
-        // Check if it's a timeout error
         const errorMsg = error instanceof Error ? error.message : String(error);
         if (errorMsg.includes('524') || errorMsg.includes('timeout') || errorMsg.includes('timed out')) {
           return res.status(504).json({ 
-            message: "De AI analyse duurt te lang (timeout na 2 minuten). Dit kan gebeuren bij veel of grote documenten." 
+            message: "De RKOS analyse duurt te lang (timeout). Probeer het opnieuw." 
           });
         }
         
         return res.status(503).json({ 
-          message: "Sorry, de volledige analyse lukt niet. Mindstudio AI is niet beschikbaar." 
+          message: "Sorry, de RKOS analyse lukt niet. Mindstudio AI is niet beschikbaar." 
         });
       }
     } catch (error) {
-      console.error("Error running full analysis:", error);
+      console.error("Error running RKOS analysis:", error);
       res.status(500).json({ message: "Volledige analyse mislukt. Probeer het opnieuw." });
     }
   });
