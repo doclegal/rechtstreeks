@@ -16,6 +16,9 @@ import { parseTemplateText, extractTextFromFile, validateParsedTemplate } from "
 import { sendInvitationEmail } from "./email";
 import multer from "multer";
 import { z } from "zod";
+import { SEARCH_CONFIG } from "@shared/searchConfig";
+import { scoreAndSortResults } from "./scoringService";
+import { rerankResults } from "./rerankerService";
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -7134,33 +7137,82 @@ Remember: Balance is key - keywords should be specific enough to filter out irre
     }
   });
 
-  // Semantic search in Pinecone vector database
+  // Semantic search in Pinecone vector database with intelligent scoring and reranking
   app.post('/api/pinecone/search', async (req, res) => {
     try {
-      const { query, filters, topK, scoreThreshold } = req.body;
+      const { query, filters, keywords = [], caseId, enableReranking = true } = req.body;
       
       if (!query || typeof query !== 'string') {
         return res.status(400).json({ error: 'Search query is required' });
       }
 
-      console.log(`🔍 Pinecone search: "${query.substring(0, 50)}..."`);
+      console.log(`🔍 NEW STRATEGY: Single-pass Pinecone search`);
+      console.log(`📝 Query: "${query.substring(0, 50)}..."`);
+      console.log(`🔑 Keywords for bonus: ${keywords.length > 0 ? keywords.join(', ') : 'none'}`);
       if (filters) {
         console.log(`📋 Filters:`, JSON.stringify(filters, null, 2));
       }
-      if (scoreThreshold !== undefined) {
-        console.log(`🎯 Score threshold: ${scoreThreshold}`);
-      }
       
-      const results = await searchVectors({
+      // Step 1: Single Pinecone query with large topK and permissive threshold
+      const rawResults = await searchVectors({
         text: query,
         filter: filters,
-        topK: topK || 20,
-        scoreThreshold: scoreThreshold
+        topK: SEARCH_CONFIG.DEFAULT_TOP_K,
+        scoreThreshold: SEARCH_CONFIG.DEFAULT_SCORE_THRESHOLD
       });
 
-      const formattedResults = results.map(result => ({
+      console.log(`📊 Pinecone returned ${rawResults.length} candidates`);
+      
+      if (rawResults.length === 0) {
+        return res.json({
+          query,
+          results: [],
+          totalCandidates: 0,
+          finalResults: 0,
+          reranked: false
+        });
+      }
+      
+      // Step 2: Apply adjusted scoring (base + court boost + keyword bonus)
+      const scoredResults = scoreAndSortResults(rawResults, keywords);
+      console.log(`📊 Score breakdown (top 5):`);
+      scoredResults.slice(0, 5).forEach((r, i) => {
+        console.log(`  ${i+1}. ${r.courtType} | Base: ${r.scoreBreakdown.baseScore.toFixed(3)}, Court: +${r.scoreBreakdown.courtBoost.toFixed(3)}, Keywords: +${r.scoreBreakdown.keywordBonus.toFixed(3)} = ${r.adjustedScore.toFixed(3)}`);
+      });
+      
+      // Step 3: Select top candidates for potential reranking
+      const topCandidates = scoredResults.slice(0, SEARCH_CONFIG.RERANK_CANDIDATE_COUNT);
+      
+      // Step 4: Optional LLM reranking of top candidates
+      let finalResults = topCandidates;
+      let reranked = false;
+      
+      if (enableReranking && topCandidates.length > 0) {
+        console.log(`🤖 Attempting to rerank top ${Math.min(topCandidates.length, SEARCH_CONFIG.RERANK_BATCH_SIZE)} candidates...`);
+        const rerankedResults = await rerankResults({
+          caseId,
+          query,
+          candidates: topCandidates,
+          filters,
+          enableCache: true
+        });
+        
+        if (rerankedResults.length > 0) {
+          finalResults = rerankedResults;
+          reranked = true;
+          console.log(`✅ Reranking successful`);
+        }
+      }
+      
+      // Step 5: Format and return top N for display
+      const displayResults = finalResults.slice(0, SEARCH_CONFIG.MAX_RESULTS_DISPLAY);
+      
+      const formattedResults = displayResults.map(result => ({
         id: result.id,
         score: result.score,
+        adjustedScore: result.adjustedScore,
+        scoreBreakdown: result.scoreBreakdown,
+        courtType: result.courtType,
         ecli: result.metadata.ecli,
         title: result.metadata.title,
         court: result.metadata.court,
@@ -7176,10 +7228,15 @@ Remember: Balance is key - keywords should be specific enough to filter out irre
         ai_inhoudsindicatie: result.metadata.ai_inhoudsindicatie
       }));
 
+      console.log(`✅ Returning ${formattedResults.length} results (${reranked ? 'reranked' : 'adjusted score only'})`);
+
       res.json({
         query,
         results: formattedResults,
-        totalResults: formattedResults.length
+        totalCandidates: rawResults.length,
+        finalResults: formattedResults.length,
+        reranked,
+        strategy: 'single-pass-with-scoring'
       });
 
     } catch (error: any) {
