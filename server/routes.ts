@@ -7114,7 +7114,7 @@ ${adviceText}
 Generate ONE optimized search query that will find jurisprudence that strengthens this legal position.`
           }
         ],
-        max_completion_tokens: 200
+        max_completion_tokens: 500 // GPT-5 uses reasoning tokens, need more space for actual output
       });
 
       console.log('🤖 OpenAI response received:', {
