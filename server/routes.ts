@@ -7087,22 +7087,45 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
             role: "system",
             content: `You are a Dutch legal research expert specialized in finding relevant jurisprudence (case law) to support legal arguments.
 
-Your task: Analyze the provided legal advice and generate ONE optimized search query for a hybrid vector database (Pinecone) that combines semantic search and keyword matching.
+Your task: Analyze the provided legal advice and generate:
+1. ONE optimized search query for semantic vector search
+2. A list of 1-3 REQUIRED KEYWORDS that must appear in results (exact match filter)
 
-The search query must:
-1. Retrieve jurisprudence that STRENGTHENS the user's legal position
-2. Support arguments that INCREASE the chance of winning the case
-3. Include key legal concepts, parties, obligations, violations, and relevant articles
-4. Mix semantic context (for conceptual similarity) with explicit keywords (for exact matches)
-5. Be concise but comprehensive (max 100 words)
-6. Focus on the legal issues, not just facts
-7. Prioritize jurisprudence favorable to the user's position
+SEARCH QUERY guidelines:
+- Retrieve jurisprudence that STRENGTHENS the user's legal position
+- Support arguments that INCREASE the chance of winning the case
+- Include key legal concepts, obligations, violations, and relevant articles
+- Be concise but comprehensive (max 100 words)
+- Focus on the legal issues, not just facts
 
-Return ONLY the search query text, nothing else. No explanations, no formatting, just the optimized query.`
+REQUIRED KEYWORDS guidelines (CRITICAL - balance is key):
+- Identify 1-3 ESSENTIAL legal terms that MUST appear in relevant case law
+- Use keywords that are HIGHLY SPECIFIC to the legal issue (not generic words)
+- Examples of GOOD keywords:
+  * "huurovereenkomst" for rental disputes
+  * "merkinbreuk" for trademark infringement
+  * "onrechtmatige daad" for tort claims
+  * "opzegging" for termination disputes
+  * "koopovereenkomst" for purchase agreement issues
+- Examples of BAD keywords (too generic):
+  * "overeenkomst" alone (too broad - millions of cases)
+  * "partijen" (appears in almost all cases)
+  * "rechter" (appears in all cases)
+- Only include keywords that meaningfully narrow down results
+- If the case is very broad or general, use fewer keywords (even 0-1) to avoid over-filtering
+- If the case involves specific legal concepts, use 2-3 precise terms
+
+Return a JSON object with this exact structure:
+{
+  "query": "the search query text",
+  "requiredKeywords": ["keyword1", "keyword2"]
+}
+
+Return ONLY valid JSON, nothing else.`
           },
           {
             role: "user",
-            content: `Analyze this legal advice and generate the most effective jurisprudence search query:
+            content: `Analyze this legal advice and generate the optimized search query + required keywords:
 
 CASE TITLE: ${caseData.title}
 USER ROLE: ${caseData.userRole === 'EISER' ? 'Claimant (Eiser)' : 'Defendant (Gedaagde)'}
@@ -7111,10 +7134,12 @@ CLAIM AMOUNT: €${caseData.claimAmount}
 LEGAL ADVICE:
 ${adviceText}
 
-Generate ONE optimized search query that will find jurisprudence that strengthens this legal position.`
+Generate the search query and identify 1-3 essential keywords that MUST appear in relevant jurisprudence.
+Remember: Balance is key - keywords should be specific enough to filter out irrelevant cases but not so narrow that they exclude valuable precedents.`
           }
         ],
-        max_tokens: 300
+        response_format: { type: "json_object" },
+        max_tokens: 400
       });
 
       console.log('🤖 OpenAI response received:', {
@@ -7123,17 +7148,37 @@ Generate ONE optimized search query that will find jurisprudence that strengthen
         hasContent: !!response.choices?.[0]?.message?.content
       });
 
-      const generatedQuery = response.choices[0].message.content?.trim() || '';
+      const responseContent = response.choices[0].message.content?.trim() || '';
 
-      if (!generatedQuery) {
+      if (!responseContent) {
         console.error('❌ Empty response from OpenAI:', response);
         throw new Error('AI returned empty response. Please try again.');
       }
 
+      // Parse JSON response
+      let parsedResponse: any;
+      try {
+        parsedResponse = JSON.parse(responseContent);
+      } catch (parseError) {
+        console.error('❌ Failed to parse JSON response:', responseContent);
+        throw new Error('AI returned invalid JSON. Please try again.');
+      }
+
+      const generatedQuery = parsedResponse.query || '';
+      const requiredKeywords = Array.isArray(parsedResponse.requiredKeywords) 
+        ? parsedResponse.requiredKeywords.filter((k: any) => typeof k === 'string' && k.trim())
+        : [];
+
+      if (!generatedQuery) {
+        throw new Error('AI did not generate a search query. Please try again.');
+      }
+
       console.log(`✅ Generated search query: "${generatedQuery.substring(0, 100)}..."`);
+      console.log(`🔑 Required keywords: ${requiredKeywords.length > 0 ? requiredKeywords.join(', ') : 'none'}`);
 
       res.json({
         query: generatedQuery,
+        requiredKeywords: requiredKeywords,
         caseTitle: caseData.title,
         userRole: caseData.userRole
       });

@@ -71,11 +71,15 @@ Preferred communication style: Simple, everyday language.
 - **Metadata Filtering**: Supports legal_area, court, procedure_type filters.
 - **Advanced Settings UI**: Collapsible panel with sliders and buttons for real-time threshold and result limiting.
 - **Score Display**: Each result shows its relevance score as a percentage badge for transparency.
-- **Automatic Query Generation**: AI-powered (OpenAI GPT-4o-mini) feature that analyzes complete legal advice to generate optimized search queries.
+- **Automatic Query Generation**: AI-powered (OpenAI GPT-4o-mini) feature that analyzes complete legal advice to generate optimized search queries AND required keywords.
   - Analyzes facts, legal issues, claims, defenses, and desired outcomes from user's case.
   - Generates search queries specifically designed to find jurisprudence that strengthens user's position.
+  - Automatically identifies 1-3 essential keywords that MUST appear in results (exact match filter).
+  - AI balances specificity (filtering irrelevant cases) vs. breadth (not excluding valuable precedents).
+  - Example keywords: "huurovereenkomst" for rental disputes, "merkinbreuk" for trademark infringement.
+  - Avoids overly generic keywords that would exclude too many relevant cases.
   - Optimized for semantic search with focus on legal concepts and key terms.
-  - Endpoint: `/api/pinecone/generate-query` (requires caseId with legal advice).
+  - Endpoint: `/api/pinecone/generate-query` (requires caseId with legal advice, returns query + requiredKeywords array).
 - **Implementation**: `server/pineconeService.ts` for vector operations, `server/routes.ts` for search and query generation endpoints.
 - **Frontend**: `/jurisprudentie` page with manual search, automatic AI query generation, metadata filters, and AI summary display.
 - **Cost Efficiency**: Pre-computed AI summaries eliminate runtime AI generation costs (~€0.0023 per summary).
