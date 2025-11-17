@@ -166,7 +166,7 @@ Rerank these ${candidatesToRerank.length} candidates by legal relevance. Return 
     
     console.log(`✅ Reranked ${rankings.length} results`);
     
-    // Reorder candidates based on rankings
+    // Reorder the reranked batch based on LLM rankings
     const reranked: ScoredResult[] = [];
     const used = new Set<number>();
     
@@ -178,23 +178,28 @@ Rerank these ${candidatesToRerank.length} candidates by legal relevance. Return 
       }
     }
     
-    // Add any missing candidates at the end (fallback)
+    // Add any missing candidates from the reranked batch (fallback)
     for (let i = 0; i < candidatesToRerank.length; i++) {
       if (!used.has(i)) {
         reranked.push(candidatesToRerank[i]);
       }
     }
     
+    // IMPORTANT: Append the remaining candidates (beyond the reranked batch)
+    // that were part of the original candidate pool
+    const remainingCandidates = candidates.slice(SEARCH_CONFIG.RERANK_BATCH_SIZE);
+    const finalResults = [...reranked, ...remainingCandidates];
+    
     // Cache the results
     if (enableCache) {
       const cacheKey = generateCacheKey(caseId, query, filters);
       rerankCache.set(cacheKey, {
-        results: reranked,
+        results: finalResults,
         timestamp: Date.now()
       });
     }
     
-    return reranked;
+    return finalResults;
     
   } catch (error: any) {
     console.error('❌ Reranking failed:', error.message);

@@ -114,7 +114,7 @@ export default function Jurisprudentie() {
         query: searchQuery,
         filters: Object.keys(filters).length > 0 ? filters : undefined,
         keywords: allKeywords,
-        caseId: selectedCase || undefined,
+        caseId: currentCase?.id || undefined,
         enableReranking: true
       });
       
