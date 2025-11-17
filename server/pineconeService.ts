@@ -154,7 +154,6 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
     // Query with hybrid vectors
     const index = pc.Index(INDEX_NAME);
     const queryParams: any = {
-      namespace: NAMESPACE,
       topK: query.topK || 10,
       vector: weightedDense,
       sparseVector: weightedSparse,
@@ -167,7 +166,7 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
     }
     
     console.log(`🔎 Querying with hybrid vectors (dense: ${weightedDense.length} dims, sparse: ${weightedSparse.indices.length} terms)`);
-    const response = await index.query(queryParams);
+    const response = await index.namespace(NAMESPACE).query(queryParams);
     
     if (!response.matches || response.matches.length === 0) {
       console.log('ℹ️ No results found in hybrid search');
