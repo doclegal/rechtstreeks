@@ -33,54 +33,28 @@ interface VectorSearchResult {
   ai_inhoudsindicatie?: string;
 }
 
-// Helper function to determine court rank (lower = higher authority)
-function getCourtRank(courtName: string | undefined): number {
-  if (!courtName) return 99; // Unknown courts have lowest priority
+// Helper function to determine which court type a result belongs to
+function detectCourtType(courtName: string | undefined): 'HR' | 'Hof' | 'Rechtbank' | 'Unknown' {
+  if (!courtName) return 'Unknown';
   
   const normalized = courtName.toLowerCase().trim();
   
-  // Hoge Raad (highest authority) - handles "HR", "HR:", "Hoge Raad", etc.
+  // Hoge Raad (highest authority)
   if (/\bhr\b/.test(normalized) || normalized.includes('hoge raad')) {
-    return 0;
+    return 'HR';
   }
   
-  // Gerechtshof (court of appeal) - handles "Hof Amsterdam", "Gerechtshof", etc.
+  // Gerechtshof (court of appeal)
   if (/^hof\b/.test(normalized) || normalized.includes('gerechtshof') || /\bhof\s/.test(normalized)) {
-    return 1;
+    return 'Hof';
   }
   
   // Rechtbank (district court)
   if (normalized.includes('rechtbank') || /\brb\b/.test(normalized)) {
-    return 2;
+    return 'Rechtbank';
   }
   
-  // Unknown or other courts
-  return 99;
-}
-
-// Re-rank results considering court hierarchy when scores are close (< 3% difference)
-function applyCourtAwareRanking(results: VectorSearchResult[]): VectorSearchResult[] {
-  return [...results].sort((a, b) => {
-    const scoreA = a.score || 0;
-    const scoreB = b.score || 0;
-    const scoreDiff = Math.abs(scoreA - scoreB);
-    
-    // If scores differ by 3% or more, keep original Pinecone ordering (higher score first)
-    if (scoreDiff >= 0.03) {
-      return scoreB - scoreA; // Higher score first
-    }
-    
-    // Scores are close (< 3% difference), prioritize higher court
-    const rankA = getCourtRank(a.court);
-    const rankB = getCourtRank(b.court);
-    
-    if (rankA !== rankB) {
-      return rankA - rankB; // Lower rank number = higher authority = comes first
-    }
-    
-    // Same court level, fall back to score
-    return scoreB - scoreA;
-  });
+  return 'Unknown';
 }
 
 export default function Jurisprudentie() {
@@ -123,12 +97,12 @@ export default function Jurisprudentie() {
         setRequiredKeywords(data.requiredKeywords.join(', '));
         toast({
           title: "AI zoekvraag en verplichte woorden gegenereerd",
-          description: `Zoekvraag, ${data.requiredKeywords.length} verplichte ${data.requiredKeywords.length === 1 ? 'woord' : 'woorden'} ingesteld. Slimme zoekstrategie begint bij 30% relevantie`,
+          description: `Zoekvraag, ${data.requiredKeywords.length} verplichte ${data.requiredKeywords.length === 1 ? 'woord' : 'woorden'} ingesteld. Rechtshiërarchie zoekstrategie: HR → Hof → Rechtbank`,
         });
       } else {
         toast({
           title: "AI zoekvraag gegenereerd",
-          description: "Zoekvraag ingesteld. Slimme zoekstrategie begint bij 30% relevantie en past zich automatisch aan",
+          description: "Zoekvraag ingesteld. Rechtshiërarchie zoekstrategie: HR → Hof → Rechtbank",
         });
       }
     },
@@ -180,6 +154,62 @@ export default function Jurisprudentie() {
     return filteredResults;
   };
 
+  // Helper to search and filter by court type CLIENT-SIDE
+  // Pinecone doesn't support regex filters, so we fetch LARGE topK and filter client-side
+  const searchWithCourtFilter = async (
+    courtType: 'HR' | 'Hof' | 'Rechtbank', 
+    threshold: number, 
+    keywords: string[]
+  ): Promise<VectorSearchResult[]> => {
+    const filters: Record<string, any> = {};
+    
+    // Add user-selected filters (only exact match filters)
+    if (legalArea) filters.legal_area = { $eq: legalArea };
+    if (court) filters.court = { $eq: court }; // User manually selected specific court
+    if (procedureType) filters.procedure_type = { $eq: procedureType };
+
+    // IMPORTANT: Request topK=100 to ensure we get HR/Hof results even if Rechtbank dominates
+    // Client-side filtering can only work on what Pinecone returns
+    const response = await apiRequest('POST', '/api/pinecone/search', {
+      query: searchQuery,
+      filters: Object.keys(filters).length > 0 ? filters : undefined,
+      topK: 100, // Increased from user's topK to support client-side tier filtering
+      scoreThreshold: threshold
+    });
+    
+    const data = await response.json();
+    let results = data.results || [];
+    
+    // CLIENT-SIDE: Filter by court type (Pinecone doesn't support regex)
+    // Only filter if user hasn't manually selected a specific court
+    if (!court) {
+      results = results.filter((result: VectorSearchResult) => {
+        const detectedType = detectCourtType(result.court);
+        return detectedType === courtType;
+      });
+    }
+    
+    // Apply required keywords filter (case-insensitive)
+    if (keywords.length > 0) {
+      results = results.filter((result: VectorSearchResult) => {
+        const searchText = [
+          result.text,
+          result.ai_inhoudsindicatie,
+          result.ai_feiten,
+          result.ai_geschil,
+          result.ai_beslissing,
+          result.ai_motivering,
+          result.title
+        ].join(' ').toLowerCase();
+        
+        // All keywords must be present
+        return keywords.every(keyword => searchText.includes(keyword));
+      });
+    }
+    
+    return results;
+  };
+
   const searchMutation = useMutation({
     mutationFn: async () => {
       const iterations: string[] = [];
@@ -187,61 +217,132 @@ export default function Jurisprudentie() {
         ? requiredKeywords.toLowerCase().split(',').map(k => k.trim()).filter(k => k)
         : [];
       
-      // Strategy: Start with highest quality (30%), progressively relax to 10%
-      // This ensures the best matches appear first
-      const thresholds = [0.30, 0.25, 0.20, 0.15, 0.10];
-      
-      // Step 1: Try with maximum threshold (30%) and all keywords
-      let currentThreshold = thresholds[0];
-      let currentKeywords = [...allKeywords];
       let results: VectorSearchResult[] = [];
+      let usedCourtTier: string = '';
+      let usedThreshold = 0.30;
       
-      // Try different thresholds - starting high for best quality
-      for (let i = 0; i < thresholds.length; i++) {
-        currentThreshold = thresholds[i];
-        results = await performSearch(currentThreshold, currentKeywords);
+      // If user manually selected a specific court, skip tier-search
+      if (court) {
+        // Single search with user-selected court
+        const thresholds = [0.30, 0.25, 0.20, 0.15, 0.10];
         
-        const keywordText = currentKeywords.length > 0 
-          ? ` met ${currentKeywords.length} verplichte ${currentKeywords.length === 1 ? 'woord' : 'woorden'}`
-          : ' zonder verplichte woorden';
+        for (const threshold of thresholds) {
+          results = await performSearch(threshold, allKeywords);
+          
+          const keywordText = allKeywords.length > 0 
+            ? ` met ${allKeywords.length} verplichte ${allKeywords.length === 1 ? 'woord' : 'woorden'}`
+            : '';
+          
+          iterations.push(`${court}: ${(threshold * 100).toFixed(0)}% relevantiedrempel${keywordText} → ${results.length} resultaten`);
+          
+          if (results.length >= 1) {
+            usedCourtTier = court;
+            usedThreshold = threshold;
+            break;
+          }
+        }
         
-        iterations.push(`Poging ${i + 1}: ${(currentThreshold * 100).toFixed(0)}% relevantiedrempel${keywordText} → ${results.length} resultaten`);
+        return { 
+          results: results.slice(0, 10),
+          iterations,
+          finalThreshold: usedThreshold,
+          courtTier: usedCourtTier,
+          finalKeywords: allKeywords
+        };
+      }
+      
+      // Strategy: Sequential court-filtered searches with CACHING
+      // Fetch ONCE per threshold (with topK=100), then filter client-side for each tier
+      // This avoids redundant API calls and ensures we can find HR/Hof results
+      const thresholds = [0.30, 0.25, 0.20, 0.15, 0.10];
+      const courtTiers: ('HR' | 'Hof' | 'Rechtbank')[] = ['HR', 'Hof', 'Rechtbank'];
+      
+      // Cache to store fetched results per threshold (to avoid redundant API calls)
+      const resultCache = new Map<number, VectorSearchResult[]>();
+      
+      // Helper to fetch results for a threshold (with caching)
+      const fetchForThreshold = async (threshold: number): Promise<VectorSearchResult[]> => {
+        if (resultCache.has(threshold)) {
+          return resultCache.get(threshold)!;
+        }
         
-        // If we have at least 5 results, we're done
-        if (results.length >= 5) {
+        const filters: Record<string, any> = {};
+        if (legalArea) filters.legal_area = { $eq: legalArea };
+        if (procedureType) filters.procedure_type = { $eq: procedureType };
+
+        const response = await apiRequest('POST', '/api/pinecone/search', {
+          query: searchQuery,
+          filters: Object.keys(filters).length > 0 ? filters : undefined,
+          topK: 100, // Large topK for client-side filtering
+          scoreThreshold: threshold
+        });
+        
+        const data = await response.json();
+        let fetchedResults = data.results || [];
+        
+        // Apply required keywords filter
+        if (allKeywords.length > 0) {
+          fetchedResults = fetchedResults.filter((result: VectorSearchResult) => {
+            const searchText = [
+              result.text,
+              result.ai_inhoudsindicatie,
+              result.ai_feiten,
+              result.ai_geschil,
+              result.ai_beslissing,
+              result.ai_motivering,
+              result.title
+            ].join(' ').toLowerCase();
+            
+            return allKeywords.every(keyword => searchText.includes(keyword));
+          });
+        }
+        
+        resultCache.set(threshold, fetchedResults);
+        return fetchedResults;
+      };
+      
+      // Try each court tier sequentially
+      for (const courtTier of courtTiers) {
+        const courtName = courtTier === 'HR' ? 'Hoge Raad' : courtTier === 'Hof' ? 'Gerechtshof' : 'Rechtbank';
+        
+        // For each court tier, try different thresholds
+        for (const threshold of thresholds) {
+          // Fetch results (cached if already fetched for this threshold)
+          const allResults = await fetchForThreshold(threshold);
+          
+          // CLIENT-SIDE: Filter by court tier
+          results = allResults.filter((result: VectorSearchResult) => {
+            const detectedType = detectCourtType(result.court);
+            return detectedType === courtTier;
+          });
+          
+          const keywordText = allKeywords.length > 0 
+            ? ` met ${allKeywords.length} verplichte ${allKeywords.length === 1 ? 'woord' : 'woorden'}`
+            : '';
+          
+          const cacheHit = resultCache.has(threshold) && resultCache.get(threshold) !== allResults;
+          iterations.push(`${courtName}: ${(threshold * 100).toFixed(0)}% relevantiedrempel${keywordText} → ${results.length} resultaten${cacheHit ? ' (cached)' : ''}`);
+          
+          // If we found at least 1 result, stop searching
+          if (results.length >= 1) {
+            usedCourtTier = courtName;
+            usedThreshold = threshold;
+            break;
+          }
+        }
+        
+        // If we found results, stop trying lower court tiers
+        if (results.length >= 1) {
           break;
         }
       }
       
-      // Step 2: If still less than 5 results, remove keywords one by one
-      if (results.length < 5 && currentKeywords.length > 0) {
-        currentThreshold = 0.10; // Use minimum threshold
-        
-        while (currentKeywords.length > 0 && results.length < 5) {
-          currentKeywords.pop(); // Remove last keyword
-          results = await performSearch(currentThreshold, currentKeywords);
-          
-          const keywordText = currentKeywords.length > 0 
-            ? ` met ${currentKeywords.length} verplichte ${currentKeywords.length === 1 ? 'woord' : 'woorden'}`
-            : ' zonder verplichte woorden';
-          
-          iterations.push(`Extra poging: 10% relevantiedrempel${keywordText} → ${results.length} resultaten`);
-          
-          if (results.length >= 5) {
-            break;
-          }
-        }
-      }
-      
-      // Apply court-aware re-ranking before slicing
-      // This ensures higher courts (HR, Hof) appear first when scores are close (< 3%)
-      const rankedResults = applyCourtAwareRanking(results);
-      
       return { 
-        results: rankedResults.slice(0, 10), // Max 10 results
+        results: results.slice(0, 10), // Max 10 results
         iterations,
-        finalThreshold: currentThreshold,
-        finalKeywords: currentKeywords
+        finalThreshold: usedThreshold,
+        courtTier: usedCourtTier,
+        finalKeywords: allKeywords
       };
     },
     onSuccess: (data: any) => {
@@ -249,11 +350,11 @@ export default function Jurisprudentie() {
       setSearchIterations(data.iterations || []);
       
       const resultCount = data.results.length;
-      const iterationCount = data.iterations.length;
+      const courtTier = data.courtTier || 'onbekend';
       
       toast({
-        title: "Slimme zoekstrategie voltooid",
-        description: `${resultCount} resultaten gevonden na ${iterationCount} ${iterationCount === 1 ? 'poging' : 'pogingen'}. Top 10 getoond.`,
+        title: "Rechtshiërarchie zoekstrategie voltooid",
+        description: `${resultCount} resultaten gevonden van ${courtTier}. Top 10 getoond.`,
       });
     },
     onError: (error: any) => {
@@ -468,7 +569,7 @@ export default function Jurisprudentie() {
                     {autoGeneratedQuery ? (
                       <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                         <Sparkles className="h-3 w-3" />
-                        Bij AI-gegenereerde zoekopdrachten bepaalt de slimme zoekstrategie automatisch de optimale drempelwaarde (start bij 30%, past zich aan tot 10%)
+                        De rechtshiërarchie zoekstrategie past automatisch de drempelwaarde aan (30% → 10%) per rechtsinstantie (HR → Hof → Rechtbank)
                       </p>
                     ) : (
                       <p className="text-xs text-muted-foreground">
@@ -543,10 +644,10 @@ export default function Jurisprudentie() {
 
                   <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded p-3 space-y-2">
                     <p className="text-xs text-blue-900 dark:text-blue-100">
-                      <strong>💡 Tip:</strong> De slimme zoekstrategie begint met 30% relevantiedrempel (hoogste kwaliteit) en past zich automatisch aan tot 10% voor bredere resultaten. Gebruik "Verplichte woorden" voor exacte termen (bijv. bedrijfsnamen, artikel nummers).
+                      <strong>💡 Zoekstrategie:</strong> Zoekt eerst bij Hoge Raad (HR), dan Gerechtshof (alle Hoven), dan Rechtbank (alle Rechtbanken). Bij elke instantie wordt gezocht met 30%-10% relevantiedrempel. Stopt zodra ≥1 resultaat gevonden.
                     </p>
                     <p className="text-xs text-blue-900 dark:text-blue-100">
-                      <strong>⚖️ Rechtshiërarchie:</strong> Resultaten worden gesorteerd op relevantie, maar bij vergelijkbare scores (verschil &lt;3%) krijgen hogere rechters voorrang: Hoge Raad &gt; Gerechtshof &gt; Rechtbank.
+                      <strong>⚖️ Rechtshiërarchie:</strong> Uitspraken van hogere rechters krijgen prioriteit: Hoge Raad → Gerechtshof → Rechtbank. Gebruik "Verplichte woorden" voor exacte termen (bijv. bedrijfsnamen, artikelnummers).
                     </p>
                   </div>
                 </div>
@@ -718,12 +819,12 @@ export default function Jurisprudentie() {
             </div>
             <div className="mt-3 pt-3 border-t space-y-2">
               <p className="text-xs text-muted-foreground">
-                De slimme zoekstrategie begint met de hoogste kwaliteit (30%) en past zich automatisch aan voor optimale resultaten
+                De rechtshiërarchie zoekstrategie doorzoekt sequentieel: HR → Hof → Rechtbank (stopt bij ≥1 resultaat)
               </p>
               <div className="flex items-start gap-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded p-2">
                 <Scale className="h-3 w-3 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                 <p className="text-xs text-blue-900 dark:text-blue-100">
-                  <strong>Rechtshiërarchie:</strong> Bij vergelijkbare scores (verschil &lt;3%) worden uitspraken van hogere rechters (Hoge Raad → Gerechtshof → Rechtbank) eerst getoond
+                  <strong>Intelligente hiërarchie:</strong> Zoekt eerst naar uitspraken van Hoge Raad (hoogste instantie), dan Gerechtshoven (alle locaties), dan Rechtbanken (alle locaties). Binnen elke instantie wordt de relevantiedrempel stapsgewijs verlaagd van 30% naar 10%.
                 </p>
               </div>
             </div>
