@@ -159,19 +159,16 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
       return [];
     }
     
-    const MINIMUM_SCORE = 0.0; // No threshold - return all results sorted by relevance
+    // Return ALL results without score filtering (Pinecone already sorts by relevance)
+    const results = response.matches.map((match: any) => ({
+      id: match.id,
+      score: match.score || 0,
+      metadata: match.metadata as VectorRecord['metadata'],
+      text: match.metadata?.text
+    }));
     
-    const filteredResults = response.matches
-      .filter((match: any) => match.score >= MINIMUM_SCORE)
-      .map((match: any) => ({
-        id: match.id,
-        score: match.score || 0,
-        metadata: match.metadata as VectorRecord['metadata'],
-        text: match.metadata?.text
-      }));
-    
-    console.log(`✅ Semantic search: ${filteredResults.length} results returned`);
-    return filteredResults;
+    console.log(`✅ Semantic search: ${results.length} results returned (scores range: ${Math.min(...results.map(r => r.score)).toFixed(4)} to ${Math.max(...results.map(r => r.score)).toFixed(4)})`);
+    return results;
   } catch (error) {
     console.error("❌ Error in hybrid search:", error);
     throw error;
