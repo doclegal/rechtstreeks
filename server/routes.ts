@@ -7213,6 +7213,7 @@ Remember: Balance is key - keywords should be specific enough to filter out irre
         adjustedScore: result.adjustedScore,
         scoreBreakdown: result.scoreBreakdown,
         courtType: result.courtType,
+        rerankScore: result.rerankScore, // Pinecone reranker score (0-1)
         ecli: result.metadata.ecli,
         title: result.metadata.title,
         court: result.metadata.court,

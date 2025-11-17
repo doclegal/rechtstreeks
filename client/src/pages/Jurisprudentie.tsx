@@ -25,6 +25,7 @@ interface VectorSearchResult {
     keywordBonus: number;
   };
   courtType?: string;
+  rerankScore?: number; // Pinecone reranker score (0-1)
   ecli: string;
   title?: string;
   court?: string;
