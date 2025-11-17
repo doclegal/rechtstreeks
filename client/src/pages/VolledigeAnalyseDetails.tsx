@@ -20,7 +20,7 @@ export default function VolledigeAnalyseDetails() {
 
   const successChanceMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest('POST', `/api/cases/${caseId}/success-chance`);
+      const response = await apiRequest('POST', `/api/cases/${caseId}/full-analyze`);
       return response.json();
     },
     onSuccess: (data) => {
@@ -28,14 +28,14 @@ export default function VolledigeAnalyseDetails() {
       queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
       toast({
         title: "Volledige analyse uitgevoerd",
-        description: "De AI heeft uw zaak geanalyseerd",
+        description: "De RKOS analyse is succesvol voltooid",
       });
       refetch();
     },
     onError: (error: any) => {
       toast({
-        title: "Fout bij beoordeling",
-        description: error.message || "Kon kans op succes niet beoordelen",
+        title: "Fout bij analyse",
+        description: error.message || "Kon RKOS analyse niet uitvoeren",
         variant: "destructive",
       });
     },
