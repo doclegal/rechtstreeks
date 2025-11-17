@@ -54,6 +54,7 @@ export default function Jurisprudentie() {
   const [scoreThreshold, setScoreThreshold] = useState(0.01);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [maxResults, setMaxResults] = useState<number | null>(null); // Limit displayed results
+  const [requiredKeywords, setRequiredKeywords] = useState(""); // Must-contain keywords
 
   const generateQueryMutation = useMutation({
     mutationFn: async () => {
@@ -96,11 +97,44 @@ export default function Jurisprudentie() {
       return response.json();
     },
     onSuccess: (data: any) => {
-      setResults(data.results || []);
-      toast({
-        title: "Zoekresultaten geladen",
-        description: `${data.results?.length || 0} relevante uitspraken gevonden`,
-      });
+      let filteredResults = data.results || [];
+      
+      // Apply required keywords filter (case-insensitive)
+      if (requiredKeywords.trim()) {
+        const keywords = requiredKeywords.toLowerCase().split(',').map(k => k.trim()).filter(k => k);
+        
+        filteredResults = filteredResults.filter((result: VectorSearchResult) => {
+          const searchText = [
+            result.text,
+            result.ai_inhoudsindicatie,
+            result.ai_feiten,
+            result.ai_geschil,
+            result.ai_beslissing,
+            result.ai_motivering,
+            result.title
+          ].join(' ').toLowerCase();
+          
+          // All keywords must be present
+          return keywords.every(keyword => searchText.includes(keyword));
+        });
+      }
+      
+      setResults(filteredResults);
+      
+      const totalResults = data.results?.length || 0;
+      const afterFilter = filteredResults.length;
+      
+      if (requiredKeywords.trim() && totalResults !== afterFilter) {
+        toast({
+          title: "Zoekresultaten gefilterd",
+          description: `${afterFilter} van ${totalResults} uitspraken bevatten de verplichte woorden`,
+        });
+      } else {
+        toast({
+          title: "Zoekresultaten geladen",
+          description: `${afterFilter} relevante uitspraken gevonden`,
+        });
+      }
     },
     onError: (error: any) => {
       toast({
@@ -361,9 +395,24 @@ export default function Jurisprudentie() {
                     </p>
                   </div>
 
+                  <div className="space-y-3">
+                    <Label htmlFor="requiredKeywords" className="font-semibold">Verplichte woorden (exact match)</Label>
+                    <Input
+                      id="requiredKeywords"
+                      value={requiredKeywords}
+                      onChange={(e) => setRequiredKeywords(e.target.value)}
+                      placeholder='Bijvoorbeeld: Wibra, artikel 6:162 BW'
+                      data-testid="input-required-keywords"
+                      className="text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Alleen resultaten die deze woorden bevatten worden getoond. Scheid meerdere woorden met een komma. Hoofdletter-ongevoelig.
+                    </p>
+                  </div>
+
                   <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded p-3">
                     <p className="text-xs text-blue-900 dark:text-blue-100">
-                      <strong>💡 Tip:</strong> Voor strengere filtering verhoog de threshold naar 3-5%. Voor zeer specifieke zaken gebruik "Top 3" om alleen de meest relevante uitspraken te zien.
+                      <strong>💡 Tip:</strong> Voor strengere filtering verhoog de threshold naar 3-5%. Gebruik "Verplichte woorden" voor exacte termen (bijv. bedrijfsnamen, artikel nummers). Combineer beide voor maximale precisie.
                     </p>
                   </div>
                 </div>

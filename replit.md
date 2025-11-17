@@ -67,6 +67,7 @@ Preferred communication style: Simple, everyday language.
 - **Relevance Filtering**: Configurable score threshold (default 1%, range 0-10%) to filter irrelevant results.
 - **Result Limiting**: Configurable topK parameter (default 20, range 5-50) to limit Pinecone query results.
 - **Display Limiting**: Configurable display filter (All/Top 3/Top 5/Top 10) to show only most relevant results.
+- **Required Keywords**: Exact text match filter (case-insensitive) to ensure specific terms appear in results. Searches across all text fields including AI summaries. Multiple keywords can be specified (comma-separated) - all must be present.
 - **Metadata Filtering**: Supports legal_area, court, procedure_type filters.
 - **Advanced Settings UI**: Collapsible panel with sliders and buttons for real-time threshold and result limiting.
 - **Score Display**: Each result shows its relevance score as a percentage badge for transparency.
