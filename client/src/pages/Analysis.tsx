@@ -285,7 +285,7 @@ export default function Analysis() {
               <div className="space-y-2 text-sm">
                 <div>
                   <span className="text-muted-foreground">Status:</span>{" "}
-                  <span className="font-medium">{fullAnalysis ? 'Analyse voltooid' : 'Nog niet uitgevoerd'}</span>
+                  <span className="font-medium">{(fullAnalysis || succesKansAnalysis) ? 'Analyse voltooid' : 'Nog niet uitgevoerd'}</span>
                 </div>
                 {succesKansAnalysis && (
                   <div>

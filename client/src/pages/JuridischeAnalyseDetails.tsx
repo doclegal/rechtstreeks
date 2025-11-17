@@ -101,7 +101,8 @@ export default function JuridischeAnalyseDetails() {
   const hasAdvice = legalAdviceJson || legalAdviceFull;
   
   // Check if full analysis exists (required for generating advice)
-  const hasFullAnalysis = currentCase?.fullAnalysis?.analysisJson;
+  // RKOS: Either analysisJson OR succesKansAnalysis counts as "full analysis"
+  const hasFullAnalysis = currentCase?.fullAnalysis?.analysisJson || currentCase?.fullAnalysis?.succesKansAnalysis;
 
   if (!hasAdvice) {
     return (
