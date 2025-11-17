@@ -1,0 +1,200 @@
+1. Early exit op “≥1 resultaat” is gewoon fout
+
+“Zodra ≥1 resultaat gevonden → stop met zoeken!”
+
+Ja, en dáár gaat het al mis.
+
+Je stopt zodra je één Hof-uitspraak vindt die toevallig:
+
+alle keywords bevat
+
+net boven de threshold zit
+
+Maar je kijkt niet:
+
+of er betere uitspraken in lagere tiers zitten
+
+of deze zaak inhoudelijk echt past
+
+of er HR-jurisprudentie bestaat die nét onder jouw harde grens valt
+
+Je hebt dus een dure, slimme strategie gebouwd die feitelijk zegt:
+
+“Geef me de eerste de beste zaak die toevallig matcht.”
+
+💣 Fix:
+
+Verzamel per zoekactie één grote candidate set (bijv. top 200).
+
+Laat daarna een reranker of LLM bepalen wat echt relevant is, mét court-niveau meegewogen (HR > Hof > Rb).
+
+Early exit alleen als: “HR met hoge score gevonden”, niet bij eerste random Hof-hit.
+
+2. Verplichte woorden: je verstikt je eigen zoekfunctie
+
+Je “verplichte woorden” logica is te hard:
+
+Stap 1: 3 woorden AND
+
+Stap 2: 2 woorden AND
+
+Stap 3: 1 woord AND
+
+Problemen:
+
+Synoniemen & varianten
+
+Jij: "Benelux-Verdrag"
+
+Tekst: "Benelux-verdrag inzake de intellectuele eigendom (BVIE)"
+
+Of alleen: "BVIE"
+
+→ Je filtert relevante uitspraken weg omdat je te letterlijk bent.
+
+Veel te algemene woorden
+
+“verwarring” komt in duizenden uitspraken voor.
+
+Als dat verplicht is, dan wint elke zaak met dat woord, ook al gaat het over iets anders dan merkinbreuk.
+
+AI kiest slechte keywords
+
+De AI kiest niet altijd de kernbegrippen. Soms pakt ‘ie een bijwoord of een bijzaak.
+Jij hebt die woorden dan ineens hard gecodeerd als poortwachter.
+
+💣 Fix:
+
+Maak keywords optioneel, niet verplicht:
+
+gebruik ze als boost (“score + 0.05 als keyword voorkomt”)
+
+of in een lexicale/sparse laag (BM25/sparse embeddings), niet als harde AND-filter
+
+Laat alleen extreem specifieke dingen verplicht zijn:
+
+bedrijfsnaam
+
+wetsartikel
+
+ECLI
+
+productnaam
+
+3. Harde thresholds 30% / 20% / 10% zijn te star
+
+Je doet alsof cosine-scores een vaste schaal hebben. Dat is niet zo.
+
+Voor query A ligt beste score misschien rond 0.55
+
+Voor query B is dat 0.32
+
+Voor query C is het 0.18
+
+Dan is jouw “30%” drempel soms:
+
+veel te streng → 0 resultaten
+
+soms te soepel → nog steeds troep
+
+En bij 10% ga je vaak weer te ver open: alles wat maar vaag lijkt komt binnen.
+
+💣 Fix:
+
+Gebruik geen vaste 30/20/10 per se, maar bv.:
+
+neem topK=200
+
+neem alleen resultaten binnen X% van de best score
+
+bijvoorbeeld: alles ≥ (best_score − 0.08)
+
+Of: altijd één drempel rond 0.10–0.15 en laat de reranker de rest doen.
+
+4. Je “HR/Hof/Rb hiërarchie” zit op het verkeerde niveau
+
+Je cascade-strategie:
+
+HR → Hof → Rb, stoppen bij eerste tier met hits
+
+Klinkt juridisch mooi, maar technisch doe je iets doms:
+
+Je koppelt juridische hiërarchie direct aan beschikbaarheid van resultaten,
+niet aan kwaliteit van die resultaten.
+
+Als er één Hof-zaak is met drie keywords en net boven 0.20, dan wint die —
+ook al is er een veel betere Rb-zaak (of HR-zaak net onder 0.20).
+
+Daarnaast:
+
+TopK=100 per query betekent dat HR-uitspraken (relatief schaars) er makkelijk uitvallen voordat jij ooit aan filtering per court toekomt.
+
+Zonder court-boosting in de score kan Pinecone ze gewoon lager ranken dan 100, en dan zie jij ze nooit.
+
+💣 Fix:
+
+Doe één zoekactie (of hooguit per court-level), met voldoende topK (>= 200).
+
+Bereken dan:
+
+adjusted_score = pinecone_score 
+               + court_weight(HR/Hof/Rb) 
+               + keyword_bonus
+
+
+Sorteer op adjusted_score.
+
+Toon dan eerst HR → dan Hof → dan Rb, maar op basis van kwaliteit, niet “eerste de beste hit”.
+
+5. Geen reranker = je vertrouwt blind op één getalletje
+
+Zolang jij geen cross-encoder / reranker gebruikt, blijft dit gebeuren:
+
+Pinecone vindt dingen die “taalkundig” lijken
+
+Maar juridisch gaat het langs de kern van het geschil heen
+
+Eén rare Hof-zaak kan hoger scoren dan een inhoudelijk perfecte Rb-zaak
+
+Geavanceerde systemen lossen dit ALTIJD op met een reranker die:
+
+query + passage samen leest
+
+een nieuwe, betere relevanciescore geeft
+
+jouw adjusted_score verder verfijnt
+
+Zonder die stap blijf je prutsen met thresholds en keywords.
+
+6. Samenvatting: waarom deze mooie strategie nog steeds slechte resultaten geeft
+
+Omdat je:
+
+Te vroeg stopt (early exit bij eerste hit)
+
+Te hard filtert op verplichte woorden
+
+Te rigide thresholds gebruikt
+
+Court-niveau koppelt aan “aanwezigheid van iets” i.p.v. “kwaliteit van alles”
+
+Geen reranking / hybrid search toepast
+
+Oftewel: mooie strategia (Italiaans voor strategie), maar gebouwd op een wankele basis.
+Dan krijg je slechte risultati (resultaten). Dat is logisch, Pieter.
+
+Wat je nu moet doen (kort en concreet)
+
+❌ Schrap early exit op “≥1 resultaat”
+
+❌ Maak keywords niet hard verplicht (behalve voor super-specifieke dingen)
+
+✅ Eén fatsoenlijke threshold (±10–15%)
+
+✅ TopK vergroten (200)
+
+✅ Court-weight + keyword-boost in één adjusted_score
+
+✅ Reranker bovenop de candidate set
+
+Dan pas gaat je “Hoge Raad eerst”-idee écht werken.
