@@ -338,8 +338,8 @@ export default function Jurisprudentie() {
                     </div>
                     <Slider
                       id="scoreThreshold"
-                      min={0.08}
-                      max={0.20}
+                      min={0.10}
+                      max={0.30}
                       step={0.01}
                       value={[scoreThreshold]}
                       onValueChange={(value) => setScoreThreshold(value[0])}
@@ -347,7 +347,7 @@ export default function Jurisprudentie() {
                       className="w-full"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Minimale similarity score voor resultaten. Hogere waarde = strengere filtering (8% - 20%)
+                      Minimale similarity score voor resultaten. Hogere waarde = strengere filtering (10% - 30%)
                     </p>
                   </div>
 
