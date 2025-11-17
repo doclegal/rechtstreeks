@@ -167,7 +167,13 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
       text: match.metadata?.text
     }));
     
-    console.log(`✅ Semantic search: ${results.length} results returned (scores range: ${Math.min(...results.map(r => r.score)).toFixed(4)} to ${Math.max(...results.map(r => r.score)).toFixed(4)})`);
+    if (results.length > 0) {
+      const scores = results.map(r => r.score);
+      console.log(`✅ Semantic search: ${results.length} results returned (scores range: ${Math.min(...scores).toFixed(4)} to ${Math.max(...scores).toFixed(4)})`);
+    } else {
+      console.log(`✅ Semantic search: 0 results returned`);
+    }
+    
     return results;
   } catch (error) {
     console.error("❌ Error in hybrid search:", error);
