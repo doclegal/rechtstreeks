@@ -687,11 +687,21 @@ export default function Jurisprudentie() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {/* Relevantie Score */}
-                    <div className="flex items-center gap-2 text-sm">
+                    {/* Relevantie Scores */}
+                    <div className="flex items-center gap-2 text-sm flex-wrap">
                       <Badge variant="secondary" className="text-xs" data-testid={`badge-score-${index}`}>
                         Relevantie: {(result.score * 100).toFixed(1)}%
                       </Badge>
+                      {result.rerankScore !== undefined && (
+                        <Badge variant="default" className="text-xs bg-primary/90" data-testid={`badge-rerank-score-${index}`}>
+                          🤖 Rerank: {(result.rerankScore * 100).toFixed(1)}%
+                        </Badge>
+                      )}
+                      {result.rerankScore === undefined && index < 20 && (
+                        <Badge variant="outline" className="text-xs text-muted-foreground" data-testid={`badge-no-rerank-${index}`}>
+                          Niet gereranked
+                        </Badge>
+                      )}
                     </div>
 
                     {/* Tekst uit Pinecone record */}
