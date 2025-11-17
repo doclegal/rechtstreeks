@@ -31,7 +31,8 @@ function generateCacheKey(
 // Clean expired cache entries
 function cleanExpiredCache(): void {
   const now = Date.now();
-  for (const [key, entry] of rerankCache.entries()) {
+  const entries = Array.from(rerankCache.entries());
+  for (const [key, entry] of entries) {
     if (now - entry.timestamp > SEARCH_CONFIG.RERANK_CACHE_TTL_MS) {
       rerankCache.delete(key);
     }

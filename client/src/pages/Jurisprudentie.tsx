@@ -18,6 +18,13 @@ import { useToast } from "@/hooks/use-toast";
 interface VectorSearchResult {
   id: string;
   score: number;
+  adjustedScore?: number;
+  scoreBreakdown?: {
+    baseScore: number;
+    courtBoost: number;
+    keywordBonus: number;
+  };
+  courtType?: string;
   ecli: string;
   title?: string;
   court?: string;
@@ -31,30 +38,6 @@ interface VectorSearchResult {
   ai_beslissing?: string;
   ai_motivering?: string;
   ai_inhoudsindicatie?: string;
-}
-
-// Helper function to determine which court type a result belongs to
-function detectCourtType(courtName: string | undefined): 'HR' | 'Hof' | 'Rechtbank' | 'Unknown' {
-  if (!courtName) return 'Unknown';
-  
-  const normalized = courtName.toLowerCase().trim();
-  
-  // Hoge Raad (highest authority)
-  if (/\bhr\b/.test(normalized) || normalized.includes('hoge raad')) {
-    return 'HR';
-  }
-  
-  // Gerechtshof (court of appeal)
-  if (/^hof\b/.test(normalized) || normalized.includes('gerechtshof') || /\bhof\s/.test(normalized)) {
-    return 'Hof';
-  }
-  
-  // Rechtbank (district court)
-  if (normalized.includes('rechtbank') || /\brb\b/.test(normalized)) {
-    return 'Rechtbank';
-  }
-  
-  return 'Unknown';
 }
 
 export default function Jurisprudentie() {
@@ -115,272 +98,46 @@ export default function Jurisprudentie() {
     }
   });
 
-  // Helper function to perform a single search with given parameters
-  const performSearch = async (threshold: number, keywords: string[]): Promise<VectorSearchResult[]> => {
-    const filters: Record<string, any> = {};
-    
-    if (legalArea) filters.legal_area = { $eq: legalArea };
-    if (court) filters.court = { $eq: court };
-    if (procedureType) filters.procedure_type = { $eq: procedureType };
-
-    const response = await apiRequest('POST', '/api/pinecone/search', {
-      query: searchQuery,
-      filters: Object.keys(filters).length > 0 ? filters : undefined,
-      topK: topK,
-      scoreThreshold: threshold
-    });
-    
-    const data = await response.json();
-    let filteredResults = data.results || [];
-    
-    // Apply required keywords filter (case-insensitive)
-    if (keywords.length > 0) {
-      filteredResults = filteredResults.filter((result: VectorSearchResult) => {
-        const searchText = [
-          result.text,
-          result.ai_inhoudsindicatie,
-          result.ai_feiten,
-          result.ai_geschil,
-          result.ai_beslissing,
-          result.ai_motivering,
-          result.title
-        ].join(' ').toLowerCase();
-        
-        // All keywords must be present
-        return keywords.every(keyword => searchText.includes(keyword));
-      });
-    }
-    
-    return filteredResults;
-  };
-
-  // Helper to search and filter by court type CLIENT-SIDE
-  // Pinecone doesn't support regex filters, so we fetch LARGE topK and filter client-side
-  const searchWithCourtFilter = async (
-    courtType: 'HR' | 'Hof' | 'Rechtbank', 
-    threshold: number, 
-    keywords: string[]
-  ): Promise<VectorSearchResult[]> => {
-    const filters: Record<string, any> = {};
-    
-    // Add user-selected filters (only exact match filters)
-    if (legalArea) filters.legal_area = { $eq: legalArea };
-    if (court) filters.court = { $eq: court }; // User manually selected specific court
-    if (procedureType) filters.procedure_type = { $eq: procedureType };
-
-    // IMPORTANT: Request topK=100 to ensure we get HR/Hof results even if Rechtbank dominates
-    // Client-side filtering can only work on what Pinecone returns
-    const response = await apiRequest('POST', '/api/pinecone/search', {
-      query: searchQuery,
-      filters: Object.keys(filters).length > 0 ? filters : undefined,
-      topK: 100, // Increased from user's topK to support client-side tier filtering
-      scoreThreshold: threshold
-    });
-    
-    const data = await response.json();
-    let results = data.results || [];
-    
-    // CLIENT-SIDE: Filter by court type (Pinecone doesn't support regex)
-    // Only filter if user hasn't manually selected a specific court
-    if (!court) {
-      results = results.filter((result: VectorSearchResult) => {
-        const detectedType = detectCourtType(result.court);
-        return detectedType === courtType;
-      });
-    }
-    
-    // Apply required keywords filter (case-insensitive)
-    if (keywords.length > 0) {
-      results = results.filter((result: VectorSearchResult) => {
-        const searchText = [
-          result.text,
-          result.ai_inhoudsindicatie,
-          result.ai_feiten,
-          result.ai_geschil,
-          result.ai_beslissing,
-          result.ai_motivering,
-          result.title
-        ].join(' ').toLowerCase();
-        
-        // All keywords must be present
-        return keywords.every(keyword => searchText.includes(keyword));
-      });
-    }
-    
-    return results;
-  };
-
   const searchMutation = useMutation({
     mutationFn: async () => {
-      const iterations: string[] = [];
       const allKeywords = requiredKeywords.trim() 
         ? requiredKeywords.toLowerCase().split(',').map(k => k.trim()).filter(k => k)
         : [];
       
-      let results: VectorSearchResult[] = [];
-      let usedCourtTier: string = '';
-      let usedThreshold = 0.30;
-      
-      // If user manually selected a specific court, skip tier-search
-      if (court) {
-        // Single search with user-selected court
-        const thresholds = [0.30, 0.25, 0.20, 0.15, 0.10];
-        
-        for (const threshold of thresholds) {
-          results = await performSearch(threshold, allKeywords);
-          
-          const keywordText = allKeywords.length > 0 
-            ? ` met ${allKeywords.length} verplichte ${allKeywords.length === 1 ? 'woord' : 'woorden'}`
-            : '';
-          
-          iterations.push(`${court}: ${(threshold * 100).toFixed(0)}% relevantiedrempel${keywordText} → ${results.length} resultaten`);
-          
-          if (results.length >= 1) {
-            usedCourtTier = court;
-            usedThreshold = threshold;
-            break;
-          }
-        }
-        
-        return { 
-          results: results.slice(0, 10),
-          iterations,
-          finalThreshold: usedThreshold,
-          courtTier: usedCourtTier,
-          finalKeywords: allKeywords
-        };
-      }
-      
-      // Strategy: Sequential court-filtered searches with CACHING and KEYWORD SCALING
-      // Fetch ONCE per (threshold, keywords) combination, then filter client-side for each tier
-      // Keywords are scaled down at each threshold step to broaden results
-      const thresholds = [0.30, 0.20, 0.10];
-      const courtTiers: ('HR' | 'Hof' | 'Rechtbank')[] = ['HR', 'Hof', 'Rechtbank'];
-      
-      // Helper to get scaled keywords for each threshold
-      const getKeywordsForThreshold = (threshold: number): string[] => {
-        if (allKeywords.length === 0) return [];
-        
-        if (threshold === 0.30) {
-          // 30%: All keywords (100%)
-          return allKeywords;
-        } else if (threshold === 0.20) {
-          // 20%: 2/3 of keywords (rounded up)
-          const count = Math.ceil(allKeywords.length * (2/3));
-          return allKeywords.slice(0, count);
-        } else if (threshold === 0.10) {
-          // 10%: 1/3 of keywords (rounded up, minimum 1)
-          const count = Math.max(1, Math.ceil(allKeywords.length * (1/3)));
-          return allKeywords.slice(0, count);
-        }
-        return allKeywords;
-      };
-      
-      // Cache to store fetched results per (threshold, keywords) combination
-      const resultCache = new Map<string, VectorSearchResult[]>();
-      
-      // Helper to fetch results for a threshold with specific keywords (with caching)
-      const fetchForThreshold = async (threshold: number, keywords: string[]): Promise<VectorSearchResult[]> => {
-        // Use sorted keywords in cache key to prevent collisions (copy array first to avoid mutation)
-        const cacheKey = `${threshold}-${[...keywords].sort().join('|')}`;
-        if (resultCache.has(cacheKey)) {
-          return resultCache.get(cacheKey)!;
-        }
-        
-        const filters: Record<string, any> = {};
-        if (legalArea) filters.legal_area = { $eq: legalArea };
-        if (procedureType) filters.procedure_type = { $eq: procedureType };
+      // NEW STRATEGY: Single-pass intelligent search with scoring and reranking
+      const filters: Record<string, any> = {};
+      if (legalArea) filters.legal_area = { $eq: legalArea };
+      if (procedureType) filters.procedure_type = { $eq: procedureType };
+      if (court) filters.court = court; // Apply court filter if manually selected
 
-        const response = await apiRequest('POST', '/api/pinecone/search', {
-          query: searchQuery,
-          filters: Object.keys(filters).length > 0 ? filters : undefined,
-          topK: 100, // Large topK for client-side filtering
-          scoreThreshold: threshold
-        });
-        
-        const data = await response.json();
-        let fetchedResults = data.results || [];
-        
-        // Apply required keywords filter (with scaled keywords)
-        if (keywords.length > 0) {
-          fetchedResults = fetchedResults.filter((result: VectorSearchResult) => {
-            const searchText = [
-              result.text,
-              result.ai_inhoudsindicatie,
-              result.ai_feiten,
-              result.ai_geschil,
-              result.ai_beslissing,
-              result.ai_motivering,
-              result.title
-            ].join(' ').toLowerCase();
-            
-            return keywords.every(keyword => searchText.includes(keyword));
-          });
-        }
-        
-        resultCache.set(cacheKey, fetchedResults);
-        return fetchedResults;
-      };
+      const response = await apiRequest('POST', '/api/pinecone/search', {
+        query: searchQuery,
+        filters: Object.keys(filters).length > 0 ? filters : undefined,
+        keywords: allKeywords,
+        caseId: selectedCase || undefined,
+        enableReranking: true
+      });
       
-      let usedKeywords: string[] = [];
-      
-      // Try each court tier sequentially
-      for (const courtTier of courtTiers) {
-        const courtName = courtTier === 'HR' ? 'Hoge Raad' : courtTier === 'Hof' ? 'Gerechtshof' : 'Rechtbank';
-        
-        // For each court tier, try different thresholds with scaled keywords
-        for (const threshold of thresholds) {
-          // Get scaled keywords for this threshold
-          const keywords = getKeywordsForThreshold(threshold);
-          
-          // Fetch results (cached if already fetched for this threshold+keywords combination)
-          const allResults = await fetchForThreshold(threshold, keywords);
-          
-          // CLIENT-SIDE: Filter by court tier
-          results = allResults.filter((result: VectorSearchResult) => {
-            const detectedType = detectCourtType(result.court);
-            return detectedType === courtTier;
-          });
-          
-          const keywordText = keywords.length > 0 
-            ? ` met ${keywords.length} verplichte ${keywords.length === 1 ? 'woord' : 'woorden'}`
-            : '';
-          
-          iterations.push(`${courtName}: ${(threshold * 100).toFixed(0)}% relevantiedrempel${keywordText} → ${results.length} resultaten`);
-          
-          // If we found at least 1 result, stop searching
-          if (results.length >= 1) {
-            usedCourtTier = courtName;
-            usedThreshold = threshold;
-            usedKeywords = keywords;
-            break;
-          }
-        }
-        
-        // If we found results, stop trying lower court tiers
-        if (results.length >= 1) {
-          break;
-        }
-      }
+      const data = await response.json();
       
       return { 
-        results: results.slice(0, 10), // Max 10 results
-        iterations,
-        finalThreshold: usedThreshold,
-        courtTier: usedCourtTier,
-        finalKeywords: usedKeywords
+        results: data.results || [],
+        totalCandidates: data.totalCandidates || 0,
+        reranked: data.reranked || false,
+        strategy: data.strategy || 'unknown'
       };
     },
     onSuccess: (data: any) => {
       setResults(data.results);
-      setSearchIterations(data.iterations || []);
+      setSearchIterations([]); // No iterations with new strategy
       
       const resultCount = data.results.length;
-      const courtTier = data.courtTier || 'onbekend';
+      const totalCandidates = data.totalCandidates || 0;
+      const reranked = data.reranked || false;
       
       toast({
-        title: "Rechtshiërarchie zoekstrategie voltooid",
-        description: `${resultCount} resultaten gevonden van ${courtTier}. Top 10 getoond.`,
+        title: "Intelligente zoekstrategie voltooid",
+        description: `${totalCandidates} kandidaten gevonden, top ${resultCount} geselecteerd${reranked ? ' met AI reranking' : ''}.`,
       });
     },
     onError: (error: any) => {
