@@ -118,11 +118,11 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
     const pc = getPineconeClient();
     const index = pc.index(INDEX_NAME, INDEX_HOST);
     
-    console.log(`🔎 Using Pinecone HYBRID search (dense + sparse)`);
+    console.log(`🔎 Using Pinecone semantic search (dense only)`);
     console.log(`📝 Query text: "${query.text.substring(0, 100)}..."`);
     console.log(`🤖 Model: ${EMBEDDING_MODEL}`);
     
-    // 1. Generate dense embedding with CORRECT inputType for query
+    // Generate dense embedding with CORRECT inputType for query
     const embeddingResponse = await pc.inference.embed(
       EMBEDDING_MODEL,
       [query.text],
@@ -133,14 +133,9 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
     const denseVector = embeddingData.values;
     console.log(`✅ Dense vector generated (${denseVector.length} dims)`);
     
-    // 2. Generate sparse vector for keyword matching
-    const sparseVector = generateSparseVector(query.text);
-    console.log(`✅ Sparse vector generated (${sparseVector.indices.length} terms)`);
-    
-    // 3. Hybrid query
+    // Query with dense vector only (sparse not supported by index)
     const queryParams: any = {
       vector: denseVector,
-      sparseVector: sparseVector,
       topK: query.topK || 20,
       includeMetadata: true,
       includeValues: false
@@ -164,7 +159,7 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
     const topScores = response.matches.slice(0, 5).map((m: any) => m.score?.toFixed(4) || '0');
     console.log(`📊 Top 5 scores: ${topScores.join(', ')}`);
     
-    // Apply score threshold filter (minimum 10% similarity)
+    // Apply score threshold filter
     const threshold = query.scoreThreshold !== undefined ? query.scoreThreshold : 0.10;
     
     const allResults = response.matches.map((match: any) => ({
@@ -184,7 +179,7 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
     
     return filteredResults;
   } catch (error) {
-    console.error("❌ Error in hybrid search:", error);
+    console.error("❌ Error in semantic search:", error);
     throw error;
   }
 }
