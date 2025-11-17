@@ -33,6 +33,56 @@ interface VectorSearchResult {
   ai_inhoudsindicatie?: string;
 }
 
+// Helper function to determine court rank (lower = higher authority)
+function getCourtRank(courtName: string | undefined): number {
+  if (!courtName) return 99; // Unknown courts have lowest priority
+  
+  const normalized = courtName.toLowerCase().trim();
+  
+  // Hoge Raad (highest authority) - handles "HR", "HR:", "Hoge Raad", etc.
+  if (/\bhr\b/.test(normalized) || normalized.includes('hoge raad')) {
+    return 0;
+  }
+  
+  // Gerechtshof (court of appeal) - handles "Hof Amsterdam", "Gerechtshof", etc.
+  if (/^hof\b/.test(normalized) || normalized.includes('gerechtshof') || /\bhof\s/.test(normalized)) {
+    return 1;
+  }
+  
+  // Rechtbank (district court)
+  if (normalized.includes('rechtbank') || /\brb\b/.test(normalized)) {
+    return 2;
+  }
+  
+  // Unknown or other courts
+  return 99;
+}
+
+// Re-rank results considering court hierarchy when scores are close (< 3% difference)
+function applyCourtAwareRanking(results: VectorSearchResult[]): VectorSearchResult[] {
+  return [...results].sort((a, b) => {
+    const scoreA = a.score || 0;
+    const scoreB = b.score || 0;
+    const scoreDiff = Math.abs(scoreA - scoreB);
+    
+    // If scores differ by 3% or more, keep original Pinecone ordering (higher score first)
+    if (scoreDiff >= 0.03) {
+      return scoreB - scoreA; // Higher score first
+    }
+    
+    // Scores are close (< 3% difference), prioritize higher court
+    const rankA = getCourtRank(a.court);
+    const rankB = getCourtRank(b.court);
+    
+    if (rankA !== rankB) {
+      return rankA - rankB; // Lower rank number = higher authority = comes first
+    }
+    
+    // Same court level, fall back to score
+    return scoreB - scoreA;
+  });
+}
+
 export default function Jurisprudentie() {
   const { isLoading: authLoading } = useAuth();
   const currentCase = useActiveCase();
@@ -183,8 +233,12 @@ export default function Jurisprudentie() {
         }
       }
       
+      // Apply court-aware re-ranking before slicing
+      // This ensures higher courts (HR, Hof) appear first when scores are close (< 3%)
+      const rankedResults = applyCourtAwareRanking(results);
+      
       return { 
-        results: results.slice(0, 10), // Max 10 results
+        results: rankedResults.slice(0, 10), // Max 10 results
         iterations,
         finalThreshold: currentThreshold,
         finalKeywords: currentKeywords
@@ -487,9 +541,12 @@ export default function Jurisprudentie() {
                     </p>
                   </div>
 
-                  <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded p-3">
+                  <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded p-3 space-y-2">
                     <p className="text-xs text-blue-900 dark:text-blue-100">
                       <strong>💡 Tip:</strong> De slimme zoekstrategie begint met 50% relevantiedrempel (hoogste kwaliteit) en past zich automatisch aan tot 10% voor bredere resultaten. Gebruik "Verplichte woorden" voor exacte termen (bijv. bedrijfsnamen, artikel nummers).
+                    </p>
+                    <p className="text-xs text-blue-900 dark:text-blue-100">
+                      <strong>⚖️ Rechtshiërarchie:</strong> Resultaten worden gesorteerd op relevantie, maar bij vergelijkbare scores (verschil &lt;3%) krijgen hogere rechters voorrang: Hoge Raad &gt; Gerechtshof &gt; Rechtbank.
                     </p>
                   </div>
                 </div>
@@ -659,9 +716,17 @@ export default function Jurisprudentie() {
                 </div>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground mt-3 pt-3 border-t">
-              De slimme zoekstrategie begint met de hoogste kwaliteit (50%) en past zich automatisch aan voor optimale resultaten
-            </p>
+            <div className="mt-3 pt-3 border-t space-y-2">
+              <p className="text-xs text-muted-foreground">
+                De slimme zoekstrategie begint met de hoogste kwaliteit (50%) en past zich automatisch aan voor optimale resultaten
+              </p>
+              <div className="flex items-start gap-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded p-2">
+                <Scale className="h-3 w-3 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-blue-900 dark:text-blue-100">
+                  <strong>Rechtshiërarchie:</strong> Bij vergelijkbare scores (verschil &lt;3%) worden uitspraken van hogere rechters (Hoge Raad → Gerechtshof → Rechtbank) eerst getoond
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
