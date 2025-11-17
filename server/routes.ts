@@ -7039,6 +7039,10 @@ SEARCH QUERY guidelines:
 
 REQUIRED KEYWORDS guidelines (CRITICAL - balance is key):
 - Identify 1-3 ESSENTIAL legal terms that MUST appear in relevant case law
+- **IMPORTANT**: List keywords in ORDER OF IMPORTANCE (most critical first)
+  * The first keyword should be the MOST ESSENTIAL term for this case
+  * Subsequent keywords should be progressively less critical but still relevant
+  * This ordering matters for the search algorithm's threshold scaling strategy
 - Use keywords that are HIGHLY SPECIFIC to the legal issue (not generic words)
 - Examples of GOOD keywords:
   * "huurovereenkomst" for rental disputes

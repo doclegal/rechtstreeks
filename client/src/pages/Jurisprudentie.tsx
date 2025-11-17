@@ -251,19 +251,40 @@ export default function Jurisprudentie() {
         };
       }
       
-      // Strategy: Sequential court-filtered searches with CACHING
-      // Fetch ONCE per threshold (with topK=100), then filter client-side for each tier
-      // This avoids redundant API calls and ensures we can find HR/Hof results
-      const thresholds = [0.30, 0.25, 0.20, 0.15, 0.10];
+      // Strategy: Sequential court-filtered searches with CACHING and KEYWORD SCALING
+      // Fetch ONCE per (threshold, keywords) combination, then filter client-side for each tier
+      // Keywords are scaled down at each threshold step to broaden results
+      const thresholds = [0.30, 0.20, 0.10];
       const courtTiers: ('HR' | 'Hof' | 'Rechtbank')[] = ['HR', 'Hof', 'Rechtbank'];
       
-      // Cache to store fetched results per threshold (to avoid redundant API calls)
-      const resultCache = new Map<number, VectorSearchResult[]>();
+      // Helper to get scaled keywords for each threshold
+      const getKeywordsForThreshold = (threshold: number): string[] => {
+        if (allKeywords.length === 0) return [];
+        
+        if (threshold === 0.30) {
+          // 30%: All keywords (100%)
+          return allKeywords;
+        } else if (threshold === 0.20) {
+          // 20%: 2/3 of keywords (rounded up)
+          const count = Math.ceil(allKeywords.length * (2/3));
+          return allKeywords.slice(0, count);
+        } else if (threshold === 0.10) {
+          // 10%: 1/3 of keywords (rounded up, minimum 1)
+          const count = Math.max(1, Math.ceil(allKeywords.length * (1/3)));
+          return allKeywords.slice(0, count);
+        }
+        return allKeywords;
+      };
       
-      // Helper to fetch results for a threshold (with caching)
-      const fetchForThreshold = async (threshold: number): Promise<VectorSearchResult[]> => {
-        if (resultCache.has(threshold)) {
-          return resultCache.get(threshold)!;
+      // Cache to store fetched results per (threshold, keywords) combination
+      const resultCache = new Map<string, VectorSearchResult[]>();
+      
+      // Helper to fetch results for a threshold with specific keywords (with caching)
+      const fetchForThreshold = async (threshold: number, keywords: string[]): Promise<VectorSearchResult[]> => {
+        // Use sorted keywords in cache key to prevent collisions (copy array first to avoid mutation)
+        const cacheKey = `${threshold}-${[...keywords].sort().join('|')}`;
+        if (resultCache.has(cacheKey)) {
+          return resultCache.get(cacheKey)!;
         }
         
         const filters: Record<string, any> = {};
@@ -280,8 +301,8 @@ export default function Jurisprudentie() {
         const data = await response.json();
         let fetchedResults = data.results || [];
         
-        // Apply required keywords filter
-        if (allKeywords.length > 0) {
+        // Apply required keywords filter (with scaled keywords)
+        if (keywords.length > 0) {
           fetchedResults = fetchedResults.filter((result: VectorSearchResult) => {
             const searchText = [
               result.text,
@@ -293,22 +314,27 @@ export default function Jurisprudentie() {
               result.title
             ].join(' ').toLowerCase();
             
-            return allKeywords.every(keyword => searchText.includes(keyword));
+            return keywords.every(keyword => searchText.includes(keyword));
           });
         }
         
-        resultCache.set(threshold, fetchedResults);
+        resultCache.set(cacheKey, fetchedResults);
         return fetchedResults;
       };
+      
+      let usedKeywords: string[] = [];
       
       // Try each court tier sequentially
       for (const courtTier of courtTiers) {
         const courtName = courtTier === 'HR' ? 'Hoge Raad' : courtTier === 'Hof' ? 'Gerechtshof' : 'Rechtbank';
         
-        // For each court tier, try different thresholds
+        // For each court tier, try different thresholds with scaled keywords
         for (const threshold of thresholds) {
-          // Fetch results (cached if already fetched for this threshold)
-          const allResults = await fetchForThreshold(threshold);
+          // Get scaled keywords for this threshold
+          const keywords = getKeywordsForThreshold(threshold);
+          
+          // Fetch results (cached if already fetched for this threshold+keywords combination)
+          const allResults = await fetchForThreshold(threshold, keywords);
           
           // CLIENT-SIDE: Filter by court tier
           results = allResults.filter((result: VectorSearchResult) => {
@@ -316,17 +342,17 @@ export default function Jurisprudentie() {
             return detectedType === courtTier;
           });
           
-          const keywordText = allKeywords.length > 0 
-            ? ` met ${allKeywords.length} verplichte ${allKeywords.length === 1 ? 'woord' : 'woorden'}`
+          const keywordText = keywords.length > 0 
+            ? ` met ${keywords.length} verplichte ${keywords.length === 1 ? 'woord' : 'woorden'}`
             : '';
           
-          const cacheHit = resultCache.has(threshold) && resultCache.get(threshold) !== allResults;
-          iterations.push(`${courtName}: ${(threshold * 100).toFixed(0)}% relevantiedrempel${keywordText} → ${results.length} resultaten${cacheHit ? ' (cached)' : ''}`);
+          iterations.push(`${courtName}: ${(threshold * 100).toFixed(0)}% relevantiedrempel${keywordText} → ${results.length} resultaten`);
           
           // If we found at least 1 result, stop searching
           if (results.length >= 1) {
             usedCourtTier = courtName;
             usedThreshold = threshold;
+            usedKeywords = keywords;
             break;
           }
         }
@@ -342,7 +368,7 @@ export default function Jurisprudentie() {
         iterations,
         finalThreshold: usedThreshold,
         courtTier: usedCourtTier,
-        finalKeywords: allKeywords
+        finalKeywords: usedKeywords
       };
     },
     onSuccess: (data: any) => {
