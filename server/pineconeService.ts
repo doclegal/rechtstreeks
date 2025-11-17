@@ -148,12 +148,18 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
     console.log(`🔎 Querying Pinecone with semantic search (${denseEmbedding.length} dims)`);
     const response = await index.namespace(NAMESPACE).query(queryParams);
     
+    console.log(`📊 Raw Pinecone response: ${response.matches?.length || 0} total matches`);
+    if (response.matches && response.matches.length > 0) {
+      const scores = response.matches.slice(0, 5).map((m: any) => m.score);
+      console.log(`📊 Top 5 similarity scores: ${scores.join(', ')}`);
+    }
+    
     if (!response.matches || response.matches.length === 0) {
-      console.log('ℹ️ No results found in hybrid search');
+      console.log('ℹ️ No results found in Pinecone');
       return [];
     }
     
-    const MINIMUM_SCORE = 0.01; // Lower threshold for better recall with pure semantic search
+    const MINIMUM_SCORE = 0.0; // No threshold - return all results sorted by relevance
     
     const filteredResults = response.matches
       .filter((match: any) => match.score >= MINIMUM_SCORE)
@@ -164,7 +170,7 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
         text: match.metadata?.text
       }));
     
-    console.log(`✅ Semantic search: ${filteredResults.length} results above ${MINIMUM_SCORE} threshold`);
+    console.log(`✅ Semantic search: ${filteredResults.length} results returned`);
     return filteredResults;
   } catch (error) {
     console.error("❌ Error in hybrid search:", error);
