@@ -169,8 +169,8 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
     }));
     
     // Filter based on score threshold for dot product similarity
-    // Scores are negative, so we want scores ABOVE a certain threshold
-    const SCORE_THRESHOLD = -0.05; // Only return results with score > -0.05
+    // Higher scores = more relevant (can be positive or negative depending on vectors)
+    const SCORE_THRESHOLD = 0.01; // Only return results with score > 0.01 (1% similarity)
     
     const filteredResults = allResults.filter(r => r.score > SCORE_THRESHOLD);
     
