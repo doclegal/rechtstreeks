@@ -6987,18 +6987,22 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         return res.status(404).json({ error: 'Case not found' });
       }
 
-      // Fetch latest analysis with legal advice
+      // Fetch latest analysis with legal advice (must have legalAdviceJson populated)
       const analysisRecords = await db
         .select()
         .from(analyses)
         .where(eq(analyses.caseId, caseId))
-        .orderBy(desc(analyses.createdAt))
-        .limit(1);
+        .orderBy(desc(analyses.createdAt));
 
-      const latestAnalysis = analysisRecords[0];
+      // Find the newest analysis that actually has legal advice
+      const latestAnalysis = analysisRecords.find(a => a.legalAdviceJson !== null && a.legalAdviceJson !== undefined);
+      
       if (!latestAnalysis || !latestAnalysis.legalAdviceJson) {
         return res.status(404).json({ error: 'No legal advice found for this case' });
       }
+      
+      console.log(`📋 Found legal advice in analysis from ${latestAnalysis.createdAt}`);
+      console.log(`📊 Total analyses for case: ${analysisRecords.length}, with advice: ${analysisRecords.filter(a => a.legalAdviceJson).length}`);
 
       const legalAdvice: any = latestAnalysis.legalAdviceJson;
       
