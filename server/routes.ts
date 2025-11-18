@@ -7027,18 +7027,36 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         messages: [
           {
             role: "system",
-            content: `You are a Dutch legal research expert specialized in finding relevant jurisprudence (case law) to support legal arguments.
+            content: `You are an expert assistant specialized in Dutch civil law and jurisprudence retrieval.
 
-Your task: Analyze the provided legal advice and generate:
-1. ONE optimized search query for semantic vector search
-2. A list of 1-3 REQUIRED KEYWORDS that must appear in results (exact match filter)
+Your job is to:
+1. Analyze the complete legal advice (juridisch advies) provided by the user
+2. Identify:
+   - Key disputed issues (geschilpunten)
+   - Legal questions and bottlenecks (juridische knelpunten)
+   - Elements that require jurisprudential support
+   - Relevant legal norms and statutory articles that might be interpreted by case law
+3. Determine the procedural role of the user (eiser or gedaagde) and generate search queries that SUPPORT that party's position
+4. Generate a highly accurate search query for a Pinecone vector database containing:
+   - AI summaries of Dutch civil judgments
+   - Metadata: ECLI, court, court_level, legal_area, decision_date, procedure_type, URL
+5. You do NOT have access to the full judgment text; you assume only AI-generated summaries are available to the retrieval system
+6. Your goal is to find similar cases or relevant jurisprudence where:
+   - Similar disputes were evaluated
+   - The court interpreted relevant statutory articles in a way that supports the user's position
+   - Factual patterns match and could strengthen the user's argument
+   - Legal reasoning could be cited to increase the user's chance of success
 
 SEARCH QUERY guidelines:
+- **CRITICAL**: Tailor the search to the user's procedural role:
+  * If EISER (claimant): Find cases where similar claims were GRANTED or UPHELD
+  * If GEDAAGDE (defendant): Find cases where similar claims were REJECTED or DISMISSED
 - Retrieve jurisprudence that STRENGTHENS the user's legal position
 - Support arguments that INCREASE the chance of winning the case
-- Include key legal concepts, obligations, violations, and relevant articles
+- Include key legal concepts, disputed obligations, alleged violations, and relevant BW/Rv articles
+- Reference the legal advice sections: het_geschil, de_feiten, juridische_duiding
 - Be concise but comprehensive (max 100 words)
-- Focus on the legal issues, not just facts
+- Focus on the legal issues and court interpretations, not just factual similarities
 
 REQUIRED KEYWORDS guidelines (CRITICAL - balance is key):
 - Identify 1-3 ESSENTIAL legal terms that MUST appear in relevant case law
@@ -7053,10 +7071,13 @@ REQUIRED KEYWORDS guidelines (CRITICAL - balance is key):
   * "onrechtmatige daad" for tort claims
   * "opzegging" for termination disputes
   * "koopovereenkomst" for purchase agreement issues
+  * "dwangsom" for penalty payment disputes
+  * "ontbinding" for contract dissolution cases
 - Examples of BAD keywords (too generic):
   * "overeenkomst" alone (too broad - millions of cases)
   * "partijen" (appears in almost all cases)
   * "rechter" (appears in all cases)
+  * "vorderingen" (too common)
 - Only include keywords that meaningfully narrow down results
 - If the case is very broad or general, use fewer keywords (even 0-1) to avoid over-filtering
 - If the case involves specific legal concepts, use 2-3 precise terms
@@ -7071,21 +7092,30 @@ Return ONLY valid JSON, nothing else.`
           },
           {
             role: "user",
-            content: `Analyze this legal advice and generate the optimized search query + required keywords:
+            content: `Analyze the complete juridisch advies below and generate an optimized search query + required keywords to find jurisprudence that SUPPORTS the user's position.
 
 CASE TITLE: ${caseData.title}
-USER ROLE: ${caseData.userRole === 'EISER' ? 'Claimant (Eiser)' : 'Defendant (Gedaagde)'}
+USER PROCEDURAL ROLE: ${caseData.userRole === 'EISER' ? 'EISER (Claimant) - Find cases where similar claims were GRANTED' : 'GEDAAGDE (Defendant) - Find cases where similar claims were REJECTED'}
 CLAIM AMOUNT: €${caseData.claimAmount}
 
-LEGAL ADVICE:
+COMPLETE JURIDISCH ADVIES:
 ${adviceText}
 
-Generate the search query and identify 1-3 essential keywords that MUST appear in relevant jurisprudence.
-Remember: Balance is key - keywords should be specific enough to filter out irrelevant cases but not so narrow that they exclude valuable precedents.`
+Task:
+1. Identify the core legal dispute (geschilpunt) from het_geschil and juridische_duiding sections
+2. Extract key statutory articles mentioned (BW, Rv, etc.)
+3. Determine what factual patterns and legal interpretations would strengthen the user's position as ${caseData.userRole === 'EISER' ? 'claimant' : 'defendant'}
+4. Generate ONE search query that finds jurisprudence supporting the user's argument
+5. Identify 1-3 essential keywords that MUST appear in relevant case law (ordered by importance)
+
+Remember: 
+- Focus on finding precedents that INCREASE the user's chance of winning
+- Balance keyword specificity - filter irrelevant cases but don't exclude valuable precedents
+- Consider the procedural role: ${caseData.userRole === 'EISER' ? 'as claimant, find cases where courts GRANTED similar claims' : 'as defendant, find cases where courts REJECTED or DISMISSED similar claims'}`
           }
         ],
         response_format: { type: "json_object" },
-        max_tokens: 400
+        max_tokens: 500
       });
 
       console.log('🤖 OpenAI response received:', {
