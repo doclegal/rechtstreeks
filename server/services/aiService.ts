@@ -1699,6 +1699,10 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       note: string;
       analysis_status: string | null;
     }>;
+    jurisprudence_references?: Array<{
+      ecli: string;
+      explanation: string;
+    }>;
   }): Promise<{
     success: boolean;
     brief?: {
@@ -1720,7 +1724,8 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       sender: params.sender,
       recipient: params.recipient,
       tone: params.tone,
-      dossier: params.dossier
+      dossier: params.dossier,
+      jurisprudence_references: params.jurisprudence_references || []
     };
 
     console.log("📤 DraftFirstLetter variables (sending objects, not JSON strings):");
@@ -1731,6 +1736,7 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     console.log("   - sender:", typeof params.sender === 'object' ? 'Object' : typeof params.sender);
     console.log("   - recipient:", typeof params.recipient === 'object' ? 'Object' : typeof params.recipient);
     console.log("   - dossier:", Array.isArray(params.dossier) ? `Array[${params.dossier.length}]` : typeof params.dossier);
+    console.log("   - jurisprudence_references:", Array.isArray(params.jurisprudence_references) ? `Array[${params.jurisprudence_references.length}]` : 'Not provided');
 
     const requestBody = {
       workerId: process.env.MINDSTUDIO_WORKER_ID,

@@ -3214,6 +3214,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Brief type:", briefType);
       console.log("Tone:", tone);
 
+      // Fetch jurisprudence references from latest analysis if available
+      const jurisprudenceReferences = analysis.jurisprudenceReferences as Array<{ecli: string; explanation: string}> | undefined;
+      if (jurisprudenceReferences && jurisprudenceReferences.length > 0) {
+        console.log(`📚 Found ${jurisprudenceReferences.length} jurisprudence references to include in letter`);
+      } else {
+        console.log("ℹ️ No jurisprudence references available for this case");
+      }
+
       // Call MindStudio DraftFirstLetter.flow
       const letterResult = await aiService.runDraftFirstLetter({
         case_id: caseId,
@@ -3223,7 +3231,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sender,
         recipient,
         tone,
-        dossier
+        dossier,
+        jurisprudence_references: jurisprudenceReferences
       });
 
       if (!letterResult.success || !letterResult.brief) {
@@ -7452,6 +7461,16 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
 
       const aiResponse = JSON.parse(response.choices[0].message.content || '{"references": []}');
       console.log(`✅ AI generated ${aiResponse.references?.length || 0} references`);
+
+      // Save references to database in the latest analysis
+      if (aiResponse.references && aiResponse.references.length > 0) {
+        console.log(`💾 Saving ${aiResponse.references.length} references to database...`);
+        await db
+          .update(analyses)
+          .set({ jurisprudenceReferences: aiResponse.references })
+          .where(eq(analyses.id, latestAnalysis.id));
+        console.log('✅ References saved to database');
+      }
 
       res.json(aiResponse);
 
