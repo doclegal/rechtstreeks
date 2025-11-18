@@ -68,6 +68,10 @@ export default function Jurisprudentie() {
   const [searchSectionOpen, setSearchSectionOpen] = useState(false);
   const [resultsSectionOpen, setResultsSectionOpen] = useState(false);
   const [isAutoSearching, setIsAutoSearching] = useState(false);
+  
+  // Generated references state
+  const [generatedReferences, setGeneratedReferences] = useState<any[]>([]);
+  const [referencesDialogOpen, setReferencesDialogOpen] = useState(false);
 
   const generateQueryMutation = useMutation({
     mutationFn: async () => {
@@ -147,6 +151,63 @@ export default function Jurisprudentie() {
       toast({
         title: "Fout bij zoeken",
         description: error.message || "Kon niet zoeken in database",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const generateReferencesMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentCase?.id) {
+        throw new Error('Geen actieve zaak geselecteerd');
+      }
+
+      // Get top 5 results for reference generation
+      const topResults = results.slice(0, 5);
+      
+      const response = await apiRequest('POST', '/api/jurisprudentie/generate-references', {
+        caseId: currentCase.id,
+        topResults: topResults.map(r => ({
+          id: r.id,
+          score: r.score,
+          metadata: {
+            court: r.court,
+            decision_date: r.decision_date,
+            legal_area: r.legal_area,
+            procedure_type: r.procedure_type,
+            ai_inhoudsindicatie: r.ai_inhoudsindicatie,
+            ai_feiten: r.ai_feiten,
+            ai_geschil: r.ai_geschil,
+            ai_beslissing: r.ai_beslissing,
+          }
+        }))
+      });
+      
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      setGeneratedReferences(data.references || []);
+      setReferencesDialogOpen(true);
+      
+      const refCount = data.references?.length || 0;
+      toast({
+        title: refCount > 0 ? "Verwijzingen gegenereerd" : "Geen verwijzingen",
+        description: refCount > 0 
+          ? `${refCount} relevante ${refCount === 1 ? 'verwijzing' : 'verwijzingen'} gevonden`
+          : data.message || "Geen nuttige verwijzingen naar jurisprudentie gevonden",
+      });
+    },
+    onError: (error: any) => {
+      // apiRequest throws an Error with the response text already extracted
+      const errorMessage = error.message || "Kon geen verwijzingen genereren";
+      
+      // Try to extract just the error message part (format is "status: message")
+      const match = errorMessage.match(/\d+:\s*(.+)/);
+      const cleanMessage = match ? match[1] : errorMessage;
+      
+      toast({
+        title: "Fout bij genereren",
+        description: cleanMessage,
         variant: "destructive",
       });
     }
@@ -556,11 +617,32 @@ export default function Jurisprudentie() {
                   <FileText className="h-5 w-5" />
                   Top {Math.min(maxResults, results.length)} van {results.length} uitspraken
                 </CardTitle>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    {resultsSectionOpen ? 'Minder tonen' : 'Meer tonen'}
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => generateReferencesMutation.mutate()}
+                    disabled={generateReferencesMutation.isPending || results.length === 0}
+                    variant="default"
+                    size="sm"
+                    data-testid="button-generate-references"
+                  >
+                    {generateReferencesMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Bezig...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Genereer verwijzing
+                      </>
+                    )}
                   </Button>
-                </CollapsibleTrigger>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      {resultsSectionOpen ? 'Minder tonen' : 'Meer tonen'}
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
               </div>
             </CardHeader>
             
@@ -887,6 +969,78 @@ export default function Jurisprudentie() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for displaying generated references */}
+      <Dialog open={referencesDialogOpen} onOpenChange={setReferencesDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5" />
+              Gegenereerde jurisprudentie verwijzingen
+            </DialogTitle>
+            <DialogDescription>
+              AI-analyse van relevante uitspraken voor uw zaak
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {generatedReferences.length === 0 ? (
+              <div className="text-center py-8">
+                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">Geen nuttige verwijzingen naar jurisprudentie gevonden</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  De AI heeft geen uitspraken gevonden die uw positie significant versterken.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {generatedReferences.map((ref: any, index: number) => (
+                  <Card key={index} className="border-l-4 border-l-primary">
+                    <CardContent className="pt-6">
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant="secondary" className="font-mono text-xs">
+                                {ref.ecli}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-foreground leading-relaxed">
+                              {ref.explanation}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="pt-2 border-t flex justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                          >
+                            <a
+                              href={`https://uitspraken.rechtspraak.nl/#!/details?id=${ref.ecli}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <ExternalLink className="h-3 w-3 mr-2" />
+                              Bekijk uitspraak
+                            </a>
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-end pt-4 border-t">
+              <Button onClick={() => setReferencesDialogOpen(false)}>
+                Sluiten
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -7287,6 +7287,182 @@ Remember:
     }
   });
 
+  // Generate jurisprudence references - AI analysis of top judgments
+  app.post('/api/jurisprudentie/generate-references', async (req, res) => {
+    try {
+      const { caseId, topResults } = req.body;
+      
+      if (!caseId) {
+        return res.status(400).json({ error: 'Case ID is required' });
+      }
+
+      if (!Array.isArray(topResults) || topResults.length === 0) {
+        return res.status(400).json({ error: 'Top results array is required' });
+      }
+
+      console.log(`📋 Generating references for case ${caseId} with ${topResults.length} judgments`);
+
+      // Fetch case data
+      const [caseData] = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
+      if (!caseData) {
+        return res.status(404).json({ error: 'Case not found' });
+      }
+
+      // Fetch latest analysis with legal advice
+      const analysisRecords = await db
+        .select()
+        .from(analyses)
+        .where(eq(analyses.caseId, caseId))
+        .orderBy(desc(analyses.createdAt));
+
+      const latestAnalysis = analysisRecords.find(a => a.legalAdviceJson !== null);
+      
+      if (!latestAnalysis || !latestAnalysis.legalAdviceJson) {
+        return res.status(404).json({ error: 'Geen juridisch advies gevonden voor deze zaak' });
+      }
+
+      // Parse legalAdviceJson if it's a string (for legacy data)
+      let legalAdvice: any = latestAnalysis.legalAdviceJson;
+      if (typeof legalAdvice === 'string') {
+        try {
+          legalAdvice = JSON.parse(legalAdvice);
+        } catch (e) {
+          console.error('Failed to parse legalAdviceJson as string:', e);
+          return res.status(400).json({ error: 'Juridisch advies heeft geen geldig formaat' });
+        }
+      }
+      
+      // Build comprehensive legal advice text
+      const adviceText = [
+        'HET GESCHIL:',
+        legalAdvice.het_geschil || '',
+        '\nDE FEITEN:',
+        legalAdvice.de_feiten || '',
+        '\nJURIDISCHE DUIDING:',
+        legalAdvice.juridische_duiding || '',
+        '\nVERVOLGSTAPPEN:',
+        legalAdvice.vervolgstappen || '',
+        '\nSAMENVATTING ADVIES:',
+        legalAdvice.samenvatting_advies || ''
+      ].filter(Boolean).join('\n\n');
+
+      // Limit to top 5 judgments
+      const top5Results = topResults.slice(0, 5);
+      console.log(`🔍 Fetching full texts for top ${top5Results.length} judgments...`);
+
+      // Fetch all judgment texts
+      const { fetchMultipleJudgmentTexts } = await import('./rechtspraakService');
+      const eclis = top5Results.map((r: any) => r.id);
+      const judgmentResults = await fetchMultipleJudgmentTexts(eclis);
+
+      // Filter out judgments without full text
+      const validJudgments = judgmentResults
+        .filter(j => j.fullText && j.fullText.length > 100)
+        .map((j, index) => {
+          const result = top5Results.find((r: any) => r.id === j.ecli);
+          return {
+            ecli: j.ecli,
+            fullText: j.fullText,
+            metadata: result?.metadata || {},
+            score: result?.score || 0
+          };
+        });
+
+      console.log(`✅ Found ${validJudgments.length} judgments with full text`);
+
+      if (validJudgments.length === 0) {
+        return res.json({
+          references: [],
+          message: 'Geen volledige uitspraken beschikbaar voor analyse'
+        });
+      }
+
+      // Prepare judgments text for AI
+      const judgmentsText = validJudgments.map((j, index) => {
+        const court = j.metadata.court || 'Onbekend';
+        const date = j.metadata.decision_date || 'Onbekend';
+        const summary = j.metadata.ai_inhoudsindicatie || 'Geen samenvatting beschikbaar';
+        const fullTextSafe = j.fullText || '';
+        
+        return `
+========================================
+UITSPRAAK ${index + 1}: ${j.ecli}
+Rechtbank: ${court}
+Datum: ${date}
+Samenvatting: ${summary}
+
+VOLLEDIGE TEKST:
+${fullTextSafe.substring(0, 8000)} ${fullTextSafe.length > 8000 ? '...[tekst ingekort]' : ''}
+========================================
+        `.trim();
+      }).join('\n\n');
+
+      // Call OpenAI to generate references
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      console.log('🤖 Calling OpenAI to analyze judgments and generate references...');
+
+      const systemPrompt = `Je bent een Nederlandse juridische analist gespecialiseerd in het analyseren van jurisprudentie.
+
+Je taak is om relevante rechtspraak te identificeren die de juridische positie van de gebruiker kan versterken.
+
+Voor elke relevante uitspraak moet je:
+1. Het ECLI nummer vermelden
+2. In één duidelijke alinea uitleggen:
+   - Wat er in de uitspraak werd besloten (kernpunt)
+   - Waarom dit relevant is voor de zaak van de gebruiker
+   - Hoe dit de positie van de gebruiker versterkt
+
+Als een uitspraak NIET nuttig is voor de zaak (bijvoorbeeld: contradictoir, niet relevant, of verzwakt de positie), laat deze dan WEG.
+
+Geef je antwoord als een JSON array met objecten in dit formaat:
+{
+  "references": [
+    {
+      "ecli": "ECLI:NL:HR:2023:123",
+      "explanation": "In deze uitspraak oordeelde de Hoge Raad dat... Dit is relevant voor uw zaak omdat... Dit versterkt uw positie doordat..."
+    }
+  ]
+}
+
+Als er GEEN nuttige verwijzingen zijn, geef dan:
+{
+  "references": [],
+  "message": "Geen nuttige verwijzingen naar jurisprudentie gevonden"
+}`;
+
+      const userPrompt = `JURIDISCH ADVIES VOOR DEZE ZAAK:
+${adviceText}
+
+GEVONDEN UITSPRAKEN:
+${judgmentsText}
+
+Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridische positie van de gebruiker kunnen versterken. Negeer uitspraken die niet relevant zijn of de positie verzwakken.`;
+
+      const response = await openai.chat.completions.create({
+        model: process.env.LLM_MODEL || 'gpt-4o',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.3,
+        response_format: { type: 'json_object' }
+      });
+
+      const aiResponse = JSON.parse(response.choices[0].message.content || '{"references": []}');
+      console.log(`✅ AI generated ${aiResponse.references?.length || 0} references`);
+
+      res.json(aiResponse);
+
+    } catch (error: any) {
+      console.error('Error generating references:', error);
+      res.status(500).json({ 
+        error: error.message || 'Fout bij genereren van verwijzingen' 
+      });
+    }
+  });
+
 
   // Check Pinecone connection
   app.get('/api/rechtspraak/pinecone-status', async (req, res) => {
