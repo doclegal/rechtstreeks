@@ -119,6 +119,21 @@ Preferred communication style: Simple, everyday language.
   - **Future Enhancement**: Prepared for MindStudio flow integration to analyze judgment relevance to user's case
   - **Endpoints**: POST `/api/rechtspraak/fetch-judgment` (single), POST `/api/rechtspraak/fetch-judgments-batch` (up to 10 ECLIs)
   - **Service**: `server/rechtspraakService.ts` handles API communication, XML parsing, and database caching
+- **AI-Powered Reference Generation**: Intelligent jurisprudence reference generation to strengthen case positions.
+  - **Feature**: "Genereer verwijzing" button generates AI-analyzed case law references from top search results
+  - **Endpoint**: POST `/api/jurisprudentie/generate-references` (requires caseId and topResults array)
+  - **AI Model**: OpenAI GPT-4o analyzes full judgment texts against complete legal advice
+  - **Process Flow**:
+    1. Fetches full texts of top 5 search results from Rechtspraak.nl API
+    2. Retrieves complete legal advice (het_geschil, de_feiten, juridische_duiding, vervolgstappen, samenvatting_advies)
+    3. Feeds AI with both judgment texts (up to 8000 chars each) and legal advice
+    4. AI identifies only judgments that strengthen user's position
+    5. Returns ECLI + one-paragraph explanation of decision and relevance
+  - **Output Format**: Array of references with ECLI number, explanation of what was decided, why it's relevant, and how it strengthens the user's position
+  - **Fallback**: "Geen nuttige verwijzingen naar jurisprudentie gevonden" when no helpful references exist
+  - **Legacy Support**: Handles legalAdviceJson stored as both JSON object and string (legacy data)
+  - **UI**: Dialog component displays references with ECLI links to Rechtspraak.nl
+  - **Error Handling**: Robust error propagation with user-friendly toast messages
 
 ### Authentication & Authorization
 - **Primary Auth**: Replit Auth with OpenID Connect.
