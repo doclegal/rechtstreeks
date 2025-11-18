@@ -604,18 +604,20 @@ export default function Jurisprudentie() {
                               </div>
                             )}
                             
-                            <div>
-                              <a 
-                                href={`https://www.rechtspraak.nl/uitspraken/${result.id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm text-primary hover:underline flex items-center gap-1"
-                                data-testid={`link-rechtspraak-${index}`}
-                              >
-                                <ExternalLink className="h-3 w-3" />
-                                Bekijk op rechtspraak.nl
-                              </a>
-                            </div>
+                            {(result.metadata?.source_url || result.id) && (
+                              <div>
+                                <a 
+                                  href={result.metadata?.source_url || `https://uitspraken.rechtspraak.nl/details?id=${result.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-primary hover:underline flex items-center gap-1"
+                                  data-testid={`link-rechtspraak-${index}`}
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  Bekijk op Rechtspraak.nl
+                                </a>
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}
