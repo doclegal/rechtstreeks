@@ -571,35 +571,50 @@ export default function Jurisprudentie() {
                           className="border rounded-lg p-4 bg-muted/30"
                           data-testid={`saved-search-result-${index}`}
                         >
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <div className="flex flex-wrap items-center gap-2 mb-2">
-                                <Badge variant="outline" className="font-mono text-xs">
-                                  {result.id}
+                          <div className="space-y-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="outline" className="font-mono text-xs">
+                                {result.id}
+                              </Badge>
+                              {result.metadata?.court && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <Building2 className="h-3 w-3 mr-1" />
+                                  {result.metadata.court}
                                 </Badge>
-                                {result.metadata?.court && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    <Building2 className="h-3 w-3 mr-1" />
-                                    {result.metadata.court}
-                                  </Badge>
-                                )}
-                                {result.metadata?.decision_date && (
-                                  <Badge variant="outline" className="text-xs">
-                                    <Calendar className="h-3 w-3 mr-1" />
-                                    {result.metadata.decision_date}
-                                  </Badge>
-                                )}
-                                {result.score && (
-                                  <Badge variant="outline" className="text-xs">
-                                    Score: {(result.score * 100).toFixed(0)}%
-                                  </Badge>
-                                )}
-                              </div>
-                              {result.metadata?.ai_inhoudsindicatie && (
-                                <p className="text-sm text-muted-foreground line-clamp-2">
+                              )}
+                              {result.metadata?.decision_date && (
+                                <Badge variant="outline" className="text-xs">
+                                  <Calendar className="h-3 w-3 mr-1" />
+                                  {result.metadata.decision_date}
+                                </Badge>
+                              )}
+                              {result.score && (
+                                <Badge variant="outline" className="text-xs">
+                                  Score: {(result.score * 100).toFixed(0)}%
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            {result.metadata?.ai_inhoudsindicatie && (
+                              <div className="space-y-2">
+                                <h4 className="font-medium text-sm">Uitspraak tekst</h4>
+                                <p className="text-sm text-muted-foreground">
                                   {result.metadata.ai_inhoudsindicatie}
                                 </p>
-                              )}
+                              </div>
+                            )}
+                            
+                            <div>
+                              <a 
+                                href={`https://www.rechtspraak.nl/uitspraken/${result.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-primary hover:underline flex items-center gap-1"
+                                data-testid={`link-rechtspraak-${index}`}
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                Bekijk op rechtspraak.nl
+                              </a>
                             </div>
                           </div>
                         </div>
