@@ -55,6 +55,12 @@ Preferred communication style: Simple, everyday language.
 - **Automatic Query Generation**: AI-powered (OpenAI GPT-4o-mini) to generate optimized search queries and required keywords from legal advice.
 - **Full Judgment Text Retrieval**: Rechtspraak.nl API integration with database caching for full judgment texts, displayed in a dialog.
 - **AI-Powered Reference Generation**: "Genereer verwijzing" feature uses OpenAI GPT-4o to analyze full judgment texts against legal advice to generate relevant ECLI references with one-paragraph explanations.
+  - **Data Structure**: References stored as `[{ecli: string, court: string, explanation: string}]` in `analyses.jurisprudenceReferences` JSONB field
+  - **Court Instance**: Each reference includes the court instance (e.g., "Hoge Raad", "Gerechtshof Amsterdam", "Rechtbank Rotterdam")
+  - **UI Display**: Saved references shown in collapsible "Opgeslagen Verwijzingen" section on Jurisprudentie page with ECLI badge, court badge, and explanation
+  - **MindStudio Integration**: References automatically sent to DraftFirstLetter.flow as `{{jurisprudence_references}}` input variable with ecli, court, and explanation fields
+  - **Fresh State**: Always persists current references (including empty array) to prevent stale citations in generated letters
+  - **Cache Invalidation**: Query cache automatically refreshed after reference generation for immediate UI update
 
 ### Authentication & Authorization
 - **Primary Auth**: Replit Auth with OpenID Connect.
