@@ -3214,10 +3214,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Brief type:", briefType);
       console.log("Tone:", tone);
 
-      // Fetch jurisprudence references from latest analysis if available
-      const jurisprudenceReferences = analysis.jurisprudenceReferences as Array<{ecli: string; court: string; explanation: string}> | undefined;
+      // Fetch jurisprudence references from ALL analyses (not just latest)
+      // The latest analysis might be RKOS, but jurisprudence is stored in Advies analysis
+      let jurisprudenceReferences: Array<{ecli: string; court: string; explanation: string}> | undefined = 
+        analysis.jurisprudenceReferences as Array<{ecli: string; court: string; explanation: string}> | undefined;
+      
+      // If latest analysis has no references, check all analyses
+      if (!jurisprudenceReferences || jurisprudenceReferences.length === 0) {
+        const allAnalyses = await storage.getAnalysesByCase(caseId);
+        console.log(`🔍 Latest analysis has no jurisprudence references, checking all ${allAnalyses.length} analyses...`);
+        
+        for (const analysisItem of allAnalyses) {
+          const refs = analysisItem.jurisprudenceReferences as Array<{ecli: string; court: string; explanation: string}> | undefined;
+          if (refs && refs.length > 0) {
+            jurisprudenceReferences = refs;
+            console.log(`✅ Found ${refs.length} jurisprudence references in analysis from ${analysisItem.createdAt}`);
+            break;
+          }
+        }
+      }
+      
       if (jurisprudenceReferences && jurisprudenceReferences.length > 0) {
-        console.log(`📚 Found ${jurisprudenceReferences.length} jurisprudence references to include in letter`);
+        console.log(`📚 Including ${jurisprudenceReferences.length} jurisprudence references in letter`);
       } else {
         console.log("ℹ️ No jurisprudence references available for this case");
       }
