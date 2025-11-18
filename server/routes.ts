@@ -7504,11 +7504,17 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
       // ALWAYS save references to database (including empty array) to prevent stale data
       const referencesToSave = aiResponse.references || [];
       console.log(`💾 Saving ${referencesToSave.length} references to database...`);
+      
+      // Also save the full search results (10 judgments) for display
+      console.log(`💾 Saving ${topResults.length} search results to database...`);
       await db
         .update(analyses)
-        .set({ jurisprudenceReferences: referencesToSave })
+        .set({ 
+          jurisprudenceReferences: referencesToSave,
+          jurisprudenceSearchResults: topResults
+        })
         .where(eq(analyses.id, latestAnalysis.id));
-      console.log('✅ References saved to database (fresh state)');
+      console.log('✅ References and search results saved to database (fresh state)');
 
       res.json(aiResponse);
 

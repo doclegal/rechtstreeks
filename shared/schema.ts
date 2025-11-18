@@ -180,6 +180,9 @@ export const analyses = pgTable("analyses", {
   // Jurisprudence references (from AI analysis of case law)
   jurisprudenceReferences: jsonb("jurisprudence_references"), // Generated case law references [{ecli, explanation}]
   
+  // Jurisprudence search results (10 most relevant judgments from Pinecone)
+  jurisprudenceSearchResults: jsonb("jurisprudence_search_results"), // Raw search results [{ecli, title, summary, score, deeplink}]
+  
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("idx_analyses_case").on(table.caseId),
