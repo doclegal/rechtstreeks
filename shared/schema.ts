@@ -177,6 +177,9 @@ export const analyses = pgTable("analyses", {
   // Missing information (from missing_info.flow)
   missingInformation: jsonb("missing_information"), // Consolidated missing info from RKOS and Create_advice flows [{item, why_needed}]
   
+  // Jurisprudence references (from AI analysis of case law)
+  jurisprudenceReferences: jsonb("jurisprudence_references"), // Generated case law references [{ecli, explanation}]
+  
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("idx_analyses_case").on(table.caseId),
