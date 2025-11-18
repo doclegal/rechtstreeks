@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { ArrowLeft, Scale, FileText, ExternalLink, Calendar, Building2, Search, Loader2, Sparkles, Settings } from "lucide-react";
+import { ArrowLeft, Scale, FileText, ExternalLink, Calendar, Building2, Search, Loader2, Sparkles, Settings, X } from "lucide-react";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -39,6 +40,9 @@ interface VectorSearchResult {
   ai_beslissing?: string;
   ai_motivering?: string;
   ai_inhoudsindicatie?: string;
+  fullText?: string | null; // Full judgment text from Rechtspraak.nl API
+  fullTextError?: string | null; // Error message if fetch failed
+  fullTextLoading?: boolean; // Loading state for full text fetch
 }
 
 export default function Jurisprudentie() {
@@ -55,6 +59,10 @@ export default function Jurisprudentie() {
   const [scoreThreshold, setScoreThreshold] = useState(0.10);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [requiredKeywords, setRequiredKeywords] = useState("");
+  
+  // Dialog state for showing full judgment text
+  const [fullTextDialogOpen, setFullTextDialogOpen] = useState(false);
+  const [selectedJudgment, setSelectedJudgment] = useState<VectorSearchResult | null>(null);
 
   const generateQueryMutation = useMutation({
     mutationFn: async () => {
@@ -147,6 +155,55 @@ export default function Jurisprudentie() {
     
     setResults([]);
     searchMutation.mutate();
+  };
+
+  // Handler to fetch full judgment text
+  const handleFetchFullText = async (ecli: string, index: number) => {
+    // Set loading state
+    setResults(prev => prev.map((r, i) => 
+      i === index ? { ...r, fullTextLoading: true } : r
+    ));
+
+    try {
+      const response = await apiRequest('POST', '/api/rechtspraak/fetch-judgment', { ecli });
+      const data = await response.json();
+
+      // Update the result with full text
+      setResults(prev => prev.map((r, i) => 
+        i === index ? {
+          ...r,
+          fullText: data.fullText,
+          fullTextError: data.error,
+          fullTextLoading: false
+        } : r
+      ));
+
+      // Open dialog with the selected judgment
+      setSelectedJudgment(results[index]);
+      setFullTextDialogOpen(true);
+
+      if (!data.fullText) {
+        toast({
+          title: "Volledige tekst niet beschikbaar",
+          description: data.error || "Kon de volledige tekst niet ophalen",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      setResults(prev => prev.map((r, i) => 
+        i === index ? {
+          ...r,
+          fullTextError: error.message || "Fout bij ophalen",
+          fullTextLoading: false
+        } : r
+      ));
+
+      toast({
+        title: "Fout bij ophalen",
+        description: error.message || "Kon de volledige tekst niet ophalen",
+        variant: "destructive",
+      });
+    }
   };
 
   if (authLoading) {
@@ -403,23 +460,46 @@ export default function Jurisprudentie() {
                         {result.ecli}
                       </p>
                     </div>
-                    {result.source_url && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        asChild
-                        data-testid={`button-view-${index}`}
-                      >
-                        <a 
-                          href={result.source_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
+                    <div className="flex flex-col gap-2">
+                      {index < 5 && (
+                        <Button 
+                          variant="default" 
+                          size="sm"
+                          onClick={() => handleFetchFullText(result.ecli, index)}
+                          disabled={result.fullTextLoading}
+                          data-testid={`button-fetch-full-text-${index}`}
                         >
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Bekijk op Rechtspraak.nl
-                        </a>
-                      </Button>
-                    )}
+                          {result.fullTextLoading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Ophalen...
+                            </>
+                          ) : (
+                            <>
+                              <FileText className="h-4 w-4 mr-2" />
+                              Volledige tekst
+                            </>
+                          )}
+                        </Button>
+                      )}
+                      {result.source_url && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          asChild
+                          data-testid={`button-view-${index}`}
+                        >
+                          <a 
+                            href={result.source_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                          >
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Bekijk op Rechtspraak.nl
+                          </a>
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -573,6 +653,95 @@ export default function Jurisprudentie() {
           </CardContent>
         </Card>
       )}
+
+      {/* Dialog for displaying full judgment text */}
+      <Dialog open={fullTextDialogOpen} onOpenChange={setFullTextDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Volledige uitspraak
+            </DialogTitle>
+            <DialogDescription className="font-mono text-xs">
+              {selectedJudgment?.ecli}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedJudgment && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {selectedJudgment.court && (
+                  <Badge variant="secondary" className="text-xs">
+                    <Building2 className="h-3 w-3 mr-1" />
+                    {selectedJudgment.court}
+                  </Badge>
+                )}
+                {selectedJudgment.decision_date && (
+                  <Badge variant="outline" className="text-xs">
+                    <Calendar className="h-3 w-3 mr-1" />
+                    {selectedJudgment.decision_date}
+                  </Badge>
+                )}
+                {selectedJudgment.legal_area && (
+                  <Badge variant="outline" className="text-xs">
+                    <Scale className="h-3 w-3 mr-1" />
+                    {selectedJudgment.legal_area}
+                  </Badge>
+                )}
+              </div>
+
+              {selectedJudgment.fullTextLoading && (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="ml-4 text-muted-foreground">Volledige tekst ophalen...</p>
+                </div>
+              )}
+
+              {selectedJudgment.fullTextError && !selectedJudgment.fullTextLoading && (
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                  <p className="text-sm text-destructive font-semibold mb-1">Fout bij ophalen</p>
+                  <p className="text-sm text-muted-foreground">{selectedJudgment.fullTextError}</p>
+                </div>
+              )}
+
+              {selectedJudgment.fullText && !selectedJudgment.fullTextLoading && (
+                <div className="bg-muted/30 p-6 rounded-lg border">
+                  <div className="prose prose-sm max-w-none">
+                    <p className="text-foreground whitespace-pre-wrap leading-relaxed text-sm">
+                      {selectedJudgment.fullText}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {!selectedJudgment.fullText && !selectedJudgment.fullTextLoading && !selectedJudgment.fullTextError && (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground text-sm">Geen volledige tekst beschikbaar</p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                {selectedJudgment.source_url && (
+                  <Button variant="outline" size="sm" asChild>
+                    <a 
+                      href={selectedJudgment.source_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Bekijk op Rechtspraak.nl
+                    </a>
+                  </Button>
+                )}
+                <Button variant="default" size="sm" onClick={() => setFullTextDialogOpen(false)}>
+                  Sluiten
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
