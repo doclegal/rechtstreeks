@@ -385,6 +385,19 @@ export const qnaItems = pgTable("qna_items", {
   index("idx_qna_items_order").on(table.order),
 ]);
 
+// Cached full judgment texts from Rechtspraak.nl API
+export const judgmentTexts = pgTable("judgment_texts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ecli: varchar("ecli", { length: 255 }).notNull().unique(), // ECLI identifier (e.g., ECLI:NL:HR:2023:1234)
+  fullText: text("full_text"), // Full judgment text extracted from XML
+  xmlContent: text("xml_content"), // Raw XML response from API (for reprocessing if needed)
+  fetchedAt: timestamp("fetched_at").defaultNow(),
+  fetchError: text("fetch_error"), // Error message if fetch failed
+}, (table) => [
+  index("idx_judgment_texts_ecli").on(table.ecli),
+  index("idx_judgment_texts_fetched_at").on(table.fetchedAt),
+]);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   cases: many(cases),
@@ -609,6 +622,11 @@ export const insertQnaItemSchema = createInsertSchema(qnaItems).omit({
   updatedAt: true,
 });
 
+export const insertJudgmentTextSchema = createInsertSchema(judgmentTexts).omit({
+  id: true,
+  fetchedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -644,3 +662,5 @@ export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type QnaItem = typeof qnaItems.$inferSelect;
 export type InsertQnaItem = z.infer<typeof insertQnaItemSchema>;
+export type JudgmentText = typeof judgmentTexts.$inferSelect;
+export type InsertJudgmentText = z.infer<typeof insertJudgmentTextSchema>;
