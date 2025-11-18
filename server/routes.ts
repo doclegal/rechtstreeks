@@ -7305,6 +7305,50 @@ Remember:
     }
   });
 
+  // Fetch full judgment text from Rechtspraak.nl API
+  const { fetchJudgmentText, fetchMultipleJudgmentTexts } = await import('./rechtspraakService');
+
+  app.post('/api/rechtspraak/fetch-judgment', async (req, res) => {
+    try {
+      const { ecli } = req.body;
+
+      if (!ecli || typeof ecli !== 'string') {
+        return res.status(400).json({ error: 'ECLI is required' });
+      }
+
+      const result = await fetchJudgmentText(ecli);
+      res.json(result);
+    } catch (error: any) {
+      console.error('Error fetching judgment text:', error);
+      res.status(500).json({ 
+        error: error.message || 'Failed to fetch judgment text' 
+      });
+    }
+  });
+
+  // Fetch full judgment texts for multiple ECLIs
+  app.post('/api/rechtspraak/fetch-judgments-batch', async (req, res) => {
+    try {
+      const { eclis } = req.body;
+
+      if (!Array.isArray(eclis) || eclis.length === 0) {
+        return res.status(400).json({ error: 'Array of ECLIs is required' });
+      }
+
+      if (eclis.length > 10) {
+        return res.status(400).json({ error: 'Maximum 10 ECLIs per batch request' });
+      }
+
+      const results = await fetchMultipleJudgmentTexts(eclis);
+      res.json({ results });
+    } catch (error: any) {
+      console.error('Error fetching judgment texts:', error);
+      res.status(500).json({ 
+        error: error.message || 'Failed to fetch judgment texts' 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
