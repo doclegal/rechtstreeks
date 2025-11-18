@@ -74,22 +74,29 @@ export default function Jurisprudentie() {
   const [generatedReferences, setGeneratedReferences] = useState<any[]>([]);
   const [referencesDialogOpen, setReferencesDialogOpen] = useState(false);
 
-  // Query to fetch saved references from database
-  const { data: savedReferences = [], isLoading: savedReferencesLoading } = useQuery({
+  // Query to fetch saved references and search results from database
+  const { data: savedJurisprudenceData, isLoading: savedReferencesLoading } = useQuery({
     queryKey: ['/api/cases', currentCase?.id, 'saved-references'],
     enabled: !!currentCase?.id,
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/cases/${currentCase?.id}/analyses`);
       const analyses = await response.json();
       
-      // Get the latest analysis with jurisprudence references
-      const latestWithReferences = analyses.find((a: any) => 
-        a.jurisprudenceReferences && Array.isArray(a.jurisprudenceReferences) && a.jurisprudenceReferences.length > 0
+      // Get the latest analysis with jurisprudence data
+      const latestWithData = analyses.find((a: any) => 
+        (a.jurisprudenceReferences && Array.isArray(a.jurisprudenceReferences) && a.jurisprudenceReferences.length > 0) ||
+        (a.jurisprudenceSearchResults && Array.isArray(a.jurisprudenceSearchResults) && a.jurisprudenceSearchResults.length > 0)
       );
       
-      return latestWithReferences?.jurisprudenceReferences || [];
+      return {
+        references: latestWithData?.jurisprudenceReferences || [],
+        searchResults: latestWithData?.jurisprudenceSearchResults || []
+      };
     }
   });
+
+  const savedReferences = savedJurisprudenceData?.references || [];
+  const savedSearchResults = savedJurisprudenceData?.searchResults || [];
 
   const generateQueryMutation = useMutation({
     mutationFn: async () => {
@@ -180,12 +187,12 @@ export default function Jurisprudentie() {
         throw new Error('Geen actieve zaak geselecteerd');
       }
 
-      // Get top 5 results for reference generation
-      const topResults = results.slice(0, 5);
+      // Get ALL 10 results for saving + top 5 for reference generation
+      const allResults = results.slice(0, 10);
       
       const response = await apiRequest('POST', '/api/jurisprudentie/generate-references', {
         caseId: currentCase.id,
-        topResults: topResults.map(r => ({
+        topResults: allResults.map(r => ({
           id: r.id,
           score: r.score,
           metadata: {
@@ -231,6 +238,38 @@ export default function Jurisprudentie() {
       toast({
         title: "Fout bij genereren",
         description: cleanMessage,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const clearJurisprudenceDataMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentCase?.id) {
+        throw new Error('Geen actieve zaak geselecteerd');
+      }
+
+      const response = await apiRequest('POST', '/api/jurisprudentie/clear-data', {
+        caseId: currentCase.id
+      });
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate saved references query to clear UI
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/cases', currentCase?.id, 'saved-references'] 
+      });
+      
+      toast({
+        title: "Data gewist",
+        description: "Bewaarde zoekresultaten en verwijzingen zijn verwijderd",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout bij wissen",
+        description: error.message || "Kon data niet wissen",
         variant: "destructive",
       });
     }
@@ -429,58 +468,145 @@ export default function Jurisprudentie() {
       </div>
 
       {/* Saved References Section */}
-      {savedReferences.length > 0 && (
+      {(savedReferences.length > 0 || savedSearchResults.length > 0) && (
         <Card className="mb-6" data-testid="card-saved-references">
           <Collapsible open={savedReferencesSectionOpen} onOpenChange={setSavedReferencesSectionOpen}>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <div>
+                <div className="flex-1">
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5" />
-                    Opgeslagen Verwijzingen ({savedReferences.length})
+                    Opgeslagen Jurisprudentie
                   </CardTitle>
                   <CardDescription>
-                    Deze verwijzingen worden automatisch gebruikt bij het genereren van brieven
+                    {savedSearchResults.length} zoekresultaten • {savedReferences.length} AI-gegenereerde verwijzingen
                   </CardDescription>
                 </div>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    {savedReferencesSectionOpen ? 'Minder tonen' : 'Meer tonen'}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => clearJurisprudenceDataMutation.mutate()}
+                    disabled={clearJurisprudenceDataMutation.isPending}
+                    data-testid="button-clear-saved-data"
+                  >
+                    {clearJurisprudenceDataMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Wissen...
+                      </>
+                    ) : (
+                      <>
+                        <X className="h-4 w-4 mr-2" />
+                        Opnieuw opzoeken
+                      </>
+                    )}
                   </Button>
-                </CollapsibleTrigger>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      {savedReferencesSectionOpen ? 'Minder tonen' : 'Meer tonen'}
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
               </div>
             </CardHeader>
             
             <CollapsibleContent>
-              <CardContent>
-                <div className="space-y-4">
-                  {savedReferences.map((ref: any, index: number) => (
-                    <div 
-                      key={index} 
-                      className="border rounded-lg p-4 bg-muted/50"
-                      data-testid={`saved-reference-${index}`}
-                    >
-                      <div className="flex items-start justify-between gap-4 mb-3">
-                        <div className="flex-1">
-                          <div className="flex flex-wrap items-center gap-2 mb-2">
-                            <Badge variant="default" className="font-mono text-xs">
-                              {ref.ecli}
-                            </Badge>
-                            {ref.court && (
-                              <Badge variant="secondary" className="text-xs">
-                                <Building2 className="h-3 w-3 mr-1" />
-                                {ref.court}
-                              </Badge>
-                            )}
+              <CardContent className="space-y-6">
+                {/* AI-generated references section */}
+                {savedReferences.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4" />
+                      AI-gegenereerde Verwijzingen ({savedReferences.length})
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Deze verwijzingen worden automatisch gebruikt bij het genereren van brieven
+                    </p>
+                    <div className="space-y-4">
+                      {savedReferences.map((ref: any, index: number) => (
+                        <div 
+                          key={index} 
+                          className="border rounded-lg p-4 bg-primary/5"
+                          data-testid={`saved-reference-${index}`}
+                        >
+                          <div className="flex items-start justify-between gap-4 mb-3">
+                            <div className="flex-1">
+                              <div className="flex flex-wrap items-center gap-2 mb-2">
+                                <Badge variant="default" className="font-mono text-xs">
+                                  {ref.ecli}
+                                </Badge>
+                                {ref.court && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    <Building2 className="h-3 w-3 mr-1" />
+                                    {ref.court}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-sm text-foreground leading-relaxed">
+                            {ref.explanation}
                           </div>
                         </div>
-                      </div>
-                      <div className="text-sm text-foreground leading-relaxed">
-                        {ref.explanation}
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
+
+                {/* Search results section */}
+                {savedSearchResults.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                      <Search className="h-4 w-4" />
+                      Zoekresultaten ({savedSearchResults.length})
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      De 10 meest relevante uitspraken op basis van uw laatste zoekopdracht
+                    </p>
+                    <div className="space-y-3">
+                      {savedSearchResults.map((result: any, index: number) => (
+                        <div 
+                          key={index} 
+                          className="border rounded-lg p-4 bg-muted/30"
+                          data-testid={`saved-search-result-${index}`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex flex-wrap items-center gap-2 mb-2">
+                                <Badge variant="outline" className="font-mono text-xs">
+                                  {result.id}
+                                </Badge>
+                                {result.metadata?.court && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    <Building2 className="h-3 w-3 mr-1" />
+                                    {result.metadata.court}
+                                  </Badge>
+                                )}
+                                {result.metadata?.decision_date && (
+                                  <Badge variant="outline" className="text-xs">
+                                    <Calendar className="h-3 w-3 mr-1" />
+                                    {result.metadata.decision_date}
+                                  </Badge>
+                                )}
+                                {result.score && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Score: {(result.score * 100).toFixed(0)}%
+                                  </Badge>
+                                )}
+                              </div>
+                              {result.metadata?.ai_inhoudsindicatie && (
+                                <p className="text-sm text-muted-foreground line-clamp-2">
+                                  {result.metadata.ai_inhoudsindicatie}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </CollapsibleContent>
           </Collapsible>
