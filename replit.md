@@ -1,7 +1,7 @@
 # Rechtstreeks.ai - Legal AI Platform
 
 ## Overview
-Rechtstreeks.ai is a Dutch legal assistance platform that leverages AI to provide accessible, low-threshold legal help. It automates legal document analysis and generation, guiding users through the entire legal process from case intake to court proceedings. The platform supports multiple concurrent legal cases per user, offering a step-by-step approach with AI-powered analysis and automated generation of legal letters and summons, aiming to empower users with minimal legal knowledge.
+Rechtstreeks.ai is a Dutch legal assistance platform that uses AI to provide accessible legal help. It automates legal document analysis and generation, guiding users through the entire legal process from case intake to court proceedings. The platform supports managing multiple legal cases concurrently, offering a step-by-step approach with AI-powered analysis and automated generation of legal letters and summons, aiming to empower users with minimal legal knowledge.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -10,130 +10,51 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend
 - **Framework**: React with TypeScript, built using Vite.
-- **UI Components**: Shadcn/ui components with Radix UI primitives.
+- **UI Components**: Shadcn/ui with Radix UI primitives.
 - **Styling**: TailwindCSS with a custom theme and Dutch design system.
 - **State Management**: TanStack React Query for server state; Wouter for routing.
 - **Forms**: React Hook Form with Zod validation.
-- **Case Management**: React Context for selected case state, persisted with localStorage.
-- **User Experience**: Single-page application with a multi-case approach, allowing users to manage multiple legal cases, track progress through 9 distinct steps, and navigate a dedicated menu for the active case.
+- **User Experience**: Single-page application supporting multi-case management, 9-step progress tracking, and dedicated case menus.
 
 ### Backend
-- **Runtime**: Node.js with Express.js server.
+- **Runtime**: Node.js with Express.js.
 - **Language**: TypeScript with ES modules.
-- **Database ORM**: Drizzle ORM for type-safe operations.
-- **File Processing**: Multer for diverse file uploads (PDF, DOCX, images, email files).
+- **Database ORM**: Drizzle ORM.
+- **File Processing**: Multer for diverse file uploads (PDF, DOCX, images, email).
 - **Authentication**: Replit Auth integration with session management.
-- **API Design**: RESTful API with comprehensive error handling.
-- **Architecture**: Service-oriented, with separate services for AI analysis, file processing, and PDF generation.
+- **API Design**: RESTful API with error handling.
+- **Architecture**: Service-oriented (AI analysis, file processing, PDF generation).
 
 ### Database
-- **Database**: PostgreSQL (via Replit Database or Neon).
+- **Database**: PostgreSQL (Replit Database or Neon).
 - **Schema Management**: Drizzle migrations.
-- **Key Tables**: Users (with roles), Cases (status tracking), Document storage, AI analyses (structured JSON), Generated letters/summons, Event logging.
+- **Key Tables**: Users, Cases, Document storage, AI analyses, Generated letters/summons, Event logging.
 
-### File Storage (Production)
-- **Storage Backend**: Replit Object Storage via Google Cloud Storage client (production-ready).
-- **Implementation**: `server/objectStorage.ts` - ObjectStorageService with sidecar credentials.
-- **Security**: Time-bound signed URLs (1-hour expiry) for MindStudio document access.
-- **ACL Management**: `server/objectAcl.ts` - Owner-based access control with defensive error handling.
-- **Fallback**: Local filesystem for development/testing when object storage unavailable.
+### File Storage
+- **Storage Backend**: Replit Object Storage via Google Cloud Storage client.
+- **Security**: Time-bound signed URLs (1-hour expiry) for document access.
+- **ACL Management**: Owner-based access control.
 
 ### Process Flow & AI Integration
 - **Status Progression**: Automated transitions through 9 legal process steps.
 - **Document Processing**: Multi-format parsing with text extraction.
-- **RKOS Analysis (Redelijke Kans Op Succes)**: The PRIMARY and ONLY analysis mechanism via MindStudio (RKOS.flow). This replaces all previous analysis flows.
-  - **Full Analysis**: `/api/cases/:id/full-analyze` endpoint calls RKOS.flow to generate structured assessment with:
-    - `chance_of_success`: Overall success probability assessment
-    - `confidence_level`: AI's confidence in the assessment
-    - `strengths`: Array of strong points in the case with explanations
-    - `weaknesses`: Array of weak points and vulnerabilities
-    - `missing_elements`: Array of missing information/documents needed
-    - `recommendations`: Array of recommended next actions
-  - **Data Storage**: Results stored in `analyses.succesKansAnalysis` JSON field
-  - **UI Display**: VolledigeAnalyseDetails.tsx renders RKOS results (strengths, weaknesses, missing elements, recommendations)
-  - **Legal Advice Dependency**: Generate-advice endpoint requires RKOS analysis to be completed first
-  - **Endpoint**: Uses `MS_AGENT_APP_ID` environment variable for MindStudio integration
-- **Template System**: Configurable legal document templates with dynamic field population.
-- **Legal Advice Generation**: AI-powered via MindStudio (Create_advice.flow), supporting structured JSON or plain text output, and rendered in a popup dialog on the Analysis page. Requires RKOS analysis data as input.
-- **Missing Information Check (Dossier Controle)**: AI-powered consolidation of missing information via MindStudio (missing_info.flow) from various analysis sources into a unified checklist.
-- **Summons Generation (Dagvaarding)**: AI-powered via MindStudio (CreateDagvaarding.flow), generating professional Dutch legal summons based on a strict JSON schema, sending complete case context without summarization, and generating PDFs via Puppeteer.
-- **Q&A Generation (Veelgestelde Vragen)**: AI-powered via MindStudio (InfoQnA.flow) to generate case-specific Q&A pairs. Supports both initial generation and incremental "add more questions" functionality. When adding more questions, existing Q&A items are sent as `{{qna_history}}` to prevent duplicate questions. New questions are appended (not replaced) to maintain full history.
+- **RKOS Analysis (Redelijke Kans Op Succes)**: Primary analysis via MindStudio (RKOS.flow) providing chance of success, confidence, strengths, weaknesses, missing elements, and recommendations. Stored in `analyses.succesKansAnalysis` and displayed in UI.
+- **Legal Advice Generation**: AI-powered via MindStudio (Create_advice.flow), requires RKOS analysis, supports JSON/plain text output.
+- **Missing Information Check**: AI-powered consolidation via MindStudio (missing_info.flow) for a unified checklist.
+- **Summons Generation**: AI-powered via MindStudio (CreateDagvaarding.flow), generates professional Dutch legal summons as PDFs via Puppeteer.
+- **Q&A Generation**: AI-powered via MindStudio (InfoQnA.flow) for case-specific Q&A, supports incremental additions.
+- **Letter Generation**: AI-powered via MindStudio (DraftFirstLetter.flow), generates professional legal letters using dynamic templates and integrated jurisprudence references.
+- **Template Management System**: Dynamic templates with `[user_field]` and `{ai_field}`, automatic field extraction, dynamic rendering, and MindStudio integration for field mapping. Supports .txt, .docx, .pdf template formats.
 
-### Template Management System
-- **Dynamic Templates**: Supports `[user_field]` for user input and `{ai_field}` for AI-generated content, defining JSON keys directly.
-- **Automatic Field Extraction**: Template parser extracts user and AI fields.
-- **Dynamic Rendering**: Renders templates with editable inputs for user fields and placeholders for AI fields.
-- **MindStudio Integration**: Dynamic field mapping for AI fields via `returnDataKeys` to resolve nested paths in MindStudio responses.
-- **Template Upload Flow**: Admin uploads templates, system extracts fields, admin configures MindStudio flow and field mappings.
-- **Multi-Format Support**: Parses templates from .txt, .docx, or .pdf files.
-
-### Jurisprudentie Integration (Pinecone Semantic Search)
+### Jurisprudence Integration
 - **Search Engine**: Pinecone serverless vector database with semantic search.
-- **Index**: "rechtstreeks-dmacda9" index, host: rechtstreeks-dmacda9.svc.aped-4627-b74a.pinecone.io, namespace "ECLI_NL".
+- **Index**: "rechtstreeks-dmacda9" (namespace "ECLI_NL") using multilingual-e5-large embeddings.
 - **Data Source**: Pre-indexed Dutch court decisions (ECLI documents) with AI-generated summaries.
-- **Semantic Search**: Dense vector search using multilingual-e5-large embeddings for conceptual similarity matching.
-  - **Embedding Model**: multilingual-e5-large (1024 dimensions) optimized for multilingual legal text.
-  - **inputType distinction**: Queries use `inputType: 'query'`, index uses `inputType: 'passage'` for optimal embedding compatibility.
-  - **Performance**: Achieves 80-87% similarity scores for relevant Dutch legal queries.
-- **AI Metadata Fields**: ai_inhoudsindicatie, ai_feiten, ai_geschil, ai_beslissing, ai_motivering (pre-computed, stored in Pinecone).
-- **Court Level Field**: Native `court_level` field in Pinecone metadata with standardized values: "Rechtbank", "Gerechtshof", "Hoge Raad".
-- **Two-Pass Retrieval Strategy**: Intelligent single-query search with adjusted scoring and Pinecone native reranking.
-  - **Phase 1**: Single Pinecone query (topK=200, threshold=12%) to maximize recall.
-  - **Adjusted Scoring**: Combines Pinecone similarity + court weighting + keyword bonuses (bounded [0,1]).
-    - Court weights: HR=+0.10, Hof=+0.05, Rechtbank=0, Unknown=-0.05 (uses native `court_level` field).
-    - Keyword bonus: +0.015 per match (max +0.045 for 3 keywords), soft matching without hard requirements.
-  - **Phase 2 (Reranking)**: Pinecone native reranker (bge-reranker-v2-m3) for top 20 candidates:
-    - **Model**: bge-reranker-v2-m3 (multilingual, 1024 tokens, optimized for Dutch legal text)
-    - **Document Format**: Summary text + metadata block (court_level, legal_area, decision_year, ECLI)
-    - **Scoring**: Cross-encoder architecture produces 0-1 relevance scores
-    - **Caching**: 15min TTL for cost optimization
-    - **Pricing**: ~$0.002 per rerank request (20 documents)
-  - **Final Output**: Top 40 candidates (20 reranked + 20 remaining by adjusted score), displayed limited to 10 in UI.
-  - **Fallback**: Reranker failure gracefully reverts to adjusted score ordering.
-- **Relevance Filtering**: Configurable score threshold (range 10-30%) for manual searches.
-- **Result Limiting**: Configurable topK parameter (default 20, range 5-50) to limit Pinecone query results.
-- **Display Limiting**: Configurable display filter (All/Top 3/Top 5/Top 10) to show only most relevant results.
-- **Required Keywords**: Exact text match filter (case-insensitive) to ensure specific terms appear in results. Searches across all text fields including AI summaries. Multiple keywords can be specified (comma-separated) - all must be present.
-- **Metadata Filtering**: Supports legal_area, court, procedure_type filters.
-- **Advanced Settings UI**: Collapsible panel with sliders and buttons for real-time threshold and result limiting.
-- **Automatic Query Generation**: AI-powered (OpenAI GPT-4o-mini) feature that analyzes complete legal advice to generate optimized search queries AND required keywords.
-  - Analyzes facts, legal issues, claims, defenses, and desired outcomes from user's case.
-  - Generates search queries specifically designed to find jurisprudence that strengthens user's position.
-  - Automatically identifies 1-3 essential keywords that MUST appear in results (exact match filter).
-  - AI balances specificity (filtering irrelevant cases) vs. breadth (not excluding valuable precedents).
-  - Example keywords: "huurovereenkomst" for rental disputes, "merkinbreuk" for trademark infringement.
-  - Avoids overly generic keywords that would exclude too many relevant cases.
-  - Optimized for semantic search with focus on legal concepts and key terms.
-  - Automatically sets relevance threshold to 10% and triggers smart iterative search.
-  - Endpoint: `/api/pinecone/generate-query` (requires caseId with legal advice, returns query + requiredKeywords array).
-- **Implementation**: `server/pineconeService.ts` for vector operations, `server/routes.ts` for search and query generation endpoints.
-- **Frontend**: `/jurisprudentie` page with manual search, automatic AI query generation, smart iterative search, metadata filters, and AI summary display with iteration log.
-- **Cost Efficiency**: Pre-computed AI summaries eliminate runtime AI generation costs (~€0.0023 per summary).
-- **Full Judgment Text Retrieval**: Rechtspraak.nl API integration for fetching complete judgment texts.
-  - **Data Source**: Rechtspraak.nl Open Data API (https://data.rechtspraak.nl/uitspraken/content)
-  - **Availability**: "Volledige tekst" button displayed for top 5 search results only
-  - **Caching Strategy**: Database-backed (`judgment_texts` table) to minimize API calls and improve response time
-  - **XML Parsing**: Extracts `<uitspraak>`, `<conclusie>`, or `<text>` sections from XML responses
-  - **Database Schema**: Stores ECLI, fullText, xmlContent, fetchedAt, fetchError for each judgment
-  - **Frontend**: Dialog component with metadata badges, full text display, loading states, and error handling
-  - **Future Enhancement**: Prepared for MindStudio flow integration to analyze judgment relevance to user's case
-  - **Endpoints**: POST `/api/rechtspraak/fetch-judgment` (single), POST `/api/rechtspraak/fetch-judgments-batch` (up to 10 ECLIs)
-  - **Service**: `server/rechtspraakService.ts` handles API communication, XML parsing, and database caching
-- **AI-Powered Reference Generation**: Intelligent jurisprudence reference generation to strengthen case positions.
-  - **Feature**: "Genereer verwijzing" button generates AI-analyzed case law references from top search results
-  - **Endpoint**: POST `/api/jurisprudentie/generate-references` (requires caseId and topResults array)
-  - **AI Model**: OpenAI GPT-4o analyzes full judgment texts against complete legal advice
-  - **Process Flow**:
-    1. Fetches full texts of top 5 search results from Rechtspraak.nl API
-    2. Retrieves complete legal advice (het_geschil, de_feiten, juridische_duiding, vervolgstappen, samenvatting_advies)
-    3. Feeds AI with both judgment texts (up to 8000 chars each) and legal advice
-    4. AI identifies only judgments that strengthen user's position
-    5. Returns ECLI + one-paragraph explanation of decision and relevance
-  - **Output Format**: Array of references with ECLI number, explanation of what was decided, why it's relevant, and how it strengthens the user's position
-  - **Fallback**: "Geen nuttige verwijzingen naar jurisprudentie gevonden" when no helpful references exist
-  - **Legacy Support**: Handles legalAdviceJson stored as both JSON object and string (legacy data)
-  - **UI**: Dialog component displays references with ECLI links to Rechtspraak.nl
-  - **Error Handling**: Robust error propagation with user-friendly toast messages
+- **Retrieval Strategy**: Two-pass with Pinecone query (topK=200, threshold=12%), adjusted scoring (similarity + court weighting + keyword bonuses), and Pinecone native reranker (bge-reranker-v2-m3) for top 20 candidates.
+- **Filtering**: Configurable score threshold, topK parameter, display filters, required keywords, and metadata filters (legal_area, court, procedure_type).
+- **Automatic Query Generation**: AI-powered (OpenAI GPT-4o-mini) to generate optimized search queries and required keywords from legal advice.
+- **Full Judgment Text Retrieval**: Rechtspraak.nl API integration with database caching for full judgment texts, displayed in a dialog.
+- **AI-Powered Reference Generation**: "Genereer verwijzing" feature uses OpenAI GPT-4o to analyze full judgment texts against legal advice to generate relevant ECLI references with one-paragraph explanations.
 
 ### Authentication & Authorization
 - **Primary Auth**: Replit Auth with OpenID Connect.
@@ -147,11 +68,13 @@ Preferred communication style: Simple, everyday language.
 - **Authentication**: Replit Auth service.
 - **File Storage**: Replit App Storage.
 - **Deployment**: Replit Autoscale.
+- **Vector Database**: Pinecone.
 
 ### AI & Processing Services
 - **Language Models**: OpenAI API (or configurable LLM).
 - **Document Parsing**: `pdf-parse`, `mammoth`, `mailparser`.
 - **PDF Generation**: Puppeteer.
+- **Jurisprudence API**: Rechtspraak.nl Open Data API.
 
 ### UI & Component Libraries
 - **Component System**: Radix UI primitives.
@@ -164,8 +87,3 @@ Preferred communication style: Simple, everyday language.
 - **Type Checking**: TypeScript.
 - **Code Quality**: ESBuild.
 - **Environment**: `dotenv`.
-
-### Mock Services (MVP)
-- **Bailiff Services**: Simulated `deurwaarder` (bailiff) integration.
-- **Court Integration**: Mock `rechtbank` (court) filing system.
-- **Notification System**: Placeholder for deadline warnings.
