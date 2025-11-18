@@ -7057,6 +7057,9 @@ SEARCH QUERY guidelines:
 - Reference the legal advice sections: het_geschil, de_feiten, juridische_duiding
 - Be concise but comprehensive (max 100 words)
 - Focus on the legal issues and court interpretations, not just factual similarities
+- **IMPORTANT**: Write ONLY natural language - NO search operators like "site:", "AND", "OR", quotes, or special syntax
+- The database ONLY contains Dutch court decisions from rechtspraak.nl - no need to specify this
+- Use plain Dutch text describing the legal concepts, issues, and articles you want to find
 
 REQUIRED KEYWORDS guidelines (CRITICAL - balance is key):
 - Identify 1-3 ESSENTIAL legal terms that MUST appear in relevant case law
@@ -7105,13 +7108,15 @@ Task:
 1. Identify the core legal dispute (geschilpunt) from het_geschil and juridische_duiding sections
 2. Extract key statutory articles mentioned (BW, Rv, etc.)
 3. Determine what factual patterns and legal interpretations would strengthen the user's position as ${caseData.userRole === 'EISER' ? 'claimant' : 'defendant'}
-4. Generate ONE search query that finds jurisprudence supporting the user's argument
+4. Generate ONE search query in PLAIN DUTCH TEXT (no "site:" or other operators) that finds jurisprudence supporting the user's argument
 5. Identify 1-3 essential keywords that MUST appear in relevant case law (ordered by importance)
 
 Remember: 
 - Focus on finding precedents that INCREASE the user's chance of winning
 - Balance keyword specificity - filter irrelevant cases but don't exclude valuable precedents
-- Consider the procedural role: ${caseData.userRole === 'EISER' ? 'as claimant, find cases where courts GRANTED similar claims' : 'as defendant, find cases where courts REJECTED or DISMISSED similar claims'}`
+- Consider the procedural role: ${caseData.userRole === 'EISER' ? 'as claimant, find cases where courts GRANTED similar claims' : 'as defendant, find cases where courts REJECTED or DISMISSED similar claims'}
+- DO NOT use search operators - the query should be natural language only
+- The database already contains only rechtspraak.nl decisions - no need to specify "site:rechtspraak.nl"`
           }
         ],
         response_format: { type: "json_object" },
