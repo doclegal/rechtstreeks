@@ -7526,6 +7526,55 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
     }
   });
 
+  // Clear jurisprudence search results and references for a case
+  app.post('/api/jurisprudentie/clear-data', async (req, res) => {
+    try {
+      const { caseId } = req.body;
+      
+      if (!caseId) {
+        return res.status(400).json({ error: 'Case ID is required' });
+      }
+
+      console.log(`🗑️ Clearing jurisprudence data for case ${caseId}`);
+
+      // Find the analysis with jurisprudence data
+      const analysisRecords = await db
+        .select()
+        .from(analyses)
+        .where(eq(analyses.caseId, caseId))
+        .orderBy(desc(analyses.createdAt));
+
+      // Clear jurisprudence data from all analyses that have it
+      let clearedCount = 0;
+      for (const analysis of analysisRecords) {
+        if (analysis.jurisprudenceReferences || analysis.jurisprudenceSearchResults) {
+          await db
+            .update(analyses)
+            .set({ 
+              jurisprudenceReferences: null,
+              jurisprudenceSearchResults: null
+            })
+            .where(eq(analyses.id, analysis.id));
+          clearedCount++;
+        }
+      }
+
+      console.log(`✅ Cleared jurisprudence data from ${clearedCount} analyses`);
+
+      res.json({ 
+        success: true, 
+        clearedCount,
+        message: 'Jurisprudence data cleared successfully' 
+      });
+
+    } catch (error: any) {
+      console.error('Error clearing jurisprudence data:', error);
+      res.status(500).json({ 
+        error: error.message || 'Fout bij wissen van jurisprudentie data' 
+      });
+    }
+  });
+
 
   // Check Pinecone connection
   app.get('/api/rechtspraak/pinecone-status', async (req, res) => {
