@@ -55,6 +55,11 @@ function updateUserSession(
 }
 
 function isEmailAllowed(email: string): boolean {
+  // In development mode, allow all emails for testing
+  if (process.env.NODE_ENV === 'development') {
+    return true;
+  }
+  
   const allowedEmails = process.env.ALLOWED_EMAILS || '';
   
   if (!allowedEmails.trim()) {

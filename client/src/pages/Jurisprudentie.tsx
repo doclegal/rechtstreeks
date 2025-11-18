@@ -159,6 +159,9 @@ export default function Jurisprudentie() {
 
   // Handler to fetch full judgment text
   const handleFetchFullText = async (ecli: string, index: number) => {
+    // Get the current result before fetching
+    const currentResult = results[index];
+    
     // Set loading state
     setResults(prev => prev.map((r, i) => 
       i === index ? { ...r, fullTextLoading: true } : r
@@ -168,18 +171,21 @@ export default function Jurisprudentie() {
       const response = await apiRequest('POST', '/api/rechtspraak/fetch-judgment', { ecli });
       const data = await response.json();
 
-      // Update the result with full text
+      // Create updated result with full text
+      const updatedResult = {
+        ...currentResult,
+        fullText: data.fullText,
+        fullTextError: data.error,
+        fullTextLoading: false
+      };
+
+      // Update the results array
       setResults(prev => prev.map((r, i) => 
-        i === index ? {
-          ...r,
-          fullText: data.fullText,
-          fullTextError: data.error,
-          fullTextLoading: false
-        } : r
+        i === index ? updatedResult : r
       ));
 
-      // Open dialog with the selected judgment
-      setSelectedJudgment(results[index]);
+      // Open dialog with the updated judgment data
+      setSelectedJudgment(updatedResult);
       setFullTextDialogOpen(true);
 
       if (!data.fullText) {
@@ -190,13 +196,18 @@ export default function Jurisprudentie() {
         });
       }
     } catch (error: any) {
+      const errorResult = {
+        ...currentResult,
+        fullTextError: error.message || "Fout bij ophalen",
+        fullTextLoading: false
+      };
+
       setResults(prev => prev.map((r, i) => 
-        i === index ? {
-          ...r,
-          fullTextError: error.message || "Fout bij ophalen",
-          fullTextLoading: false
-        } : r
+        i === index ? errorResult : r
       ));
+
+      setSelectedJudgment(errorResult);
+      setFullTextDialogOpen(true);
 
       toast({
         title: "Fout bij ophalen",
