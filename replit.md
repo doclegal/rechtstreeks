@@ -109,6 +109,16 @@ Preferred communication style: Simple, everyday language.
 - **Implementation**: `server/pineconeService.ts` for vector operations, `server/routes.ts` for search and query generation endpoints.
 - **Frontend**: `/jurisprudentie` page with manual search, automatic AI query generation, smart iterative search, metadata filters, and AI summary display with iteration log.
 - **Cost Efficiency**: Pre-computed AI summaries eliminate runtime AI generation costs (~€0.0023 per summary).
+- **Full Judgment Text Retrieval**: Rechtspraak.nl API integration for fetching complete judgment texts.
+  - **Data Source**: Rechtspraak.nl Open Data API (https://data.rechtspraak.nl/uitspraken/content)
+  - **Availability**: "Volledige tekst" button displayed for top 5 search results only
+  - **Caching Strategy**: Database-backed (`judgment_texts` table) to minimize API calls and improve response time
+  - **XML Parsing**: Extracts `<uitspraak>`, `<conclusie>`, or `<text>` sections from XML responses
+  - **Database Schema**: Stores ECLI, fullText, xmlContent, fetchedAt, fetchError for each judgment
+  - **Frontend**: Dialog component with metadata badges, full text display, loading states, and error handling
+  - **Future Enhancement**: Prepared for MindStudio flow integration to analyze judgment relevance to user's case
+  - **Endpoints**: POST `/api/rechtspraak/fetch-judgment` (single), POST `/api/rechtspraak/fetch-judgments-batch` (up to 10 ECLIs)
+  - **Service**: `server/rechtspraakService.ts` handles API communication, XML parsing, and database caching
 
 ### Authentication & Authorization
 - **Primary Auth**: Replit Auth with OpenID Connect.
