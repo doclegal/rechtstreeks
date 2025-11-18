@@ -5853,6 +5853,25 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
     }
   });
 
+  // Get all analyses for a case (used for jurisprudence references)
+  app.get('/api/cases/:id/analyses', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      const caseData = await storage.getCase(caseId);
+      if (!caseData || caseData.ownerUserId !== userId) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      const analyses = await storage.getAnalysesByCase(caseId);
+      res.json(analyses);
+    } catch (error) {
+      console.error('Error fetching case analyses:', error);
+      res.status(500).json({ message: 'Failed to fetch analyses' });
+    }
+  });
+
   // Get saved readiness data for a case
   app.get('/api/cases/:caseId/readiness', isAuthenticated, async (req: any, res) => {
     try {

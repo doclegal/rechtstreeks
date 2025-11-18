@@ -70,6 +70,7 @@ export interface IStorage {
   createAnalysis(analysisData: InsertAnalysis): Promise<Analysis>;
   getLatestAnalysis(caseId: string): Promise<Analysis | undefined>;
   getAnalysisByType(caseId: string, model: string): Promise<Analysis | undefined>;
+  getAnalysesByCase(caseId: string): Promise<Analysis[]>;
   updateAnalysis(id: string, updates: Partial<InsertAnalysis>): Promise<Analysis>;
   
   // Letter operations
