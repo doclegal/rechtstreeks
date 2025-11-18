@@ -1701,6 +1701,7 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
     }>;
     jurisprudence_references?: Array<{
       ecli: string;
+      court: string;
       explanation: string;
     }>;
   }): Promise<{

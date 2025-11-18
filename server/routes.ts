@@ -3215,7 +3215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Tone:", tone);
 
       // Fetch jurisprudence references from latest analysis if available
-      const jurisprudenceReferences = analysis.jurisprudenceReferences as Array<{ecli: string; explanation: string}> | undefined;
+      const jurisprudenceReferences = analysis.jurisprudenceReferences as Array<{ecli: string; court: string; explanation: string}> | undefined;
       if (jurisprudenceReferences && jurisprudenceReferences.length > 0) {
         console.log(`📚 Found ${jurisprudenceReferences.length} jurisprudence references to include in letter`);
       } else {
@@ -7418,7 +7418,8 @@ Je taak is om relevante rechtspraak te identificeren die de juridische positie v
 
 Voor elke relevante uitspraak moet je:
 1. Het ECLI nummer vermelden
-2. In één duidelijke alinea uitleggen:
+2. De instantie (rechtbank/hof) vermelden
+3. In één duidelijke alinea uitleggen:
    - Wat er in de uitspraak werd besloten (kernpunt)
    - Waarom dit relevant is voor de zaak van de gebruiker
    - Hoe dit de positie van de gebruiker versterkt
@@ -7430,6 +7431,7 @@ Geef je antwoord als een JSON array met objecten in dit formaat:
   "references": [
     {
       "ecli": "ECLI:NL:HR:2023:123",
+      "court": "Hoge Raad",
       "explanation": "In deze uitspraak oordeelde de Hoge Raad dat... Dit is relevant voor uw zaak omdat... Dit versterkt uw positie doordat..."
     }
   ]

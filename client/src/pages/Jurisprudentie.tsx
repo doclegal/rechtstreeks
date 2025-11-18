@@ -12,8 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 interface VectorSearchResult {
@@ -67,11 +67,29 @@ export default function Jurisprudentie() {
   // Collapsible sections state - both collapsed by default
   const [searchSectionOpen, setSearchSectionOpen] = useState(false);
   const [resultsSectionOpen, setResultsSectionOpen] = useState(false);
+  const [savedReferencesSectionOpen, setSavedReferencesSectionOpen] = useState(true);
   const [isAutoSearching, setIsAutoSearching] = useState(false);
   
   // Generated references state
   const [generatedReferences, setGeneratedReferences] = useState<any[]>([]);
   const [referencesDialogOpen, setReferencesDialogOpen] = useState(false);
+
+  // Query to fetch saved references from database
+  const { data: savedReferences = [], isLoading: savedReferencesLoading } = useQuery({
+    queryKey: ['/api/cases', currentCase?.id, 'saved-references'],
+    enabled: !!currentCase?.id,
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/cases/${currentCase?.id}/analyses`);
+      const analyses = await response.json();
+      
+      // Get the latest analysis with jurisprudence references
+      const latestWithReferences = analyses.find((a: any) => 
+        a.jurisprudenceReferences && Array.isArray(a.jurisprudenceReferences) && a.jurisprudenceReferences.length > 0
+      );
+      
+      return latestWithReferences?.jurisprudenceReferences || [];
+    }
+  });
 
   const generateQueryMutation = useMutation({
     mutationFn: async () => {
@@ -189,11 +207,16 @@ export default function Jurisprudentie() {
       setGeneratedReferences(data.references || []);
       setReferencesDialogOpen(true);
       
+      // Invalidate saved references query to show newly saved references
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/cases', currentCase?.id, 'saved-references'] 
+      });
+      
       const refCount = data.references?.length || 0;
       toast({
         title: refCount > 0 ? "Verwijzingen gegenereerd" : "Geen verwijzingen",
         description: refCount > 0 
-          ? `${refCount} relevante ${refCount === 1 ? 'verwijzing' : 'verwijzingen'} gevonden`
+          ? `${refCount} relevante ${refCount === 1 ? 'verwijzing' : 'verwijzingen'} gevonden en opgeslagen`
           : data.message || "Geen nuttige verwijzingen naar jurisprudentie gevonden",
       });
     },
@@ -404,6 +427,65 @@ export default function Jurisprudentie() {
           Zoek relevante rechterlijke uitspraken voor {currentCase.title || 'uw zaak'}
         </p>
       </div>
+
+      {/* Saved References Section */}
+      {savedReferences.length > 0 && (
+        <Card className="mb-6" data-testid="card-saved-references">
+          <Collapsible open={savedReferencesSectionOpen} onOpenChange={setSavedReferencesSectionOpen}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Opgeslagen Verwijzingen ({savedReferences.length})
+                  </CardTitle>
+                  <CardDescription>
+                    Deze verwijzingen worden automatisch gebruikt bij het genereren van brieven
+                  </CardDescription>
+                </div>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    {savedReferencesSectionOpen ? 'Minder tonen' : 'Meer tonen'}
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
+            </CardHeader>
+            
+            <CollapsibleContent>
+              <CardContent>
+                <div className="space-y-4">
+                  {savedReferences.map((ref: any, index: number) => (
+                    <div 
+                      key={index} 
+                      className="border rounded-lg p-4 bg-muted/50"
+                      data-testid={`saved-reference-${index}`}
+                    >
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <Badge variant="default" className="font-mono text-xs">
+                              {ref.ecli}
+                            </Badge>
+                            {ref.court && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Building2 className="h-3 w-3 mr-1" />
+                                {ref.court}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-sm text-foreground leading-relaxed">
+                        {ref.explanation}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </Card>
+      )}
 
       <Card className="mb-6" data-testid="card-search">
         <Collapsible open={searchSectionOpen} onOpenChange={setSearchSectionOpen}>
@@ -1006,6 +1088,12 @@ export default function Jurisprudentie() {
                               <Badge variant="secondary" className="font-mono text-xs">
                                 {ref.ecli}
                               </Badge>
+                              {ref.court && (
+                                <Badge variant="outline" className="text-xs">
+                                  <Building2 className="h-3 w-3 mr-1" />
+                                  {ref.court}
+                                </Badge>
+                              )}
                             </div>
                             <p className="text-sm text-foreground leading-relaxed">
                               {ref.explanation}
