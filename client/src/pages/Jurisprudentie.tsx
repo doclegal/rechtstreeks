@@ -63,6 +63,11 @@ export default function Jurisprudentie() {
   // Dialog state for showing full judgment text
   const [fullTextDialogOpen, setFullTextDialogOpen] = useState(false);
   const [selectedJudgment, setSelectedJudgment] = useState<VectorSearchResult | null>(null);
+  
+  // Collapsible sections state - both collapsed by default
+  const [searchSectionOpen, setSearchSectionOpen] = useState(false);
+  const [resultsSectionOpen, setResultsSectionOpen] = useState(false);
+  const [isAutoSearching, setIsAutoSearching] = useState(false);
 
   const generateQueryMutation = useMutation({
     mutationFn: async () => {
@@ -129,6 +134,10 @@ export default function Jurisprudentie() {
       const totalCandidates = data.totalCandidates || 0;
       const reranked = data.reranked || false;
       
+      // Automatically expand results section and collapse search section
+      setResultsSectionOpen(true);
+      setSearchSectionOpen(false);
+      
       toast({
         title: "Zoeken voltooid",
         description: `${totalCandidates} kandidaten gevonden, top ${resultCount} geselecteerd${reranked ? ' met AI reranking' : ''}.`,
@@ -155,6 +164,79 @@ export default function Jurisprudentie() {
     
     setResults([]);
     searchMutation.mutate();
+  };
+
+  // Combined function: generate query then automatically search
+  const handleAutoGenerateAndSearch = async () => {
+    if (!currentCase) {
+      toast({
+        title: "Geen actieve zaak",
+        description: "Selecteer eerst een zaak om te zoeken",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setResults([]);
+    setIsAutoSearching(true);
+    
+    // First generate the query
+    try {
+      const response = await apiRequest('POST', '/api/pinecone/generate-query', {
+        caseId: currentCase.id
+      });
+      const data = await response.json();
+      
+      // Update query and keywords
+      setSearchQuery(data.query);
+      setScoreThreshold(0.30);
+      
+      if (data.requiredKeywords && Array.isArray(data.requiredKeywords) && data.requiredKeywords.length > 0) {
+        setRequiredKeywords(data.requiredKeywords.join(', '));
+      }
+
+      // Then immediately search with the generated query
+      const allKeywords = data.requiredKeywords && Array.isArray(data.requiredKeywords) 
+        ? data.requiredKeywords.map((k: string) => k.trim().toLowerCase()).filter((k: string) => k)
+        : [];
+      
+      const filters: Record<string, any> = {};
+      if (legalArea) filters.legal_area = { $eq: legalArea };
+
+      const searchResponse = await apiRequest('POST', '/api/pinecone/search', {
+        query: data.query,
+        filters: Object.keys(filters).length > 0 ? filters : undefined,
+        keywords: allKeywords,
+        caseId: currentCase.id,
+        enableReranking: true
+      });
+      
+      const searchData = await searchResponse.json();
+      
+      setResults(searchData.results || []);
+      
+      const resultCount = searchData.results?.length || 0;
+      const totalCandidates = searchData.totalCandidates || 0;
+      const reranked = searchData.reranked || false;
+      
+      // Automatically expand results section and collapse search section
+      setResultsSectionOpen(true);
+      setSearchSectionOpen(false);
+      
+      toast({
+        title: "Zoeken voltooid",
+        description: `${totalCandidates} kandidaten gevonden, top ${resultCount} geselecteerd${reranked ? ' met AI reranking' : ''}.`,
+      });
+      
+    } catch (error: any) {
+      toast({
+        title: "Fout bij zoeken",
+        description: error.message || "Kon geen zoekvraag genereren of zoeken",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAutoSearching(false);
+    }
   };
 
   // Handler to fetch full judgment text
@@ -263,16 +345,55 @@ export default function Jurisprudentie() {
       </div>
 
       <Card className="mb-6" data-testid="card-search">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5" />
-            Jurisprudentie Zoeken
-          </CardTitle>
-          <CardDescription>
-            Genereer automatisch een zoekvraag of voer handmatig een vraag in
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        <Collapsible open={searchSectionOpen} onOpenChange={setSearchSectionOpen}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5" />
+                  Jurisprudentie Zoeken
+                </CardTitle>
+                {searchSectionOpen && (
+                  <CardDescription>
+                    Genereer automatisch een zoekvraag of voer handmatig een vraag in
+                  </CardDescription>
+                )}
+              </div>
+              
+              {!searchSectionOpen && (
+                <Button 
+                  onClick={handleAutoGenerateAndSearch}
+                  disabled={isAutoSearching || !currentCase}
+                  data-testid="button-quick-search"
+                  size="lg"
+                  className="ml-4"
+                >
+                  {isAutoSearching ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Zoeken...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="mr-2 h-4 w-4" />
+                      Zoeken
+                    </>
+                  )}
+                </Button>
+              )}
+              
+              {searchSectionOpen && (
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    Minder tonen
+                  </Button>
+                </CollapsibleTrigger>
+              )}
+            </div>
+          </CardHeader>
+          
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
           <div>
             <Label htmlFor="searchQuery">Zoekvraag</Label>
             <div className="flex gap-2">
@@ -402,38 +523,50 @@ export default function Jurisprudentie() {
             </CollapsibleContent>
           </Collapsible>
 
-          <Button 
-            onClick={handleSearch} 
-            disabled={searchMutation.isPending || !searchQuery.trim()}
-            data-testid="button-search"
-            className="w-full"
-            size="lg"
-          >
-            {searchMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Zoeken...
-              </>
-            ) : (
-              <>
-                <Search className="mr-2 h-4 w-4" />
-                Zoeken in jurisprudentie
-              </>
-            )}
-          </Button>
-        </CardContent>
+              <Button 
+                onClick={handleSearch} 
+                disabled={searchMutation.isPending || !searchQuery.trim()}
+                data-testid="button-search"
+                className="w-full"
+                size="lg"
+              >
+                {searchMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Zoeken...
+                  </>
+                ) : (
+                  <>
+                    <Search className="mr-2 h-4 w-4" />
+                    Zoeken in jurisprudentie
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
       </Card>
 
       {results.length > 0 && (
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-              <Sparkles className="h-5 w-5" />
-              Top {Math.min(maxResults, results.length)} van {results.length} uitspraken
-            </h2>
-          </div>
-
-          <div className="space-y-4">
+        <Card className="mb-6" data-testid="card-results">
+          <Collapsible open={resultsSectionOpen} onOpenChange={setResultsSectionOpen}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Top {Math.min(maxResults, results.length)} van {results.length} uitspraken
+                </CardTitle>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    {resultsSectionOpen ? 'Minder tonen' : 'Meer tonen'}
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
+            </CardHeader>
+            
+            <CollapsibleContent>
+              <CardContent>
+                <div className="space-y-4">
             {results.slice(0, maxResults).map((result, index) => (
               <Card key={result.id} data-testid={`card-result-${index}`}>
                 <CardHeader>
@@ -640,9 +773,12 @@ export default function Jurisprudentie() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        </div>
+                ))}
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </Card>
       )}
 
       {!results.length && !searchMutation.isPending && (
