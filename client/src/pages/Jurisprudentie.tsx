@@ -1077,6 +1077,87 @@ export default function Jurisprudentie() {
                 </CardContent>
               </Card>
                 ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* ECLI_NL Results Section */}
+                  {ecliNlResults.length > 0 && (
+                    <div>
+                      <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                        <Scale className="h-5 w-5" />
+                        Rechterlijke Uitspraken ({ecliNlResults.length})
+                      </h3>
+                      <div className="space-y-4">
+                        {ecliNlResults.slice(0, maxResults).map((result, index) => (
+                          <Card key={result.id} data-testid={`card-ecli-result-${index}`}>
+                            <CardHeader>
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                  <CardTitle className="text-lg mb-2">
+                                    {result.title || result.ecli}
+                                  </CardTitle>
+                                  <div className="flex flex-wrap gap-2 mb-2">
+                                    {result.court && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        <Building2 className="h-3 w-3 mr-1" />
+                                        {result.court}
+                                      </Badge>
+                                    )}
+                                    {result.decision_date && (
+                                      <Badge variant="outline" className="text-xs">
+                                        <Calendar className="h-3 w-3 mr-1" />
+                                        {result.decision_date}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground font-mono">
+                                    {result.ecli}
+                                  </p>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                  {index < 5 && result.ecli && (
+                                    <Button 
+                                      variant="default" 
+                                      size="sm"
+                                      onClick={() => handleFetchFullText(result)}
+                                      data-testid={`button-fetch-ecli-${index}`}
+                                    >
+                                      <FileText className="h-4 w-4 mr-2" />
+                                      Volledige tekst
+                                    </Button>
+                                  )}
+                                  {result.source_url && (
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm" 
+                                      asChild
+                                    >
+                                      <a 
+                                        href={result.source_url} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                      >
+                                        <ExternalLink className="h-4 w-4 mr-2" />
+                                        Bekijk op Rechtspraak.nl
+                                      </a>
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                              {result.ai_inhoudsindicatie && (
+                                <p className="text-sm text-muted-foreground mb-2">
+                                  {result.ai_inhoudsindicatie}
+                                </p>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </CollapsibleContent>
