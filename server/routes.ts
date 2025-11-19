@@ -7016,7 +7016,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   });
 
   // Pinecone vector endpoints
-  const { upsertVectors, searchVectors, checkIndexExists } = await import('./pineconeService');
+  const { upsertVectors, searchVectors, searchDualNamespaces, checkIndexExists } = await import('./pineconeService');
 
   // Generate AI-powered jurisprudence search query from legal advice
   app.post('/api/pinecone/generate-query', async (req, res) => {
@@ -7222,7 +7222,7 @@ Remember:
     }
   });
 
-  // Semantic search in Pinecone vector database with intelligent scoring and reranking
+  // Semantic search in Pinecone vector database with dual namespace support
   app.post('/api/pinecone/search', async (req, res) => {
     try {
       const { query, filters, keywords = [], caseId, enableReranking = true } = req.body;
@@ -7231,98 +7231,108 @@ Remember:
         return res.status(400).json({ error: 'Search query is required' });
       }
 
-      console.log(`🔍 NEW STRATEGY: Single-pass Pinecone search`);
+      console.log(`🔍 DUAL NAMESPACE SEARCH STRATEGY`);
       console.log(`📝 Query: "${query.substring(0, 50)}..."`);
       console.log(`🔑 Keywords for bonus: ${keywords.length > 0 ? keywords.join(', ') : 'none'}`);
       if (filters) {
         console.log(`📋 Filters:`, JSON.stringify(filters, null, 2));
       }
       
-      // Step 1: Single Pinecone query with large topK and permissive threshold
-      const rawResults = await searchVectors({
+      // Step 1: Search both namespaces in parallel
+      const dualResults = await searchDualNamespaces({
         text: query,
         filter: filters,
         topK: SEARCH_CONFIG.DEFAULT_TOP_K,
         scoreThreshold: SEARCH_CONFIG.DEFAULT_SCORE_THRESHOLD
       });
 
-      console.log(`📊 Pinecone returned ${rawResults.length} candidates`);
+      console.log(`📊 Total results: ${dualResults.totalResults} (web_search: ${dualResults.webSearch.length}, ECLI_NL: ${dualResults.ecliNl.length})`);
       
-      if (rawResults.length === 0) {
-        return res.json({
-          query,
-          results: [],
-          totalCandidates: 0,
-          finalResults: 0,
-          reranked: false
-        });
-      }
-      
-      // Step 2: Apply adjusted scoring (base + court boost + keyword bonus)
-      const scoredResults = scoreAndSortResults(rawResults, keywords);
-      console.log(`📊 Score breakdown (top 5):`);
-      scoredResults.slice(0, 5).forEach((r, i) => {
-        console.log(`  ${i+1}. ${r.courtType} | Base: ${r.scoreBreakdown.baseScore.toFixed(3)}, Court: +${r.scoreBreakdown.courtBoost.toFixed(3)}, Keywords: +${r.scoreBreakdown.keywordBonus.toFixed(3)} = ${r.adjustedScore.toFixed(3)}`);
-      });
-      
-      // Step 3: Select top candidates for potential reranking
-      const topCandidates = scoredResults.slice(0, SEARCH_CONFIG.RERANK_CANDIDATE_COUNT);
-      
-      // Step 4: Optional LLM reranking of top candidates
-      let finalResults = topCandidates;
-      let reranked = false;
-      
-      if (enableReranking && topCandidates.length > 0) {
-        console.log(`🤖 Attempting to rerank top ${Math.min(topCandidates.length, SEARCH_CONFIG.RERANK_BATCH_SIZE)} candidates...`);
-        const rerankedResults = await rerankResults({
-          caseId,
-          query,
-          candidates: topCandidates,
-          filters,
-          enableCache: true
+      // Helper function to process results from a single namespace
+      const processNamespaceResults = async (rawResults: any[], namespaceLabel: string) => {
+        if (rawResults.length === 0) {
+          return { finalResults: [], reranked: false };
+        }
+        
+        // Step 2: Apply adjusted scoring (base + court boost + keyword bonus)
+        const scoredResults = scoreAndSortResults(rawResults, keywords);
+        console.log(`📊 ${namespaceLabel} score breakdown (top 3):`);
+        scoredResults.slice(0, 3).forEach((r, i) => {
+          console.log(`  ${i+1}. ${r.courtType || 'N/A'} | Base: ${r.scoreBreakdown.baseScore.toFixed(3)}, Court: +${r.scoreBreakdown.courtBoost.toFixed(3)}, Keywords: +${r.scoreBreakdown.keywordBonus.toFixed(3)} = ${r.adjustedScore.toFixed(3)}`);
         });
         
-        if (rerankedResults.length > 0) {
-          finalResults = rerankedResults;
-          reranked = true;
-          console.log(`✅ Reranking successful`);
+        // Step 3: Select top candidates for potential reranking
+        const topCandidates = scoredResults.slice(0, SEARCH_CONFIG.RERANK_CANDIDATE_COUNT);
+        
+        // Step 4: Optional LLM reranking of top candidates
+        let finalResults = topCandidates;
+        let reranked = false;
+        
+        if (enableReranking && topCandidates.length > 0) {
+          console.log(`🤖 ${namespaceLabel}: Attempting to rerank top ${Math.min(topCandidates.length, SEARCH_CONFIG.RERANK_BATCH_SIZE)} candidates...`);
+          const rerankedResults = await rerankResults({
+            caseId,
+            query,
+            candidates: topCandidates,
+            filters,
+            enableCache: true
+          });
+          
+          if (rerankedResults.length > 0) {
+            finalResults = rerankedResults;
+            reranked = true;
+            console.log(`✅ ${namespaceLabel}: Reranking successful`);
+          }
         }
-      }
+        
+        return { finalResults, reranked };
+      };
       
-      // Step 5: Format and return top N for display
-      const displayResults = finalResults.slice(0, SEARCH_CONFIG.MAX_RESULTS_DISPLAY);
+      // Process both namespaces
+      const [webSearchProcessed, ecliNlProcessed] = await Promise.all([
+        processNamespaceResults(dualResults.webSearch, 'web_search'),
+        processNamespaceResults(dualResults.ecliNl, 'ECLI_NL')
+      ]);
       
-      const formattedResults = displayResults.map(result => ({
-        id: result.id,
-        score: result.score,
-        adjustedScore: result.adjustedScore,
-        scoreBreakdown: result.scoreBreakdown,
-        courtType: result.courtType,
-        rerankScore: result.rerankScore, // Pinecone reranker score (0-1)
-        ecli: result.metadata.ecli,
-        title: result.metadata.title,
-        court: result.metadata.court,
-        decision_date: result.metadata.decision_date,
-        legal_area: result.metadata.legal_area,
-        procedure_type: result.metadata.procedure_type,
-        source_url: result.metadata.source_url,
-        text: result.text,
-        ai_feiten: result.metadata.ai_feiten,
-        ai_geschil: result.metadata.ai_geschil,
-        ai_beslissing: result.metadata.ai_beslissing,
-        ai_motivering: result.metadata.ai_motivering,
-        ai_inhoudsindicatie: result.metadata.ai_inhoudsindicatie
-      }));
+      // Step 5: Format results for display
+      const formatResults = (results: any[]) => {
+        return results.slice(0, SEARCH_CONFIG.MAX_RESULTS_DISPLAY).map(result => ({
+          id: result.id,
+          score: result.score,
+          adjustedScore: result.adjustedScore,
+          scoreBreakdown: result.scoreBreakdown,
+          courtType: result.courtType,
+          rerankScore: result.rerankScore,
+          namespace: result.namespace, // Include namespace tag
+          ecli: result.metadata?.ecli,
+          title: result.metadata?.title,
+          court: result.metadata?.court,
+          decision_date: result.metadata?.decision_date,
+          legal_area: result.metadata?.legal_area,
+          procedure_type: result.metadata?.procedure_type,
+          source_url: result.metadata?.source_url,
+          text: result.text,
+          ai_feiten: result.metadata?.ai_feiten,
+          ai_geschil: result.metadata?.ai_geschil,
+          ai_beslissing: result.metadata?.ai_beslissing,
+          ai_motivering: result.metadata?.ai_motivering,
+          ai_inhoudsindicatie: result.metadata?.ai_inhoudsindicatie
+        }));
+      };
 
-      console.log(`✅ Returning ${formattedResults.length} results (${reranked ? 'reranked' : 'adjusted score only'})`);
+      const formattedWebSearch = formatResults(webSearchProcessed.finalResults);
+      const formattedEcliNl = formatResults(ecliNlProcessed.finalResults);
+
+      console.log(`✅ Returning ${formattedWebSearch.length} web_search + ${formattedEcliNl.length} ECLI_NL results`);
 
       res.json({
         query,
-        results: formattedResults,
-        totalCandidates: rawResults.length,
-        finalResults: formattedResults.length,
-        reranked,
-        strategy: 'single-pass-with-scoring'
+        webSearchResults: formattedWebSearch,
+        ecliNlResults: formattedEcliNl,
+        totalResults: formattedWebSearch.length + formattedEcliNl.length,
+        webSearchReranked: webSearchProcessed.reranked,
+        ecliNlReranked: ecliNlProcessed.reranked,
+        strategy: 'dual-namespace-with-scoring'
       });
 
     } catch (error: any) {
