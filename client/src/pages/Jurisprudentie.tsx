@@ -52,7 +52,8 @@ export default function Jurisprudentie() {
   
   const [searchQuery, setSearchQuery] = useState("");
   const [legalArea, setLegalArea] = useState<string | undefined>(undefined);
-  const [results, setResults] = useState<VectorSearchResult[]>([]);
+  const [webSearchResults, setWebSearchResults] = useState<VectorSearchResult[]>([]);
+  const [ecliNlResults, setEcliNlResults] = useState<VectorSearchResult[]>([]);
   const [expandedResult, setExpandedResult] = useState<string | null>(null);
   
   const [maxResults, setMaxResults] = useState(10);
@@ -151,17 +152,20 @@ export default function Jurisprudentie() {
       const data = await response.json();
       
       return { 
-        results: data.results || [],
-        totalCandidates: data.totalCandidates || 0,
-        reranked: data.reranked || false,
+        webSearchResults: data.webSearchResults || [],
+        ecliNlResults: data.ecliNlResults || [],
+        totalResults: data.totalResults || 0,
+        webSearchReranked: data.webSearchReranked || false,
+        ecliNlReranked: data.ecliNlReranked || false,
       };
     },
     onSuccess: (data: any) => {
-      setResults(data.results);
+      setWebSearchResults(data.webSearchResults);
+      setEcliNlResults(data.ecliNlResults);
       
-      const resultCount = data.results.length;
-      const totalCandidates = data.totalCandidates || 0;
-      const reranked = data.reranked || false;
+      const webCount = data.webSearchResults.length;
+      const ecliCount = data.ecliNlResults.length;
+      const totalResults = data.totalResults || 0;
       
       // Automatically expand results section and collapse search section
       setResultsSectionOpen(true);
@@ -169,7 +173,7 @@ export default function Jurisprudentie() {
       
       toast({
         title: "Zoeken voltooid",
-        description: `${totalCandidates} kandidaten gevonden, top ${resultCount} geselecteerd${reranked ? ' met AI reranking' : ''}.`,
+        description: `${totalResults} resultaten: ${webCount} web bronnen, ${ecliCount} rechterlijke uitspraken.`,
       });
     },
     onError: (error: any) => {
@@ -187,8 +191,8 @@ export default function Jurisprudentie() {
         throw new Error('Geen actieve zaak geselecteerd');
       }
 
-      // Get ALL 10 results for saving + top 5 for reference generation
-      const allResults = results.slice(0, 10);
+      // Combine both result sets (web search + ECLI_NL) for reference generation
+      const allResults = [...webSearchResults, ...ecliNlResults].slice(0, 10);
       
       const response = await apiRequest('POST', '/api/jurisprudentie/generate-references', {
         caseId: currentCase.id,
@@ -285,7 +289,8 @@ export default function Jurisprudentie() {
       return;
     }
     
-    setResults([]);
+    setWebSearchResults([]);
+    setEcliNlResults([]);
     searchMutation.mutate();
   };
 
@@ -300,7 +305,8 @@ export default function Jurisprudentie() {
       return;
     }
 
-    setResults([]);
+    setWebSearchResults([]);
+    setEcliNlResults([]);
     setIsAutoSearching(true);
     
     // First generate the query
@@ -336,11 +342,12 @@ export default function Jurisprudentie() {
       
       const searchData = await searchResponse.json();
       
-      setResults(searchData.results || []);
+      setWebSearchResults(searchData.webSearchResults || []);
+      setEcliNlResults(searchData.ecliNlResults || []);
       
-      const resultCount = searchData.results?.length || 0;
-      const totalCandidates = searchData.totalCandidates || 0;
-      const reranked = searchData.reranked || false;
+      const webCount = searchData.webSearchResults?.length || 0;
+      const ecliCount = searchData.ecliNlResults?.length || 0;
+      const totalResults = searchData.totalResults || 0;
       
       // Automatically expand results section and collapse search section
       setResultsSectionOpen(true);
@@ -348,7 +355,7 @@ export default function Jurisprudentie() {
       
       toast({
         title: "Zoeken voltooid",
-        description: `${totalCandidates} kandidaten gevonden, top ${resultCount} geselecteerd${reranked ? ' met AI reranking' : ''}.`,
+        description: `${totalResults} resultaten: ${webCount} web bronnen, ${ecliCount} rechterlijke uitspraken.`,
       });
       
     } catch (error: any) {
@@ -362,34 +369,19 @@ export default function Jurisprudentie() {
     }
   };
 
-  // Handler to fetch full judgment text
-  const handleFetchFullText = async (ecli: string, index: number) => {
-    // Get the current result before fetching
-    const currentResult = results[index];
-    
-    // Set loading state
-    setResults(prev => prev.map((r, i) => 
-      i === index ? { ...r, fullTextLoading: true } : r
-    ));
-
+  // Handler to fetch full judgment text - simplified for dual namespace
+  const handleFetchFullText = async (result: VectorSearchResult) => {
     try {
-      const response = await apiRequest('POST', '/api/rechtspraak/fetch-judgment', { ecli });
+      const response = await apiRequest('POST', '/api/rechtspraak/fetch-judgment', { ecli: result.ecli });
       const data = await response.json();
 
-      // Create updated result with full text
       const updatedResult = {
-        ...currentResult,
+        ...result,
         fullText: data.fullText,
         fullTextError: data.error,
         fullTextLoading: false
       };
 
-      // Update the results array
-      setResults(prev => prev.map((r, i) => 
-        i === index ? updatedResult : r
-      ));
-
-      // Open dialog with the updated judgment data
       setSelectedJudgment(updatedResult);
       setFullTextDialogOpen(true);
 
@@ -402,14 +394,10 @@ export default function Jurisprudentie() {
       }
     } catch (error: any) {
       const errorResult = {
-        ...currentResult,
+        ...result,
         fullTextError: error.message || "Fout bij ophalen",
         fullTextLoading: false
       };
-
-      setResults(prev => prev.map((r, i) => 
-        i === index ? errorResult : r
-      ));
 
       setSelectedJudgment(errorResult);
       setFullTextDialogOpen(true);
@@ -833,19 +821,19 @@ export default function Jurisprudentie() {
         </Collapsible>
       </Card>
 
-      {results.length > 0 && (
+      {(webSearchResults.length > 0 || ecliNlResults.length > 0) && (
         <Card className="mb-6" data-testid="card-results">
           <Collapsible open={resultsSectionOpen} onOpenChange={setResultsSectionOpen}>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5" />
-                  Top {Math.min(maxResults, results.length)} van {results.length} uitspraken
+                  Zoekresultaten ({webSearchResults.length + ecliNlResults.length} totaal)
                 </CardTitle>
                 <div className="flex items-center gap-2">
                   <Button
                     onClick={() => generateReferencesMutation.mutate()}
-                    disabled={generateReferencesMutation.isPending || results.length === 0}
+                    disabled={generateReferencesMutation.isPending || (webSearchResults.length === 0 && ecliNlResults.length === 0)}
                     variant="default"
                     size="sm"
                     data-testid="button-generate-references"
@@ -873,8 +861,16 @@ export default function Jurisprudentie() {
             
             <CollapsibleContent>
               <CardContent>
-                <div className="space-y-4">
-            {results.slice(0, maxResults).map((result, index) => (
+                <div className="space-y-6">
+                  {/* Web Search Results Section */}
+                  {webSearchResults.length > 0 && (
+                    <div>
+                      <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                        <Search className="h-5 w-5" />
+                        Web Bronnen ({webSearchResults.length})
+                      </h3>
+                      <div className="space-y-4">
+                        {webSearchResults.slice(0, maxResults).map((result, index) => (
               <Card key={result.id} data-testid={`card-result-${index}`}>
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
@@ -912,11 +908,11 @@ export default function Jurisprudentie() {
                       </p>
                     </div>
                     <div className="flex flex-col gap-2">
-                      {index < 5 && (
+                      {index < 5 && result.ecli && (
                         <Button 
                           variant="default" 
                           size="sm"
-                          onClick={() => handleFetchFullText(result.ecli, index)}
+                          onClick={() => handleFetchFullText(result)}
                           disabled={result.fullTextLoading}
                           data-testid={`button-fetch-full-text-${index}`}
                         >
@@ -1088,7 +1084,7 @@ export default function Jurisprudentie() {
         </Card>
       )}
 
-      {!results.length && !searchMutation.isPending && (
+      {webSearchResults.length === 0 && ecliNlResults.length === 0 && !searchMutation.isPending && (
         <Card data-testid="card-jurisprudentie-empty">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
