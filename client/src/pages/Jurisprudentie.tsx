@@ -99,6 +99,19 @@ export default function Jurisprudentie() {
   const savedReferences = savedJurisprudenceData?.references || [];
   const savedSearchResults = savedJurisprudenceData?.searchResults || [];
 
+  // Query to check if legal advice exists for current case
+  const { data: hasLegalAdvice = false } = useQuery({
+    queryKey: ['/api/cases', currentCase?.id, 'has-legal-advice'],
+    enabled: !!currentCase?.id,
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/cases/${currentCase?.id}/analyses`);
+      const analyses = await response.json();
+      
+      // Check if any analysis has legal advice
+      return analyses.some((a: any) => a.legalAdviceJson !== null && a.legalAdviceJson !== undefined);
+    }
+  });
+
   const generateQueryMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest('POST', '/api/pinecone/generate-query', {
@@ -300,6 +313,15 @@ export default function Jurisprudentie() {
       toast({
         title: "Geen actieve zaak",
         description: "Selecteer eerst een zaak om te zoeken",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!hasLegalAdvice) {
+      toast({
+        title: "Geen juridisch advies",
+        description: "Genereer eerst juridisch advies op de Analyse pagina om een zoekvraag te kunnen maken",
         variant: "destructive",
       });
       return;
@@ -635,25 +657,31 @@ export default function Jurisprudentie() {
               </div>
               
               {!searchSectionOpen && (
-                <Button 
-                  onClick={handleAutoGenerateAndSearch}
-                  disabled={isAutoSearching || !currentCase}
-                  data-testid="button-quick-search"
-                  size="lg"
-                  className="ml-4"
-                >
-                  {isAutoSearching ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Zoeken...
-                    </>
-                  ) : (
-                    <>
-                      <Search className="mr-2 h-4 w-4" />
-                      Zoeken
-                    </>
+                <div className="flex flex-col items-end gap-1">
+                  <Button 
+                    onClick={handleAutoGenerateAndSearch}
+                    disabled={isAutoSearching || !currentCase || !hasLegalAdvice}
+                    data-testid="button-quick-search"
+                    size="lg"
+                  >
+                    {isAutoSearching ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Zoeken...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="mr-2 h-4 w-4" />
+                        Zoeken
+                      </>
+                    )}
+                  </Button>
+                  {currentCase && !hasLegalAdvice && (
+                    <p className="text-xs text-muted-foreground text-right">
+                      Genereer eerst juridisch advies op de Analyse pagina
+                    </p>
                   )}
-                </Button>
+                </div>
               )}
               
               {searchSectionOpen && (
