@@ -1,0 +1,242 @@
+ou are updating the existing app that searches a vector database (Pinecone) with two namespaces:
+
+
+ecli_nl
+
+
+web_ecli
+
+
+Goal
+
+
+Adjust the search so that it always queries both namespaces.
+
+
+Redesign the UI into a very minimal, clearly separated view per namespace.
+
+
+Keep all found results persistently visible per namespace (do NOT clear them after a new search or generation).
+
+
+
+Backend / Search behavior
+
+
+There are two namespaces in the vector database: ecli_nl and web_ecli.
+
+
+When the user performs a search, the app must:
+
+
+Run a search in ecli_nl with the query.
+
+
+Run a search in web_ecli with the same query.
+
+This is the same search. If no matches found, there is nothing to show.
+
+
+
+
+Store the results for each namespace in separate state containers, e.g.:
+
+
+ecliNlResults
+
+
+webEcliResults
+
+
+
+
+Make sure that search, “generate reference”, and “delete” actions are scoped per namespace.
+Actions in ecli_nl must never touch web_ecli results, and vice versa.
+
+
+
+UI – Main screen
+On the main jurisprudence screen, show two separate blocks/cards:
+
+
+Block 1: “Uitspraken uit ecli_nl”
+
+
+Block 2: “Uitspraken uit web_ecli”
+
+
+For each block on the main screen:
+
+
+Show:
+
+
+A title that clearly indicates the namespace.
+
+
+A short line with e.g. “X uitspraken gevonden” (based on the current state for that namespace).
+
+
+
+
+Each block is independently clickable/openable from the home screen, so the user can open:
+
+
+Only the ecli_nl results, or
+
+
+Only the web_ecli results.
+
+
+
+
+Keep the visual design very minimalistic and clean:
+
+
+No heavy styling, just clear typography and spacing.
+
+
+Two clearly separated cards/sections, stacked under each other.
+
+
+
+UI – Inside each namespace block
+When the user opens a block (for either ecli_nl or web_ecli), show:
+
+
+Three buttons at the top (for that namespace only), with Dutch labels:
+
+
+"Zoeken"
+
+
+"Genereer verwijzing"
+
+
+"Verwijder"
+
+
+
+
+Under the buttons, show the list of found judgments for that namespace:
+
+
+Each judgment on its own row, under each other (vertical list).
+
+
+Layout like the current screenshot style:
+
+
+The main visible field is the “Uitspraak tekst” (summary/decision text).
+
+
+If other metadata (e.g. ECLI, court) is already available in the app, keep the current style, but stay minimal.
+
+
+
+
+
+
+Persistence of results:
+
+
+When the user searches again within a namespace, the new results should replace or update the list for that namespace, but:
+
+
+Do NOT clear the list automatically after using “Genereer verwijzing”.
+
+
+Do NOT remove “Uitspraak tekst” after any action unless the user explicitly uses “Verwijder”.
+
+
+
+
+
+
+
+Button behavior (per namespace)
+All three buttons operate only on the current namespace block.
+
+
+“Zoeken”:
+
+
+Opens or uses a search input for that namespace.
+
+
+Triggers a search only in that namespace (ecli_nl or web_ecli) and updates its own result list.
+
+
+Does not affect the other namespace.
+
+
+
+
+“Genereer verwijzing”:
+
+
+Uses the selected judgment(s) from that namespace to call the existing “generate reference” functionality.
+
+
+Keep using the existing data structure (including ECLI and court/instantie) already wired in the app.
+
+
+After generating the reference, keep the judgment(s) visible in the list for that namespace.
+
+
+
+
+“Verwijder”:
+
+
+Clears or removes the results only for this namespace.
+
+
+It must not affect the results in the other namespace. It must not affect the Pinecone database.
+
+
+
+
+
+Constraints / Acceptance criteria
+
+
+Searching must always support both namespaces:
+
+
+Global/app search → queries both ecli_nl and web_ecli and updates the two blocks.
+
+
+From inside a namespace block, “Zoeken” can be limited to that namespace only.
+
+
+
+
+UI must clearly show:
+
+
+Which results come from ecli_nl.
+
+
+Which results come from web_ecli.
+
+
+
+
+Results must remain visible until the user explicitly clicks “Verwijder” in that namespace.
+
+
+Keep the implementation consistent with the current tech stack and state management already used in the app. Do not introduce a completely new framework; adapt the existing patterns.
+
+
+If something in the current code conflicts with this design, refactor the minimal amount necessary to achieve:
+
+
+Two clearly separated namespace blocks.
+
+
+Separate state and actions per namespace.
+
+
+Minimal, clean UI with the three buttons and persistent results per namespace.
+

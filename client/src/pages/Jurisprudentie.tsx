@@ -2,15 +2,11 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { ArrowLeft, Scale, FileText, ExternalLink, Calendar, Building2, Search, Loader2, Sparkles, Settings, X, Trash2 } from "lucide-react";
+import { ArrowLeft, Search, Trash2, Sparkles, FileText, ExternalLink, Calendar, Building2, Loader2 } from "lucide-react";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Slider } from "@/components/ui/slider";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -19,30 +15,17 @@ import { useToast } from "@/hooks/use-toast";
 interface VectorSearchResult {
   id: string;
   score: number;
-  adjustedScore?: number;
-  scoreBreakdown?: {
-    baseScore: number;
-    courtBoost: number;
-    keywordBonus: number;
-  };
-  courtType?: string;
-  rerankScore?: number;
   ecli: string;
-  title?: string;
   court?: string;
   decision_date?: string;
   legal_area?: string;
-  procedure_type?: string;
-  source_url?: string;
   text?: string;
+  ai_inhoudsindicatie?: string;
   ai_feiten?: string;
   ai_geschil?: string;
   ai_beslissing?: string;
-  ai_motivering?: string;
-  ai_inhoudsindicatie?: string;
-  fullText?: string | null; // Full judgment text from Rechtspraak.nl API
-  fullTextError?: string | null; // Error message if fetch failed
-  fullTextLoading?: boolean; // Loading state for full text fetch
+  fullText?: string | null;
+  fullTextError?: string | null;
 }
 
 export default function Jurisprudentie() {
@@ -51,53 +34,14 @@ export default function Jurisprudentie() {
   const { toast } = useToast();
   
   const [searchQuery, setSearchQuery] = useState("");
-  const [legalArea, setLegalArea] = useState<string | undefined>(undefined);
-  const [webSearchResults, setWebSearchResults] = useState<VectorSearchResult[]>([]);
-  const [ecliNlResults, setEcliNlResults] = useState<VectorSearchResult[]>([]);
-  const [expandedResult, setExpandedResult] = useState<string | null>(null);
   
-  const [maxResults, setMaxResults] = useState(10);
-  const [scoreThreshold, setScoreThreshold] = useState(0.10);
-  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
-  const [requiredKeywords, setRequiredKeywords] = useState("");
+  // Persistent results per namespace
+  const [ecliNlResults, setEcliNlResults] = useState<VectorSearchResult[]>([]);
+  const [webEcliResults, setWebEcliResults] = useState<VectorSearchResult[]>([]);
   
   // Dialog state for showing full judgment text
   const [fullTextDialogOpen, setFullTextDialogOpen] = useState(false);
   const [selectedJudgment, setSelectedJudgment] = useState<VectorSearchResult | null>(null);
-  
-  // Collapsible sections state - both collapsed by default
-  const [searchSectionOpen, setSearchSectionOpen] = useState(false);
-  const [resultsSectionOpen, setResultsSectionOpen] = useState(false);
-  const [savedReferencesSectionOpen, setSavedReferencesSectionOpen] = useState(true);
-  const [isAutoSearching, setIsAutoSearching] = useState(false);
-  
-  // Generated references state
-  const [generatedReferences, setGeneratedReferences] = useState<any[]>([]);
-  const [referencesDialogOpen, setReferencesDialogOpen] = useState(false);
-
-  // Query to fetch saved references and search results from database
-  const { data: savedJurisprudenceData, isLoading: savedReferencesLoading } = useQuery({
-    queryKey: ['/api/cases', currentCase?.id, 'saved-references'],
-    enabled: !!currentCase?.id,
-    queryFn: async () => {
-      const response = await apiRequest('GET', `/api/cases/${currentCase?.id}/analyses`);
-      const analyses = await response.json();
-      
-      // Get the latest analysis with jurisprudence data
-      const latestWithData = analyses.find((a: any) => 
-        (a.jurisprudenceReferences && Array.isArray(a.jurisprudenceReferences) && a.jurisprudenceReferences.length > 0) ||
-        (a.jurisprudenceSearchResults && Array.isArray(a.jurisprudenceSearchResults) && a.jurisprudenceSearchResults.length > 0)
-      );
-      
-      return {
-        references: latestWithData?.jurisprudenceReferences || [],
-        searchResults: latestWithData?.jurisprudenceSearchResults || []
-      };
-    }
-  });
-
-  const savedReferences = savedJurisprudenceData?.references || [];
-  const savedSearchResults = savedJurisprudenceData?.searchResults || [];
 
   // Query to check if legal advice exists for current case
   const { data: hasLegalAdvice = false } = useQuery({
@@ -106,58 +50,18 @@ export default function Jurisprudentie() {
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/cases/${currentCase?.id}/analyses`);
       const analyses = await response.json();
-      
-      // Check if any analysis has legal advice
       return analyses.some((a: any) => a.legalAdviceJson !== null && a.legalAdviceJson !== undefined);
-    }
-  });
-
-  const generateQueryMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest('POST', '/api/pinecone/generate-query', {
-        caseId: currentCase?.id
-      });
-      return response.json();
-    },
-    onSuccess: (data: any) => {
-      setSearchQuery(data.query);
-      setScoreThreshold(0.30);
-      
-      if (data.requiredKeywords && Array.isArray(data.requiredKeywords) && data.requiredKeywords.length > 0) {
-        setRequiredKeywords(data.requiredKeywords.join(', '));
-        toast({
-          title: "Zoekvraag gegenereerd",
-          description: `AI heeft ${data.requiredKeywords.length} verplichte ${data.requiredKeywords.length === 1 ? 'woord' : 'woorden'} toegevoegd`,
-        });
-      } else {
-        toast({
-          title: "Zoekvraag gegenereerd",
-          description: "Klik op 'Zoeken' om resultaten te vinden",
-        });
-      }
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Fout bij genereren",
-        description: error.message || "Kon geen zoekvraag genereren",
-        variant: "destructive",
-      });
     }
   });
 
   const searchMutation = useMutation({
     mutationFn: async () => {
-      const allKeywords = requiredKeywords.trim() 
-        ? requiredKeywords.toLowerCase().split(',').map(k => k.trim()).filter(k => k)
-        : [];
-      
-      const filters: Record<string, any> = {};
-      if (legalArea) filters.legal_area = { $eq: legalArea };
+      if (!searchQuery.trim()) {
+        throw new Error('Voer een zoekvraag in');
+      }
 
       const response = await apiRequest('POST', '/api/pinecone/search', {
         query: searchQuery,
-        filters: Object.keys(filters).length > 0 ? filters : undefined,
-        keywords: allKeywords,
         caseId: currentCase?.id || undefined,
         enableReranking: true
       });
@@ -168,25 +72,19 @@ export default function Jurisprudentie() {
         webSearchResults: data.webSearchResults || [],
         ecliNlResults: data.ecliNlResults || [],
         totalResults: data.totalResults || 0,
-        webSearchReranked: data.webSearchReranked || false,
-        ecliNlReranked: data.ecliNlReranked || false,
       };
     },
     onSuccess: (data: any) => {
-      setWebSearchResults(data.webSearchResults);
+      setWebEcliResults(data.webSearchResults);
       setEcliNlResults(data.ecliNlResults);
       
       const webCount = data.webSearchResults.length;
       const ecliCount = data.ecliNlResults.length;
       const totalResults = data.totalResults || 0;
       
-      // Automatically expand results section and collapse search section
-      setResultsSectionOpen(true);
-      setSearchSectionOpen(false);
-      
       toast({
         title: "Zoeken voltooid",
-        description: `${totalResults} resultaten: ${webCount} web bronnen, ${ecliCount} rechterlijke uitspraken.`,
+        description: `${totalResults} resultaten gevonden: ${ecliCount} uit ecli_nl, ${webCount} uit web_ecli`,
       });
     },
     onError: (error: any) => {
@@ -198,25 +96,82 @@ export default function Jurisprudentie() {
     }
   });
 
-  const generateReferencesMutation = useMutation({
+  const autoSearchMutation = useMutation({
     mutationFn: async () => {
       if (!currentCase?.id) {
         throw new Error('Geen actieve zaak geselecteerd');
       }
 
-      // Combine both result sets (web search + ECLI_NL) for reference generation
-      const allResults = [...webSearchResults, ...ecliNlResults].slice(0, 10);
+      if (!hasLegalAdvice) {
+        throw new Error('Genereer eerst juridisch advies op de Analyse pagina');
+      }
+
+      // Generate query
+      const queryResponse = await apiRequest('POST', '/api/pinecone/generate-query', {
+        caseId: currentCase.id
+      });
+      const queryData = await queryResponse.json();
+      
+      setSearchQuery(queryData.query);
+
+      // Execute search
+      const searchResponse = await apiRequest('POST', '/api/pinecone/search', {
+        query: queryData.query,
+        caseId: currentCase.id,
+        enableReranking: true
+      });
+      
+      const searchData = await searchResponse.json();
+      
+      return { 
+        webSearchResults: searchData.webSearchResults || [],
+        ecliNlResults: searchData.ecliNlResults || [],
+        totalResults: searchData.totalResults || 0,
+      };
+    },
+    onSuccess: (data: any) => {
+      setWebEcliResults(data.webSearchResults);
+      setEcliNlResults(data.ecliNlResults);
+      
+      const webCount = data.webSearchResults.length;
+      const ecliCount = data.ecliNlResults.length;
+      const totalResults = data.totalResults || 0;
+      
+      toast({
+        title: "Zoeken voltooid",
+        description: `${totalResults} resultaten gevonden: ${ecliCount} uit ecli_nl, ${webCount} uit web_ecli`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout bij zoeken",
+        description: error.message || "Kon geen zoekvraag genereren of zoeken",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const generateReferencesForNamespaceMutation = useMutation({
+    mutationFn: async ({ namespace, results }: { namespace: 'ecli_nl' | 'web_ecli', results: VectorSearchResult[] }) => {
+      if (!currentCase?.id) {
+        throw new Error('Geen actieve zaak geselecteerd');
+      }
+
+      if (results.length === 0) {
+        throw new Error('Geen resultaten om verwijzingen voor te genereren');
+      }
+
+      const topResults = results.slice(0, 10);
       
       const response = await apiRequest('POST', '/api/jurisprudentie/generate-references', {
         caseId: currentCase.id,
-        topResults: allResults.map(r => ({
+        topResults: topResults.map(r => ({
           id: r.id,
           score: r.score,
           metadata: {
             court: r.court,
             decision_date: r.decision_date,
             legal_area: r.legal_area,
-            procedure_type: r.procedure_type,
             ai_inhoudsindicatie: r.ai_inhoudsindicatie,
             ai_feiten: r.ai_feiten,
             ai_geschil: r.ai_geschil,
@@ -228,14 +183,6 @@ export default function Jurisprudentie() {
       return response.json();
     },
     onSuccess: (data: any) => {
-      setGeneratedReferences(data.references || []);
-      setReferencesDialogOpen(true);
-      
-      // Invalidate saved references query to show newly saved references
-      queryClient.invalidateQueries({ 
-        queryKey: ['/api/cases', currentCase?.id, 'saved-references'] 
-      });
-      
       const refCount = data.references?.length || 0;
       toast({
         title: refCount > 0 ? "Verwijzingen gegenereerd" : "Geen verwijzingen",
@@ -245,10 +192,7 @@ export default function Jurisprudentie() {
       });
     },
     onError: (error: any) => {
-      // apiRequest throws an Error with the response text already extracted
       const errorMessage = error.message || "Kon geen verwijzingen genereren";
-      
-      // Try to extract just the error message part (format is "status: message")
       const match = errorMessage.match(/\d+:\s*(.+)/);
       const cleanMessage = match ? match[1] : errorMessage;
       
@@ -260,138 +204,24 @@ export default function Jurisprudentie() {
     }
   });
 
-  const clearJurisprudenceDataMutation = useMutation({
-    mutationFn: async () => {
-      if (!currentCase?.id) {
-        throw new Error('Geen actieve zaak geselecteerd');
+  const clearNamespaceResultsMutation = useMutation({
+    mutationFn: async ({ namespace }: { namespace: 'ecli_nl' | 'web_ecli' }) => {
+      return { namespace };
+    },
+    onSuccess: (data: any) => {
+      if (data.namespace === 'ecli_nl') {
+        setEcliNlResults([]);
+      } else {
+        setWebEcliResults([]);
       }
-
-      const response = await apiRequest('POST', '/api/jurisprudentie/clear-data', {
-        caseId: currentCase.id
-      });
-      
-      return response.json();
-    },
-    onSuccess: () => {
-      // Invalidate saved references query to clear UI
-      queryClient.invalidateQueries({ 
-        queryKey: ['/api/cases', currentCase?.id, 'saved-references'] 
-      });
       
       toast({
-        title: "Data gewist",
-        description: "Bewaarde zoekresultaten en verwijzingen zijn verwijderd",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Fout bij wissen",
-        description: error.message || "Kon data niet wissen",
-        variant: "destructive",
+        title: "Resultaten gewist",
+        description: `Resultaten uit ${data.namespace} zijn verwijderd`,
       });
     }
   });
 
-  const handleSearch = () => {
-    if (!searchQuery.trim()) {
-      toast({
-        title: "Geen zoekvraag",
-        description: "Voer een zoekvraag in of genereer er een met AI",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setWebSearchResults([]);
-    setEcliNlResults([]);
-    searchMutation.mutate();
-  };
-
-  // Combined function: generate query then automatically search
-  const handleAutoGenerateAndSearch = async () => {
-    if (!currentCase) {
-      toast({
-        title: "Geen actieve zaak",
-        description: "Selecteer eerst een zaak om te zoeken",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!hasLegalAdvice) {
-      toast({
-        title: "Geen juridisch advies",
-        description: "Genereer eerst juridisch advies op de Analyse pagina om een zoekvraag te kunnen maken",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setWebSearchResults([]);
-    setEcliNlResults([]);
-    setIsAutoSearching(true);
-    
-    // First generate the query
-    try {
-      const response = await apiRequest('POST', '/api/pinecone/generate-query', {
-        caseId: currentCase.id
-      });
-      const data = await response.json();
-      
-      // Update query and keywords
-      setSearchQuery(data.query);
-      setScoreThreshold(0.30);
-      
-      if (data.requiredKeywords && Array.isArray(data.requiredKeywords) && data.requiredKeywords.length > 0) {
-        setRequiredKeywords(data.requiredKeywords.join(', '));
-      }
-
-      // Then immediately search with the generated query
-      const allKeywords = data.requiredKeywords && Array.isArray(data.requiredKeywords) 
-        ? data.requiredKeywords.map((k: string) => k.trim().toLowerCase()).filter((k: string) => k)
-        : [];
-      
-      const filters: Record<string, any> = {};
-      if (legalArea) filters.legal_area = { $eq: legalArea };
-
-      const searchResponse = await apiRequest('POST', '/api/pinecone/search', {
-        query: data.query,
-        filters: Object.keys(filters).length > 0 ? filters : undefined,
-        keywords: allKeywords,
-        caseId: currentCase.id,
-        enableReranking: true
-      });
-      
-      const searchData = await searchResponse.json();
-      
-      setWebSearchResults(searchData.webSearchResults || []);
-      setEcliNlResults(searchData.ecliNlResults || []);
-      
-      const webCount = searchData.webSearchResults?.length || 0;
-      const ecliCount = searchData.ecliNlResults?.length || 0;
-      const totalResults = searchData.totalResults || 0;
-      
-      // Automatically expand results section and collapse search section
-      setResultsSectionOpen(true);
-      setSearchSectionOpen(false);
-      
-      toast({
-        title: "Zoeken voltooid",
-        description: `${totalResults} resultaten: ${webCount} web bronnen, ${ecliCount} rechterlijke uitspraken.`,
-      });
-      
-    } catch (error: any) {
-      toast({
-        title: "Fout bij zoeken",
-        description: error.message || "Kon geen zoekvraag genereren of zoeken",
-        variant: "destructive",
-      });
-    } finally {
-      setIsAutoSearching(false);
-    }
-  };
-
-  // Handler to fetch full judgment text - simplified for dual namespace
   const handleFetchFullText = async (result: VectorSearchResult) => {
     try {
       const response = await apiRequest('POST', '/api/rechtspraak/fetch-judgment', { ecli: result.ecli });
@@ -401,7 +231,6 @@ export default function Jurisprudentie() {
         ...result,
         fullText: data.fullText,
         fullTextError: data.error,
-        fullTextLoading: false
       };
 
       setSelectedJudgment(updatedResult);
@@ -418,7 +247,6 @@ export default function Jurisprudentie() {
       const errorResult = {
         ...result,
         fullTextError: error.message || "Fout bij ophalen",
-        fullTextLoading: false
       };
 
       setSelectedJudgment(errorResult);
@@ -461,8 +289,132 @@ export default function Jurisprudentie() {
     );
   }
 
+  const NamespaceBlock = ({ 
+    namespace, 
+    title, 
+    results 
+  }: { 
+    namespace: 'ecli_nl' | 'web_ecli', 
+    title: string, 
+    results: VectorSearchResult[] 
+  }) => (
+    <Card className="mb-6" data-testid={`card-namespace-${namespace}`}>
+      <CardHeader>
+        <CardTitle className="text-xl">{title}</CardTitle>
+        <CardDescription>{results.length} uitspraken gevonden</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Action Buttons */}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => generateReferencesForNamespaceMutation.mutate({ namespace, results })}
+            disabled={generateReferencesForNamespaceMutation.isPending || results.length === 0}
+            data-testid={`button-generate-${namespace}`}
+          >
+            {generateReferencesForNamespaceMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Genereren...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Genereer verwijzing
+              </>
+            )}
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => clearNamespaceResultsMutation.mutate({ namespace })}
+            disabled={clearNamespaceResultsMutation.isPending || results.length === 0}
+            data-testid={`button-delete-${namespace}`}
+          >
+            {clearNamespaceResultsMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Verwijderen...
+              </>
+            ) : (
+              <>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Verwijder
+              </>
+            )}
+          </Button>
+        </div>
+
+        {/* Results List */}
+        {results.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <FileText className="h-12 w-12 mx-auto mb-2 opacity-20" />
+            <p>Nog geen resultaten</p>
+            <p className="text-sm">Gebruik de zoekfunctie om uitspraken te vinden</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {results.map((result, index) => (
+              <div 
+                key={result.id} 
+                className="border rounded-lg p-4 bg-muted/30 space-y-3"
+                data-testid={`result-${namespace}-${index}`}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className="font-mono text-xs">
+                    {result.ecli}
+                  </Badge>
+                  {result.court && (
+                    <Badge variant="secondary" className="text-xs">
+                      <Building2 className="h-3 w-3 mr-1" />
+                      {result.court}
+                    </Badge>
+                  )}
+                  {result.decision_date && (
+                    <Badge variant="outline" className="text-xs">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      {result.decision_date}
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Uitspraak tekst */}
+                {result.ai_inhoudsindicatie && (
+                  <div className="text-sm">
+                    <p className="font-medium mb-1">Inhoudsindicatie:</p>
+                    <p className="text-muted-foreground">{result.ai_inhoudsindicatie}</p>
+                  </div>
+                )}
+
+                {result.text && !result.ai_inhoudsindicatie && (
+                  <div className="text-sm">
+                    <p className="font-medium mb-1">Uitspraak tekst:</p>
+                    <p className="text-muted-foreground line-clamp-3">{result.text}</p>
+                  </div>
+                )}
+
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => handleFetchFullText(result)}
+                  className="p-0 h-auto"
+                  data-testid={`button-view-full-${namespace}-${index}`}
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Bekijk volledige uitspraak
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 max-w-5xl">
       <Button variant="ghost" asChild className="mb-4" data-testid="button-back-to-analysis">
         <Link href="/analysis">
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -477,747 +429,88 @@ export default function Jurisprudentie() {
         </p>
       </div>
 
-      {/* Saved References Section */}
-      {(savedReferences.length > 0 || savedSearchResults.length > 0) && (
-        <Card className="mb-6" data-testid="card-saved-references">
-          <Collapsible open={savedReferencesSectionOpen} onOpenChange={setSavedReferencesSectionOpen}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Opgeslagen Jurisprudentie
-                  </CardTitle>
-                  <CardDescription>
-                    {savedSearchResults.length} zoekresultaten • {savedReferences.length} AI-gegenereerde verwijzingen
-                  </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => clearJurisprudenceDataMutation.mutate()}
-                    disabled={clearJurisprudenceDataMutation.isPending}
-                    data-testid="button-clear-saved-data"
-                  >
-                    {clearJurisprudenceDataMutation.isPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Verwijderen...
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Verwijderen
-                      </>
-                    )}
-                  </Button>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      {savedReferencesSectionOpen ? 'Minder tonen' : 'Meer tonen'}
-                    </Button>
-                  </CollapsibleTrigger>
-                </div>
-              </div>
-            </CardHeader>
-            
-            <CollapsibleContent>
-              <CardContent className="space-y-6">
-                {/* AI-generated references section */}
-                {savedReferences.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                      <Sparkles className="h-4 w-4" />
-                      AI-gegenereerde Verwijzingen ({savedReferences.length})
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Deze verwijzingen worden automatisch gebruikt bij het genereren van brieven
-                    </p>
-                    <div className="space-y-4">
-                      {savedReferences.map((ref: any, index: number) => (
-                        <div 
-                          key={index} 
-                          className="border rounded-lg p-4 bg-primary/5"
-                          data-testid={`saved-reference-${index}`}
-                        >
-                          <div className="flex items-start justify-between gap-4 mb-3">
-                            <div className="flex-1">
-                              <div className="flex flex-wrap items-center gap-2 mb-2">
-                                <Badge variant="default" className="font-mono text-xs">
-                                  {ref.ecli}
-                                </Badge>
-                                {ref.court && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    <Building2 className="h-3 w-3 mr-1" />
-                                    {ref.court}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-sm text-foreground leading-relaxed">
-                            {ref.explanation}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Search results section */}
-                {savedSearchResults.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                      <Search className="h-4 w-4" />
-                      Zoekresultaten ({savedSearchResults.length})
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      De 10 meest relevante uitspraken op basis van uw laatste zoekopdracht
-                    </p>
-                    <div className="space-y-3">
-                      {savedSearchResults.map((result: any, index: number) => (
-                        <div 
-                          key={index} 
-                          className="border rounded-lg p-4 bg-muted/30"
-                          data-testid={`saved-search-result-${index}`}
-                        >
-                          <div className="space-y-3">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Badge variant="outline" className="font-mono text-xs">
-                                {result.id}
-                              </Badge>
-                              {result.metadata?.court && (
-                                <Badge variant="secondary" className="text-xs">
-                                  <Building2 className="h-3 w-3 mr-1" />
-                                  {result.metadata.court}
-                                </Badge>
-                              )}
-                              {result.metadata?.decision_date && (
-                                <Badge variant="outline" className="text-xs">
-                                  <Calendar className="h-3 w-3 mr-1" />
-                                  {result.metadata.decision_date}
-                                </Badge>
-                              )}
-                              {result.score && (
-                                <Badge variant="outline" className="text-xs">
-                                  Score: {(result.score * 100).toFixed(0)}%
-                                </Badge>
-                              )}
-                            </div>
-                            
-                            {result.metadata?.ai_inhoudsindicatie && (
-                              <div className="space-y-2">
-                                <h4 className="font-medium text-sm">Uitspraak tekst</h4>
-                                <p className="text-sm text-muted-foreground">
-                                  {result.metadata.ai_inhoudsindicatie}
-                                </p>
-                              </div>
-                            )}
-                            
-                            {(result.metadata?.source_url || result.id) && (
-                              <div>
-                                <a 
-                                  href={result.metadata?.source_url || `https://uitspraken.rechtspraak.nl/details?id=${result.id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-sm text-primary hover:underline flex items-center gap-1"
-                                  data-testid={`link-rechtspraak-${index}`}
-                                >
-                                  <ExternalLink className="h-3 w-3" />
-                                  Bekijk op Rechtspraak.nl
-                                </a>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </CollapsibleContent>
-          </Collapsible>
-        </Card>
-      )}
-
-      <Card className="mb-6" data-testid="card-search">
-        <Collapsible open={searchSectionOpen} onOpenChange={setSearchSectionOpen}>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5" />
-                  Jurisprudentie Zoeken
-                </CardTitle>
-                {searchSectionOpen && (
-                  <CardDescription>
-                    Genereer automatisch een zoekvraag of voer handmatig een vraag in
-                  </CardDescription>
-                )}
-              </div>
-              
-              {!searchSectionOpen && (
-                <div className="flex flex-col items-end gap-1">
-                  <Button 
-                    onClick={handleAutoGenerateAndSearch}
-                    disabled={isAutoSearching || !currentCase || !hasLegalAdvice}
-                    data-testid="button-quick-search"
-                    size="lg"
-                  >
-                    {isAutoSearching ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Zoeken...
-                      </>
-                    ) : (
-                      <>
-                        <Search className="mr-2 h-4 w-4" />
-                        Zoeken
-                      </>
-                    )}
-                  </Button>
-                  {currentCase && !hasLegalAdvice && (
-                    <p className="text-xs text-muted-foreground text-right">
-                      Genereer eerst juridisch advies op de Analyse pagina
-                    </p>
-                  )}
-                </div>
-              )}
-              
-              {searchSectionOpen && (
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    Minder tonen
-                  </Button>
-                </CollapsibleTrigger>
-              )}
-            </div>
-          </CardHeader>
-          
-          <CollapsibleContent>
-            <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="searchQuery">Zoekvraag</Label>
-            <div className="flex gap-2">
-              <Input 
-                id="searchQuery"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Bijvoorbeeld: ontbinding huurovereenkomst wegens geluidsoverlast"
-                data-testid="input-search-query"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSearch();
-                  }
-                }}
-                className="flex-1"
-              />
-              <Button
-                onClick={() => generateQueryMutation.mutate()}
-                disabled={generateQueryMutation.isPending || !currentCase}
-                data-testid="button-generate-query"
-                variant="secondary"
-              >
-                {generateQueryMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Genereren...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Genereer Zoekvraag
-                  </>
-                )}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Klik op "Genereer Zoekvraag" om AI een optimale zoekvraag te laten maken op basis van uw juridisch advies
-            </p>
-          </div>
-
-          <div>
-            <Label htmlFor="requiredKeywords">Verplichte woorden (komma-gescheiden)</Label>
+      {/* Global Search */}
+      <Card className="mb-6" data-testid="card-global-search">
+        <CardHeader>
+          <CardTitle>Zoeken in beide databases</CardTitle>
+          <CardDescription>Zoekt in zowel ecli_nl als web_ecli</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
             <Input
-              id="requiredKeywords"
-              value={requiredKeywords}
-              onChange={(e) => setRequiredKeywords(e.target.value)}
-              placeholder='Bijvoorbeeld: huurovereenkomst, opzegging'
-              data-testid="input-required-keywords"
+              placeholder="Voer een zoekvraag in..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && searchQuery.trim()) {
+                  searchMutation.mutate();
+                }
+              }}
+              data-testid="input-search-query"
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              Alleen resultaten die deze woorden bevatten worden getoond (optioneel)
-            </p>
+            <Button
+              onClick={() => searchMutation.mutate()}
+              disabled={searchMutation.isPending || !searchQuery.trim()}
+              data-testid="button-manual-search"
+            >
+              {searchMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Zoeken...
+                </>
+              ) : (
+                <>
+                  <Search className="h-4 w-4 mr-2" />
+                  Zoeken
+                </>
+              )}
+            </Button>
           </div>
-
-          <Collapsible open={showAdvancedSettings} onOpenChange={setShowAdvancedSettings}>
-            <CollapsibleTrigger asChild>
-              <Button 
-                variant="outline" 
-                className="w-full gap-2"
-                data-testid="button-toggle-advanced-settings"
-              >
-                <Settings className="h-4 w-4" />
-                Overige instellingen
-                <span className="text-xs text-muted-foreground ml-auto">
-                  ({showAdvancedSettings ? 'verbergen' : 'tonen'})
-                </span>
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-4 space-y-4 border rounded-lg p-4 bg-muted/30">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="maxResults" className="font-semibold">Maximum aantal resultaten</Label>
-                  <span className="text-sm font-mono bg-primary/10 px-2 py-1 rounded">{maxResults}</span>
-                </div>
-                <Slider
-                  id="maxResults"
-                  min={5}
-                  max={50}
-                  step={5}
-                  value={[maxResults]}
-                  onValueChange={(value) => setMaxResults(value[0])}
-                  data-testid="slider-max-results"
-                  className="w-full"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Toon de top {maxResults} meest relevante resultaten
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="scoreThreshold" className="font-semibold">Relevantie drempel</Label>
-                  <span className="text-sm font-mono bg-primary/10 px-2 py-1 rounded">{(scoreThreshold * 100).toFixed(0)}%</span>
-                </div>
-                <Slider
-                  id="scoreThreshold"
-                  min={0.10}
-                  max={0.30}
-                  step={0.01}
-                  value={[scoreThreshold]}
-                  onValueChange={(value) => setScoreThreshold(value[0])}
-                  data-testid="slider-score-threshold"
-                  className="w-full"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Minimale similarity score voor resultaten (10% - 30%)
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <Label htmlFor="legal-area" className="font-semibold">Rechtsgebied</Label>
-                <Select value={legalArea} onValueChange={(value) => setLegalArea(value === "all" ? undefined : value)}>
-                  <SelectTrigger id="legal-area" data-testid="select-legal-area">
-                    <SelectValue placeholder="Alle rechtsgebieden" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Alle rechtsgebieden</SelectItem>
-                    <SelectItem value="Civiel recht">Civiel recht</SelectItem>
-                    <SelectItem value="Bestuursrecht">Bestuursrecht</SelectItem>
-                    <SelectItem value="Strafrecht">Strafrecht</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Filter op specifiek rechtsgebied (optioneel)
-                </p>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-
-              <Button 
-                onClick={handleSearch} 
-                disabled={searchMutation.isPending || !searchQuery.trim()}
-                data-testid="button-search"
-                className="w-full"
-                size="lg"
-              >
-                {searchMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Zoeken...
-                  </>
-                ) : (
-                  <>
-                    <Search className="mr-2 h-4 w-4" />
-                    Zoeken in jurisprudentie
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </CollapsibleContent>
-        </Collapsible>
+          
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground mb-2">of</p>
+            <Button
+              onClick={() => autoSearchMutation.mutate()}
+              disabled={autoSearchMutation.isPending || !hasLegalAdvice}
+              data-testid="button-quick-search"
+              variant="default"
+            >
+              {autoSearchMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Bezig...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Snel zoeken met AI
+                </>
+              )}
+            </Button>
+            {!hasLegalAdvice && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Genereer eerst juridisch advies op de Analyse pagina
+              </p>
+            )}
+          </div>
+        </CardContent>
       </Card>
 
-      {(webSearchResults.length > 0 || ecliNlResults.length > 0) && (
-        <Card className="mb-6" data-testid="card-results">
-          <Collapsible open={resultsSectionOpen} onOpenChange={setResultsSectionOpen}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Zoekresultaten ({webSearchResults.length + ecliNlResults.length} totaal)
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={() => generateReferencesMutation.mutate()}
-                    disabled={generateReferencesMutation.isPending || (webSearchResults.length === 0 && ecliNlResults.length === 0)}
-                    variant="default"
-                    size="sm"
-                    data-testid="button-generate-references"
-                  >
-                    {generateReferencesMutation.isPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Bezig...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Genereer verwijzing
-                      </>
-                    )}
-                  </Button>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      {resultsSectionOpen ? 'Minder tonen' : 'Meer tonen'}
-                    </Button>
-                  </CollapsibleTrigger>
-                </div>
-              </div>
-            </CardHeader>
-            
-            <CollapsibleContent>
-              <CardContent>
-                <div className="space-y-6">
-                  {/* WEB_ECLI Results Section - Always visible */}
-                  <div>
-                    <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                      <Search className="h-5 w-5" />
-                      WEB_ECLI Bronnen ({webSearchResults.length})
-                    </h3>
-                    {webSearchResults.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-4">Geen resultaat</p>
-                    ) : (
-                      <div className="space-y-4">
-                        {webSearchResults.slice(0, maxResults).map((result, index) => (
-              <Card key={result.id} data-testid={`card-result-${index}`}>
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg mb-2">
-                        {result.title || result.ecli}
-                      </CardTitle>
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {result.court && (
-                          <Badge variant="secondary" className="text-xs">
-                            <Building2 className="h-3 w-3 mr-1" />
-                            {result.court}
-                          </Badge>
-                        )}
-                        {result.decision_date && (
-                          <Badge variant="outline" className="text-xs">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {result.decision_date}
-                          </Badge>
-                        )}
-                        {result.legal_area && (
-                          <Badge variant="outline" className="text-xs">
-                            <Scale className="h-3 w-3 mr-1" />
-                            {result.legal_area}
-                          </Badge>
-                        )}
-                        {result.procedure_type && (
-                          <Badge variant="outline" className="text-xs">
-                            {result.procedure_type}
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground font-mono">
-                        {result.ecli}
-                      </p>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      {index < 5 && result.ecli && (
-                        <Button 
-                          variant="default" 
-                          size="sm"
-                          onClick={() => handleFetchFullText(result)}
-                          disabled={result.fullTextLoading}
-                          data-testid={`button-fetch-full-text-${index}`}
-                        >
-                          {result.fullTextLoading ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Ophalen...
-                            </>
-                          ) : (
-                            <>
-                              <FileText className="h-4 w-4 mr-2" />
-                              Volledige tekst
-                            </>
-                          )}
-                        </Button>
-                      )}
-                      {result.source_url && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          asChild
-                          data-testid={`button-view-${index}`}
-                        >
-                          <a 
-                            href={result.source_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                          >
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            Bekijk op Rechtspraak.nl
-                          </a>
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-sm flex-wrap">
-                      <Badge variant="secondary" className="text-xs" data-testid={`badge-score-${index}`}>
-                        Relevantie: {(result.score * 100).toFixed(1)}%
-                      </Badge>
-                      {result.rerankScore !== undefined && (
-                        <Badge variant="default" className="text-xs bg-primary/90" data-testid={`badge-rerank-score-${index}`}>
-                          🤖 Rerank: {(result.rerankScore * 100).toFixed(1)}%
-                        </Badge>
-                      )}
-                    </div>
+      {/* ECLI_NL Namespace Block */}
+      <NamespaceBlock 
+        namespace="ecli_nl"
+        title="Uitspraken uit ecli_nl"
+        results={ecliNlResults}
+      />
 
-                    {result.text && (
-                      <div className="bg-muted/30 p-4 rounded-lg border" data-testid={`section-text-${index}`}>
-                        <div className="flex items-center gap-2 mb-3">
-                          <FileText className="h-4 w-4 text-foreground" />
-                          <h4 className="font-semibold text-sm">Uitspraak tekst</h4>
-                        </div>
-                        <div className="prose prose-sm max-w-none text-sm">
-                          <p className="text-foreground whitespace-pre-wrap leading-relaxed" data-testid={`text-content-${index}`}>
-                            {result.text}
-                          </p>
-                        </div>
-                      </div>
-                    )}
+      {/* WEB_ECLI Namespace Block */}
+      <NamespaceBlock 
+        namespace="web_ecli"
+        title="Uitspraken uit web_ecli"
+        results={webEcliResults}
+      />
 
-                    {(result.ai_inhoudsindicatie || result.ai_feiten || result.ai_geschil || result.ai_beslissing || result.ai_motivering) && (
-                      <div className="bg-primary/5 p-4 rounded-lg border border-primary/10">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Sparkles className="h-4 w-4 text-primary" />
-                          <h4 className="font-semibold text-sm">AI Samenvatting</h4>
-                        </div>
-                        <div className="prose prose-sm max-w-none text-sm">
-                          {expandedResult === result.id ? (
-                            <div className="space-y-4">
-                              {result.ai_inhoudsindicatie && (
-                                <div>
-                                  <h5 className="font-semibold mb-1">Inhoudsindicatie</h5>
-                                  <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                    {result.ai_inhoudsindicatie}
-                                  </p>
-                                </div>
-                              )}
-                              {result.ai_feiten && (
-                                <div>
-                                  <h5 className="font-semibold mb-1">Feiten</h5>
-                                  <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                    {result.ai_feiten}
-                                  </p>
-                                </div>
-                              )}
-                              {result.ai_geschil && (
-                                <div>
-                                  <h5 className="font-semibold mb-1">Geschil</h5>
-                                  <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                    {result.ai_geschil}
-                                  </p>
-                                </div>
-                              )}
-                              {result.ai_beslissing && (
-                                <div>
-                                  <h5 className="font-semibold mb-1">Beslissing</h5>
-                                  <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                    {result.ai_beslissing}
-                                  </p>
-                                </div>
-                              )}
-                              {result.ai_motivering && (
-                                <div>
-                                  <h5 className="font-semibold mb-1">Motivering</h5>
-                                  <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                    {result.ai_motivering}
-                                  </p>
-                                </div>
-                              )}
-                              <Button
-                                variant="link"
-                                size="sm"
-                                className="p-0 h-auto text-primary"
-                                onClick={() => setExpandedResult(null)}
-                                data-testid={`button-collapse-${index}`}
-                              >
-                                Minder tonen
-                              </Button>
-                            </div>
-                          ) : (
-                            <div>
-                              {(() => {
-                                const fullText = [
-                                  result.ai_inhoudsindicatie,
-                                  result.ai_feiten,
-                                  result.ai_geschil,
-                                  result.ai_beslissing,
-                                  result.ai_motivering
-                                ].filter(Boolean).join('\n\n');
-                                
-                                const lines = fullText.split('\n').filter(l => l.trim());
-                                const preview = lines.slice(0, 2).join('\n');
-                                
-                                return (
-                                  <>
-                                    <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                      {preview}
-                                    </p>
-                                    {lines.length > 2 && (
-                                      <Button
-                                        variant="link"
-                                        size="sm"
-                                        className="p-0 h-auto text-primary mt-2"
-                                        onClick={() => setExpandedResult(result.id)}
-                                        data-testid={`button-expand-${index}`}
-                                      >
-                                        Verder lezen →
-                                      </Button>
-                                    )}
-                                  </>
-                                );
-                              })()}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-                ))}
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* ECLI_NL Results Section - Always visible */}
-                  <div>
-                    <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                      <Scale className="h-5 w-5" />
-                      Rechterlijke Uitspraken ({ecliNlResults.length})
-                    </h3>
-                    {ecliNlResults.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-4">Geen resultaat</p>
-                    ) : (
-                      <div className="space-y-4">
-                        {ecliNlResults.slice(0, maxResults).map((result, index) => (
-                          <Card key={result.id} data-testid={`card-ecli-result-${index}`}>
-                            <CardHeader>
-                              <div className="flex items-start justify-between gap-4">
-                                <div className="flex-1">
-                                  <CardTitle className="text-lg mb-2">
-                                    {result.title || result.ecli}
-                                  </CardTitle>
-                                  <div className="flex flex-wrap gap-2 mb-2">
-                                    {result.court && (
-                                      <Badge variant="secondary" className="text-xs">
-                                        <Building2 className="h-3 w-3 mr-1" />
-                                        {result.court}
-                                      </Badge>
-                                    )}
-                                    {result.decision_date && (
-                                      <Badge variant="outline" className="text-xs">
-                                        <Calendar className="h-3 w-3 mr-1" />
-                                        {result.decision_date}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-muted-foreground font-mono">
-                                    {result.ecli}
-                                  </p>
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                  {index < 5 && result.ecli && (
-                                    <Button 
-                                      variant="default" 
-                                      size="sm"
-                                      onClick={() => handleFetchFullText(result)}
-                                      data-testid={`button-fetch-ecli-${index}`}
-                                    >
-                                      <FileText className="h-4 w-4 mr-2" />
-                                      Volledige tekst
-                                    </Button>
-                                  )}
-                                  {result.source_url && (
-                                    <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      asChild
-                                    >
-                                      <a 
-                                        href={result.source_url} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                      >
-                                        <ExternalLink className="h-4 w-4 mr-2" />
-                                        Bekijk op Rechtspraak.nl
-                                      </a>
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              {result.ai_inhoudsindicatie && (
-                                <p className="text-sm text-muted-foreground mb-2">
-                                  {result.ai_inhoudsindicatie}
-                                </p>
-                              )}
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </CollapsibleContent>
-          </Collapsible>
-        </Card>
-      )}
-
-      {webSearchResults.length === 0 && ecliNlResults.length === 0 && !searchMutation.isPending && (
-        <Card data-testid="card-jurisprudentie-empty">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Scale className="h-5 w-5" />
-              Zoeken in jurisprudentie
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-12">
-              <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Nog geen jurisprudentie gezocht</h3>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                Gebruik de zoekopdracht hierboven om relevante rechterlijke uitspraken te vinden.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Dialog for displaying full judgment text */}
+      {/* Full Text Dialog */}
       <Dialog open={fullTextDialogOpen} onOpenChange={setFullTextDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -1225,161 +518,47 @@ export default function Jurisprudentie() {
               <FileText className="h-5 w-5" />
               Volledige uitspraak
             </DialogTitle>
-            <DialogDescription className="font-mono text-xs">
-              {selectedJudgment?.ecli}
-            </DialogDescription>
+            {selectedJudgment && (
+              <DialogDescription className="space-y-2">
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <Badge variant="outline" className="font-mono">
+                    {selectedJudgment.ecli}
+                  </Badge>
+                  {selectedJudgment.court && (
+                    <Badge variant="secondary">
+                      <Building2 className="h-3 w-3 mr-1" />
+                      {selectedJudgment.court}
+                    </Badge>
+                  )}
+                  {selectedJudgment.decision_date && (
+                    <Badge variant="outline">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      {selectedJudgment.decision_date}
+                    </Badge>
+                  )}
+                </div>
+              </DialogDescription>
+            )}
           </DialogHeader>
-
-          {selectedJudgment && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                {selectedJudgment.court && (
-                  <Badge variant="secondary" className="text-xs">
-                    <Building2 className="h-3 w-3 mr-1" />
-                    {selectedJudgment.court}
-                  </Badge>
-                )}
-                {selectedJudgment.decision_date && (
-                  <Badge variant="outline" className="text-xs">
-                    <Calendar className="h-3 w-3 mr-1" />
-                    {selectedJudgment.decision_date}
-                  </Badge>
-                )}
-                {selectedJudgment.legal_area && (
-                  <Badge variant="outline" className="text-xs">
-                    <Scale className="h-3 w-3 mr-1" />
-                    {selectedJudgment.legal_area}
-                  </Badge>
-                )}
-              </div>
-
-              {selectedJudgment.fullTextLoading && (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <p className="ml-4 text-muted-foreground">Volledige tekst ophalen...</p>
-                </div>
-              )}
-
-              {selectedJudgment.fullTextError && !selectedJudgment.fullTextLoading && (
-                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
-                  <p className="text-sm text-destructive font-semibold mb-1">Fout bij ophalen</p>
-                  <p className="text-sm text-muted-foreground">{selectedJudgment.fullTextError}</p>
-                </div>
-              )}
-
-              {selectedJudgment.fullText && !selectedJudgment.fullTextLoading && (
-                <div className="bg-muted/30 p-6 rounded-lg border">
-                  <div className="prose prose-sm max-w-none">
-                    <p className="text-foreground whitespace-pre-wrap leading-relaxed text-sm">
-                      {selectedJudgment.fullText}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {!selectedJudgment.fullText && !selectedJudgment.fullTextLoading && !selectedJudgment.fullTextError && (
-                <div className="text-center py-8">
-                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground text-sm">Geen volledige tekst beschikbaar</p>
-                </div>
-              )}
-
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                {selectedJudgment.source_url && (
-                  <Button variant="outline" size="sm" asChild>
-                    <a 
-                      href={selectedJudgment.source_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                    >
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      Bekijk op Rechtspraak.nl
-                    </a>
-                  </Button>
-                )}
-                <Button variant="default" size="sm" onClick={() => setFullTextDialogOpen(false)}>
-                  Sluiten
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog for displaying generated references */}
-      <Dialog open={referencesDialogOpen} onOpenChange={setReferencesDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5" />
-              Gegenereerde jurisprudentie verwijzingen
-            </DialogTitle>
-            <DialogDescription>
-              AI-analyse van relevante uitspraken voor uw zaak
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-6">
-            {generatedReferences.length === 0 ? (
+          
+          <div className="mt-4">
+            {selectedJudgment?.fullTextError ? (
               <div className="text-center py-8">
-                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">Geen nuttige verwijzingen naar jurisprudentie gevonden</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  De AI heeft geen uitspraken gevonden die uw positie significant versterken.
-                </p>
+                <p className="text-destructive mb-2">Fout bij ophalen van volledige tekst</p>
+                <p className="text-sm text-muted-foreground">{selectedJudgment.fullTextError}</p>
+              </div>
+            ) : selectedJudgment?.fullText ? (
+              <div className="prose prose-sm max-w-none dark:prose-invert">
+                <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                  {selectedJudgment.fullText}
+                </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                {generatedReferences.map((ref: any, index: number) => (
-                  <Card key={index} className="border-l-4 border-l-primary">
-                    <CardContent className="pt-6">
-                      <div className="space-y-3">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge variant="secondary" className="font-mono text-xs">
-                                {ref.ecli}
-                              </Badge>
-                              {ref.court && (
-                                <Badge variant="outline" className="text-xs">
-                                  <Building2 className="h-3 w-3 mr-1" />
-                                  {ref.court}
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-sm text-foreground leading-relaxed">
-                              {ref.explanation}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="pt-2 border-t flex justify-end">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            asChild
-                          >
-                            <a
-                              href={`https://uitspraken.rechtspraak.nl/#!/details?id=${ref.ecli}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <ExternalLink className="h-3 w-3 mr-2" />
-                              Bekijk uitspraak
-                            </a>
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                <p className="mt-4 text-sm text-muted-foreground">Volledige tekst laden...</p>
               </div>
             )}
-
-            <div className="flex justify-end pt-4 border-t">
-              <Button onClick={() => setReferencesDialogOpen(false)}>
-                Sluiten
-              </Button>
-            </div>
           </div>
         </DialogContent>
       </Dialog>
