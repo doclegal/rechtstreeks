@@ -625,18 +625,18 @@ export default function Jurisprudentie() {
         </CardContent>
       </Card>
 
-      {/* ECLI_NL Namespace Block */}
-      <NamespaceBlock 
-        namespace="ecli_nl"
-        title="Uitspraken uit ecli_nl"
-        results={ecliNlResults}
-      />
-
-      {/* WEB_ECLI Namespace Block */}
+      {/* WEB_ECLI Namespace Block - Shown first */}
       <NamespaceBlock 
         namespace="web_ecli"
-        title="Uitspraken uit web_ecli"
+        title="Geciteerde uitspraken"
         results={webEcliResults}
+      />
+
+      {/* ECLI_NL Namespace Block - Shown second */}
+      <NamespaceBlock 
+        namespace="ecli_nl"
+        title="Mogelijk relevante uitspraken"
+        results={ecliNlResults}
       />
 
       {/* Full Text Dialog */}
