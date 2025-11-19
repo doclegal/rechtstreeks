@@ -35,6 +35,7 @@ export interface SearchQuery {
   topK?: number;
   scoreThreshold?: number; // Minimum similarity score (e.g., 0.01 = 1%)
   alpha?: number; // 0-1: 0=pure keyword, 1=pure semantic, 0.5=balanced
+  namespace?: string; // Optional namespace override (default: ECLI_NL)
 }
 
 export interface SearchResult {
@@ -42,6 +43,13 @@ export interface SearchResult {
   score: number;
   metadata: VectorRecord['metadata'];
   text?: string;
+  namespace?: string; // To track which namespace the result came from
+}
+
+export interface DualNamespaceSearchResults {
+  webSearch: SearchResult[];
+  ecliNl: SearchResult[];
+  totalResults: number;
 }
 
 function getPineconeClient(): Pinecone {
@@ -118,8 +126,10 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
   try {
     const pc = getPineconeClient();
     const index = pc.index(INDEX_NAME, INDEX_HOST);
+    const namespace = query.namespace || NAMESPACE;
     
     console.log(`🔎 Using Pinecone semantic search (dense only)`);
+    console.log(`📂 Namespace: ${namespace}`);
     console.log(`📝 Query text: "${query.text.substring(0, 100)}..."`);
     console.log(`🤖 Model: ${EMBEDDING_MODEL}`);
     
@@ -147,7 +157,7 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
       console.log(`🔍 Applying metadata filter:`, query.filter);
     }
     
-    const response = await index.namespace(NAMESPACE).query(queryParams);
+    const response = await index.namespace(namespace).query(queryParams);
     
     console.log(`📊 Pinecone response: ${response.matches?.length || 0} total matches`);
     
@@ -181,6 +191,46 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
     return filteredResults;
   } catch (error) {
     console.error("❌ Error in semantic search:", error);
+    throw error;
+  }
+}
+
+/**
+ * Search both web_search and ECLI_NL namespaces in parallel
+ * Returns separate result sets for each namespace
+ */
+export async function searchDualNamespaces(query: Omit<SearchQuery, 'namespace'>): Promise<DualNamespaceSearchResults> {
+  try {
+    console.log(`🔍 DUAL NAMESPACE SEARCH: Searching web_search and ECLI_NL in parallel`);
+    
+    // Execute both searches in parallel
+    const [webSearchResults, ecliNlResults] = await Promise.all([
+      searchVectors({ ...query, namespace: 'web_search' }).catch(error => {
+        console.error('⚠️ Error searching web_search namespace:', error);
+        return [] as SearchResult[];
+      }),
+      searchVectors({ ...query, namespace: 'ECLI_NL' }).catch(error => {
+        console.error('⚠️ Error searching ECLI_NL namespace:', error);
+        return [] as SearchResult[];
+      })
+    ]);
+    
+    // Tag results with their namespace
+    const taggedWebSearch = webSearchResults.map(r => ({ ...r, namespace: 'web_search' }));
+    const taggedEcliNl = ecliNlResults.map(r => ({ ...r, namespace: 'ECLI_NL' }));
+    
+    console.log(`✅ DUAL SEARCH COMPLETE:`);
+    console.log(`   📂 web_search: ${taggedWebSearch.length} results`);
+    console.log(`   📂 ECLI_NL: ${taggedEcliNl.length} results`);
+    console.log(`   📊 Total: ${taggedWebSearch.length + taggedEcliNl.length} results`);
+    
+    return {
+      webSearch: taggedWebSearch,
+      ecliNl: taggedEcliNl,
+      totalResults: taggedWebSearch.length + taggedEcliNl.length
+    };
+  } catch (error) {
+    console.error("❌ Error in dual namespace search:", error);
     throw error;
   }
 }
