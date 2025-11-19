@@ -7515,16 +7515,14 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
       const referencesToSave = aiResponse.references || [];
       console.log(`💾 Saving ${referencesToSave.length} references to database...`);
       
-      // Also save the full search results (10 judgments) for display
-      console.log(`💾 Saving ${topResults.length} search results to database...`);
+      // Save ONLY the references (do NOT overwrite search results!)
       await db
         .update(analyses)
         .set({ 
-          jurisprudenceReferences: referencesToSave,
-          jurisprudenceSearchResults: topResults
+          jurisprudenceReferences: referencesToSave
         })
         .where(eq(analyses.id, latestAnalysis.id));
-      console.log('✅ References and search results saved to database (fresh state)');
+      console.log('✅ References saved to database (search results preserved)');
 
       res.json(aiResponse);
 
@@ -7638,11 +7636,11 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
         searchResults = { ecli_nl: [], web_ecli: [] };
       }
 
-      console.log(`✅ Returning: ecli_nl=${searchResults.ecli_nl?.length || 0}, web_ecli=${searchResults.web_ecli?.length || 0}, references=${latestAnalysis.jurisprudenceReferences?.length || 0}`);
+      console.log(`✅ Returning: ecli_nl=${searchResults.ecli_nl?.length || 0}, web_ecli=${searchResults.web_ecli?.length || 0}, references=${analysisWithData.jurisprudenceReferences?.length || 0}`);
 
       res.json({
         searchResults: searchResults,
-        references: latestAnalysis.jurisprudenceReferences || []
+        references: analysisWithData.jurisprudenceReferences || []
       });
 
     } catch (error: any) {
