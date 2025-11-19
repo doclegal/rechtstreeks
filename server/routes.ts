@@ -7364,21 +7364,30 @@ Remember:
         return res.status(404).json({ error: 'Case not found' });
       }
 
-      // Fetch latest analysis with legal advice
+      // Fetch analyses for this case
       const analysisRecords = await db
         .select()
         .from(analyses)
         .where(eq(analyses.caseId, caseId))
         .orderBy(desc(analyses.createdAt));
 
-      const latestAnalysis = analysisRecords.find(a => a.legalAdviceJson !== null);
+      if (!analysisRecords || analysisRecords.length === 0) {
+        return res.status(404).json({ error: 'Geen analyses gevonden voor deze zaak' });
+      }
+
+      // Find analysis with legal advice (needed for AI prompt)
+      const analysisWithAdvice = analysisRecords.find(a => a.legalAdviceJson !== null);
       
-      if (!latestAnalysis || !latestAnalysis.legalAdviceJson) {
+      if (!analysisWithAdvice || !analysisWithAdvice.legalAdviceJson) {
         return res.status(404).json({ error: 'Geen juridisch advies gevonden voor deze zaak' });
       }
 
+      // Use NEWEST analysis for storing references (same as save-search)
+      const targetAnalysis = analysisRecords[0];
+      console.log(`📌 Using analysis ${analysisWithAdvice.id} for legal advice, storing to ${targetAnalysis.id}`);
+
       // Parse legalAdviceJson if it's a string (for legacy data)
-      let legalAdvice: any = latestAnalysis.legalAdviceJson;
+      let legalAdvice: any = analysisWithAdvice.legalAdviceJson;
       if (typeof legalAdvice === 'string') {
         try {
           legalAdvice = JSON.parse(legalAdvice);
@@ -7513,7 +7522,7 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
 
       // ALWAYS save references to database (including empty array) to prevent stale data
       const referencesToSave = aiResponse.references || [];
-      console.log(`💾 Saving ${referencesToSave.length} references to database...`);
+      console.log(`💾 Saving ${referencesToSave.length} references to targetAnalysis ${targetAnalysis.id}...`);
       
       // Save ONLY the references (do NOT overwrite search results!)
       await db
@@ -7521,7 +7530,7 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
         .set({ 
           jurisprudenceReferences: referencesToSave
         })
-        .where(eq(analyses.id, latestAnalysis.id));
+        .where(eq(analyses.id, targetAnalysis.id));
       console.log('✅ References saved to database (search results preserved)');
 
       res.json(aiResponse);
