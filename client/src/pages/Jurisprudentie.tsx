@@ -890,13 +890,15 @@ export default function Jurisprudentie() {
             <CollapsibleContent>
               <CardContent>
                 <div className="space-y-6">
-                  {/* Web Search Results Section */}
-                  {webSearchResults.length > 0 && (
-                    <div>
-                      <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                        <Search className="h-5 w-5" />
-                        Web Bronnen ({webSearchResults.length})
-                      </h3>
+                  {/* WEB_ECLI Results Section - Always visible */}
+                  <div>
+                    <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                      <Search className="h-5 w-5" />
+                      WEB_ECLI Bronnen ({webSearchResults.length})
+                    </h3>
+                    {webSearchResults.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-4">Geen resultaat</p>
+                    ) : (
                       <div className="space-y-4">
                         {webSearchResults.slice(0, maxResults).map((result, index) => (
               <Card key={result.id} data-testid={`card-result-${index}`}>
@@ -1106,16 +1108,18 @@ export default function Jurisprudentie() {
               </Card>
                 ))}
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                   
-                  {/* ECLI_NL Results Section */}
-                  {ecliNlResults.length > 0 && (
-                    <div>
-                      <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                        <Scale className="h-5 w-5" />
-                        Rechterlijke Uitspraken ({ecliNlResults.length})
-                      </h3>
+                  {/* ECLI_NL Results Section - Always visible */}
+                  <div>
+                    <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                      <Scale className="h-5 w-5" />
+                      Rechterlijke Uitspraken ({ecliNlResults.length})
+                    </h3>
+                    {ecliNlResults.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-4">Geen resultaat</p>
+                    ) : (
                       <div className="space-y-4">
                         {ecliNlResults.slice(0, maxResults).map((result, index) => (
                           <Card key={result.id} data-testid={`card-ecli-result-${index}`}>
@@ -1184,8 +1188,8 @@ export default function Jurisprudentie() {
                           </Card>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </CollapsibleContent>
