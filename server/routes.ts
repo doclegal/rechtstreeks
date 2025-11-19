@@ -7246,7 +7246,7 @@ Remember:
         scoreThreshold: SEARCH_CONFIG.DEFAULT_SCORE_THRESHOLD
       });
 
-      console.log(`📊 Total results: ${dualResults.totalResults} (web_search: ${dualResults.webSearch.length}, ECLI_NL: ${dualResults.ecliNl.length})`);
+      console.log(`📊 Total results: ${dualResults.totalResults} (WEB_ECLI: ${dualResults.webSearch.length}, ECLI_NL: ${dualResults.ecliNl.length})`);
       
       // Helper function to process results from a single namespace
       const processNamespaceResults = async (rawResults: any[], namespaceLabel: string) => {
@@ -7290,7 +7290,7 @@ Remember:
       
       // Process both namespaces
       const [webSearchProcessed, ecliNlProcessed] = await Promise.all([
-        processNamespaceResults(dualResults.webSearch, 'web_search'),
+        processNamespaceResults(dualResults.webSearch, 'WEB_ECLI'),
         processNamespaceResults(dualResults.ecliNl, 'ECLI_NL')
       ]);
       
@@ -7323,7 +7323,7 @@ Remember:
       const formattedWebSearch = formatResults(webSearchProcessed.finalResults);
       const formattedEcliNl = formatResults(ecliNlProcessed.finalResults);
 
-      console.log(`✅ Returning ${formattedWebSearch.length} web_search + ${formattedEcliNl.length} ECLI_NL results`);
+      console.log(`✅ Returning ${formattedWebSearch.length} WEB_ECLI + ${formattedEcliNl.length} ECLI_NL results`);
 
       res.json({
         query,

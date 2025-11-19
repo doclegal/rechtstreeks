@@ -196,17 +196,17 @@ export async function searchVectors(query: SearchQuery): Promise<SearchResult[]>
 }
 
 /**
- * Search both web_search and ECLI_NL namespaces in parallel
+ * Search both WEB_ECLI and ECLI_NL namespaces in parallel
  * Returns separate result sets for each namespace
  */
 export async function searchDualNamespaces(query: Omit<SearchQuery, 'namespace'>): Promise<DualNamespaceSearchResults> {
   try {
-    console.log(`🔍 DUAL NAMESPACE SEARCH: Searching web_search and ECLI_NL in parallel`);
+    console.log(`🔍 DUAL NAMESPACE SEARCH: Searching WEB_ECLI and ECLI_NL in parallel`);
     
     // Execute both searches in parallel
     const [webSearchResults, ecliNlResults] = await Promise.all([
-      searchVectors({ ...query, namespace: 'web_search' }).catch(error => {
-        console.error('⚠️ Error searching web_search namespace:', error);
+      searchVectors({ ...query, namespace: 'WEB_ECLI' }).catch(error => {
+        console.error('⚠️ Error searching WEB_ECLI namespace:', error);
         return [] as SearchResult[];
       }),
       searchVectors({ ...query, namespace: 'ECLI_NL' }).catch(error => {
@@ -216,11 +216,11 @@ export async function searchDualNamespaces(query: Omit<SearchQuery, 'namespace'>
     ]);
     
     // Tag results with their namespace
-    const taggedWebSearch = webSearchResults.map(r => ({ ...r, namespace: 'web_search' }));
+    const taggedWebSearch = webSearchResults.map(r => ({ ...r, namespace: 'WEB_ECLI' }));
     const taggedEcliNl = ecliNlResults.map(r => ({ ...r, namespace: 'ECLI_NL' }));
     
     console.log(`✅ DUAL SEARCH COMPLETE:`);
-    console.log(`   📂 web_search: ${taggedWebSearch.length} results`);
+    console.log(`   📂 WEB_ECLI: ${taggedWebSearch.length} results`);
     console.log(`   📂 ECLI_NL: ${taggedEcliNl.length} results`);
     console.log(`   📊 Total: ${taggedWebSearch.length + taggedEcliNl.length} results`);
     
