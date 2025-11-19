@@ -7,7 +7,6 @@ import { useActiveCase } from "@/contexts/CaseContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -24,8 +23,6 @@ interface VectorSearchResult {
   ai_feiten?: string;
   ai_geschil?: string;
   ai_beslissing?: string;
-  fullText?: string | null;
-  fullTextError?: string | null;
 }
 
 interface SavedReference {
@@ -44,10 +41,6 @@ export default function Jurisprudentie() {
   // Persistent results per namespace
   const [ecliNlResults, setEcliNlResults] = useState<VectorSearchResult[]>([]);
   const [webEcliResults, setWebEcliResults] = useState<VectorSearchResult[]>([]);
-  
-  // Dialog state for showing full judgment text
-  const [fullTextDialogOpen, setFullTextDialogOpen] = useState(false);
-  const [selectedJudgment, setSelectedJudgment] = useState<VectorSearchResult | null>(null);
 
   // Query to load saved jurisprudence data
   const { data: savedData, isLoading: savedDataLoading } = useQuery({
@@ -307,43 +300,6 @@ export default function Jurisprudentie() {
     }
   });
 
-  const handleFetchFullText = async (result: VectorSearchResult) => {
-    try {
-      const response = await apiRequest('POST', '/api/rechtspraak/fetch-judgment', { ecli: result.ecli });
-      const data = await response.json();
-
-      const updatedResult = {
-        ...result,
-        fullText: data.fullText,
-        fullTextError: data.error,
-      };
-
-      setSelectedJudgment(updatedResult);
-      setFullTextDialogOpen(true);
-
-      if (!data.fullText) {
-        toast({
-          title: "Volledige tekst niet beschikbaar",
-          description: data.error || "Kon de volledige tekst niet ophalen",
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      const errorResult = {
-        ...result,
-        fullTextError: error.message || "Fout bij ophalen",
-      };
-
-      setSelectedJudgment(errorResult);
-      setFullTextDialogOpen(true);
-
-      toast({
-        title: "Fout bij ophalen",
-        description: error.message || "Kon de volledige tekst niet ophalen",
-        variant: "destructive",
-      });
-    }
-  };
 
   if (authLoading || savedDataLoading) {
     return (
@@ -480,16 +436,16 @@ export default function Jurisprudentie() {
                   </div>
                 )}
 
-                <Button
-                  variant="link"
-                  size="sm"
-                  onClick={() => handleFetchFullText(result)}
-                  className="p-0 h-auto"
+                <a
+                  href={`https://uitspraken.rechtspraak.nl/details?id=${result.ecli}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-sm text-primary hover:underline"
                   data-testid={`button-view-full-${namespace}-${index}`}
                 >
                   <ExternalLink className="h-3 w-3 mr-1" />
                   Bekijk volledige uitspraak
-                </Button>
+                </a>
               </div>
             ))}
           </div>
@@ -638,59 +594,6 @@ export default function Jurisprudentie() {
         title="Mogelijk relevante uitspraken"
         results={ecliNlResults}
       />
-
-      {/* Full Text Dialog */}
-      <Dialog open={fullTextDialogOpen} onOpenChange={setFullTextDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Volledige uitspraak
-            </DialogTitle>
-            {selectedJudgment && (
-              <DialogDescription className="space-y-2">
-                <div className="flex flex-wrap gap-2 mt-2">
-                  <Badge variant="outline" className="font-mono">
-                    {selectedJudgment.ecli}
-                  </Badge>
-                  {selectedJudgment.court && (
-                    <Badge variant="secondary">
-                      <Building2 className="h-3 w-3 mr-1" />
-                      {selectedJudgment.court}
-                    </Badge>
-                  )}
-                  {selectedJudgment.decision_date && (
-                    <Badge variant="outline">
-                      <Calendar className="h-3 w-3 mr-1" />
-                      {selectedJudgment.decision_date}
-                    </Badge>
-                  )}
-                </div>
-              </DialogDescription>
-            )}
-          </DialogHeader>
-          
-          <div className="mt-4">
-            {selectedJudgment?.fullTextError ? (
-              <div className="text-center py-8">
-                <p className="text-destructive mb-2">Fout bij ophalen van volledige tekst</p>
-                <p className="text-sm text-muted-foreground">{selectedJudgment.fullTextError}</p>
-              </div>
-            ) : selectedJudgment?.fullText ? (
-              <div className="prose prose-sm max-w-none dark:prose-invert">
-                <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                  {selectedJudgment.fullText}
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                <p className="mt-4 text-sm text-muted-foreground">Volledige tekst laden...</p>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
