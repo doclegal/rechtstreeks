@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
@@ -28,6 +28,12 @@ interface VectorSearchResult {
   fullTextError?: string | null;
 }
 
+interface SavedReference {
+  ecli: string;
+  court: string;
+  explanation: string;
+}
+
 export default function Jurisprudentie() {
   const { isLoading: authLoading } = useAuth();
   const currentCase = useActiveCase();
@@ -42,6 +48,26 @@ export default function Jurisprudentie() {
   // Dialog state for showing full judgment text
   const [fullTextDialogOpen, setFullTextDialogOpen] = useState(false);
   const [selectedJudgment, setSelectedJudgment] = useState<VectorSearchResult | null>(null);
+
+  // Query to load saved jurisprudence data
+  const { data: savedData, isLoading: savedDataLoading } = useQuery({
+    queryKey: ['/api/jurisprudentie', currentCase?.id],
+    enabled: !!currentCase?.id,
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/jurisprudentie/${currentCase?.id}`);
+      return response.json();
+    }
+  });
+
+  // Load saved data into state when it changes
+  useEffect(() => {
+    if (savedData?.searchResults) {
+      setEcliNlResults(savedData.searchResults.ecli_nl || []);
+      setWebEcliResults(savedData.searchResults.web_ecli || []);
+    }
+  }, [savedData]);
+
+  const savedReferences: SavedReference[] = savedData?.references || [];
 
   // Query to check if legal advice exists for current case
   const { data: hasLegalAdvice = false } = useQuery({
@@ -74,9 +100,26 @@ export default function Jurisprudentie() {
         totalResults: data.totalResults || 0,
       };
     },
-    onSuccess: (data: any) => {
+    onSuccess: async (data: any) => {
       setWebEcliResults(data.webSearchResults);
       setEcliNlResults(data.ecliNlResults);
+      
+      // Save to database
+      if (currentCase?.id) {
+        try {
+          await apiRequest('PATCH', `/api/jurisprudentie/${currentCase.id}/save-search`, {
+            ecliNlResults: data.ecliNlResults,
+            webEcliResults: data.webSearchResults
+          });
+          
+          // Invalidate cache to reload saved data
+          queryClient.invalidateQueries({ 
+            queryKey: ['/api/jurisprudentie', currentCase.id] 
+          });
+        } catch (error) {
+          console.error('Failed to save search results:', error);
+        }
+      }
       
       const webCount = data.webSearchResults.length;
       const ecliCount = data.ecliNlResults.length;
@@ -129,9 +172,26 @@ export default function Jurisprudentie() {
         totalResults: searchData.totalResults || 0,
       };
     },
-    onSuccess: (data: any) => {
+    onSuccess: async (data: any) => {
       setWebEcliResults(data.webSearchResults);
       setEcliNlResults(data.ecliNlResults);
+      
+      // Save to database
+      if (currentCase?.id) {
+        try {
+          await apiRequest('PATCH', `/api/jurisprudentie/${currentCase.id}/save-search`, {
+            ecliNlResults: data.ecliNlResults,
+            webEcliResults: data.webSearchResults
+          });
+          
+          // Invalidate cache to reload saved data
+          queryClient.invalidateQueries({ 
+            queryKey: ['/api/jurisprudentie', currentCase.id] 
+          });
+        } catch (error) {
+          console.error('Failed to save search results:', error);
+        }
+      }
       
       const webCount = data.webSearchResults.length;
       const ecliCount = data.ecliNlResults.length;
@@ -183,6 +243,11 @@ export default function Jurisprudentie() {
       return response.json();
     },
     onSuccess: (data: any) => {
+      // Invalidate cache to reload saved references
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/jurisprudentie', currentCase?.id] 
+      });
+      
       const refCount = data.references?.length || 0;
       toast({
         title: refCount > 0 ? "Verwijzingen gegenereerd" : "Geen verwijzingen",
@@ -206,7 +271,15 @@ export default function Jurisprudentie() {
 
   const clearNamespaceResultsMutation = useMutation({
     mutationFn: async ({ namespace }: { namespace: 'ecli_nl' | 'web_ecli' }) => {
-      return { namespace };
+      if (!currentCase?.id) {
+        throw new Error('Geen actieve zaak geselecteerd');
+      }
+
+      const response = await apiRequest('PATCH', `/api/jurisprudentie/${currentCase.id}/clear-namespace`, {
+        namespace
+      });
+      
+      return { namespace, response: await response.json() };
     },
     onSuccess: (data: any) => {
       if (data.namespace === 'ecli_nl') {
@@ -215,9 +288,21 @@ export default function Jurisprudentie() {
         setWebEcliResults([]);
       }
       
+      // Invalidate cache to reload saved data
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/jurisprudentie', currentCase?.id] 
+      });
+      
       toast({
         title: "Resultaten gewist",
         description: `Resultaten uit ${data.namespace} zijn verwijderd`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout bij verwijderen",
+        description: error.message || "Kon resultaten niet verwijderen",
+        variant: "destructive",
       });
     }
   });
@@ -260,7 +345,7 @@ export default function Jurisprudentie() {
     }
   };
 
-  if (authLoading) {
+  if (authLoading || savedDataLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -428,6 +513,50 @@ export default function Jurisprudentie() {
           Zoek relevante rechterlijke uitspraken voor {currentCase.title || 'uw zaak'}
         </p>
       </div>
+
+      {/* Saved References Section */}
+      {savedReferences.length > 0 && (
+        <Card className="mb-6" data-testid="card-saved-references">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5" />
+              Opgeslagen Verwijzingen
+            </CardTitle>
+            <CardDescription>
+              {savedReferences.length} AI-gegenereerde {savedReferences.length === 1 ? 'verwijzing' : 'verwijzingen'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Deze verwijzingen worden automatisch gebruikt bij het genereren van brieven
+            </p>
+            <div className="space-y-4">
+              {savedReferences.map((ref: SavedReference, index: number) => (
+                <div 
+                  key={index} 
+                  className="border rounded-lg p-4 bg-primary/5"
+                  data-testid={`saved-reference-${index}`}
+                >
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <Badge variant="default" className="font-mono text-xs">
+                      {ref.ecli}
+                    </Badge>
+                    {ref.court && (
+                      <Badge variant="secondary" className="text-xs">
+                        <Building2 className="h-3 w-3 mr-1" />
+                        {ref.court}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="text-sm text-foreground leading-relaxed">
+                    {ref.explanation}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Global Search */}
       <Card className="mb-6" data-testid="card-global-search">

@@ -7585,6 +7585,211 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
     }
   });
 
+  // Get saved jurisprudence data for a case
+  app.get('/api/jurisprudentie/:caseId', async (req, res) => {
+    try {
+      const { caseId } = req.params;
+      
+      if (!caseId) {
+        return res.status(400).json({ error: 'Case ID is required' });
+      }
+
+      console.log(`📖 Fetching saved jurisprudence data for case ${caseId}`);
+
+      // Find ALL analyses for this case
+      const analysisRecords = await db
+        .select()
+        .from(analyses)
+        .where(eq(analyses.caseId, caseId))
+        .orderBy(desc(analyses.createdAt));
+
+      if (!analysisRecords || analysisRecords.length === 0) {
+        console.log('⚠️  No analysis found for case');
+        return res.json({
+          searchResults: { ecli_nl: [], web_ecli: [] },
+          references: []
+        });
+      }
+
+      // Find the FIRST analysis that has jurisprudence data (regardless of age)
+      const analysisWithData = analysisRecords.find((a: any) => 
+        (a.jurisprudenceSearchResults && a.jurisprudenceSearchResults !== null && 
+         (typeof a.jurisprudenceSearchResults === 'object' && !Array.isArray(a.jurisprudenceSearchResults) &&
+          (a.jurisprudenceSearchResults.ecli_nl?.length > 0 || a.jurisprudenceSearchResults.web_ecli?.length > 0))) ||
+        (a.jurisprudenceReferences && Array.isArray(a.jurisprudenceReferences) && a.jurisprudenceReferences.length > 0)
+      );
+
+      if (!analysisWithData) {
+        console.log('⚠️  No jurisprudence data found in any analysis');
+        return res.json({
+          searchResults: { ecli_nl: [], web_ecli: [] },
+          references: []
+        });
+      }
+
+      console.log(`✅ Found jurisprudence data in analysis ${analysisWithData.id}`);
+
+      // Parse search results - handle both old format (array) and new format (object with namespaces)
+      let searchResults = analysisWithData.jurisprudenceSearchResults || { ecli_nl: [], web_ecli: [] };
+      
+      // If old format (array), return empty for now - user will need to search again
+      if (Array.isArray(searchResults)) {
+        console.log('⚠️  Old format detected, returning empty');
+        searchResults = { ecli_nl: [], web_ecli: [] };
+      }
+
+      console.log(`✅ Returning: ecli_nl=${searchResults.ecli_nl?.length || 0}, web_ecli=${searchResults.web_ecli?.length || 0}, references=${latestAnalysis.jurisprudenceReferences?.length || 0}`);
+
+      res.json({
+        searchResults: searchResults,
+        references: latestAnalysis.jurisprudenceReferences || []
+      });
+
+    } catch (error: any) {
+      console.error('Error fetching jurisprudence data:', error);
+      res.status(500).json({ 
+        error: error.message || 'Fout bij ophalen van jurisprudentie data' 
+      });
+    }
+  });
+
+  // Save search results to database
+  app.patch('/api/jurisprudentie/:caseId/save-search', async (req, res) => {
+    try {
+      const { caseId } = req.params;
+      const { ecliNlResults, webEcliResults } = req.body;
+      
+      if (!caseId) {
+        return res.status(400).json({ error: 'Case ID is required' });
+      }
+
+      console.log(`💾 Saving search results for case ${caseId}: ecli_nl=${ecliNlResults?.length || 0}, web_ecli=${webEcliResults?.length || 0}`);
+
+      // Find the latest analysis
+      let analysisRecords = await db
+        .select()
+        .from(analyses)
+        .where(eq(analyses.caseId, caseId))
+        .orderBy(desc(analyses.createdAt));
+
+      let latestAnalysis;
+      let dataAlreadySaved = false;
+
+      if (!analysisRecords || analysisRecords.length === 0) {
+        // No analysis exists - create a basic one to store jurisprudence data
+        console.log('⚠️  No analysis found, creating new analysis record for jurisprudence storage');
+        const newAnalysis = await db
+          .insert(analyses)
+          .values({
+            caseId: caseId,
+            jurisprudenceSearchResults: {
+              ecli_nl: ecliNlResults || [],
+              web_ecli: webEcliResults || []
+            }
+          })
+          .returning();
+        
+        latestAnalysis = newAnalysis[0];
+        dataAlreadySaved = true; // Data was saved during insert
+      } else {
+        latestAnalysis = analysisRecords[0];
+      }
+
+      // Save search results in namespaced structure (only if not already saved)
+      if (!dataAlreadySaved) {
+        await db
+          .update(analyses)
+          .set({ 
+            jurisprudenceSearchResults: {
+              ecli_nl: ecliNlResults || [],
+              web_ecli: webEcliResults || []
+            }
+          })
+          .where(eq(analyses.id, latestAnalysis.id));
+      }
+
+      console.log('✅ Search results saved to database');
+
+      res.json({ 
+        success: true,
+        message: 'Search results saved successfully' 
+      });
+
+    } catch (error: any) {
+      console.error('Error saving search results:', error);
+      res.status(500).json({ 
+        error: error.message || 'Fout bij opslaan van zoekresultaten' 
+      });
+    }
+  });
+
+  // Clear namespace-specific results
+  app.patch('/api/jurisprudentie/:caseId/clear-namespace', async (req, res) => {
+    try {
+      const { caseId } = req.params;
+      const { namespace } = req.body;
+      
+      if (!caseId || !namespace) {
+        return res.status(400).json({ error: 'Case ID and namespace are required' });
+      }
+
+      if (namespace !== 'ecli_nl' && namespace !== 'web_ecli') {
+        return res.status(400).json({ error: 'Invalid namespace. Must be ecli_nl or web_ecli' });
+      }
+
+      console.log(`🗑️ Clearing ${namespace} results for case ${caseId}`);
+
+      // Find the latest analysis with jurisprudence data
+      const analysisRecords = await db
+        .select()
+        .from(analyses)
+        .where(eq(analyses.caseId, caseId))
+        .orderBy(desc(analyses.createdAt));
+
+      const latestWithData = analysisRecords.find((a: any) => 
+        a.jurisprudenceSearchResults && a.jurisprudenceSearchResults !== null
+      );
+
+      if (!latestWithData) {
+        return res.json({ success: true, message: 'No data to clear' });
+      }
+
+      // Get current search results
+      let currentSearchResults = latestWithData.jurisprudenceSearchResults || { ecli_nl: [], web_ecli: [] };
+      
+      // Handle old format
+      if (Array.isArray(currentSearchResults)) {
+        currentSearchResults = { ecli_nl: [], web_ecli: [] };
+      }
+
+      // Clear only the specified namespace
+      const updatedSearchResults = {
+        ...currentSearchResults,
+        [namespace]: []
+      };
+
+      await db
+        .update(analyses)
+        .set({ 
+          jurisprudenceSearchResults: updatedSearchResults
+        })
+        .where(eq(analyses.id, latestWithData.id));
+
+      console.log(`✅ Cleared ${namespace} results`);
+
+      res.json({ 
+        success: true,
+        message: `Results from ${namespace} cleared successfully` 
+      });
+
+    } catch (error: any) {
+      console.error('Error clearing namespace results:', error);
+      res.status(500).json({ 
+        error: error.message || 'Fout bij wissen van namespace resultaten' 
+      });
+    }
+  });
+
 
   // Check Pinecone connection
   app.get('/api/rechtspraak/pinecone-status', async (req, res) => {
