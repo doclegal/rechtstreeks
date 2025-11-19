@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { ArrowLeft, Scale, FileText, ExternalLink, Calendar, Building2, Search, Loader2, Sparkles, Settings, X } from "lucide-react";
+import { ArrowLeft, Scale, FileText, ExternalLink, Calendar, Building2, Search, Loader2, Sparkles, Settings, X, Trash2 } from "lucide-react";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -503,12 +503,12 @@ export default function Jurisprudentie() {
                     {clearJurisprudenceDataMutation.isPending ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Wissen...
+                        Verwijderen...
                       </>
                     ) : (
                       <>
-                        <X className="h-4 w-4 mr-2" />
-                        Opnieuw opzoeken
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Verwijderen
                       </>
                     )}
                   </Button>
