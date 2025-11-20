@@ -3,9 +3,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Upload, FileSearch, CheckCircle, Mail, AlertTriangle, FileText, Scale, ArrowRight, UserCircle, Handshake } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Landing() {
   const { isAuthenticated } = useAuth();
+  const { toast } = useToast();
 
   return (
     <div className="min-h-screen bg-background">
@@ -17,15 +19,9 @@ export default function Landing() {
               <RIcon size="md" />
               <span className="text-xl font-bold text-foreground">Rechtstreeks.ai</span>
             </div>
-            {isAuthenticated ? (
-              <Button asChild data-testid="button-go-to-app">
-                <a href="/cases">Naar App</a>
-              </Button>
-            ) : (
-              <Button asChild data-testid="button-login">
-                <a href="/api/login">Inloggen</a>
-              </Button>
-            )}
+            <Button asChild data-testid="button-login">
+              <a href="/api/login">Inloggen</a>
+            </Button>
           </div>
         </div>
       </header>
@@ -40,19 +36,24 @@ export default function Landing() {
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             Rechtstreeks zelf aan de slag. AI analyseert je zaak, helpt met documenten en begeleidt je stap voor stap.
           </p>
-          {isAuthenticated ? (
-            <Button size="lg" asChild data-testid="button-open-app">
-              <a href="/cases" className="px-8 py-4 text-lg">
-                Open App <ArrowRight className="ml-2 h-5 w-5" />
-              </a>
-            </Button>
-          ) : (
-            <Button size="lg" asChild data-testid="button-get-started">
-              <a href="/api/login" className="px-8 py-4 text-lg">
-                Starten
-              </a>
-            </Button>
-          )}
+          <Button 
+            size="lg" 
+            data-testid="button-get-started"
+            className="px-8 py-4 text-lg"
+            onClick={() => {
+              if (isAuthenticated) {
+                toast({
+                  title: "Toegang vereist",
+                  description: "Toegang tot de app moet worden aangevraagd. Neem contact met ons op voor meer informatie.",
+                  variant: "default",
+                });
+              } else {
+                window.location.href = "/api/login";
+              }
+            }}
+          >
+            Starten
+          </Button>
         </div>
       </section>
 
