@@ -164,7 +164,7 @@ export default function AllCases() {
                     </div>
                   )}
                   
-                  <div className="flex items-center justify-between pt-2 border-t">
+                  <div className="flex items-center pt-2 border-t">
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Calendar className="h-3 w-3" />
                       <span>
@@ -174,9 +174,6 @@ export default function AllCases() {
                         })}
                       </span>
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      Stap {getStepNumber(caseItem.status)}/9
-                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -186,20 +183,4 @@ export default function AllCases() {
       )}
     </div>
   );
-}
-
-function getStepNumber(status: string): number {
-  const stepMap: Record<string, number> = {
-    "NEW_INTAKE": 1,
-    "DOCS_UPLOADED": 2,
-    "ANALYZED": 3,
-    "LETTER_DRAFTED": 4,
-    "BAILIFF_ORDERED": 5,
-    "SERVED": 6,
-    "SUMMONS_DRAFTED": 6,
-    "FILED": 7,
-    "PROCEEDINGS_ONGOING": 8,
-    "JUDGMENT": 9,
-  };
-  return stepMap[status] || 1;
 }
