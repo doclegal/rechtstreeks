@@ -19,9 +19,15 @@ export default function Landing() {
               <RIcon size="md" />
               <span className="text-xl font-bold text-foreground">Rechtstreeks.ai</span>
             </div>
-            <Button asChild data-testid="button-login">
-              <a href="/api/login">Inloggen</a>
-            </Button>
+            {isAuthenticated ? (
+              <Button asChild data-testid="button-go-to-app">
+                <a href="/cases">Naar de app</a>
+              </Button>
+            ) : (
+              <Button asChild data-testid="button-login">
+                <a href="/api/login">Inloggen</a>
+              </Button>
+            )}
           </div>
         </div>
       </header>
