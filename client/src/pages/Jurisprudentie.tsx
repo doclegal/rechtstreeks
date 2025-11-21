@@ -339,7 +339,7 @@ export default function Jurisprudentie() {
     title: string, 
     results: VectorSearchResult[] 
   }) => (
-    <Card className="mb-6" data-testid={`card-namespace-${namespace}`}>
+    <Card data-testid={`card-namespace-${namespace}`}>
       <CardHeader>
         <CardTitle className="text-xl">{title}</CardTitle>
         <CardDescription>{results.length} uitspraken gevonden</CardDescription>
@@ -581,19 +581,22 @@ export default function Jurisprudentie() {
         </CardContent>
       </Card>
 
-      {/* WEB_ECLI Namespace Block - Shown first */}
-      <NamespaceBlock 
-        namespace="web_ecli"
-        title="Geciteerde uitspraken"
-        results={webEcliResults}
-      />
+      {/* Two-column layout for namespace blocks on large screens */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* WEB_ECLI Namespace Block - Shown first */}
+        <NamespaceBlock 
+          namespace="web_ecli"
+          title="Geciteerde uitspraken"
+          results={webEcliResults}
+        />
 
-      {/* ECLI_NL Namespace Block - Shown second */}
-      <NamespaceBlock 
-        namespace="ecli_nl"
-        title="Mogelijk relevante uitspraken"
-        results={ecliNlResults}
-      />
+        {/* ECLI_NL Namespace Block - Shown second */}
+        <NamespaceBlock 
+          namespace="ecli_nl"
+          title="Mogelijk relevante uitspraken"
+          results={ecliNlResults}
+        />
+      </div>
     </div>
   );
 }
