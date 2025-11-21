@@ -671,6 +671,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
       
+      // Get the full analysis to provide context for document relevance assessment
+      let fullAnalysis = await storage.getAnalysisByType(caseId, 'mindstudio-full-analysis');
+      if (fullAnalysis) {
+        fullAnalysis = enrichFullAnalysis(fullAnalysis);
+        console.log(`📊 Found existing legal analysis for case - will include in document check`);
+      }
+      
       // Update status to analyzing
       await storage.updateDocument(documentId, { analysisStatus: 'analyzing' });
       
@@ -730,15 +737,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       // Add legal analysis if available to provide context for document relevance assessment
-      const caseDataWithAnalysis = caseData as any;
-      if (caseDataWithAnalysis.fullAnalysis) {
-        const enrichedAnalysis = enrichFullAnalysis(caseDataWithAnalysis.fullAnalysis);
-        
-        // Include the parsed analysis if available
-        if (enrichedAnalysis?.parsedAnalysis) {
-          inputJsonData.volledige_analyse = enrichedAnalysis.parsedAnalysis;
-          console.log('📊 Including legal analysis in document check for better context');
-        }
+      if (fullAnalysis?.parsedAnalysis) {
+        inputJsonData.volledige_analyse = fullAnalysis.parsedAnalysis;
+        console.log('📊 Including legal analysis in document check for better context');
+        console.log('📋 Analysis includes:', Object.keys(fullAnalysis.parsedAnalysis));
+      } else {
+        console.log('ℹ️  No legal analysis available yet - document will be assessed without case context');
       }
       
       console.log('📤 Calling MindStudio Dossier_check.flow for single document');
