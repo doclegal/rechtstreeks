@@ -7,7 +7,7 @@ import { Link, useLocation } from "wouter";
 import { ArrowLeft, Bell, CheckCircle, Plus, MessageSquare, FileText, Trash2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { RIcon } from "@/components/RIcon";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface UploadedDocument {
   filename: string;
@@ -22,6 +22,33 @@ export default function Updates() {
   const [caseNotes, setCaseNotes] = useState("");
   const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
   const currentCase = useActiveCase();
+
+  // Load documents from localStorage on mount
+  useEffect(() => {
+    if (currentCase?.id) {
+      const storageKey = `uploaded-documents-${currentCase.id}`;
+      try {
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+          setUploadedDocuments(JSON.parse(stored));
+        }
+      } catch (error) {
+        console.error('Failed to load documents from localStorage:', error);
+      }
+    }
+  }, [currentCase?.id]);
+
+  // Save documents to localStorage whenever they change
+  useEffect(() => {
+    if (currentCase?.id) {
+      const storageKey = `uploaded-documents-${currentCase.id}`;
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(uploadedDocuments));
+      } catch (error) {
+        console.error('Failed to save documents to localStorage:', error);
+      }
+    }
+  }, [uploadedDocuments, currentCase?.id]);
 
   if (authLoading) {
     return (
