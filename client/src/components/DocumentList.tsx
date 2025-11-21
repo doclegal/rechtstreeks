@@ -131,14 +131,19 @@ export default function DocumentList({
     mutationFn: async (documentId: string) => {
       await apiRequest('DELETE', `/api/documents/${documentId}`);
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Document verwijderd",
         description: "Het document is succesvol verwijderd.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'uploads'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] }); // Refresh case for updatedAt
-      queryClient.invalidateQueries({ queryKey: ['/api/cases'] }); // Refresh cases list
+      // Immediately refetch to update UI without delay
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'uploads'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/cases'] }),
+        queryClient.refetchQueries({ queryKey: ['/api/cases', caseId] }),
+        queryClient.refetchQueries({ queryKey: ['/api/cases'] })
+      ]);
       onDocumentUploaded?.(); // Refresh the document list
     },
     onError: (error: any) => {
@@ -177,12 +182,16 @@ export default function DocumentList({
           open={showUpload}
           onOpenChange={setShowUpload}
           caseId={caseId}
-          onSuccess={() => {
+          onSuccess={async () => {
             setShowUpload(false);
-            // Invalidate queries to refresh case updatedAt timestamp  
-            queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'uploads'] });
-            queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] });
-            queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
+            // Immediately refetch to update UI without delay
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'uploads'] }),
+              queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] }),
+              queryClient.invalidateQueries({ queryKey: ['/api/cases'] }),
+              queryClient.refetchQueries({ queryKey: ['/api/cases', caseId] }),
+              queryClient.refetchQueries({ queryKey: ['/api/cases'] })
+            ]);
             onDocumentUploaded?.();
           }}
         />
@@ -358,12 +367,16 @@ export default function DocumentList({
         open={showUpload}
         onOpenChange={setShowUpload}
         caseId={caseId}
-        onSuccess={() => {
+        onSuccess={async () => {
           setShowUpload(false);
-          // Invalidate queries to refresh case updatedAt timestamp
-          queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'uploads'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] });
-          queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
+          // Immediately refetch to update UI without delay
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'uploads'] }),
+            queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] }),
+            queryClient.invalidateQueries({ queryKey: ['/api/cases'] }),
+            queryClient.refetchQueries({ queryKey: ['/api/cases', caseId] }),
+            queryClient.refetchQueries({ queryKey: ['/api/cases'] })
+          ]);
           onDocumentUploaded?.();
         }}
       />
