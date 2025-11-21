@@ -52,7 +52,19 @@ export default function Jurisprudentie() {
     enabled: !!currentCase?.id,
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/jurisprudentie/${currentCase?.id}`);
-      return response.json();
+      const data = await response.json();
+      
+      // Debug: Log what fields we're getting
+      if (data?.searchResults?.ecli_nl?.[0]) {
+        console.log('🔍 First ECLI_NL result fields:', Object.keys(data.searchResults.ecli_nl[0]));
+        console.log('🔍 Has ai_inhoudsindicatie?', !!data.searchResults.ecli_nl[0].ai_inhoudsindicatie);
+      }
+      if (data?.searchResults?.web_ecli?.[0]) {
+        console.log('🔍 First WEB_ECLI result fields:', Object.keys(data.searchResults.web_ecli[0]));
+        console.log('🔍 Has ai_inhoudsindicatie?', !!data.searchResults.web_ecli[0].ai_inhoudsindicatie);
+      }
+      
+      return data;
     }
   });
 
