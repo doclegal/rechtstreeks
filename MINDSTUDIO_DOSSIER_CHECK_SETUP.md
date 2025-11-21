@@ -22,31 +22,61 @@ De Replit app stuurt de volgende JSON payload naar MindStudio:
 
 ```json
 {
-  "document": {
-    "filename": "factuur_2024_03_15.pdf",
-    "type": "application/pdf",
-    "size": 245678,
-    "text": "[Geëxtraheerde tekst uit het document...]"
-  },
-  "case_context": {
-    "case_id": "abc-123-xyz",
-    "title": "Geschil met autodealer over verborgen gebreken",
-    "description": "Auto gekocht met verborgen gebreken, dealer weigert verantwoordelijkheid",
-    "category": "kooprecht",
-    "claim_amount": 5000,
-    "counterparty_name": "Auto Centrum BV",
-    "counterparty_type": "company"
+  "file_url": "https://storage.googleapis.com/...",
+  "file_name": "factuur_2024_03_15.pdf",
+  "volledige_analyse": {
+    "summary": "Zaak betreft een geschil over verborgen gebreken aan een auto...",
+    "case_overview": {
+      "parties": [
+        {
+          "role": "claimant",
+          "name": "Jan Jansen",
+          "type": "person"
+        },
+        {
+          "role": "defendant",
+          "name": "Auto Centrum BV",
+          "type": "company"
+        }
+      ],
+      "subject": "Geschil met autodealer over verborgen gebreken",
+      "claim_amount": 5000,
+      "category": "kooprecht"
+    },
+    "facts": {
+      "known": [
+        "Auto gekocht bij Auto Centrum BV op 1 februari 2024",
+        "Motorschade geconstateerd binnen 2 weken na aankoop"
+      ],
+      "disputed": [
+        "Of de gebreken al aanwezig waren bij aankoop"
+      ],
+      "unclear": []
+    },
+    "legal_analysis": {
+      "applicable_laws": ["BW 7:17", "BW 7:18"],
+      "legal_position": "...",
+      "success_probability": "gemiddeld"
+    },
+    "risk_assessment": {
+      "strengths": ["Duidelijke gebrekenmelding binnen redelijke termijn"],
+      "weaknesses": ["Geen pre-purchase inspection uitgevoerd"],
+      "risks": []
+    }
   }
 }
 ```
 
 ### Input Velden
 
-- **document.filename**: Bestandsnaam van het geüploade document
-- **document.type**: MIME type (bijv. application/pdf, application/msword, image/jpeg)
-- **document.size**: Bestandsgrootte in bytes
-- **document.text**: Geëxtraheerde tekstinhoud uit het document (kan `[Tekst kon niet worden geëxtraheerd]` zijn voor sommige bestanden)
-- **case_context**: Volledige zaakgegevens om het document in context te evalueren
+- **file_url**: Tijdelijke signed URL naar het geüploade document (1 uur geldig)
+- **file_name**: Bestandsnaam van het geüploade document
+- **volledige_analyse** *(optioneel)*: Volledige juridische analyse van de zaak indien beschikbaar. Dit helpt de AI om beter te beoordelen of en op welke manier het document relevant is voor de zaak. Bevat:
+  - **summary**: Samenvatting van de zaak
+  - **case_overview**: Partijen, onderwerp, claim bedrag, categorie
+  - **facts**: Bekende feiten, betwiste feiten, onduidelijke punten
+  - **legal_analysis**: Toepasselijk recht, juridische positie, succeskans
+  - **risk_assessment**: Sterktes, zwaktes, risico's
 
 ## Verwachte Output Structuur
 
@@ -85,17 +115,23 @@ Gebruik de volgende prompt in de MindStudio Agent configuratie:
 ```
 Je bent een juridische document-analysator voor het Nederlandse rechtssysteem. 
 
-Je ontvangt een document met geëxtraheerde tekst EN volledige zaakcontext.
+Je ontvangt:
+1. Een document via file_url (download en analyseer de inhoud)
+2. De file_name (bestandsnaam)
+3. (OPTIONEEL) volledige_analyse: Een uitgebreide juridische analyse van de zaak
 
 TAAK:
-1. Lees en interpreteer het document
+1. Download en lees het document vanaf de file_url
 2. Bepaal of het document leesbaar en compleet is
 3. Identificeer het documenttype (factuur, contract, bewijs van betaling, correspondentie, etc.)
 4. Evalueer of het document logisch bij de zaak hoort op basis van:
    - Inhoud van het document
-   - Zaaktitel en beschrijving
-   - Tegenpartij naam
-   - Claim bedrag en zaakcategorie
+   - De juridische analyse (indien beschikbaar):
+     * Vergelijk met bekende feiten en betwiste feiten
+     * Check relevantie voor de legal_analysis en applicable_laws
+     * Evalueer of het document de sterke punten ondersteunt of zwakke punten adresseert
+     * Beoordeel of partijen in document overeenkomen met partijen in de zaak
+   - Of de analyse nog niet beschikbaar is, gebruik dan algemene relevantie criteria
 5. Geef een korte samenvatting in 1-2 zinnen
 6. Kies 3-6 relevante tags
 7. Als het document niet relevant lijkt of verdacht is, voeg dan een korte note toe
@@ -119,33 +155,58 @@ REGELS:
   * Document onleesbaar of corrupt
   * Datum document valt buiten relevante periode
   * Verdachte of incomplete informatie
+  * Document is niet relevant voor de juridische positie of bewijslast
 - Als alles OK is: note = null
 - Wees niet overdreven voorzichtig - als document relevant lijkt, zet belongs_to_case op true
 
-CONTEXT GEBRUIK:
-- Vergelijk document inhoud met zaakbeschrijving
-- Check of partijen in document overeenkomen met tegenpartij
-- Evalueer of bedragen in document relevant zijn voor claim bedrag
-- Beoordeel of datum/tijdlijn logisch is voor de zaak
+CONTEXT GEBRUIK MET JURIDISCHE ANALYSE:
+Als volledige_analyse beschikbaar is:
+- Vergelijk document inhoud met bekende feiten (facts.known)
+- Check of het document betwiste feiten (facts.disputed) kan ondersteunen/weerleggen
+- Evalueer relevantie voor toepasselijke wetgeving (legal_analysis.applicable_laws)
+- Beoordeel of document de sterktes ondersteunt of zwaktes adresseert (risk_assessment)
+- Vergelijk partijen in document met partijen uit case_overview
+- Check of bedragen relevant zijn voor claim_amount
+
+Als volledige_analyse NIET beschikbaar is:
+- Gebruik de bestandsnaam en inhoud om algemene relevantie te bepalen
+- Wees conservatief: accepteer documenten die mogelijk later nuttig blijken
 ```
 
 ## Voorbeelden
 
-### Voorbeeld 1: Relevante Factuur
+### Voorbeeld 1: Relevante Factuur (met juridische analyse)
 
 **Input:**
 ```json
 {
-  "document": {
-    "filename": "garage_factuur_maart_2024.pdf",
-    "type": "application/pdf",
-    "size": 123456,
-    "text": "FACTUUR\nAuto Reparatie Centrum\nDatum: 15-03-2024\n\nReparatie motorschade\nTotaal: € 1.250,00\n\nBetreft: Mercedes C-Klasse, Kenteken XX-123-YY"
-  },
-  "case_context": {
-    "title": "Geschil autodealer over verborgen gebreken Mercedes",
-    "claim_amount": 5000,
-    "counterparty_name": "Auto Dealer XYZ"
+  "file_url": "https://storage.googleapis.com/bucket/factuur.pdf",
+  "file_name": "garage_factuur_maart_2024.pdf",
+  "volledige_analyse": {
+    "summary": "Geschil over verborgen motorschade na aankoop Mercedes bij Auto Dealer XYZ",
+    "case_overview": {
+      "parties": [
+        {"role": "claimant", "name": "Jan Jansen"},
+        {"role": "defendant", "name": "Auto Dealer XYZ"}
+      ],
+      "claim_amount": 5000
+    },
+    "facts": {
+      "known": [
+        "Auto gekocht bij Auto Dealer XYZ op 1 februari 2024",
+        "Motorschade geconstateerd na 2 weken"
+      ],
+      "disputed": [
+        "Of motorschade al aanwezig was bij aankoop"
+      ]
+    },
+    "legal_analysis": {
+      "applicable_laws": ["BW 7:17", "BW 7:18"]
+    },
+    "risk_assessment": {
+      "strengths": ["Snelle melding van gebreken"],
+      "weaknesses": ["Geen technische inspectie voor aankoop"]
+    }
   }
 }
 ```
@@ -157,7 +218,7 @@ CONTEXT GEBRUIK:
   "document_type": "factuur",
   "is_readable": true,
   "belongs_to_case": true,
-  "summary": "Reparatiefactuur van Auto Reparatie Centrum voor motorschade aan Mercedes C-Klasse voor €1.250. Document ondersteunt de claim over verborgen gebreken.",
+  "summary": "Reparatiefactuur van Auto Reparatie Centrum voor motorschade aan Mercedes C-Klasse voor €1.250, gedateerd maart 2024. Document ondersteunt bekende feiten over motorschade en bewijslast voor herstelkosten.",
   "tags": ["factuur", "reparatie", "motorschade", "bewijs", "kosten"],
   "note": null
 }

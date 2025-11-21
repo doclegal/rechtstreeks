@@ -723,10 +723,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('🔗 MindStudio download URL:', downloadUrl);
       console.log('📋 Document filename:', document.filename);
       
-      const inputJsonData = {
+      // Prepare input JSON with document info and optional legal analysis
+      const inputJsonData: any = {
         file_url: downloadUrl,
         file_name: document.filename
       };
+      
+      // Add legal analysis if available to provide context for document relevance assessment
+      const caseDataWithAnalysis = caseData as any;
+      if (caseDataWithAnalysis.fullAnalysis) {
+        const enrichedAnalysis = enrichFullAnalysis(caseDataWithAnalysis.fullAnalysis);
+        
+        // Include the parsed analysis if available
+        if (enrichedAnalysis?.parsedAnalysis) {
+          inputJsonData.volledige_analyse = enrichedAnalysis.parsedAnalysis;
+          console.log('📊 Including legal analysis in document check for better context');
+        }
+      }
       
       console.log('📤 Calling MindStudio Dossier_check.flow for single document');
       
