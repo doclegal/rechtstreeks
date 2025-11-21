@@ -451,74 +451,76 @@ export default function Jurisprudentie() {
                   )}
                 </div>
 
-                {/* Samenvatting met secties */}
-                {(result.ai_inhoudsindicatie || result.ai_feiten || result.ai_geschil || result.ai_beslissing || result.ai_motivering) ? (
-                  <div className="text-sm space-y-2">
-                    {result.ai_inhoudsindicatie && (
-                      <div>
-                        <p className="font-semibold text-foreground">Inhoudsindicatie</p>
-                        <p className={`text-muted-foreground whitespace-pre-wrap ${!expandedResults.has(result.id) ? 'line-clamp-2' : ''}`}>
-                          {result.ai_inhoudsindicatie}
-                        </p>
-                      </div>
-                    )}
-                    
-                    {expandedResults.has(result.id) && (
+                {/* Samenvatting met secties - ALWAYS SHOW BUTTON FOR DEBUG */}
+                <div className="text-sm space-y-2">
+                  {result.ai_inhoudsindicatie && (
+                    <div>
+                      <p className="font-semibold text-foreground">Inhoudsindicatie</p>
+                      <p className={`text-muted-foreground whitespace-pre-wrap ${!expandedResults.has(result.id) ? 'line-clamp-2' : ''}`}>
+                        {result.ai_inhoudsindicatie}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {expandedResults.has(result.id) && (
+                    <>
+                      {result.ai_feiten && (
+                        <div>
+                          <p className="font-semibold text-foreground">Feiten</p>
+                          <p className="text-muted-foreground whitespace-pre-wrap">{result.ai_feiten}</p>
+                        </div>
+                      )}
+                      
+                      {result.ai_geschil && (
+                        <div>
+                          <p className="font-semibold text-foreground">Geschil</p>
+                          <p className="text-muted-foreground whitespace-pre-wrap">{result.ai_geschil}</p>
+                        </div>
+                      )}
+                      
+                      {result.ai_beslissing && (
+                        <div>
+                          <p className="font-semibold text-foreground">Beslissing</p>
+                          <p className="text-muted-foreground whitespace-pre-wrap">{result.ai_beslissing}</p>
+                        </div>
+                      )}
+                      
+                      {result.ai_motivering && (
+                        <div>
+                          <p className="font-semibold text-foreground">Motivering</p>
+                          <p className="text-muted-foreground whitespace-pre-wrap">{result.ai_motivering}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  
+                  {/* ALWAYS show button - even if no ai_* fields */}
+                  <button
+                    onClick={() => toggleExpanded(result.id)}
+                    className="inline-flex items-center text-sm font-bold text-primary hover:underline pt-1 bg-yellow-100 dark:bg-yellow-900 px-2 py-1 rounded"
+                    data-testid={`button-toggle-${namespace}-${index}`}
+                  >
+                    {expandedResults.has(result.id) ? (
                       <>
-                        {result.ai_feiten && (
-                          <div>
-                            <p className="font-semibold text-foreground">Feiten</p>
-                            <p className="text-muted-foreground whitespace-pre-wrap">{result.ai_feiten}</p>
-                          </div>
-                        )}
-                        
-                        {result.ai_geschil && (
-                          <div>
-                            <p className="font-semibold text-foreground">Geschil</p>
-                            <p className="text-muted-foreground whitespace-pre-wrap">{result.ai_geschil}</p>
-                          </div>
-                        )}
-                        
-                        {result.ai_beslissing && (
-                          <div>
-                            <p className="font-semibold text-foreground">Beslissing</p>
-                            <p className="text-muted-foreground whitespace-pre-wrap">{result.ai_beslissing}</p>
-                          </div>
-                        )}
-                        
-                        {result.ai_motivering && (
-                          <div>
-                            <p className="font-semibold text-foreground">Motivering</p>
-                            <p className="text-muted-foreground whitespace-pre-wrap">{result.ai_motivering}</p>
-                          </div>
-                        )}
+                        <ChevronUp className="h-3 w-3 mr-1" />
+                        Minder tonen
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-3 w-3 mr-1" />
+                        Lees verder
                       </>
                     )}
-                    
-                    <button
-                      onClick={() => toggleExpanded(result.id)}
-                      className="inline-flex items-center text-sm text-primary hover:underline pt-1"
-                      data-testid={`button-toggle-${namespace}-${index}`}
-                    >
-                      {expandedResults.has(result.id) ? (
-                        <>
-                          <ChevronUp className="h-3 w-3 mr-1" />
-                          Minder tonen
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="h-3 w-3 mr-1" />
-                          Lees verder
-                        </>
-                      )}
-                    </button>
-                  </div>
-                ) : result.text ? (
-                  <div className="text-sm">
-                    <p className="font-medium mb-1">Uitspraak tekst:</p>
-                    <p className="text-muted-foreground line-clamp-3">{result.text}</p>
-                  </div>
-                ) : null}
+                  </button>
+                  
+                  {/* Fallback text if no ai_* fields */}
+                  {!result.ai_inhoudsindicatie && result.text && (
+                    <div className="mt-2">
+                      <p className="font-medium mb-1">Uitspraak tekst:</p>
+                      <p className="text-muted-foreground line-clamp-3">{result.text}</p>
+                    </div>
+                  )}
+                </div>
 
                 <a
                   href={`https://uitspraken.rechtspraak.nl/details?id=${result.ecli}`}
