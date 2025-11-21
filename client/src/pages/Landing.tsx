@@ -43,11 +43,8 @@ export default function Landing() {
           {/* Value Proposition */}
           <div className="max-w-3xl mx-auto mb-10 space-y-6">
             <div className="text-lg sm:text-xl leading-relaxed">
-              <p className="text-foreground font-semibold mb-4">
-                Neem het recht in eigen handen.
-              </p>
               <p className="text-muted-foreground mb-2">
-                Wij zijn <strong className="text-foreground">géén</strong> juridisch kantoor — en dat is precies de bedoeling.
+                Wij zijn <strong className="text-foreground">géén</strong> advocatenkantoor. We zijn <strong className="text-foreground">GEEN</strong> juridische dienstverlener - en dat willen we ook niet zijn.
               </p>
               <p className="text-muted-foreground mb-6">
                 Wij maken openbare juridische bronnen en slimme DIY-tools toegankelijk voor iedereen die zelf zijn recht wil halen zonder dure advocaat.
@@ -64,11 +61,8 @@ export default function Landing() {
             </div>
 
             <div className="text-lg leading-relaxed">
-              <p className="text-muted-foreground mb-2">
-                Laat het er niet bij zitten omdat je portemonnee dun is.
-              </p>
               <p className="text-foreground font-medium">
-                Met onze tools regel je het <strong className="text-primary">zélf</strong> — en schakel je alleen hulp in als jij dat nodig vindt.
+                Met ons platform regel je het <strong className="text-primary">zélf</strong> en schakel je alleen hulp in als jij dat nodig vindt.
               </p>
             </div>
           </div>
