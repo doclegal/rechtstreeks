@@ -92,6 +92,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   function enrichFullAnalysis(fullAnalysis: any) {
     if (!fullAnalysis) return fullAnalysis;
     
+    // RKOS-only record: If we only have succesKansAnalysis (from RKOS.flow), build minimal parsedAnalysis from it
+    if (fullAnalysis.succesKansAnalysis && !fullAnalysis.analysisJson) {
+      const rkos = fullAnalysis.succesKansAnalysis as any;
+      return {
+        ...fullAnalysis,
+        parsedAnalysis: {
+          summary: rkos.summary_verdict || rkos.assessment || '',
+          case_overview: { parties: [] },
+          facts: {
+            known: rkos.facts || [],
+            disputed: [],
+            unclear: []
+          },
+          legal_analysis: rkos.legal_analysis || {},
+          risk_assessment: {
+            strengths: rkos.strengths || [],
+            weaknesses: rkos.weaknesses || [],
+            risks: rkos.risks || []
+          },
+          recommended_claims: rkos.recommended_claims || [],
+          applicable_rules: rkos.applicable_laws || []
+        },
+        extractedTexts: fullAnalysis.extractedTexts || null,
+        allFiles: fullAnalysis.allFiles || null,
+        userContext: fullAnalysis.userContext || null,
+        procedureContext: fullAnalysis.procedureContext || null,
+        succesKansAnalysis: rkos,
+        legalAdviceJson: fullAnalysis.legalAdviceJson || null,
+        missingInformation: fullAnalysis.missingInformation || rkos.missing_elements || null
+      };
+    }
+    
     // IMPORTANT: If analysisJson is directly available, use it as parsedAnalysis
     // This is the new standard format where parsedAnalysis is stored directly in the DB
     if (fullAnalysis.analysisJson && typeof fullAnalysis.analysisJson === 'object') {
