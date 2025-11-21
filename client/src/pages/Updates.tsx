@@ -4,10 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import DocumentUpload from "@/components/DocumentUpload";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, Bell, CheckCircle, Plus, MessageSquare } from "lucide-react";
+import { ArrowLeft, Bell, CheckCircle, Plus, MessageSquare, FileText, Trash2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { RIcon } from "@/components/RIcon";
 import { useState } from "react";
+
+interface UploadedDocument {
+  filename: string;
+  id: string;
+}
 
 export default function Updates() {
   const { user, isLoading: authLoading } = useAuth();
@@ -15,6 +20,7 @@ export default function Updates() {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [caseNotes, setCaseNotes] = useState("");
+  const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
   const currentCase = useActiveCase();
 
   if (authLoading) {
@@ -53,11 +59,22 @@ export default function Updates() {
     );
   }
 
-  const handleUploadSuccess = () => {
+  const handleUploadSuccess = (documents: any[]) => {
+    if (Array.isArray(documents) && documents.length > 0) {
+      const newDocuments = documents.map(doc => ({
+        filename: doc.filename || doc.name || 'Onbekend bestand',
+        id: doc.id || `${Date.now()}-${Math.random()}`
+      }));
+      setUploadedDocuments(prev => [...prev, ...newDocuments]);
+    }
     setUploadSuccess(true);
     setTimeout(() => {
       setUploadSuccess(false);
     }, 5000);
+  };
+
+  const handleRemoveDocument = (id: string) => {
+    setUploadedDocuments(prev => prev.filter(doc => doc.id !== id));
   };
 
   return (
@@ -110,17 +127,52 @@ export default function Updates() {
               Documenten uploaden
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-center">
+          <CardContent>
             <p className="text-muted-foreground mb-6">
               Upload nieuwe documenten naar uw dossier
             </p>
             <Button 
               onClick={() => setUploadDialogOpen(true)}
+              className="w-full mb-6"
               data-testid="button-upload-document"
             >
               <Plus className="h-4 w-4 mr-2" />
               Document uploaden
             </Button>
+
+            {uploadedDocuments.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-foreground">
+                  Geüploade documenten ({uploadedDocuments.length}):
+                </p>
+                <div className="space-y-2">
+                  {uploadedDocuments.map(doc => (
+                    <div 
+                      key={doc.id}
+                      className="flex items-center justify-between p-3 bg-muted rounded-lg border border-border"
+                      data-testid={`uploaded-document-${doc.id}`}
+                    >
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span 
+                          className="text-sm text-foreground truncate"
+                          title={doc.filename}
+                        >
+                          {doc.filename}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveDocument(doc.id)}
+                        className="ml-2 p-1 hover:bg-background rounded transition-colors flex-shrink-0"
+                        data-testid={`button-remove-document-${doc.id}`}
+                      >
+                        <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
