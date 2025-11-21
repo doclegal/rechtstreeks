@@ -348,13 +348,18 @@ export default function Jurisprudentie() {
   }
 
   const toggleExpanded = (resultId: string) => {
+    console.log('🔘 toggleExpanded called with ID:', resultId);
     setExpandedResults(prev => {
       const newSet = new Set(prev);
+      console.log('📂 Current expanded IDs:', Array.from(prev));
       if (newSet.has(resultId)) {
+        console.log('✂️ Removing ID from expanded set');
         newSet.delete(resultId);
       } else {
+        console.log('➕ Adding ID to expanded set');
         newSet.add(resultId);
       }
+      console.log('📂 New expanded IDs:', Array.from(newSet));
       return newSet;
     });
   };
