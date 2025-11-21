@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { ArrowLeft, Search, Trash2, Sparkles, FileText, ExternalLink, Calendar, Building2, Loader2 } from "lucide-react";
+import { ArrowLeft, Search, Trash2, Sparkles, FileText, ExternalLink, Calendar, Building2, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ interface VectorSearchResult {
   ai_feiten?: string;
   ai_geschil?: string;
   ai_beslissing?: string;
+  ai_motivering?: string;
 }
 
 interface SavedReference {
@@ -41,6 +42,9 @@ export default function Jurisprudentie() {
   // Persistent results per namespace
   const [ecliNlResults, setEcliNlResults] = useState<VectorSearchResult[]>([]);
   const [webEcliResults, setWebEcliResults] = useState<VectorSearchResult[]>([]);
+  
+  // Track which results are expanded (by result id)
+  const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set());
 
   // Query to load saved jurisprudence data
   const { data: savedData, isLoading: savedDataLoading } = useQuery({
@@ -229,6 +233,7 @@ export default function Jurisprudentie() {
             ai_feiten: r.ai_feiten,
             ai_geschil: r.ai_geschil,
             ai_beslissing: r.ai_beslissing,
+            ai_motivering: r.ai_motivering,
           }
         }))
       });
@@ -330,6 +335,18 @@ export default function Jurisprudentie() {
     );
   }
 
+  const toggleExpanded = (resultId: string) => {
+    setExpandedResults(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(resultId)) {
+        newSet.delete(resultId);
+      } else {
+        newSet.add(resultId);
+      }
+      return newSet;
+    });
+  };
+
   const NamespaceBlock = ({ 
     namespace, 
     title, 
@@ -421,20 +438,76 @@ export default function Jurisprudentie() {
                   )}
                 </div>
 
-                {/* Uitspraak tekst */}
-                {result.ai_inhoudsindicatie && (
-                  <div className="text-sm">
-                    <p className="font-medium mb-1">Inhoudsindicatie:</p>
-                    <p className="text-muted-foreground">{result.ai_inhoudsindicatie}</p>
+                {/* Samenvatting met secties */}
+                {(result.ai_inhoudsindicatie || result.ai_feiten || result.ai_geschil || result.ai_beslissing || result.ai_motivering) ? (
+                  <div className="text-sm space-y-2">
+                    {result.ai_inhoudsindicatie && (
+                      <div>
+                        <p className="font-semibold text-foreground">Inhoudsindicatie</p>
+                        <p className={`text-muted-foreground whitespace-pre-wrap ${!expandedResults.has(result.id) ? 'line-clamp-2' : ''}`}>
+                          {result.ai_inhoudsindicatie}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {expandedResults.has(result.id) && (
+                      <>
+                        {result.ai_feiten && (
+                          <div>
+                            <p className="font-semibold text-foreground">Feiten</p>
+                            <p className="text-muted-foreground whitespace-pre-wrap">{result.ai_feiten}</p>
+                          </div>
+                        )}
+                        
+                        {result.ai_geschil && (
+                          <div>
+                            <p className="font-semibold text-foreground">Geschil</p>
+                            <p className="text-muted-foreground whitespace-pre-wrap">{result.ai_geschil}</p>
+                          </div>
+                        )}
+                        
+                        {result.ai_beslissing && (
+                          <div>
+                            <p className="font-semibold text-foreground">Beslissing</p>
+                            <p className="text-muted-foreground whitespace-pre-wrap">{result.ai_beslissing}</p>
+                          </div>
+                        )}
+                        
+                        {result.ai_motivering && (
+                          <div>
+                            <p className="font-semibold text-foreground">Motivering</p>
+                            <p className="text-muted-foreground whitespace-pre-wrap">{result.ai_motivering}</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    
+                    {(result.ai_feiten || result.ai_geschil || result.ai_beslissing || result.ai_motivering) && (
+                      <button
+                        onClick={() => toggleExpanded(result.id)}
+                        className="inline-flex items-center text-sm text-primary hover:underline"
+                        data-testid={`button-toggle-${namespace}-${index}`}
+                      >
+                        {expandedResults.has(result.id) ? (
+                          <>
+                            <ChevronUp className="h-3 w-3 mr-1" />
+                            Minder tonen
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="h-3 w-3 mr-1" />
+                            Lees verder
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
-                )}
-
-                {result.text && !result.ai_inhoudsindicatie && (
+                ) : result.text ? (
                   <div className="text-sm">
                     <p className="font-medium mb-1">Uitspraak tekst:</p>
                     <p className="text-muted-foreground line-clamp-3">{result.text}</p>
                   </div>
-                )}
+                ) : null}
 
                 <a
                   href={`https://uitspraken.rechtspraak.nl/details?id=${result.ecli}`}
