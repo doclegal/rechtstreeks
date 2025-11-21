@@ -482,25 +482,23 @@ export default function Jurisprudentie() {
                       </>
                     )}
                     
-                    {(result.ai_feiten || result.ai_geschil || result.ai_beslissing || result.ai_motivering) && (
-                      <button
-                        onClick={() => toggleExpanded(result.id)}
-                        className="inline-flex items-center text-sm text-primary hover:underline"
-                        data-testid={`button-toggle-${namespace}-${index}`}
-                      >
-                        {expandedResults.has(result.id) ? (
-                          <>
-                            <ChevronUp className="h-3 w-3 mr-1" />
-                            Minder tonen
-                          </>
-                        ) : (
-                          <>
-                            <ChevronDown className="h-3 w-3 mr-1" />
-                            Lees verder
-                          </>
-                        )}
-                      </button>
-                    )}
+                    <button
+                      onClick={() => toggleExpanded(result.id)}
+                      className="inline-flex items-center text-sm text-primary hover:underline pt-1"
+                      data-testid={`button-toggle-${namespace}-${index}`}
+                    >
+                      {expandedResults.has(result.id) ? (
+                        <>
+                          <ChevronUp className="h-3 w-3 mr-1" />
+                          Minder tonen
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-3 w-3 mr-1" />
+                          Lees verder
+                        </>
+                      )}
+                    </button>
                   </div>
                 ) : result.text ? (
                   <div className="text-sm">
