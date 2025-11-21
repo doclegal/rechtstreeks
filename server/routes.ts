@@ -741,6 +741,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         inputJsonData.volledige_analyse = fullAnalysis.parsedAnalysis;
         console.log('📊 Including legal analysis in document check for better context');
         console.log('📋 Analysis includes:', Object.keys(fullAnalysis.parsedAnalysis));
+        
+        // Debug: Log the actual payload being sent to MindStudio
+        const debugPayload = JSON.stringify(inputJsonData, null, 2);
+        console.log('🔍 FULL PAYLOAD to MindStudio (first 2000 chars):', debugPayload.substring(0, 2000));
+        
+        // Check if parties info is present
+        if (fullAnalysis.parsedAnalysis.case_overview?.parties) {
+          console.log('👥 Parties in analysis:', fullAnalysis.parsedAnalysis.case_overview.parties.map((p: any) => p.name || p.role).join(', '));
+        }
       } else {
         console.log('ℹ️  No legal analysis available yet - document will be assessed without case context');
       }
