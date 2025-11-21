@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import DocumentUpload from "@/components/DocumentUpload";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, Bell, CheckCircle } from "lucide-react";
+import { ArrowLeft, Bell, CheckCircle, Plus } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 import { useState } from "react";
 
@@ -12,7 +12,7 @@ export default function Updates() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [uploadSuccess, setUploadSuccess] = useState(false);
-  const [uploadDialogOpen, setUploadDialogOpen] = useState(true);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const currentCase = useActiveCase();
 
   if (authLoading) {
@@ -107,15 +107,26 @@ export default function Updates() {
             Documenten uploaden
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <DocumentUpload 
-            open={uploadDialogOpen}
-            onOpenChange={setUploadDialogOpen}
-            caseId={currentCase.id}
-            onSuccess={handleUploadSuccess}
-          />
+        <CardContent className="text-center">
+          <p className="text-muted-foreground mb-6">
+            Upload nieuwe documenten naar uw dossier
+          </p>
+          <Button 
+            onClick={() => setUploadDialogOpen(true)}
+            data-testid="button-upload-document"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Document uploaden
+          </Button>
         </CardContent>
       </Card>
+
+      <DocumentUpload 
+        open={uploadDialogOpen}
+        onOpenChange={setUploadDialogOpen}
+        caseId={currentCase.id}
+        onSuccess={handleUploadSuccess}
+      />
 
       <div className="flex items-center justify-center pt-8">
         <p className="text-sm text-muted-foreground">
