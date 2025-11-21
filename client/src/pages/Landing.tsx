@@ -35,13 +35,44 @@ export default function Landing() {
       {/* Hero Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-primary/5 to-background">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-6">
+          <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-8">
             Los je juridische probleem op
             <span className="text-primary block mt-2">met hulp van AI</span>
           </h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Rechtstreeks zelf aan de slag. AI analyseert je zaak, helpt met documenten en begeleidt je stap voor stap.
-          </p>
+
+          {/* Value Proposition */}
+          <div className="max-w-3xl mx-auto mb-10 space-y-6">
+            <div className="text-lg sm:text-xl leading-relaxed">
+              <p className="text-foreground font-semibold mb-4">
+                Neem het recht in eigen handen.
+              </p>
+              <p className="text-muted-foreground mb-2">
+                Wij zijn <strong className="text-foreground">géén</strong> juridisch kantoor — en dat is precies de bedoeling.
+              </p>
+              <p className="text-muted-foreground mb-6">
+                Wij maken openbare juridische bronnen en slimme DIY-tools toegankelijk voor iedereen die zelf zijn recht wil halen zonder dure advocaat.
+              </p>
+            </div>
+
+            <div className="border-l-4 border-primary pl-6 text-left space-y-3">
+              <p className="text-foreground font-medium">
+                Geen juridisch gedoe, geen torenhoge kosten.
+              </p>
+              <p className="text-muted-foreground">
+                Gewoon praktische hulp, duidelijke stappen en slimme ondersteuning bij procedures bij de kantonrechter.
+              </p>
+            </div>
+
+            <div className="text-lg leading-relaxed">
+              <p className="text-muted-foreground mb-2">
+                Laat het er niet bij zitten omdat je portemonnee dun is.
+              </p>
+              <p className="text-foreground font-medium">
+                Met onze tools regel je het <strong className="text-primary">zélf</strong> — en schakel je alleen hulp in als jij dat nodig vindt.
+              </p>
+            </div>
+          </div>
+
           <Button 
             size="lg" 
             data-testid="button-get-started"
