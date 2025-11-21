@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import DocumentList from "@/components/DocumentList";
 import DeadlineWarning from "@/components/DeadlineWarning";
 import { Link, useLocation } from "wouter";
-import { PlusCircle, Headset, MessageSquare, FileText, CheckCircle, Files, ArrowLeft, AlertCircle, FolderOpen, FileSearch } from "lucide-react";
+import { PlusCircle, Headset, MessageSquare, FileText, CheckCircle, Files, ArrowLeft, AlertCircle, FolderOpen, FileSearch, Bell } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { PageInfoDialog } from "@/components/PageInfoDialog";
@@ -193,6 +193,21 @@ export default function MyCase() {
             </CardContent>
           </Card>
         </Link>
+
+        <Card className="cursor-default relative h-full opacity-75" data-testid="card-updates">
+          <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+          <CardHeader>
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Bell className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="text-center">Updates</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center">
+            <p className="text-sm text-muted-foreground">
+              Nog niet beschikbaar
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 pt-8 border-t border-border">
