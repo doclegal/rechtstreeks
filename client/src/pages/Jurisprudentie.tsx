@@ -456,6 +456,15 @@ export default function Jurisprudentie() {
                   )}
                 </div>
 
+                {/* DEBUG: Show what fields this result has */}
+                <div className="text-xs bg-red-100 dark:bg-red-900 p-2 mb-2 rounded">
+                  <strong>DEBUG Fields:</strong> {Object.keys(result).join(', ')}
+                  <br />
+                  <strong>Has ai_inhoudsindicatie:</strong> {String(!!result.ai_inhoudsindicatie)}
+                  <br />
+                  <strong>Has text:</strong> {String(!!result.text)}
+                </div>
+
                 {/* Samenvatting met secties - ALWAYS SHOW BUTTON FOR DEBUG */}
                 <div className="text-sm space-y-2">
                   {result.ai_inhoudsindicatie && (
