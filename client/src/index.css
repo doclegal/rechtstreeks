@@ -90,7 +90,7 @@
   --destructive-foreground: hsl(0, 0%, 100%);
   
   /* Typography */
-  --font-heading: 'Poppins', 'Inter', sans-serif;
+  --font-heading: 'Inter', sans-serif;
   --font-sans: 'Inter', sans-serif;
   
   /* Border radius - larger, friendlier */
