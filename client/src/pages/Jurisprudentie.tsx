@@ -414,7 +414,8 @@ export default function Jurisprudentie() {
           </div>
         ) : (
           <div className="space-y-3">
-            {results.map((result, index) => (
+            {results.map((result, index) => {
+              return (
               <div 
                 key={result.id} 
                 className="border rounded-lg p-4 bg-muted/30 space-y-3"
@@ -518,7 +519,8 @@ export default function Jurisprudentie() {
                   Bekijk volledige uitspraak
                 </a>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>
