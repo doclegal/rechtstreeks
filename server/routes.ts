@@ -1751,10 +1751,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log('✅ Success chance analysis saved to existing fullAnalysis record');
           console.log('✅ Updated record succesKansAnalysis:', updatedRecord.succesKansAnalysis);
         } else {
-          // DON'T create a placeholder record - this would block real full analysis later
-          // Just log that we don't have a full analysis yet
-          console.log('⚠️ No fullAnalysis record exists yet - succesKansAnalysis will not be persisted');
-          console.log('💡 User should run full analysis first to persist success chance data');
+          // Create a standalone RKOS analysis record if no full analysis exists
+          console.log('📝 Creating standalone RKOS analysis record');
+          const rkosAnalysis = await storage.createAnalysis({
+            caseId: caseId,
+            model: 'rkos-standalone',
+            succesKansAnalysis: rkosResult,
+            version: 1
+          });
+          console.log('✅ RKOS analysis saved to new standalone record:', rkosAnalysis.id);
         }
 
         // Check if there are missing elements and set flag
@@ -1848,7 +1853,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 parties: []
               },
               facts: latestAnalysis.factsJson || {},
-              legal_analysis: latestAnalysis.legalAnalysisJson || {},
+              legal_analysis: latestAnalysis.analysisJson || {},
               risk_assessment: {
                 strengths: (latestAnalysis.succesKansAnalysis as any)?.strengths || [],
                 weaknesses: (latestAnalysis.succesKansAnalysis as any)?.weaknesses || []
