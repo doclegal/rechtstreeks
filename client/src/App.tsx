@@ -29,6 +29,7 @@ import QnA from "@/pages/QnA";
 import ResolvePage from "@/pages/ResolvePage";
 import InvitationAccept from "@/pages/InvitationAccept";
 import Jurisprudentie from "@/pages/Jurisprudentie";
+import Updates from "@/pages/Updates";
 import RequireAuth from "@/components/RequireAuth";
 
 // Protected route definitions
@@ -53,6 +54,7 @@ const protectedRoutes = [
   { path: "/warranty", component: Warranty },
   { path: "/help", component: Help },
   { path: "/new-case", component: NewCase },
+  { path: "/updates", component: Updates },
 ];
 
 function ProtectedRoute({ 

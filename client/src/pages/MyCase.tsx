@@ -194,20 +194,22 @@ export default function MyCase() {
           </Card>
         </Link>
 
-        <Card className="cursor-default relative h-full opacity-75" data-testid="card-updates">
-          <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
-          <CardHeader>
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Bell className="h-8 w-8 text-primary" />
-            </div>
-            <CardTitle className="text-center">Updates</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center">
-            <p className="text-sm text-muted-foreground">
-              Nog niet beschikbaar
-            </p>
-          </CardContent>
-        </Card>
+        <Link href="/updates">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow relative h-full" data-testid="card-updates">
+            <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
+            <CardHeader>
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Bell className="h-8 w-8 text-primary" />
+              </div>
+              <CardTitle className="text-center">Updates</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p className="text-sm text-muted-foreground">
+                Documenten uploaden
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <div className="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 pt-8 border-t border-border">
