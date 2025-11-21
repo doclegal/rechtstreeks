@@ -52,19 +52,7 @@ export default function Jurisprudentie() {
     enabled: !!currentCase?.id,
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/jurisprudentie/${currentCase?.id}`);
-      const data = await response.json();
-      
-      // Debug: Log what fields we're getting
-      if (data?.searchResults?.ecli_nl?.[0]) {
-        console.log('🔍 First ECLI_NL result fields:', Object.keys(data.searchResults.ecli_nl[0]));
-        console.log('🔍 Has ai_inhoudsindicatie?', !!data.searchResults.ecli_nl[0].ai_inhoudsindicatie);
-      }
-      if (data?.searchResults?.web_ecli?.[0]) {
-        console.log('🔍 First WEB_ECLI result fields:', Object.keys(data.searchResults.web_ecli[0]));
-        console.log('🔍 Has ai_inhoudsindicatie?', !!data.searchResults.web_ecli[0].ai_inhoudsindicatie);
-      }
-      
-      return data;
+      return response.json();
     }
   });
 
@@ -348,18 +336,13 @@ export default function Jurisprudentie() {
   }
 
   const toggleExpanded = (resultId: string) => {
-    console.log('🔘 toggleExpanded called with ID:', resultId);
     setExpandedResults(prev => {
       const newSet = new Set(prev);
-      console.log('📂 Current expanded IDs:', Array.from(prev));
       if (newSet.has(resultId)) {
-        console.log('✂️ Removing ID from expanded set');
         newSet.delete(resultId);
       } else {
-        console.log('➕ Adding ID to expanded set');
         newSet.add(resultId);
       }
-      console.log('📂 New expanded IDs:', Array.from(newSet));
       return newSet;
     });
   };
@@ -456,85 +439,34 @@ export default function Jurisprudentie() {
                   )}
                 </div>
 
-                {/* DEBUG: Show what fields this result has */}
-                <div className="text-xs bg-red-100 dark:bg-red-900 p-2 mb-2 rounded">
-                  <strong>DEBUG Fields:</strong> {Object.keys(result).join(', ')}
-                  <br />
-                  <strong>Has ai_inhoudsindicatie:</strong> {String(!!result.ai_inhoudsindicatie)}
-                  <br />
-                  <strong>Has text:</strong> {String(!!result.text)}
-                </div>
-
-                {/* Samenvatting met secties - ALWAYS SHOW BUTTON FOR DEBUG */}
-                <div className="text-sm space-y-2">
-                  {result.ai_inhoudsindicatie && (
+                {/* Samenvatting - gebruik text veld met expand/collapse */}
+                {result.text && (
+                  <div className="text-sm space-y-2">
                     <div>
-                      <p className="font-semibold text-foreground">Inhoudsindicatie</p>
-                      <p className={`text-muted-foreground whitespace-pre-wrap ${!expandedResults.has(result.id) ? 'line-clamp-2' : ''}`}>
-                        {result.ai_inhoudsindicatie}
+                      <p className={`text-muted-foreground whitespace-pre-wrap ${!expandedResults.has(result.id) ? 'line-clamp-3' : ''}`}>
+                        {result.text}
                       </p>
                     </div>
-                  )}
-                  
-                  {expandedResults.has(result.id) && (
-                    <>
-                      {result.ai_feiten && (
-                        <div>
-                          <p className="font-semibold text-foreground">Feiten</p>
-                          <p className="text-muted-foreground whitespace-pre-wrap">{result.ai_feiten}</p>
-                        </div>
+                    
+                    <button
+                      onClick={() => toggleExpanded(result.id)}
+                      className="inline-flex items-center text-sm text-primary hover:underline pt-1"
+                      data-testid={`button-toggle-${namespace}-${index}`}
+                    >
+                      {expandedResults.has(result.id) ? (
+                        <>
+                          <ChevronUp className="h-3 w-3 mr-1" />
+                          Minder tonen
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-3 w-3 mr-1" />
+                          Lees verder
+                        </>
                       )}
-                      
-                      {result.ai_geschil && (
-                        <div>
-                          <p className="font-semibold text-foreground">Geschil</p>
-                          <p className="text-muted-foreground whitespace-pre-wrap">{result.ai_geschil}</p>
-                        </div>
-                      )}
-                      
-                      {result.ai_beslissing && (
-                        <div>
-                          <p className="font-semibold text-foreground">Beslissing</p>
-                          <p className="text-muted-foreground whitespace-pre-wrap">{result.ai_beslissing}</p>
-                        </div>
-                      )}
-                      
-                      {result.ai_motivering && (
-                        <div>
-                          <p className="font-semibold text-foreground">Motivering</p>
-                          <p className="text-muted-foreground whitespace-pre-wrap">{result.ai_motivering}</p>
-                        </div>
-                      )}
-                    </>
-                  )}
-                  
-                  {/* ALWAYS show button - even if no ai_* fields */}
-                  <button
-                    onClick={() => toggleExpanded(result.id)}
-                    className="inline-flex items-center text-sm font-bold text-primary hover:underline pt-1 bg-yellow-100 dark:bg-yellow-900 px-2 py-1 rounded"
-                    data-testid={`button-toggle-${namespace}-${index}`}
-                  >
-                    {expandedResults.has(result.id) ? (
-                      <>
-                        <ChevronUp className="h-3 w-3 mr-1" />
-                        Minder tonen
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="h-3 w-3 mr-1" />
-                        Lees verder
-                      </>
-                    )}
-                  </button>
-                  
-                  {/* Fallback text if no ai_* fields */}
-                  {!result.ai_inhoudsindicatie && result.text && (
-                    <div className="mt-2">
-                      <p className="font-medium mb-1">Uitspraak tekst:</p>
-                      <p className="text-muted-foreground line-clamp-3">{result.text}</p>
-                    </div>
-                  )}
-                </div>
+                    </button>
+                  </div>
+                )}
 
                 <a
                   href={`https://uitspraken.rechtspraak.nl/details?id=${result.ecli}`}
