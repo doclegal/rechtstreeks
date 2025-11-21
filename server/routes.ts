@@ -730,11 +730,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('🔗 MindStudio download URL:', downloadUrl);
       console.log('📋 Document filename:', document.filename);
       
-      // Prepare input JSON with document info and optional legal analysis
+      // Prepare input JSON with document info, case details, and optional legal analysis
       const inputJsonData: any = {
         file_url: downloadUrl,
         file_name: document.filename
       };
+      
+      // ALWAYS add case_details - this is essential context for document relevance assessment
+      // Build parties array from claimant and counterparty fields
+      const parties: Array<{ name: string; role: string }> = [];
+      if (caseData.claimantName) {
+        parties.push({ name: caseData.claimantName, role: 'EISER' });
+      }
+      if (caseData.counterpartyName) {
+        parties.push({ name: caseData.counterpartyName, role: 'GEDAAGDE' });
+      }
+      
+      inputJsonData.case_details = {
+        title: caseData.title || 'Onbekende zaak',
+        description: caseData.description || '',
+        parties: parties,
+        claim_amount: caseData.claimAmount || null
+      };
+      console.log('📋 Including case_details:', {
+        title: inputJsonData.case_details.title,
+        parties: inputJsonData.case_details.parties.map((p: any) => `${p.name} (${p.role})`).join(', '),
+        has_description: !!inputJsonData.case_details.description,
+        claim_amount: inputJsonData.case_details.claim_amount
+      });
       
       // Add legal analysis if available to provide context for document relevance assessment
       if (fullAnalysis?.parsedAnalysis) {
@@ -751,7 +774,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log('👥 Parties in analysis:', fullAnalysis.parsedAnalysis.case_overview.parties.map((p: any) => p.name || p.role).join(', '));
         }
       } else {
-        console.log('ℹ️  No legal analysis available yet - document will be assessed without case context');
+        console.log('ℹ️  No legal analysis available yet - document will be assessed using case_details only');
       }
       
       console.log('📤 Calling MindStudio Dossier_check.flow for single document');
