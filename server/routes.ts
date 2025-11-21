@@ -837,20 +837,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('🔍 DEBUG: docAnalysis:', JSON.stringify(docAnalysis, null, 2));
         
         // Check if we have the expected fields from MindStudio
-        if (docAnalysis.document_name || docAnalysis.summary) {
+        if (docAnalysis.document_name || docAnalysis.summary || docAnalysis.relevance_reasoning) {
           console.log(`📄 Processing MindStudio analysis for: ${docAnalysis.document_name || document.filename}`);
+          
+          // Use relevance_reasoning as fallback for summary if summary is not provided
+          const summaryText = docAnalysis.summary 
+            || docAnalysis.relevance_reasoning 
+            || 'Geen samenvatting beschikbaar';
           
           analysis = {
             document_name: docAnalysis.document_name || document.filename,
             document_type: docAnalysis.document_type || 'unknown',
             is_readable: docAnalysis.is_readable ?? true,
             belongs_to_case: docAnalysis.belongs_to_case ?? true,
-            summary: docAnalysis.summary || 'Geen samenvatting beschikbaar',
+            summary: summaryText,
             tags: Array.isArray(docAnalysis.tags) ? docAnalysis.tags : [],
             note: docAnalysis.note || null,
             submitted_by: docAnalysis.submitted_by || 'onbekend',
             evidential_value: docAnalysis.evidential_value || null,
-            reasoning: docAnalysis.reasoning || null
+            reasoning: docAnalysis.reasoning || docAnalysis.relevance_reasoning || null
           };
           
           console.log(`✅ Extracted analysis:`, JSON.stringify(analysis, null, 2));
