@@ -68,24 +68,40 @@ export default function Landing() {
             </div>
           </div>
 
-          <Button 
-            size="lg" 
-            data-testid="button-get-started"
-            className="px-8 py-4 text-lg"
-            onClick={() => {
-              if (isAuthenticated) {
-                toast({
-                  title: "Toegang vereist",
-                  description: "Toegang tot de app moet worden aangevraagd. Neem contact met ons op voor meer informatie.",
-                  variant: "default",
-                });
-              } else {
-                window.location.href = "/api/login";
-              }
-            }}
-          >
-            Starten
-          </Button>
+          <div className="flex flex-col items-center gap-4">
+            <Button 
+              size="lg" 
+              data-testid="button-get-started"
+              className="px-8 py-4 text-lg"
+              onClick={() => {
+                if (isAuthenticated) {
+                  toast({
+                    title: "Toegang vereist",
+                    description: "Toegang tot de app moet worden aangevraagd. Neem contact met ons op voor meer informatie.",
+                    variant: "default",
+                  });
+                } else {
+                  window.location.href = "/api/login";
+                }
+              }}
+            >
+              Starten
+            </Button>
+            
+            <Button 
+              variant="link" 
+              size="lg"
+              asChild
+              data-testid="button-learn-more"
+              className="text-primary hover:text-primary/80 gap-2"
+            >
+              <Link href="/kantonrecht-info">
+                <Scale className="w-4 h-4" />
+                Meer informatie over procederen bij de kantonrechter
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
 
