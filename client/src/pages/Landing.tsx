@@ -4,6 +4,7 @@ import { Upload, FileSearch, CheckCircle, Mail, AlertTriangle, FileText, Scale, 
 import { RIcon } from "@/components/RIcon";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 
 export default function Landing() {
   const { isAuthenticated } = useAuth();
@@ -861,7 +862,7 @@ export default function Landing() {
       {/* Footer */}
       <footer className="bg-card border-t border-border py-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-8 mb-8">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <RIcon size="sm" />
@@ -870,6 +871,19 @@ export default function Landing() {
               <p className="text-sm text-muted-foreground">
                 DIY juridische hulp voor kantonzaken. Direct zelf aan de slag met AI-ondersteuning.
               </p>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold text-foreground mb-3">Informatie</h4>
+              <p className="text-sm text-muted-foreground mb-2">
+                Leer meer over kantonrecht procedures
+              </p>
+              <Button variant="outline" size="sm" asChild data-testid="button-kantonrecht-info">
+                <Link href="/kantonrecht-info">
+                  <Scale className="w-4 h-4 mr-2" />
+                  Meer informatie
+                </Link>
+              </Button>
             </div>
             
             <div>

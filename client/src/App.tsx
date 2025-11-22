@@ -8,6 +8,7 @@ import { CaseProvider } from "@/contexts/CaseContext";
 import Layout from "@/components/Layout";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
+import KantonrechtInfo from "@/pages/KantonrechtInfo";
 import Dashboard from "@/pages/Dashboard";
 import MyCase from "@/pages/MyCase";
 import CaseDetails from "@/pages/CaseDetails";
@@ -88,6 +89,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
+      <Route path="/kantonrecht-info" component={KantonrechtInfo} />
       <Route path="/invitation/:code" component={InvitationAccept} />
       
       {isAuthenticated ? (
