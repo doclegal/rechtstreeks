@@ -45,7 +45,7 @@ export default function Landing() {
           <div className="max-w-3xl mx-auto mb-10 space-y-6">
             <div className="text-lg sm:text-xl leading-relaxed">
               <p className="text-muted-foreground mb-2">
-                Wij zijn <strong className="text-foreground">géén</strong> advocatenkantoor. We zijn <strong className="text-foreground">GEEN</strong> juridische dienstverlener - en dat willen we ook niet zijn.
+                Wij zijn <strong className="text-foreground">géén</strong> advocatenkantoor.
               </p>
               <p className="text-muted-foreground mb-6">
                 Wij maken openbare juridische bronnen en slimme DIY-tools toegankelijk voor iedereen die zelf zijn recht wil halen zonder dure advocaat.
@@ -68,7 +68,7 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-6">
             <Button 
               size="lg" 
               data-testid="button-get-started"
@@ -88,19 +88,28 @@ export default function Landing() {
               Starten
             </Button>
             
-            <Button 
-              variant="link" 
-              size="lg"
-              asChild
-              data-testid="button-learn-more"
-              className="text-primary hover:text-primary/80 gap-2"
-            >
-              <Link href="/kantonrecht-info">
-                <Scale className="w-4 h-4" />
-                Meer informatie over procederen bij de kantonrechter
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </Button>
+            <Card className="w-full max-w-2xl border-primary/20 hover:border-primary/40 transition-colors">
+              <CardContent className="p-6">
+                <Link href="/kantonrecht-info">
+                  <div className="flex items-center justify-between gap-4 cursor-pointer group">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
+                        <Scale className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
+                          Meer informatie over kantonzaken
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Leer hoe je zelf een procedure start en wat je kunt verwachten
+                        </p>
+                      </div>
+                    </div>
+                    <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" />
+                  </div>
+                </Link>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
