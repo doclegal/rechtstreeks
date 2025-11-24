@@ -12,11 +12,14 @@ import {
   CheckCircle,
   AlertCircle,
   Send,
-  Trash2
+  Trash2,
+  Upload
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 interface Letter {
   id: string;
@@ -56,6 +59,74 @@ export default function GeneratedDocuments({
   const [briefType, setBriefType] = useState<string>("LAATSTE_AANMANING");
   const [tone, setTone] = useState<string>("zakelijk-vriendelijk");
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
+  const [uploadingDocumentId, setUploadingDocumentId] = useState<string | null>(null);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  const uploadToDossierMutation = useMutation({
+    mutationFn: async ({ pdfStorageKey, documentTitle }: { pdfStorageKey: string; documentTitle: string }) => {
+      // Fetch the PDF file from storage
+      const response = await fetch(`/api/files/${pdfStorageKey}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch PDF file');
+      }
+      
+      // Convert to blob and then to File object
+      const blob = await response.blob();
+      const file = new File([blob], `${documentTitle}.pdf`, { type: 'application/pdf' });
+      
+      // Upload to dossier
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const uploadResponse = await fetch(`/api/cases/${caseId}/uploads`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      
+      if (!uploadResponse.ok) {
+        throw new Error('Upload to dossier failed');
+      }
+      
+      return uploadResponse.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'uploads'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
+      toast({
+        title: "Succesvol geüpload",
+        description: "Het document is toegevoegd aan het dossier en wordt geanalyseerd",
+      });
+      setUploadingDocumentId(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Upload mislukt",
+        description: "Er is een fout opgetreden bij het uploaden naar het dossier",
+        variant: "destructive",
+      });
+      setUploadingDocumentId(null);
+    },
+  });
+  
+  const handleUploadToDossier = (document: any) => {
+    if (!document.pdfStorageKey) {
+      toast({
+        title: "Geen PDF beschikbaar",
+        description: "Dit document heeft geen PDF versie om te uploaden",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setUploadingDocumentId(document.id);
+    uploadToDossierMutation.mutate({ 
+      pdfStorageKey: document.pdfStorageKey,
+      documentTitle: document.title
+    });
+  };
   
   const allDocuments = [
     ...letters.map(letter => ({
@@ -324,6 +395,22 @@ export default function GeneratedDocuments({
                       data-testid={`button-download-${document.id}`}
                     >
                       <Download className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {document.pdfStorageKey && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleUploadToDossier(document)}
+                      disabled={uploadingDocumentId === document.id}
+                      data-testid={`button-upload-to-dossier-${document.id}`}
+                      title="Upload naar dossier"
+                    >
+                      {uploadingDocumentId === document.id ? (
+                        <Clock className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4" />
+                      )}
                     </Button>
                   )}
                   {document.type === "letter" && onDeleteLetter && (
