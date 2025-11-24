@@ -36,10 +36,14 @@ export default function Landing() {
       {/* Hero Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-primary/5 to-background">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-8">
-            Los je juridische probleem op
+          <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">
+            Los <span className="text-primary">zelf</span> een juridisch probleem op
             <span className="text-primary block mt-2">met hulp van AI</span>
           </h1>
+          
+          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
+            Rechtstreeks betekent geen hoge advocaatkosten. Stap voor stap begeleiding naar een oplossing.
+          </p>
 
           {/* Value Proposition */}
           <div className="max-w-3xl mx-auto mb-10 space-y-6">
