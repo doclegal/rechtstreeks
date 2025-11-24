@@ -64,16 +64,18 @@ export default function GeneratedDocuments({
   const queryClient = useQueryClient();
   
   const uploadToDossierMutation = useMutation({
-    mutationFn: async ({ pdfStorageKey, documentTitle }: { pdfStorageKey: string; documentTitle: string }) => {
+    mutationFn: async ({ pdfStorageKey, documentId, createdAt }: { pdfStorageKey: string; documentId: string; createdAt: string }) => {
       // Fetch the PDF file from storage
       const response = await fetch(`/api/files/${pdfStorageKey}`);
       if (!response.ok) {
         throw new Error('Failed to fetch PDF file');
       }
       
-      // Convert to blob and then to File object
+      // Convert to blob and then to File object with unique filename
       const blob = await response.blob();
-      const file = new File([blob], `${documentTitle}.pdf`, { type: 'application/pdf' });
+      const timestamp = new Date(createdAt).toISOString().split('T')[0];
+      const filename = `Brief_${timestamp}_${documentId.substring(0, 8)}.pdf`;
+      const file = new File([blob], filename, { type: 'application/pdf' });
       
       // Upload to dossier
       const formData = new FormData();
@@ -124,7 +126,8 @@ export default function GeneratedDocuments({
     setUploadingDocumentId(document.id);
     uploadToDossierMutation.mutate({ 
       pdfStorageKey: document.pdfStorageKey,
-      documentTitle: document.title
+      documentId: document.id,
+      createdAt: document.createdAt
     });
   };
   
