@@ -527,9 +527,17 @@ export default function Jurisprudentie() {
                   data-testid={`saved-reference-${index}`}
                 >
                   <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <Badge variant="default" className="font-mono text-xs">
-                      {ref.ecli}
-                    </Badge>
+                    <a
+                      href={`https://uitspraken.rechtspraak.nl/details?id=${ref.ecli}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:opacity-80 transition-opacity"
+                      data-testid={`link-ecli-${index}`}
+                    >
+                      <Badge variant="default" className="font-mono text-xs cursor-pointer">
+                        {ref.ecli}
+                      </Badge>
+                    </a>
                     {ref.court && (
                       <Badge variant="secondary" className="text-xs">
                         <Building2 className="h-3 w-3 mr-1" />
