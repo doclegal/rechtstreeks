@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
-import { FileText, PlusCircle, Download, Mail, ArrowLeft, Trash2 } from "lucide-react";
+import { FileText, PlusCircle, Download, Mail, ArrowLeft, Trash2, Upload, Clock } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Separator } from "@/components/ui/separator";
 import { RIcon } from "@/components/RIcon";
 import { format } from "date-fns";
@@ -21,6 +22,7 @@ export default function Letters() {
   const { user, isLoading: authLoading } = useAuth();
   const { isLoading: casesLoading, refetch } = useCases();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const currentCase = useActiveCase();
   const caseId = currentCase?.id;
@@ -33,6 +35,7 @@ export default function Letters() {
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [selectedLetterType, setSelectedLetterType] = useState<string | null>(null);
+  const [uploadingLetterId, setUploadingLetterId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -80,6 +83,77 @@ export default function Letters() {
         }
       });
     }
+  };
+
+  const uploadToDossierMutation = useMutation({
+    mutationFn: async ({ pdfStorageKey, letterId, createdAt }: { pdfStorageKey: string; letterId: string; createdAt: string }) => {
+      // Fetch the PDF file from storage
+      const response = await fetch(`/api/files/${pdfStorageKey}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch PDF file');
+      }
+      
+      // Convert to blob and then to File object with unique filename
+      const blob = await response.blob();
+      const timestamp = new Date(createdAt).toISOString().split('T')[0];
+      const filename = `Brief_${timestamp}_${letterId.substring(0, 8)}.pdf`;
+      const file = new File([blob], filename, { type: 'application/pdf' });
+      
+      // Upload to dossier
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const uploadResponse = await fetch(`/api/cases/${caseId}/uploads`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      
+      if (!uploadResponse.ok) {
+        throw new Error('Upload to dossier failed');
+      }
+      
+      return uploadResponse.json();
+    },
+    onSuccess: () => {
+      if (caseId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId] });
+        queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'uploads'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
+      }
+      toast({
+        title: "Succesvol geüpload",
+        description: "Het document is toegevoegd aan het dossier en wordt geanalyseerd",
+      });
+      setUploadingLetterId(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Upload mislukt",
+        description: "Er is een fout opgetreden bij het uploaden naar het dossier",
+        variant: "destructive",
+      });
+      setUploadingLetterId(null);
+    },
+  });
+
+  const handleUploadToDossier = (letter: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!letter.pdfStorageKey) {
+      toast({
+        title: "Geen PDF beschikbaar",
+        description: "Dit document heeft geen PDF versie om te uploaden",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setUploadingLetterId(letter.id);
+    uploadToDossierMutation.mutate({ 
+      pdfStorageKey: letter.pdfStorageKey,
+      letterId: letter.id,
+      createdAt: letter.createdAt
+    });
   };
 
   if (authLoading || casesLoading) {
@@ -363,6 +437,22 @@ export default function Letters() {
                                 >
                                   <Download className="h-4 w-4" />
                                 </Button>
+                                {letter.pdfStorageKey && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={(e) => handleUploadToDossier(letter, e)}
+                                    disabled={uploadingLetterId === letter.id}
+                                    data-testid={`button-upload-to-dossier-${index}`}
+                                    title="Upload naar dossier"
+                                  >
+                                    {uploadingLetterId === letter.id ? (
+                                      <Clock className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Upload className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                )}
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -405,6 +495,27 @@ export default function Letters() {
                               <Download className="h-4 w-4 mr-2" />
                               Download
                             </Button>
+                            {letter.pdfStorageKey && (
+                              <Button 
+                                onClick={(e) => handleUploadToDossier(letter, e)}
+                                variant="outline"
+                                className="flex-1"
+                                data-testid={`button-upload-dialog-${letter.id}`}
+                                disabled={uploadingLetterId === letter.id}
+                              >
+                                {uploadingLetterId === letter.id ? (
+                                  <>
+                                    <Clock className="h-4 w-4 mr-2 animate-spin" />
+                                    Uploaden...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    Upload naar dossier
+                                  </>
+                                )}
+                              </Button>
+                            )}
                             <Button 
                               onClick={(e) => handleDeleteLetter(letter.id, e)}
                               variant="destructive"
