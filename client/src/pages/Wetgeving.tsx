@@ -73,17 +73,22 @@ export default function Wetgeving() {
 
   const searchMutation = useMutation({
     mutationFn: async () => {
-      if (!searchQuery.trim()) {
+      const queryToSearch = searchQuery.trim();
+      if (!queryToSearch) {
         throw new Error('Voer een zoekvraag in');
       }
 
       const response = await apiRequest('POST', '/api/wetgeving/search', {
-        query: searchQuery,
+        query: queryToSearch,
         topK: 15
       });
       
       const data = await response.json();
-      return { results: data.results || [], totalResults: data.totalResults || 0 };
+      return { 
+        results: data.results || [], 
+        totalResults: data.totalResults || 0,
+        usedQuery: queryToSearch
+      };
     },
     onSuccess: async (data: any) => {
       setSearchResults(data.results);
@@ -92,7 +97,7 @@ export default function Wetgeving() {
         try {
           await apiRequest('PATCH', `/api/wetgeving/${currentCase.id}/save-search`, {
             results: data.results,
-            query: searchQuery
+            query: data.usedQuery
           });
           
           queryClient.invalidateQueries({ 
@@ -142,7 +147,11 @@ export default function Wetgeving() {
       });
       
       const searchData = await searchResponse.json();
-      return { results: searchData.results || [], totalResults: searchData.totalResults || 0 };
+      return { 
+        results: searchData.results || [], 
+        totalResults: searchData.totalResults || 0,
+        generatedQuery: queryData.query
+      };
     },
     onSuccess: async (data: any) => {
       setSearchResults(data.results);
@@ -151,7 +160,7 @@ export default function Wetgeving() {
         try {
           await apiRequest('PATCH', `/api/wetgeving/${currentCase.id}/save-search`, {
             results: data.results,
-            query: searchQuery
+            query: data.generatedQuery
           });
           
           queryClient.invalidateQueries({ 
