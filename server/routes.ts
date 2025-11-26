@@ -8185,6 +8185,318 @@ Genereer een JSON response met:
     }
   });
 
+  // Generate AI-powered specific regulation and article suggestions from case analysis
+  app.post('/api/wetgeving/generate-articles', async (req, res) => {
+    try {
+      const { caseId } = req.body;
+      
+      if (!caseId) {
+        return res.status(400).json({ error: 'Case ID is required' });
+      }
+
+      // Fetch case data
+      const [caseData] = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
+      if (!caseData) {
+        return res.status(404).json({ error: 'Case not found' });
+      }
+
+      // Fetch latest analysis with legal advice
+      const analysisRecords = await db
+        .select()
+        .from(analyses)
+        .where(eq(analyses.caseId, caseId))
+        .orderBy(desc(analyses.createdAt));
+
+      // Find analysis with legal advice OR succesKansAnalysis
+      const latestAnalysis = analysisRecords.find(a => 
+        a.legalAdviceJson !== null || a.succesKansAnalysis !== null
+      );
+      
+      if (!latestAnalysis) {
+        return res.status(404).json({ error: 'Geen analyse gevonden voor deze zaak. Voer eerst een analyse uit.' });
+      }
+      
+      console.log(`📋 Generating specific article suggestions for case ${caseId}`);
+
+      // Build context from available analysis data
+      let contextParts: string[] = [];
+      
+      // Add legal advice if available
+      if (latestAnalysis.legalAdviceJson) {
+        const legalAdvice: any = latestAnalysis.legalAdviceJson;
+        contextParts.push(
+          legalAdvice.het_geschil || '',
+          legalAdvice.de_feiten || '',
+          legalAdvice.juridische_duiding || '',
+          legalAdvice.samenvatting_advies || ''
+        );
+      }
+      
+      // Add succesKansAnalysis if available
+      if (latestAnalysis.succesKansAnalysis) {
+        const rkos: any = latestAnalysis.succesKansAnalysis;
+        if (rkos.applicable_laws?.length > 0) {
+          contextParts.push(`Toepasselijke wetten: ${rkos.applicable_laws.join(', ')}`);
+        }
+        if (rkos.legal_basis) {
+          contextParts.push(`Juridische grondslag: ${rkos.legal_basis}`);
+        }
+        if (rkos.strengths?.length > 0) {
+          contextParts.push(`Sterke punten: ${rkos.strengths.join('; ')}`);
+        }
+      }
+      
+      // Add case description
+      if (caseData.description) {
+        contextParts.push(`Zaakbeschrijving: ${caseData.description}`);
+      }
+
+      const analysisText = contextParts.filter(Boolean).join('\n\n');
+
+      if (!analysisText.trim()) {
+        return res.status(400).json({ error: 'Geen analyse inhoud beschikbaar' });
+      }
+
+      // Generate article suggestions using OpenAI
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      console.log('🤖 Generating specific article suggestions using AI...');
+      console.log(`📄 Analysis context length: ${analysisText.length} chars`);
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `Je bent een Nederlandse juridische expert gespecialiseerd in het identificeren van relevante wetsartikelen.
+
+Je taak is om op basis van een juridische analyse specifieke wetsartikelen te identificeren die onderzocht moeten worden.
+
+Analyseer de analyse zorgvuldig en identificeer:
+1. Welke specifieke wetsartikelen expliciet worden genoemd
+2. Welke wetsartikelen impliciet relevant zijn op basis van de juridische concepten
+3. Welke wetboeken en regelingen betrokken zijn
+
+BELANGRIJK:
+- Noem altijd de volledige naam van de regeling (bijv. "Burgerlijk Wetboek Boek 7" niet "BW7")
+- Gebruik het artikelnummer formaat zoals gebruikt in de wet (bijv. "7:201" voor huurrecht, "6:74" voor verbintenissenrecht)
+- Maximaal 5 artikelen suggereren, focus op de meest relevante
+- Geef bij elk artikel een korte uitleg waarom het relevant is
+
+Genereer een JSON response met:
+{
+  "articles": [
+    {
+      "regulation": "Volledige naam van de regeling (bijv. 'Burgerlijk Wetboek Boek 7')",
+      "articleNumber": "Artikelnummer (bijv. '7:201' of '204')",
+      "reason": "Korte uitleg waarom dit artikel relevant is"
+    }
+  ],
+  "explanation": "Algemene toelichting over de gekozen artikelen"
+}`
+          },
+          {
+            role: "user",
+            content: `Analyseer de volgende juridische analyse en identificeer de meest relevante wetsartikelen die specifiek opgezocht moeten worden:\n\n${analysisText}`
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 1500,
+        response_format: { type: "json_object" }
+      });
+
+      const responseContent = response.choices[0].message.content;
+      if (!responseContent) {
+        throw new Error('AI returned empty response');
+      }
+
+      let parsedResponse;
+      try {
+        parsedResponse = JSON.parse(responseContent);
+      } catch (e) {
+        console.error('❌ Failed to parse JSON response:', responseContent);
+        throw new Error('AI returned invalid JSON. Please try again.');
+      }
+
+      const articles = Array.isArray(parsedResponse.articles) 
+        ? parsedResponse.articles 
+        : [];
+      const explanation = parsedResponse.explanation || '';
+
+      if (articles.length === 0) {
+        throw new Error('AI did not identify any specific articles. Please try again.');
+      }
+
+      console.log(`✅ Generated ${articles.length} article suggestions`);
+      articles.forEach((art: any, idx: number) => {
+        console.log(`   ${idx + 1}. ${art.regulation} art. ${art.articleNumber}`);
+      });
+
+      res.json({
+        articles,
+        explanation,
+        caseTitle: caseData.title
+      });
+
+    } catch (error: any) {
+      console.error('Error generating article suggestions:', error);
+      res.status(500).json({ 
+        error: error.message || 'Failed to generate article suggestions' 
+      });
+    }
+  });
+
+  // Search for specific legislation articles by regulation and article number
+  app.post('/api/wetgeving/search-article', async (req, res) => {
+    try {
+      const { regulation, articleNumber, topK = 200 } = req.body;
+      
+      if (!regulation || typeof regulation !== 'string') {
+        return res.status(400).json({ error: 'Regelingnaam is verplicht' });
+      }
+      
+      if (!articleNumber || typeof articleNumber !== 'string') {
+        return res.status(400).json({ error: 'Artikelnummer is verplicht' });
+      }
+
+      console.log(`📜 SPECIFIC ARTICLE SEARCH`);
+      console.log(`📚 Regulation: "${regulation}"`);
+      console.log(`📖 Article: "${articleNumber}"`);
+      
+      // Parse article number - handle formats like "art. 7:800", "7:201", "91", etc.
+      // For BW articles: "7:800" means Book 7, Article 800
+      // For other laws: "6" or "91" is just the article number
+      let articleNumClean = articleNumber.replace(/^art\.?\s*/i, '').trim();
+      let bookNumber: string | null = null;
+      let articleOnly: string = articleNumClean;
+      
+      // Check if format is "book:article" (e.g., "7:800", "6:74")
+      const colonMatch = articleNumClean.match(/^(\d+):(\d+)$/);
+      if (colonMatch) {
+        bookNumber = colonMatch[1];
+        articleOnly = colonMatch[2];
+        console.log(`📖 Parsed as Book ${bookNumber}, Article ${articleOnly}`);
+      }
+      
+      // Build search text for semantic search
+      const searchText = bookNumber 
+        ? `${regulation} Boek ${bookNumber} artikel ${articleOnly}`
+        : `${regulation} artikel ${articleOnly}`;
+      
+      console.log(`🔍 Search text: "${searchText}"`);
+      
+      // Search with scoreThreshold 0 to get ALL possible matches, then filter client-side
+      const results = await searchVectors({
+        text: searchText,
+        topK: topK,
+        scoreThreshold: 0, // Get all results, filter later
+        namespace: 'laws-current'
+      });
+
+      console.log(`📊 Initial search returned ${results.length} results`);
+
+      // Filter results to match:
+      // 1. Exact article number match
+      // 2. Regulation title contains our search terms
+      // 3. is_current = true (only current versions)
+      const regulationLower = regulation.toLowerCase();
+      const regulationWords = regulationLower.split(/\s+/).filter(w => w.length > 2);
+      
+      const filteredResults = results.filter((result: any) => {
+        const resultArticle = String(result.metadata?.article_number || '');
+        const resultTitle = String(result.metadata?.title || '').toLowerCase();
+        const isCurrent = result.metadata?.is_current !== false;
+        
+        // Must be current version
+        if (!isCurrent) return false;
+        
+        // Article number must match exactly
+        const articleMatches = resultArticle === articleOnly;
+        
+        // Regulation title must contain key words from search
+        // For "Burgerlijk Wetboek Boek 7", check if title contains these words
+        const titleMatches = regulationWords.some(word => resultTitle.includes(word));
+        
+        // If book number specified, title should contain "boek X"
+        const bookMatches = !bookNumber || resultTitle.includes(`boek ${bookNumber}`);
+        
+        return articleMatches && titleMatches && bookMatches;
+      });
+
+      console.log(`📊 Filtered to ${filteredResults.length} matching articles (exact match)`);
+
+      // If no exact matches, try a looser match
+      let finalResults = filteredResults;
+      if (filteredResults.length === 0) {
+        console.log('⚠️ No exact matches, trying fuzzy match...');
+        finalResults = results.filter((result: any) => {
+          const resultArticle = String(result.metadata?.article_number || '');
+          const resultTitle = String(result.metadata?.title || '').toLowerCase();
+          const isCurrent = result.metadata?.is_current !== false;
+          
+          if (!isCurrent) return false;
+          
+          // Check if article number contains or is contained by search
+          const articleMatches = resultArticle.includes(articleOnly) || 
+                                articleOnly.includes(resultArticle);
+          
+          // At least one regulation word matches
+          const titleMatches = regulationWords.some(word => resultTitle.includes(word));
+          
+          return articleMatches && titleMatches;
+        });
+        console.log(`📊 Fuzzy match found ${finalResults.length} results`);
+      }
+
+      // Sort by chunk_index to get article leden in order
+      finalResults.sort((a: any, b: any) => {
+        const chunkA = a.metadata?.chunk_index || 0;
+        const chunkB = b.metadata?.chunk_index || 0;
+        return chunkA - chunkB;
+      });
+
+      // Format results for legislation display
+      const formattedResults = finalResults.map((result: any, idx: number) => ({
+        id: result.id,
+        rank: idx + 1,
+        score: result.score,
+        scorePercent: (result.score * 100).toFixed(1) + '%',
+        bwbId: result.metadata?.bwb_id || (result.metadata as any)?.bwbId,
+        title: result.metadata?.title,
+        articleNumber: result.metadata?.article_number || (result.metadata as any)?.articleNumber,
+        paragraphNumber: result.metadata?.paragraph_number || (result.metadata as any)?.paragraphNumber,
+        sectionTitle: result.metadata?.section_title || (result.metadata as any)?.sectionTitle,
+        validFrom: result.metadata?.valid_from || (result.metadata as any)?.validFrom,
+        validTo: result.metadata?.valid_to || (result.metadata as any)?.validTo,
+        isCurrent: result.metadata?.is_current ?? (result.metadata as any)?.isCurrent ?? true,
+        text: result.text || (result.metadata as any)?.text,
+        chunkIndex: result.metadata?.chunk_index,
+        citatie: result.metadata?.article_number 
+          ? `art. ${result.metadata.article_number} ${result.metadata?.title || ''}`
+          : result.metadata?.title || 'Onbekend artikel',
+        bronUrl: result.metadata?.bwb_id 
+          ? `https://wetten.overheid.nl/${result.metadata.bwb_id}`
+          : null
+      }));
+
+      res.json({
+        regulation,
+        articleNumber,
+        parsedArticle: { bookNumber, articleOnly },
+        results: formattedResults,
+        totalResults: formattedResults.length,
+        namespace: 'laws-current'
+      });
+
+    } catch (error: any) {
+      console.error('Error in specific article search:', error);
+      res.status(500).json({ 
+        error: error.message || 'Fout bij zoeken naar specifiek artikel' 
+      });
+    }
+  });
+
   // Get saved wetgeving data for a case
   app.get('/api/wetgeving/:caseId', async (req, res) => {
     try {

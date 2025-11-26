@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { ArrowLeft, Search, Trash2, Sparkles, BookOpen, ExternalLink, Loader2, ChevronDown, ChevronUp, Scale, BookText } from "lucide-react";
+import { ArrowLeft, Search, Trash2, Sparkles, BookOpen, ExternalLink, Loader2, ChevronDown, ChevronUp, Scale, BookText, FileText, Plus, X } from "lucide-react";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,16 +29,31 @@ interface LegislationResult {
   bronUrl?: string | null;
 }
 
+interface ArticleSuggestion {
+  regulation: string;
+  articleNumber: string;
+  reason: string;
+}
+
 export default function Wetgeving() {
   const { isLoading: authLoading } = useAuth();
   const currentCase = useActiveCase();
   const { toast } = useToast();
   
+  // Term search state
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<LegislationResult[]>([]);
-  const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set());
+  const [termResults, setTermResults] = useState<LegislationResult[]>([]);
+  const [expandedTermResults, setExpandedTermResults] = useState<Set<string>>(new Set());
   const [mentionedArticles, setMentionedArticles] = useState<string[]>([]);
   const [legalConcepts, setLegalConcepts] = useState<string[]>([]);
+
+  // Specific article search state
+  const [regulation, setRegulation] = useState("");
+  const [articleNumber, setArticleNumber] = useState("");
+  const [articleResults, setArticleResults] = useState<LegislationResult[]>([]);
+  const [expandedArticleResults, setExpandedArticleResults] = useState<Set<string>>(new Set());
+  const [articleSuggestions, setArticleSuggestions] = useState<ArticleSuggestion[]>([]);
+  const [aiExplanation, setAiExplanation] = useState("");
 
   const { data: savedData, isLoading: savedDataLoading } = useQuery({
     queryKey: ['/api/wetgeving', currentCase?.id],
@@ -51,7 +66,7 @@ export default function Wetgeving() {
 
   useEffect(() => {
     if (savedData?.searchResults) {
-      setSearchResults(savedData.searchResults);
+      setTermResults(savedData.searchResults);
     }
     if (savedData?.savedQuery) {
       setSearchQuery(savedData.savedQuery);
@@ -71,6 +86,7 @@ export default function Wetgeving() {
     }
   });
 
+  // Term search mutation
   const searchMutation = useMutation({
     mutationFn: async () => {
       const queryToSearch = searchQuery.trim();
@@ -91,7 +107,7 @@ export default function Wetgeving() {
       };
     },
     onSuccess: async (data: any) => {
-      setSearchResults(data.results);
+      setTermResults(data.results);
       
       if (currentCase?.id) {
         try {
@@ -122,6 +138,7 @@ export default function Wetgeving() {
     }
   });
 
+  // AI term search mutation
   const autoSearchMutation = useMutation({
     mutationFn: async () => {
       if (!currentCase?.id) {
@@ -154,7 +171,7 @@ export default function Wetgeving() {
       };
     },
     onSuccess: async (data: any) => {
-      setSearchResults(data.results);
+      setTermResults(data.results);
       
       if (currentCase?.id) {
         try {
@@ -185,7 +202,106 @@ export default function Wetgeving() {
     }
   });
 
-  const clearResultsMutation = useMutation({
+  // Specific article search mutation
+  const articleSearchMutation = useMutation({
+    mutationFn: async () => {
+      if (!regulation.trim() || !articleNumber.trim()) {
+        throw new Error('Vul zowel regeling als artikelnummer in');
+      }
+
+      const response = await apiRequest('POST', '/api/wetgeving/search-article', {
+        regulation: regulation.trim(),
+        articleNumber: articleNumber.trim(),
+        topK: 50
+      });
+      
+      const data = await response.json();
+      return { 
+        results: data.results || [], 
+        totalResults: data.totalResults || 0
+      };
+    },
+    onSuccess: (data: any) => {
+      setArticleResults(data.results);
+      
+      toast({
+        title: "Artikel gevonden",
+        description: `${data.totalResults} artikelleden gevonden`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout bij zoeken",
+        description: error.message || "Kon artikel niet vinden",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // AI article suggestions mutation
+  const generateArticlesMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentCase?.id) {
+        throw new Error('Geen actieve zaak geselecteerd');
+      }
+
+      if (!hasAnalysis) {
+        throw new Error('Genereer eerst een analyse op de Analyse pagina');
+      }
+
+      const response = await apiRequest('POST', '/api/wetgeving/generate-articles', {
+        caseId: currentCase.id
+      });
+      
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      setArticleSuggestions(data.articles || []);
+      setAiExplanation(data.explanation || '');
+      
+      toast({
+        title: "Artikelen geïdentificeerd",
+        description: `${data.articles?.length || 0} relevante artikelen gevonden`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout bij genereren",
+        description: error.message || "Kon geen artikelen identificeren",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Search from suggestion
+  const searchFromSuggestion = async (suggestion: ArticleSuggestion) => {
+    setRegulation(suggestion.regulation);
+    setArticleNumber(suggestion.articleNumber);
+    
+    try {
+      const response = await apiRequest('POST', '/api/wetgeving/search-article', {
+        regulation: suggestion.regulation,
+        articleNumber: suggestion.articleNumber,
+        topK: 50
+      });
+      
+      const data = await response.json();
+      setArticleResults(data.results || []);
+      
+      toast({
+        title: "Artikel gevonden",
+        description: `${data.totalResults || 0} artikelleden gevonden`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Fout bij zoeken",
+        description: error.message || "Kon artikel niet vinden",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const clearTermResults = useMutation({
     mutationFn: async () => {
       if (!currentCase?.id) {
         throw new Error('Geen actieve zaak geselecteerd');
@@ -199,7 +315,7 @@ export default function Wetgeving() {
       return true;
     },
     onSuccess: () => {
-      setSearchResults([]);
+      setTermResults([]);
       setSearchQuery('');
       setMentionedArticles([]);
       setLegalConcepts([]);
@@ -210,7 +326,7 @@ export default function Wetgeving() {
       
       toast({
         title: "Resultaten gewist",
-        description: "Alle zoekresultaten zijn verwijderd",
+        description: "Zoekresultaten zijn verwijderd",
       });
     },
     onError: (error: any) => {
@@ -251,8 +367,8 @@ export default function Wetgeving() {
     );
   }
 
-  const toggleExpanded = (resultId: string) => {
-    setExpandedResults(prev => {
+  const toggleExpandedTerm = (resultId: string) => {
+    setExpandedTermResults(prev => {
       const newSet = new Set(prev);
       if (newSet.has(resultId)) {
         newSet.delete(resultId);
@@ -263,8 +379,106 @@ export default function Wetgeving() {
     });
   };
 
+  const toggleExpandedArticle = (resultId: string) => {
+    setExpandedArticleResults(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(resultId)) {
+        newSet.delete(resultId);
+      } else {
+        newSet.add(resultId);
+      }
+      return newSet;
+    });
+  };
+
+  const ResultCard = ({ 
+    result, 
+    index, 
+    expanded, 
+    onToggle, 
+    testIdPrefix 
+  }: { 
+    result: LegislationResult; 
+    index: number; 
+    expanded: boolean; 
+    onToggle: () => void;
+    testIdPrefix: string;
+  }) => (
+    <div 
+      className="border rounded-lg p-4 bg-muted/30 space-y-3"
+      data-testid={`${testIdPrefix}-${index}`}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge className="font-medium">
+          #{result.rank}
+        </Badge>
+        {result.articleNumber && (
+          <Badge variant="secondary" className="font-mono text-xs">
+            Art. {result.articleNumber}
+          </Badge>
+        )}
+        {result.title && (
+          <Badge variant="outline" className="text-xs max-w-xs truncate">
+            <BookText className="h-3 w-3 mr-1 flex-shrink-0" />
+            {result.title}
+          </Badge>
+        )}
+        <Badge variant="outline" className="text-xs ml-auto">
+          Score: {result.scorePercent}
+        </Badge>
+      </div>
+
+      {result.citatie && (
+        <p className="text-sm font-medium text-foreground">
+          {result.citatie}
+        </p>
+      )}
+
+      {result.text && (
+        <div className="text-sm space-y-2">
+          <p className={`text-muted-foreground whitespace-pre-wrap ${!expanded ? 'line-clamp-4' : ''}`}>
+            {result.text}
+          </p>
+          
+          {result.text.length > 300 && (
+            <button
+              onClick={onToggle}
+              className="inline-flex items-center text-sm text-primary hover:underline pt-1"
+              data-testid={`button-toggle-${testIdPrefix}-${index}`}
+            >
+              {expanded ? (
+                <>
+                  <ChevronUp className="h-3 w-3 mr-1" />
+                  Minder tonen
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-3 w-3 mr-1" />
+                  Lees verder
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      )}
+
+      {result.bronUrl && (
+        <a
+          href={result.bronUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center text-sm text-primary hover:underline"
+          data-testid={`button-view-source-${testIdPrefix}-${index}`}
+        >
+          <ExternalLink className="h-3 w-3 mr-1" />
+          Bekijk op wetten.overheid.nl
+        </a>
+      )}
+    </div>
+  );
+
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
       <Button variant="ghost" asChild className="mb-4" data-testid="button-back-to-analysis">
         <Link href="/analysis">
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -279,230 +493,318 @@ export default function Wetgeving() {
         </p>
       </div>
 
-      {(mentionedArticles.length > 0 || legalConcepts.length > 0) && (
-        <Card className="mb-6" data-testid="card-ai-suggestions">
+      {/* Two-column search panels */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Left panel: Term search */}
+        <Card data-testid="card-term-search">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Sparkles className="h-5 w-5" />
-              AI Suggesties
+            <CardTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5" />
+              Zoeken op termen
             </CardTitle>
+            <CardDescription>
+              Zoek met zoektermen of juridische concepten
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {mentionedArticles.length > 0 && (
-              <div>
-                <p className="text-sm font-medium mb-2">Genoemde artikelen:</p>
-                <div className="flex flex-wrap gap-2">
-                  {mentionedArticles.map((article, idx) => (
-                    <Badge key={idx} variant="secondary" className="text-xs">
-                      <BookText className="h-3 w-3 mr-1" />
-                      {article}
-                    </Badge>
-                  ))}
-                </div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Bijv. 'huurovereenkomst gebreken'"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && searchMutation.mutate()}
+                className="flex-1"
+                data-testid="input-search-query"
+              />
+              <Button
+                onClick={() => searchMutation.mutate()}
+                disabled={searchMutation.isPending || !searchQuery.trim()}
+                data-testid="button-search"
+              >
+                {searchMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => autoSearchMutation.mutate()}
+                disabled={autoSearchMutation.isPending || !hasAnalysis}
+                className="flex-1"
+                data-testid="button-auto-search"
+              >
+                {autoSearchMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Genereren...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    AI Zoeken
+                  </>
+                )}
+              </Button>
+              
+              {termResults.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => clearTermResults.mutate()}
+                  disabled={clearTermResults.isPending}
+                  data-testid="button-clear-term-results"
+                >
+                  {clearTermResults.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
+            </div>
+            
+            {!hasAnalysis && (
+              <p className="text-xs text-muted-foreground">
+                <Sparkles className="h-3 w-3 inline mr-1" />
+                Voer eerst een analyse uit voor AI zoeken
+              </p>
+            )}
+
+            {/* AI suggestions for term search */}
+            {(mentionedArticles.length > 0 || legalConcepts.length > 0) && (
+              <div className="border-t pt-4 space-y-3">
+                {mentionedArticles.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium mb-1">Genoemde artikelen:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {mentionedArticles.map((article, idx) => (
+                        <Badge key={idx} variant="secondary" className="text-xs">
+                          {article}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {legalConcepts.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium mb-1">Juridische concepten:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {legalConcepts.map((concept, idx) => (
+                        <Badge key={idx} variant="outline" className="text-xs">
+                          {concept}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-            {legalConcepts.length > 0 && (
-              <div>
-                <p className="text-sm font-medium mb-2">Juridische concepten:</p>
-                <div className="flex flex-wrap gap-2">
-                  {legalConcepts.map((concept, idx) => (
-                    <Badge key={idx} variant="outline" className="text-xs">
-                      <Scale className="h-3 w-3 mr-1" />
-                      {concept}
-                    </Badge>
+          </CardContent>
+        </Card>
+
+        {/* Right panel: Specific article search */}
+        <Card data-testid="card-article-search">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Zoeken op artikel
+            </CardTitle>
+            <CardDescription>
+              Zoek specifieke regelingen en artikelen
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                placeholder="Regeling (bijv. Burgerlijk Wetboek Boek 7)"
+                value={regulation}
+                onChange={(e) => setRegulation(e.target.value)}
+                data-testid="input-regulation"
+              />
+              <Input
+                placeholder="Artikel (bijv. 7:201)"
+                value={articleNumber}
+                onChange={(e) => setArticleNumber(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && articleSearchMutation.mutate()}
+                data-testid="input-article-number"
+              />
+            </div>
+            
+            <div className="flex gap-2">
+              <Button
+                onClick={() => articleSearchMutation.mutate()}
+                disabled={articleSearchMutation.isPending || !regulation.trim() || !articleNumber.trim()}
+                className="flex-1"
+                data-testid="button-search-article"
+              >
+                {articleSearchMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Zoeken...
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-4 w-4 mr-2" />
+                    Zoek artikel
+                  </>
+                )}
+              </Button>
+              
+              {articleResults.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {
+                    setArticleResults([]);
+                    setRegulation('');
+                    setArticleNumber('');
+                  }}
+                  data-testid="button-clear-article-results"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+
+            <Button
+              variant="outline"
+              onClick={() => generateArticlesMutation.mutate()}
+              disabled={generateArticlesMutation.isPending || !hasAnalysis}
+              className="w-full"
+              data-testid="button-generate-articles"
+            >
+              {generateArticlesMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Identificeren...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  AI Artikelen identificeren
+                </>
+              )}
+            </Button>
+
+            {!hasAnalysis && (
+              <p className="text-xs text-muted-foreground">
+                <Sparkles className="h-3 w-3 inline mr-1" />
+                Voer eerst een analyse uit voor AI identificatie
+              </p>
+            )}
+
+            {/* AI article suggestions */}
+            {articleSuggestions.length > 0 && (
+              <div className="border-t pt-4 space-y-3">
+                <p className="text-xs font-medium">AI Gesuggereerde artikelen:</p>
+                {aiExplanation && (
+                  <p className="text-xs text-muted-foreground">{aiExplanation}</p>
+                )}
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {articleSuggestions.map((suggestion, idx) => (
+                    <div 
+                      key={idx} 
+                      className="flex items-start gap-2 p-2 bg-muted/50 rounded-md text-xs"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{suggestion.regulation}</p>
+                        <p className="text-muted-foreground">Art. {suggestion.articleNumber}</p>
+                        <p className="text-muted-foreground mt-1 line-clamp-2">{suggestion.reason}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => searchFromSuggestion(suggestion)}
+                        className="shrink-0"
+                        data-testid={`button-search-suggestion-${idx}`}
+                      >
+                        <Search className="h-3 w-3" />
+                      </Button>
+                    </div>
                   ))}
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
-      )}
+      </div>
 
-      <Card className="mb-6" data-testid="card-search">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Zoeken in wetgeving
-          </CardTitle>
-          <CardDescription>
-            Zoek naar relevante wetsartikelen uit het Burgerlijk Wetboek en andere Nederlandse wetgeving
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Bijv. 'huurovereenkomst gebreken onderhoud' of 'artikel 7:204 BW'"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && searchMutation.mutate()}
-              className="flex-1"
-              data-testid="input-search-query"
-            />
-            <Button
-              onClick={() => searchMutation.mutate()}
-              disabled={searchMutation.isPending || !searchQuery.trim()}
-              data-testid="button-search"
-            >
-              {searchMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Zoeken...
-                </>
-              ) : (
-                <>
-                  <Search className="h-4 w-4 mr-2" />
-                  Zoeken
-                </>
-              )}
-            </Button>
-          </div>
-          
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => autoSearchMutation.mutate()}
-              disabled={autoSearchMutation.isPending || !hasAnalysis}
-              className="flex-1"
-              data-testid="button-auto-search"
-            >
-              {autoSearchMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Genereren...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Genereer zoekopdracht met AI
-                </>
-              )}
-            </Button>
-            
-            {searchResults.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => clearResultsMutation.mutate()}
-                disabled={clearResultsMutation.isPending}
-                data-testid="button-clear-results"
-              >
-                {clearResultsMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Wissen
-                  </>
-                )}
-              </Button>
+      {/* Two-column results */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left column: Term search results */}
+        <Card data-testid="card-term-results">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <BookOpen className="h-5 w-5" />
+              Resultaten: Termen
+            </CardTitle>
+            <CardDescription>
+              {termResults.length} artikelen gevonden
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {termResults.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Search className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                <p className="text-sm">Geen resultaten</p>
+                <p className="text-xs">Zoek met termen of AI</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+                {termResults.map((result, index) => (
+                  <ResultCard
+                    key={result.id}
+                    result={result}
+                    index={index}
+                    expanded={expandedTermResults.has(result.id)}
+                    onToggle={() => toggleExpandedTerm(result.id)}
+                    testIdPrefix="result-term"
+                  />
+                ))}
+              </div>
             )}
-          </div>
-          
-          {!hasAnalysis && (
-            <p className="text-sm text-muted-foreground">
-              <Sparkles className="h-4 w-4 inline mr-1" />
-              Voer eerst een analyse uit om automatisch een zoekopdracht te laten genereren
-            </p>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <Card data-testid="card-results">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
-            Zoekresultaten
-          </CardTitle>
-          <CardDescription>
-            {searchResults.length} wetsartikelen gevonden
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {searchResults.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <BookOpen className="h-16 w-16 mx-auto mb-4 opacity-20" />
-              <p className="text-lg mb-2">Nog geen resultaten</p>
-              <p className="text-sm">Gebruik de zoekfunctie om relevante wetsartikelen te vinden</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {searchResults.map((result, index) => (
-                <div 
-                  key={result.id} 
-                  className="border rounded-lg p-4 bg-muted/30 space-y-3"
-                  data-testid={`result-legislation-${index}`}
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge className="font-medium">
-                      #{result.rank}
-                    </Badge>
-                    {result.articleNumber && (
-                      <Badge variant="secondary" className="font-mono text-xs">
-                        Art. {result.articleNumber}
-                      </Badge>
-                    )}
-                    {result.title && (
-                      <Badge variant="outline" className="text-xs max-w-xs truncate">
-                        <BookText className="h-3 w-3 mr-1 flex-shrink-0" />
-                        {result.title}
-                      </Badge>
-                    )}
-                    <Badge variant="outline" className="text-xs ml-auto">
-                      Score: {result.scorePercent}
-                    </Badge>
-                  </div>
-
-                  {result.citatie && (
-                    <p className="text-sm font-medium text-foreground">
-                      {result.citatie}
-                    </p>
-                  )}
-
-                  {result.text && (
-                    <div className="text-sm space-y-2">
-                      <p className={`text-muted-foreground whitespace-pre-wrap ${!expandedResults.has(result.id) ? 'line-clamp-4' : ''}`}>
-                        {result.text}
-                      </p>
-                      
-                      {result.text.length > 300 && (
-                        <button
-                          onClick={() => toggleExpanded(result.id)}
-                          className="inline-flex items-center text-sm text-primary hover:underline pt-1"
-                          data-testid={`button-toggle-${index}`}
-                        >
-                          {expandedResults.has(result.id) ? (
-                            <>
-                              <ChevronUp className="h-3 w-3 mr-1" />
-                              Minder tonen
-                            </>
-                          ) : (
-                            <>
-                              <ChevronDown className="h-3 w-3 mr-1" />
-                              Lees verder
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {result.bronUrl && (
-                    <a
-                      href={result.bronUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center text-sm text-primary hover:underline"
-                      data-testid={`button-view-source-${index}`}
-                    >
-                      <ExternalLink className="h-3 w-3 mr-1" />
-                      Bekijk op wetten.overheid.nl
-                    </a>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {/* Right column: Article search results */}
+        <Card data-testid="card-article-results">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <FileText className="h-5 w-5" />
+              Resultaten: Artikelen
+            </CardTitle>
+            <CardDescription>
+              {articleResults.length} artikelleden gevonden
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {articleResults.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                <p className="text-sm">Geen resultaten</p>
+                <p className="text-xs">Zoek specifieke artikelen</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+                {articleResults.map((result, index) => (
+                  <ResultCard
+                    key={result.id}
+                    result={result}
+                    index={index}
+                    expanded={expandedArticleResults.has(result.id)}
+                    onToggle={() => toggleExpandedArticle(result.id)}
+                    testIdPrefix="result-article"
+                  />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
