@@ -8380,7 +8380,11 @@ Genereer een JSON response met:
       }
       
       // Build search text for semantic search
-      const searchText = bookNumber 
+      // Check if regulation already contains "Boek X" to avoid duplication
+      const regulationLowerCase = regulation.toLowerCase();
+      const alreadyHasBook = bookNumber && regulationLowerCase.includes(`boek ${bookNumber}`);
+      
+      const searchText = (bookNumber && !alreadyHasBook)
         ? `${regulation} Boek ${bookNumber} artikel ${articleOnly}`
         : `${regulation} artikel ${articleOnly}`;
       

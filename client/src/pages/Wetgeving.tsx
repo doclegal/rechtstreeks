@@ -27,6 +27,14 @@ interface LegislationResult {
   text?: string;
   citatie?: string;
   bronUrl?: string | null;
+  sourceQuery?: string;
+}
+
+interface ArticleEntry {
+  id: string;
+  regulation: string;
+  articleNumber: string;
+  reason?: string;
 }
 
 interface ArticleSuggestion {
@@ -47,13 +55,14 @@ export default function Wetgeving() {
   const [mentionedArticles, setMentionedArticles] = useState<string[]>([]);
   const [legalConcepts, setLegalConcepts] = useState<string[]>([]);
 
-  // Specific article search state
-  const [regulation, setRegulation] = useState("");
-  const [articleNumber, setArticleNumber] = useState("");
+  // Multiple article entries state
+  const [articleEntries, setArticleEntries] = useState<ArticleEntry[]>([
+    { id: '1', regulation: '', articleNumber: '' }
+  ]);
   const [articleResults, setArticleResults] = useState<LegislationResult[]>([]);
   const [expandedArticleResults, setExpandedArticleResults] = useState<Set<string>>(new Set());
-  const [articleSuggestions, setArticleSuggestions] = useState<ArticleSuggestion[]>([]);
   const [aiExplanation, setAiExplanation] = useState("");
+  const [isSearchingAll, setIsSearchingAll] = useState(false);
 
   const { data: savedData, isLoading: savedDataLoading } = useQuery({
     queryKey: ['/api/wetgeving', currentCase?.id],
@@ -85,6 +94,26 @@ export default function Wetgeving() {
       );
     }
   });
+
+  // Add new article entry
+  const addArticleEntry = () => {
+    const newId = Date.now().toString();
+    setArticleEntries([...articleEntries, { id: newId, regulation: '', articleNumber: '' }]);
+  };
+
+  // Remove article entry
+  const removeArticleEntry = (id: string) => {
+    if (articleEntries.length > 1) {
+      setArticleEntries(articleEntries.filter(entry => entry.id !== id));
+    }
+  };
+
+  // Update article entry
+  const updateArticleEntry = (id: string, field: 'regulation' | 'articleNumber', value: string) => {
+    setArticleEntries(articleEntries.map(entry => 
+      entry.id === id ? { ...entry, [field]: value } : entry
+    ));
+  };
 
   // Term search mutation
   const searchMutation = useMutation({
@@ -202,43 +231,56 @@ export default function Wetgeving() {
     }
   });
 
-  // Specific article search mutation
-  const articleSearchMutation = useMutation({
-    mutationFn: async () => {
-      if (!regulation.trim() || !articleNumber.trim()) {
-        throw new Error('Vul zowel regeling als artikelnummer in');
-      }
-
-      const response = await apiRequest('POST', '/api/wetgeving/search-article', {
-        regulation: regulation.trim(),
-        articleNumber: articleNumber.trim(),
-        topK: 50
-      });
-      
-      const data = await response.json();
-      return { 
-        results: data.results || [], 
-        totalResults: data.totalResults || 0
-      };
-    },
-    onSuccess: (data: any) => {
-      setArticleResults(data.results);
-      
+  // Search all article entries
+  const searchAllArticles = async () => {
+    const validEntries = articleEntries.filter(e => e.regulation.trim() && e.articleNumber.trim());
+    
+    if (validEntries.length === 0) {
       toast({
-        title: "Artikel gevonden",
-        description: `${data.totalResults} artikelleden gevonden`,
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Fout bij zoeken",
-        description: error.message || "Kon artikel niet vinden",
+        title: "Geen artikelen om te zoeken",
+        description: "Vul tenminste één regeling en artikelnummer in",
         variant: "destructive",
       });
+      return;
     }
-  });
 
-  // AI article suggestions mutation - auto-fill first article and search
+    setIsSearchingAll(true);
+    const allResults: LegislationResult[] = [];
+
+    try {
+      for (const entry of validEntries) {
+        const response = await apiRequest('POST', '/api/wetgeving/search-article', {
+          regulation: entry.regulation.trim(),
+          articleNumber: entry.articleNumber.trim(),
+          topK: 200
+        });
+        
+        const data = await response.json();
+        const resultsWithSource = (data.results || []).map((r: LegislationResult) => ({
+          ...r,
+          sourceQuery: `${entry.regulation} art. ${entry.articleNumber}`
+        }));
+        allResults.push(...resultsWithSource);
+      }
+
+      setArticleResults(allResults);
+      
+      toast({
+        title: "Zoeken voltooid",
+        description: `${allResults.length} artikelleden gevonden voor ${validEntries.length} artikel(en)`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Fout bij zoeken",
+        description: error.message || "Kon artikelen niet vinden",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearchingAll(false);
+    }
+  };
+
+  // AI article suggestions mutation - auto-fill ALL articles and search
   const generateArticlesMutation = useMutation({
     mutationFn: async () => {
       if (!currentCase?.id) {
@@ -256,43 +298,61 @@ export default function Wetgeving() {
       return response.json();
     },
     onSuccess: async (data: any) => {
-      const articles = data.articles || [];
-      setArticleSuggestions(articles);
+      const articles: ArticleSuggestion[] = data.articles || [];
       setAiExplanation(data.explanation || '');
       
-      // Auto-fill first suggestion and search immediately
-      if (articles.length > 0) {
-        const firstArticle = articles[0];
-        setRegulation(firstArticle.regulation);
-        setArticleNumber(firstArticle.articleNumber);
-        
-        // Automatically search for the first article
-        try {
-          const searchResponse = await apiRequest('POST', '/api/wetgeving/search-article', {
-            regulation: firstArticle.regulation,
-            articleNumber: firstArticle.articleNumber,
-            topK: 200
-          });
-          
-          const searchData = await searchResponse.json();
-          setArticleResults(searchData.results || []);
-          
-          toast({
-            title: "Artikelen geïdentificeerd en gezocht",
-            description: `${articles.length} artikelen gevonden, ${searchData.totalResults || 0} resultaten voor eerste artikel`,
-          });
-        } catch (error) {
-          console.error('Error searching first article:', error);
-          toast({
-            title: "Artikelen geïdentificeerd",
-            description: `${articles.length} relevante artikelen gevonden. Klik om te zoeken.`,
-          });
-        }
-      } else {
+      if (articles.length === 0) {
         toast({
           title: "Geen artikelen gevonden",
           description: "AI kon geen specifieke artikelen identificeren",
         });
+        return;
+      }
+
+      // Create article entries for all AI suggestions
+      const newEntries: ArticleEntry[] = articles.map((art, idx) => ({
+        id: `ai-${Date.now()}-${idx}`,
+        regulation: art.regulation,
+        articleNumber: art.articleNumber,
+        reason: art.reason
+      }));
+
+      setArticleEntries(newEntries);
+
+      // Search for ALL articles
+      setIsSearchingAll(true);
+      const allResults: LegislationResult[] = [];
+
+      try {
+        for (const entry of newEntries) {
+          const response = await apiRequest('POST', '/api/wetgeving/search-article', {
+            regulation: entry.regulation.trim(),
+            articleNumber: entry.articleNumber.trim(),
+            topK: 200
+          });
+          
+          const searchData = await response.json();
+          const resultsWithSource = (searchData.results || []).map((r: LegislationResult) => ({
+            ...r,
+            sourceQuery: `${entry.regulation} art. ${entry.articleNumber}`
+          }));
+          allResults.push(...resultsWithSource);
+        }
+
+        setArticleResults(allResults);
+        
+        toast({
+          title: "Artikelen geïdentificeerd en gezocht",
+          description: `${articles.length} artikelen gevonden, ${allResults.length} resultaten totaal`,
+        });
+      } catch (error) {
+        console.error('Error searching articles:', error);
+        toast({
+          title: "Artikelen geïdentificeerd",
+          description: `${articles.length} artikelen ingevuld. Er was een fout bij het zoeken.`,
+        });
+      } finally {
+        setIsSearchingAll(false);
       }
     },
     onError: (error: any) => {
@@ -303,34 +363,6 @@ export default function Wetgeving() {
       });
     }
   });
-
-  // Search from suggestion
-  const searchFromSuggestion = async (suggestion: ArticleSuggestion) => {
-    setRegulation(suggestion.regulation);
-    setArticleNumber(suggestion.articleNumber);
-    
-    try {
-      const response = await apiRequest('POST', '/api/wetgeving/search-article', {
-        regulation: suggestion.regulation,
-        articleNumber: suggestion.articleNumber,
-        topK: 50
-      });
-      
-      const data = await response.json();
-      setArticleResults(data.results || []);
-      
-      toast({
-        title: "Artikel gevonden",
-        description: `${data.totalResults || 0} artikelleden gevonden`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Fout bij zoeken",
-        description: error.message || "Kon artikel niet vinden",
-        variant: "destructive",
-      });
-    }
-  };
 
   const clearTermResults = useMutation({
     mutationFn: async () => {
@@ -368,6 +400,12 @@ export default function Wetgeving() {
       });
     }
   });
+
+  const clearArticleResults = () => {
+    setArticleResults([]);
+    setArticleEntries([{ id: '1', regulation: '', articleNumber: '' }]);
+    setAiExplanation('');
+  };
 
   if (authLoading || savedDataLoading) {
     return (
@@ -452,6 +490,11 @@ export default function Wetgeving() {
           <Badge variant="outline" className="text-xs max-w-xs truncate">
             <BookText className="h-3 w-3 mr-1 flex-shrink-0" />
             {result.title}
+          </Badge>
+        )}
+        {result.sourceQuery && (
+          <Badge variant="default" className="text-xs bg-primary/20 text-primary">
+            {result.sourceQuery}
           </Badge>
         )}
         <Badge variant="outline" className="text-xs ml-auto">
@@ -637,42 +680,73 @@ export default function Wetgeving() {
           </CardContent>
         </Card>
 
-        {/* Right panel: Specific article search */}
+        {/* Right panel: Multiple article search */}
         <Card data-testid="card-article-search">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Zoeken op artikel
+              Zoeken op artikelen
             </CardTitle>
             <CardDescription>
               Zoek specifieke regelingen en artikelen
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-2">
-              <Input
-                placeholder="Regeling (bijv. Burgerlijk Wetboek Boek 7)"
-                value={regulation}
-                onChange={(e) => setRegulation(e.target.value)}
-                data-testid="input-regulation"
-              />
-              <Input
-                placeholder="Artikel (bijv. 7:201)"
-                value={articleNumber}
-                onChange={(e) => setArticleNumber(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && articleSearchMutation.mutate()}
-                data-testid="input-article-number"
-              />
+            {/* Multiple article entry fields */}
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              {articleEntries.map((entry, idx) => (
+                <div key={entry.id} className="flex gap-2 items-start">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <Input
+                      placeholder="Regeling (bijv. Burgerlijk Wetboek Boek 7)"
+                      value={entry.regulation}
+                      onChange={(e) => updateArticleEntry(entry.id, 'regulation', e.target.value)}
+                      className="text-sm"
+                      data-testid={`input-regulation-${idx}`}
+                    />
+                    <Input
+                      placeholder="Artikel (bijv. 7:201)"
+                      value={entry.articleNumber}
+                      onChange={(e) => updateArticleEntry(entry.id, 'articleNumber', e.target.value)}
+                      className="text-sm"
+                      data-testid={`input-article-${idx}`}
+                    />
+                  </div>
+                  {articleEntries.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeArticleEntry(entry.id)}
+                      className="shrink-0 h-9 w-9"
+                      data-testid={`button-remove-entry-${idx}`}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
             </div>
+
+            {/* Add more button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={addArticleEntry}
+              className="w-full text-xs"
+              data-testid="button-add-entry"
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Artikel toevoegen
+            </Button>
             
             <div className="flex gap-2">
               <Button
-                onClick={() => articleSearchMutation.mutate()}
-                disabled={articleSearchMutation.isPending || !regulation.trim() || !articleNumber.trim()}
+                onClick={searchAllArticles}
+                disabled={isSearchingAll || articleEntries.every(e => !e.regulation.trim() || !e.articleNumber.trim())}
                 className="flex-1"
-                data-testid="button-search-article"
+                data-testid="button-search-all-articles"
               >
-                {articleSearchMutation.isPending ? (
+                {isSearchingAll ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Zoeken...
@@ -680,7 +754,7 @@ export default function Wetgeving() {
                 ) : (
                   <>
                     <Search className="h-4 w-4 mr-2" />
-                    Zoek artikel
+                    Zoek alle artikelen
                   </>
                 )}
               </Button>
@@ -689,11 +763,7 @@ export default function Wetgeving() {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => {
-                    setArticleResults([]);
-                    setRegulation('');
-                    setArticleNumber('');
-                  }}
+                  onClick={clearArticleResults}
                   data-testid="button-clear-article-results"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -704,14 +774,14 @@ export default function Wetgeving() {
             <Button
               variant="outline"
               onClick={() => generateArticlesMutation.mutate()}
-              disabled={generateArticlesMutation.isPending || !hasAnalysis}
+              disabled={generateArticlesMutation.isPending || isSearchingAll || !hasAnalysis}
               className="w-full"
               data-testid="button-generate-articles"
             >
-              {generateArticlesMutation.isPending ? (
+              {generateArticlesMutation.isPending || isSearchingAll ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Identificeren...
+                  {generateArticlesMutation.isPending ? 'Identificeren...' : 'Zoeken...'}
                 </>
               ) : (
                 <>
@@ -728,36 +798,10 @@ export default function Wetgeving() {
               </p>
             )}
 
-            {/* AI article suggestions */}
-            {articleSuggestions.length > 0 && (
-              <div className="border-t pt-4 space-y-3">
-                <p className="text-xs font-medium">AI Gesuggereerde artikelen:</p>
-                {aiExplanation && (
-                  <p className="text-xs text-muted-foreground">{aiExplanation}</p>
-                )}
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {articleSuggestions.map((suggestion, idx) => (
-                    <div 
-                      key={idx} 
-                      className="flex items-start gap-2 p-2 bg-muted/50 rounded-md text-xs"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{suggestion.regulation}</p>
-                        <p className="text-muted-foreground">Art. {suggestion.articleNumber}</p>
-                        <p className="text-muted-foreground mt-1 line-clamp-2">{suggestion.reason}</p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => searchFromSuggestion(suggestion)}
-                        className="shrink-0"
-                        data-testid={`button-search-suggestion-${idx}`}
-                      >
-                        <Search className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+            {/* AI explanation */}
+            {aiExplanation && (
+              <div className="border-t pt-3">
+                <p className="text-xs text-muted-foreground">{aiExplanation}</p>
               </div>
             )}
           </CardContent>
@@ -823,7 +867,7 @@ export default function Wetgeving() {
               <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
                 {articleResults.map((result, index) => (
                   <ResultCard
-                    key={result.id}
+                    key={`${result.id}-${index}`}
                     result={result}
                     index={index}
                     expanded={expandedArticleResults.has(result.id)}
