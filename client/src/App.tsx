@@ -30,6 +30,7 @@ import QnA from "@/pages/QnA";
 import ResolvePage from "@/pages/ResolvePage";
 import InvitationAccept from "@/pages/InvitationAccept";
 import Jurisprudentie from "@/pages/Jurisprudentie";
+import Wetgeving from "@/pages/Wetgeving";
 import Updates from "@/pages/Updates";
 import RequireAuth from "@/components/RequireAuth";
 
@@ -43,6 +44,7 @@ const protectedRoutes = [
   { path: "/analyse-details", component: JuridischeAnalyseDetails },
   { path: "/volledige-analyse", component: VolledigeAnalyseDetails },
   { path: "/jurisprudentie", component: Jurisprudentie },
+  { path: "/wetgeving", component: Wetgeving },
   { path: "/analysis/:id/full", component: FullAnalysis },
   { path: "/letters", component: Letters },
   { path: "/resolve", component: ResolvePage },
