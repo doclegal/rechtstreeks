@@ -238,7 +238,7 @@ export default function Wetgeving() {
     }
   });
 
-  // AI article suggestions mutation
+  // AI article suggestions mutation - auto-fill first article and search
   const generateArticlesMutation = useMutation({
     mutationFn: async () => {
       if (!currentCase?.id) {
@@ -255,14 +255,45 @@ export default function Wetgeving() {
       
       return response.json();
     },
-    onSuccess: (data: any) => {
-      setArticleSuggestions(data.articles || []);
+    onSuccess: async (data: any) => {
+      const articles = data.articles || [];
+      setArticleSuggestions(articles);
       setAiExplanation(data.explanation || '');
       
-      toast({
-        title: "Artikelen geïdentificeerd",
-        description: `${data.articles?.length || 0} relevante artikelen gevonden`,
-      });
+      // Auto-fill first suggestion and search immediately
+      if (articles.length > 0) {
+        const firstArticle = articles[0];
+        setRegulation(firstArticle.regulation);
+        setArticleNumber(firstArticle.articleNumber);
+        
+        // Automatically search for the first article
+        try {
+          const searchResponse = await apiRequest('POST', '/api/wetgeving/search-article', {
+            regulation: firstArticle.regulation,
+            articleNumber: firstArticle.articleNumber,
+            topK: 200
+          });
+          
+          const searchData = await searchResponse.json();
+          setArticleResults(searchData.results || []);
+          
+          toast({
+            title: "Artikelen geïdentificeerd en gezocht",
+            description: `${articles.length} artikelen gevonden, ${searchData.totalResults || 0} resultaten voor eerste artikel`,
+          });
+        } catch (error) {
+          console.error('Error searching first article:', error);
+          toast({
+            title: "Artikelen geïdentificeerd",
+            description: `${articles.length} relevante artikelen gevonden. Klik om te zoeken.`,
+          });
+        }
+      } else {
+        toast({
+          title: "Geen artikelen gevonden",
+          description: "AI kon geen specifieke artikelen identificeren",
+        });
+      }
     },
     onError: (error: any) => {
       toast({
