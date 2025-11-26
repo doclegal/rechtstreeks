@@ -8385,56 +8385,37 @@ Genereer een JSON response met:
       }
       
       // Build search text for semantic search
-      // Check if regulation already contains "Boek X" to avoid duplication
+      // Use a more natural query that includes the full article reference
+      // This works better with semantic search than just formal references
       const regulationLowerCase = regulation.toLowerCase();
       const alreadyHasBook = bookNumber && regulationLowerCase.includes(`boek ${bookNumber}`);
       
-      const searchText = (bookNumber && !alreadyHasBook)
-        ? `${regulation} Boek ${bookNumber} artikel ${articleOnly}`
-        : `${regulation} artikel ${articleOnly}`;
+      // Build multiple search queries to try
+      const fullArticleRef = bookNumber ? `${bookNumber}:${articleOnly}` : articleOnly;
+      const searchText = `artikel ${fullArticleRef} ${regulation} wetgeving arbeidsrecht`;
       
       console.log(`🔍 Search text: "${searchText}"`);
       
-      // Build metadata filter for exact article matching
-      const metadataFilter: any = {
-        is_current: { $eq: true }
-      };
-      
-      // Add article number filter if we have a clean article number
-      if (articleOnly) {
-        // Try both string and numeric formats
-        metadataFilter.$or = [
-          { article_number: { $eq: articleOnly } },
-          { article_number: { $eq: parseInt(articleOnly, 10) } }
-        ];
-      }
-      
-      console.log(`🔍 Metadata filter:`, JSON.stringify(metadataFilter));
-      
-      // First try: search with metadata filter for exact article
-      let results = await searchVectors({
+      // Use semantic search without filters, then filter client-side
+      // This is more reliable than metadata filters which may not work properly
+      const results = await searchVectors({
         text: searchText,
         topK: topK,
         scoreThreshold: 0,
-        namespace: 'laws-current',
-        filter: metadataFilter
+        namespace: 'laws-current'
       });
 
-      console.log(`📊 Filtered search returned ${results.length} results`);
-      
-      // If no results with filter, try broader search without article filter
-      if (results.length === 0) {
-        console.log('⚠️ No results with metadata filter, trying broader search...');
-        results = await searchVectors({
-          text: `${regulation} artikel ${articleOnly} wetboek`,
-          topK: topK,
-          scoreThreshold: 0,
-          namespace: 'laws-current'
-        });
-        console.log(`📊 Broader search returned ${results.length} results`);
-      }
-
       console.log(`📊 Initial search returned ${results.length} results`);
+      
+      // Debug: Log first few article numbers to see format
+      if (results.length > 0) {
+        const sampleArticles = results.slice(0, 5).map((r: any) => ({
+          article: r.metadata?.article_number,
+          title: r.metadata?.title?.substring(0, 40),
+          isCurrent: r.metadata?.is_current
+        }));
+        console.log(`📊 Sample article numbers:`, JSON.stringify(sampleArticles));
+      }
 
       // Filter results to match:
       // 1. Exact article number match
