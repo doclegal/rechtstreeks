@@ -8435,27 +8435,34 @@ Genereer een JSON response met:
 
       console.log(`📊 Filtered to ${filteredResults.length} matching articles (exact match)`);
 
-      // If no exact matches, try a looser match
+      // If no exact matches, try searching with the full article reference in text
       let finalResults = filteredResults;
       if (filteredResults.length === 0) {
-        console.log('⚠️ No exact matches, trying fuzzy match...');
+        console.log('⚠️ No exact matches found for article ' + articleOnly);
+        
+        // Try matching by text content containing the article reference
         finalResults = results.filter((result: any) => {
-          const resultArticle = String(result.metadata?.article_number || '');
           const resultTitle = String(result.metadata?.title || '').toLowerCase();
+          const resultText = String(result.text || result.metadata?.text || '').toLowerCase();
           const isCurrent = result.metadata?.is_current !== false;
           
           if (!isCurrent) return false;
           
-          // Check if article number contains or is contained by search
-          const articleMatches = resultArticle.includes(articleOnly) || 
-                                articleOnly.includes(resultArticle);
+          // Book number must match in title
+          if (bookNumber && !resultTitle.includes(`boek ${bookNumber}`)) return false;
           
           // At least one regulation word matches
           const titleMatches = regulationWords.some(word => resultTitle.includes(word));
+          if (!titleMatches) return false;
           
-          return articleMatches && titleMatches;
+          // Check if the text mentions the specific article number
+          const articleRef = `artikel ${articleOnly}`;
+          const textMentionsArticle = resultText.includes(articleRef);
+          
+          return textMentionsArticle;
         });
-        console.log(`📊 Fuzzy match found ${finalResults.length} results`);
+        
+        console.log(`📊 Text search found ${finalResults.length} results mentioning article ${articleOnly}`);
       }
 
       // Sort by chunk_index to get article leden in order
