@@ -8395,13 +8395,44 @@ Genereer een JSON response met:
       
       console.log(`🔍 Search text: "${searchText}"`);
       
-      // Search with scoreThreshold 0 to get ALL possible matches, then filter client-side
-      const results = await searchVectors({
+      // Build metadata filter for exact article matching
+      const metadataFilter: any = {
+        is_current: { $eq: true }
+      };
+      
+      // Add article number filter if we have a clean article number
+      if (articleOnly) {
+        // Try both string and numeric formats
+        metadataFilter.$or = [
+          { article_number: { $eq: articleOnly } },
+          { article_number: { $eq: parseInt(articleOnly, 10) } }
+        ];
+      }
+      
+      console.log(`🔍 Metadata filter:`, JSON.stringify(metadataFilter));
+      
+      // First try: search with metadata filter for exact article
+      let results = await searchVectors({
         text: searchText,
         topK: topK,
-        scoreThreshold: 0, // Get all results, filter later
-        namespace: 'laws-current'
+        scoreThreshold: 0,
+        namespace: 'laws-current',
+        filter: metadataFilter
       });
+
+      console.log(`📊 Filtered search returned ${results.length} results`);
+      
+      // If no results with filter, try broader search without article filter
+      if (results.length === 0) {
+        console.log('⚠️ No results with metadata filter, trying broader search...');
+        results = await searchVectors({
+          text: `${regulation} artikel ${articleOnly} wetboek`,
+          topK: topK,
+          scoreThreshold: 0,
+          namespace: 'laws-current'
+        });
+        console.log(`📊 Broader search returned ${results.length} results`);
+      }
 
       console.log(`📊 Initial search returned ${results.length} results`);
 
