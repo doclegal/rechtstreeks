@@ -1,0 +1,241 @@
+
+📚 Pinecone Wetgeving Zoekgids voor Juridische Geschilanalyse
+1. Pinecone Configuratie
+Index Host:
+
+rechtstreeks-dmacda9.svc.aped-4627-b74a.pinecone.io
+
+Namespace voor wetgeving:
+
+laws-current      → Huidige geldende wetgeving
+laws-historic     → Historische versies (toekomstig gebruik)
+
+Embedding Model:
+
+multilingual-e5-large    (via Pinecone Inference API)
+
+2. Beschikbare Metadata per Vector
+Veld	Type	Beschrijving	Voorbeeld
+text	string	Volledige artikeltekst (max 30.000 tekens)	"Het huwelijk wordt voltrokken..."
+bwb_id	string	Unieke BWB-identificatie	"BWBR0002656"
+title	string	Naam van de wet/regeling	"Burgerlijk Wetboek Boek 1"
+type	string	Altijd "wetgeving"	"wetgeving"
+is_current	boolean	Of dit de huidige versie is	true
+article_number	string	Artikelnummer	"1:88" of "7.1"
+paragraph_number	string	Paragraaf/lid nummer	"2"
+section_title	string	Titel van de afdeling/titel	"Algemene bepalingen"
+valid_from	string	Ingangsdatum (ISO)	"2025-07-05"
+valid_to	string/null	Einddatum (ISO) of null indien geldig	null
+chunk_index	number	Positie in de wet	42
+total_chunks	number	Totaal aantal chunks in wet	696
+3. Zoeken naar Relevante Artikelen
+A. Basis Query (Dense Vector Search)
+import { Pinecone } from '@pinecone-database/pinecone';
+const pc = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
+const index = pc.index('rechtstreeks', 'https://rechtstreeks-dmacda9.svc.aped-4627-b74a.pinecone.io');
+async function zoekWetgeving(geschilBeschrijving: string) {
+  // Genereer embedding voor de zoekvraag
+  const embeddingResponse = await pc.inference.embed(
+    'multilingual-e5-large',
+    [geschilBeschrijving],
+    { inputType: 'query' }
+  );
+  
+  // Zoek in de laws-current namespace
+  const results = await index.namespace('laws-current').query({
+    vector: embeddingResponse.data[0].values,
+    topK: 10,
+    includeMetadata: true,
+  });
+  
+  return results.matches;
+}
+
+B. Hybrid Search (Aanbevolen voor Juridische Termen)
+Gebruik hybrid search met sparse vectors voor betere resultaten bij specifieke juridische termen:
+
+/**
+ * DJB2 hash functie - EXACT dezelfde als in de ingestie tool
+ */
+function djb2Hash(str: string): number {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i);
+  }
+  return Math.abs(hash) >>> 0;
+}
+/**
+ * Genereer sparse vector - EXACT dezelfde tokenisatie als ingestie
+ */
+function generateSparseVector(text: string): { indices: number[]; values: number[] } {
+  const tokens = text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .split(/[^a-z0-9\u00C0-\u024F]+/i)
+    .filter(t => t.length >= 3);
+  
+  if (tokens.length === 0) return { indices: [], values: [] };
+  
+  const termFreq = new Map<string, number>();
+  tokens.forEach(token => termFreq.set(token, (termFreq.get(token) || 0) + 1));
+  
+  const maxFreq = Math.max(...termFreq.values());
+  const entries = Array.from(termFreq.entries()).map(([term, freq]) => ({
+    index: djb2Hash(term),
+    value: freq / maxFreq
+  }));
+  
+  entries.sort((a, b) => a.index - b.index);
+  
+  return {
+    indices: entries.map(e => e.index),
+    values: entries.map(e => e.value)
+  };
+}
+// Hybrid search uitvoeren
+async function hybridZoekWetgeving(geschilBeschrijving: string) {
+  const embeddingResponse = await pc.inference.embed(
+    'multilingual-e5-large',
+    [geschilBeschrijving],
+    { inputType: 'query' }
+  );
+  
+  const sparseVector = generateSparseVector(geschilBeschrijving);
+  
+  const results = await index.namespace('laws-current').query({
+    vector: embeddingResponse.data[0].values,
+    sparseVector: sparseVector,
+    topK: 10,
+    includeMetadata: true,
+  });
+  
+  return results.matches;
+}
+
+C. Gefilterde Zoekopdrachten
+// Zoek alleen in specifieke wet (bijv. Burgerlijk Wetboek Boek 7)
+const results = await index.namespace('laws-current').query({
+  vector: queryEmbedding,
+  topK: 10,
+  includeMetadata: true,
+  filter: {
+    bwb_id: { $eq: 'BWBR0005290' }  // BW Boek 7
+  }
+});
+// Zoek in meerdere wetten
+const results = await index.namespace('laws-current').query({
+  vector: queryEmbedding,
+  topK: 10,
+  includeMetadata: true,
+  filter: {
+    bwb_id: { $in: ['BWBR0002656', 'BWBR0005290', 'BWBR0001840'] }
+  }
+});
+// Zoek naar specifiek artikelnummer
+const results = await index.namespace('laws-current').query({
+  vector: queryEmbedding,
+  topK: 5,
+  includeMetadata: true,
+  filter: {
+    article_number: { $eq: '7:201' }
+  }
+});
+
+4. Verwijzen naar Gevonden Artikelen
+Standaard Juridische Citatiestijl
+function formatWetgevingReferentie(match: any): string {
+  const meta = match.metadata;
+  
+  // Basis referentie: "art. X Titel Wet"
+  let referentie = '';
+  
+  if (meta.article_number) {
+    referentie = `art. ${meta.article_number} ${meta.title}`;
+  } else {
+    referentie = meta.title;
+  }
+  
+  // Optioneel: voeg sectie toe
+  if (meta.section_title) {
+    referentie += ` (${meta.section_title})`;
+  }
+  
+  return referentie;
+}
+// Voorbeelden output:
+// "art. 7:201 Burgerlijk Wetboek Boek 7"
+// "art. 1:88 Burgerlijk Wetboek Boek 1 (Rechten en verplichtingen van echtgenoten)"
+
+Volledige Referentie met BWB-link
+function formatVolleReferentie(match: any): object {
+  const meta = match.metadata;
+  
+  return {
+    citatie: `art. ${meta.article_number || '?'} ${meta.title}`,
+    bwbId: meta.bwb_id,
+    artikelNummer: meta.article_number,
+    sectie: meta.section_title,
+    geldigVanaf: meta.valid_from,
+    isHuidig: meta.is_current,
+    bronUrl: `https://wetten.overheid.nl/${meta.bwb_id}`,
+    artikelUrl: meta.article_number 
+      ? `https://wetten.overheid.nl/${meta.bwb_id}/BWBR????/artikel/${meta.article_number}`
+      : null,
+    relevantieScore: match.score,
+    tekst: meta.text
+  };
+}
+
+5. Praktisch Voorbeeld: Geschilanalyse
+async function analyseerGeschil(geschilBeschrijving: string) {
+  console.log('Analyseren van geschil...');
+  
+  // 1. Zoek relevante wetgeving
+  const matches = await hybridZoekWetgeving(geschilBeschrijving);
+  
+  // 2. Formateer resultaten
+  const relevanteArtikelen = matches.map((match, idx) => ({
+    rang: idx + 1,
+    score: (match.score * 100).toFixed(1) + '%',
+    referentie: formatWetgevingReferentie(match),
+    bwbId: match.metadata.bwb_id,
+    artikel: match.metadata.article_number,
+    tekst: match.metadata.text?.substring(0, 500) + '...',
+    bronUrl: `https://wetten.overheid.nl/${match.metadata.bwb_id}`
+  }));
+  
+  return relevanteArtikelen;
+}
+// Gebruik:
+const resultaten = await analyseerGeschil(
+  "Huurder weigert de huurprijs te betalen na gebreken aan het gehuurde pand. " +
+  "Verhuurder wil huurovereenkomst ontbinden wegens wanbetaling."
+);
+// Mogelijke output:
+// [
+//   { rang: 1, score: '89.2%', referentie: 'art. 7:206 Burgerlijk Wetboek Boek 7', ... },
+//   { rang: 2, score: '85.1%', referentie: 'art. 7:207 Burgerlijk Wetboek Boek 7', ... },
+//   { rang: 3, score: '82.4%', referentie: 'art. 6:265 Burgerlijk Wetboek Boek 6', ... }
+// ]
+
+6. Belangrijke BWB-IDs voor Civiel Recht
+Wet	BWB-ID
+Burgerlijk Wetboek Boek 1 (Personen- en familierecht)	BWBR0002656
+Burgerlijk Wetboek Boek 2 (Rechtspersonen)	BWBR0003045
+Burgerlijk Wetboek Boek 3 (Vermogensrecht algemeen)	BWBR0005291
+Burgerlijk Wetboek Boek 4 (Erfrecht)	BWBR0002761
+Burgerlijk Wetboek Boek 5 (Zakelijke rechten)	BWBR0005288
+Burgerlijk Wetboek Boek 6 (Verbintenissenrecht)	BWBR0005289
+Burgerlijk Wetboek Boek 7 (Bijzondere overeenkomsten)	BWBR0005290
+Burgerlijk Wetboek Boek 7A (Bijzondere overeenkomsten vervolg)	BWBR0006000
+Burgerlijk Wetboek Boek 8 (Verkeersmiddelen)	BWBR0005034
+Wetboek van Burgerlijke Rechtsvordering	BWBR0001827
+Faillissementswet	BWBR0001860
+Auteurswet	BWBR0001886
+7. Tips voor Optimale Zoekresultaten
+Gebruik specifieke juridische terminologie in je zoekvraag
+Combineer feiten met juridische concepten: "wanbetaling huur ontbinding overeenkomst"
+Filter op relevante wetten als je weet welk rechtsgebied van toepassing is
+Verhoog topK naar 15-20 voor brede analyse, verlaag naar 5 voor specifieke vragen
+Check de score: resultaten met score < 0.5 zijn vaak minder relevant
