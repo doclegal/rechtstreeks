@@ -8100,40 +8100,45 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
       console.log(`📄 Analysis context length: ${analysisText.length} chars`);
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
-            content: `Je bent een Nederlandse juridische expert gespecialiseerd in het vinden van relevante wetgeving.
+            content: `Je bent een ervaren Nederlandse juridische zoekexpert. Je taak is om een KORTE en GERICHTE zoekopdracht te maken voor een vectordatabase met Nederlandse wetgeving.
 
-Je taak is om op basis van een juridische analyse een zoekopdracht te genereren voor het vinden van relevante wetsartikelen in een vectordatabase met Nederlandse wetgeving.
+ANALYSE INSTRUCTIES:
+1. Lees de zaak zorgvuldig en identificeer het KERNPROBLEEM
+2. Bepaal welk rechtsgebied centraal staat (verbintenissen, huur, koop, arbeid, etc.)
+3. Identificeer de juridische concepten die relevant zijn
 
-Analyseer het juridisch advies en de analyse zorgvuldig en identificeer:
-1. Welke wetsartikelen expliciet worden genoemd (bijv. "art. 7:201 BW", "artikel 6:74 BW")
-2. Welke rechtsgebieden relevant zijn (huur, koop, arbeid, etc.)
-3. Welke juridische concepten centraal staan (wanprestatie, ontbinding, schadevergoeding, etc.)
+ZOEKOPDRACHT REGELS (STRIKT):
+- Maximaal 30 woorden
+- ALLEEN juridische termen en concepten
+- GEEN persoonsgegevens (namen, bedrijfsnamen, plaatsen)
+- GEEN wetsartikelnummers (geen "art. 6:74" of "7:201 BW")
+- GEEN datums of bedragen
+- Focus op juridische kernbegrippen die in wetteksten voorkomen
 
-BELANGRIJK:
-- Als er specifieke wetsartikelen worden genoemd, neem deze op in de zoekopdracht
-- Combineer juridische termen met feitelijke omstandigheden
-- Houd rekening met het Nederlandse Burgerlijk Wetboek structuur (Boek 1-8)
-- Noem relevante wetboeken als filter (bijv. "Burgerlijk Wetboek Boek 7" voor huurrecht)
+VOORBEELDEN GOEDE ZOEKOPDRACHTEN:
+- "wanprestatie tekortkoming verbintenis schadevergoeding ontbinding overeenkomst"
+- "huurovereenkomst gebreken onderhoud verhuurder herstelverplichting"
+- "koopovereenkomst non-conformiteit ontbinding dwaling"
 
 Genereer een JSON response met:
 {
-  "query": "De zoekopdracht voor de vectordatabase (max 200 woorden, focus op juridische termen en concepten)",
-  "suggestedFilters": ["Array van wetboek titels om in te zoeken, bijv. 'Burgerlijk Wetboek Boek 7'"],
-  "mentionedArticles": ["Array van specifiek genoemde artikelen, bijv. 'art. 7:201 BW'"],
-  "legalConcepts": ["Array van juridische concepten, bijv. 'huurovereenkomst', 'gebreken', 'ontbinding'"]
+  "query": "Korte zoekopdracht (max 30 woorden, alleen juridische termen)",
+  "suggestedFilters": ["Relevante wetboeken, bijv. 'Burgerlijk Wetboek Boek 6'"],
+  "mentionedArticles": ["Artikelen die in de analyse worden genoemd"],
+  "legalConcepts": ["Kernbegrippen uit de zaak"]
 }`
           },
           {
             role: "user",
-            content: `Analyseer de volgende juridische analyse en genereer een zoekopdracht voor relevante wetgeving:\n\n${analysisText}`
+            content: `Analyseer deze juridische zaak en genereer een korte, gerichte zoekopdracht voor wetgeving. Focus alleen op juridische concepten, geen persoonsgegevens of artikelnummers:\n\n${analysisText}`
           }
         ],
-        temperature: 0.3,
-        max_tokens: 1000,
+        temperature: 0.2,
+        max_tokens: 800,
         response_format: { type: "json_object" }
       });
 
