@@ -8447,34 +8447,64 @@ Genereer een JSON response met:
 
       console.log(`📊 Filtered to ${filteredResults.length} matching articles (exact match)`);
 
-      // If no exact matches, try searching with the full article reference in text
+      // If no exact matches, first check if article exists anywhere in the results
       let finalResults = filteredResults;
       if (filteredResults.length === 0) {
         console.log('⚠️ No exact matches found for article ' + articleOnly);
         
-        // Try matching by text content containing the article reference
-        finalResults = results.filter((result: any) => {
+        // Look for exact article match anywhere in the 200 results (ignoring book filter initially)
+        const anyExactMatch = results.filter((result: any) => {
+          const resultArticle = String(result.metadata?.article_number || '');
           const resultTitle = String(result.metadata?.title || '').toLowerCase();
-          const resultText = String(result.text || result.metadata?.text || '').toLowerCase();
           const isCurrent = result.metadata?.is_current !== false;
           
           if (!isCurrent) return false;
           
-          // Book number must match in title
-          if (bookNumber && !resultTitle.includes(`boek ${bookNumber}`)) return false;
+          // Check for exact article number match
+          if (resultArticle !== articleOnly) return false;
           
-          // At least one regulation word matches
-          const titleMatches = regulationWords.some(word => resultTitle.includes(word));
-          if (!titleMatches) return false;
+          // Must be from Burgerlijk Wetboek
+          const isBW = resultTitle.includes('burgerlijk wetboek');
           
-          // Check if the text mentions the specific article number
-          const articleRef = `artikel ${articleOnly}`;
-          const textMentionsArticle = resultText.includes(articleRef);
-          
-          return textMentionsArticle;
+          return isBW;
         });
         
-        console.log(`📊 Text search found ${finalResults.length} results mentioning article ${articleOnly}`);
+        if (anyExactMatch.length > 0) {
+          console.log(`📊 Found ${anyExactMatch.length} exact article matches in BW`);
+          finalResults = anyExactMatch;
+        } else {
+          // Try matching by text content containing the article reference
+          finalResults = results.filter((result: any) => {
+            const resultTitle = String(result.metadata?.title || '').toLowerCase();
+            const resultText = String(result.text || result.metadata?.text || '').toLowerCase();
+            const isCurrent = result.metadata?.is_current !== false;
+            
+            if (!isCurrent) return false;
+            
+            // Book number must match in title
+            if (bookNumber && !resultTitle.includes(`boek ${bookNumber}`)) return false;
+            
+            // At least one regulation word matches
+            const titleMatches = regulationWords.some(word => resultTitle.includes(word));
+            if (!titleMatches) return false;
+            
+            // Check if the text mentions the specific article number (with word boundaries)
+            const articlePatterns = [
+              `artikel ${articleOnly} `,
+              `artikel ${articleOnly},`,
+              `artikel ${articleOnly}.`,
+              `art. ${articleOnly} `,
+              `art. ${articleOnly},`,
+              `${bookNumber}:${articleOnly} `,
+              `${bookNumber}:${articleOnly},`
+            ];
+            const textMentionsArticle = articlePatterns.some(p => resultText.includes(p));
+            
+            return textMentionsArticle;
+          });
+          
+          console.log(`📊 Text search found ${finalResults.length} results mentioning article ${articleOnly}`);
+        }
       }
 
       // Sort by chunk_index to get article leden in order
@@ -8508,12 +8538,22 @@ Genereer een JSON response met:
           : null
       }));
 
+      // Determine if these are exact matches or related articles
+      const isExactMatch = filteredResults.length > 0;
+      const searchType = isExactMatch ? 'exact' : 'related';
+      
       res.json({
         regulation,
         articleNumber,
         parsedArticle: { bookNumber, articleOnly },
         results: formattedResults,
         totalResults: formattedResults.length,
+        searchType, // 'exact' if article found directly, 'related' if found by reference
+        message: isExactMatch 
+          ? null 
+          : formattedResults.length > 0 
+            ? `Artikel ${articleOnly} niet direct gevonden. Getoond worden artikelen die naar dit artikel verwijzen.`
+            : `Artikel ${articleOnly} niet gevonden in de database.`,
         namespace: 'laws-current'
       });
 
