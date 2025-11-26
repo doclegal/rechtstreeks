@@ -101,37 +101,6 @@ export default function Landing() {
             In simpele stappen zelf je geschil oplossen
           </p>
           
-          {/* Value Proposition Card */}
-          <Card className="mb-8 border-primary/20">
-            <CardContent className="p-8">
-              <div className="max-w-4xl mx-auto space-y-6">
-                <div className="text-lg sm:text-xl leading-relaxed">
-                  <p className="text-muted-foreground mb-2">
-                    Wij zijn <strong className="text-foreground">géén</strong> advocatenkantoor.
-                  </p>
-                  <p className="text-muted-foreground mb-6">
-                    Wij maken openbare juridische bronnen en slimme DIY-tools toegankelijk voor iedereen die zelf zijn recht wil halen zonder dure advocaat.
-                  </p>
-                </div>
-
-                <div className="border-l-4 border-primary pl-6 text-left space-y-3">
-                  <p className="text-foreground font-medium">
-                    Geen juridisch gedoe, geen torenhoge kosten.
-                  </p>
-                  <p className="text-muted-foreground">
-                    Gewoon praktische hulp, duidelijke stappen en slimme ondersteuning bij procedures bij de kantonrechter.
-                  </p>
-                </div>
-
-                <div className="text-lg leading-relaxed">
-                  <p className="text-foreground font-medium">
-                    Met ons platform regel je het <strong className="text-primary">zélf</strong> en schakel je alleen hulp in als jij dat nodig vindt.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
           <div className="grid md:grid-cols-2 gap-8">
             {/* Feature 1: Upload Documents */}
             <Card className="overflow-hidden">
