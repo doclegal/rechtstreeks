@@ -183,6 +183,9 @@ export const analyses = pgTable("analyses", {
   // Jurisprudence search results (10 most relevant judgments from Pinecone)
   jurisprudenceSearchResults: jsonb("jurisprudence_search_results"), // Raw search results [{ecli, title, summary, score, deeplink}]
   
+  // Legislation search results (relevant law articles from Pinecone laws-current namespace)
+  legislationSearchResults: jsonb("legislation_search_results"), // Raw search results [{articleNumber, title, text, score, bronUrl}]
+  
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("idx_analyses_case").on(table.caseId),

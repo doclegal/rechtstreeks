@@ -7950,6 +7950,338 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
     }
   });
 
+  // ============================================
+  // WETGEVING (LEGISLATION) ENDPOINTS
+  // ============================================
+
+  // Search for legislation in Pinecone (laws-current namespace)
+  app.post('/api/wetgeving/search', async (req, res) => {
+    try {
+      const { query, filters, topK = 10 } = req.body;
+      
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ error: 'Search query is required' });
+      }
+
+      console.log(`📜 WETGEVING SEARCH`);
+      console.log(`📝 Query: "${query.substring(0, 100)}..."`);
+      if (filters) {
+        console.log(`📋 Filters:`, JSON.stringify(filters, null, 2));
+      }
+      
+      // Search in laws-current namespace
+      const results = await searchVectors({
+        text: query,
+        filter: filters,
+        topK: topK,
+        scoreThreshold: 0.10,
+        namespace: 'laws-current'
+      });
+
+      console.log(`📊 Found ${results.length} legislation results`);
+
+      // Format results for legislation display
+      const formattedResults = results.map((result, idx) => ({
+        id: result.id,
+        rank: idx + 1,
+        score: result.score,
+        scorePercent: (result.score * 100).toFixed(1) + '%',
+        // Legislation-specific fields
+        bwbId: result.metadata?.bwb_id || (result.metadata as any)?.bwbId,
+        title: result.metadata?.title,
+        articleNumber: result.metadata?.article_number || (result.metadata as any)?.articleNumber,
+        paragraphNumber: result.metadata?.paragraph_number || (result.metadata as any)?.paragraphNumber,
+        sectionTitle: result.metadata?.section_title || (result.metadata as any)?.sectionTitle,
+        validFrom: result.metadata?.valid_from || (result.metadata as any)?.validFrom,
+        validTo: result.metadata?.valid_to || (result.metadata as any)?.validTo,
+        isCurrent: result.metadata?.is_current ?? (result.metadata as any)?.isCurrent ?? true,
+        text: result.text || (result.metadata as any)?.text,
+        // Generate reference
+        citatie: result.metadata?.article_number 
+          ? `art. ${result.metadata.article_number} ${result.metadata?.title || ''}`
+          : result.metadata?.title || 'Onbekend artikel',
+        bronUrl: result.metadata?.bwb_id 
+          ? `https://wetten.overheid.nl/${result.metadata.bwb_id}`
+          : null
+      }));
+
+      res.json({
+        query,
+        results: formattedResults,
+        totalResults: formattedResults.length,
+        namespace: 'laws-current'
+      });
+
+    } catch (error: any) {
+      console.error('Error in wetgeving search:', error);
+      res.status(500).json({ 
+        error: error.message || 'Failed to search legislation' 
+      });
+    }
+  });
+
+  // Generate AI-powered legislation search query from case analysis
+  app.post('/api/wetgeving/generate-query', async (req, res) => {
+    try {
+      const { caseId } = req.body;
+      
+      if (!caseId) {
+        return res.status(400).json({ error: 'Case ID is required' });
+      }
+
+      // Fetch case data
+      const [caseData] = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
+      if (!caseData) {
+        return res.status(404).json({ error: 'Case not found' });
+      }
+
+      // Fetch latest analysis with legal advice
+      const analysisRecords = await db
+        .select()
+        .from(analyses)
+        .where(eq(analyses.caseId, caseId))
+        .orderBy(desc(analyses.createdAt));
+
+      // Find analysis with legal advice OR succesKansAnalysis
+      const latestAnalysis = analysisRecords.find(a => 
+        a.legalAdviceJson !== null || a.succesKansAnalysis !== null
+      );
+      
+      if (!latestAnalysis) {
+        return res.status(404).json({ error: 'Geen analyse gevonden voor deze zaak. Voer eerst een analyse uit.' });
+      }
+      
+      console.log(`📋 Generating legislation search query for case ${caseId}`);
+
+      // Build context from available analysis data
+      let contextParts: string[] = [];
+      
+      // Add legal advice if available
+      if (latestAnalysis.legalAdviceJson) {
+        const legalAdvice: any = latestAnalysis.legalAdviceJson;
+        contextParts.push(
+          legalAdvice.het_geschil || '',
+          legalAdvice.de_feiten || '',
+          legalAdvice.juridische_duiding || '',
+          legalAdvice.samenvatting_advies || ''
+        );
+      }
+      
+      // Add succesKansAnalysis if available
+      if (latestAnalysis.succesKansAnalysis) {
+        const rkos: any = latestAnalysis.succesKansAnalysis;
+        if (rkos.applicable_laws?.length > 0) {
+          contextParts.push(`Toepasselijke wetten: ${rkos.applicable_laws.join(', ')}`);
+        }
+        if (rkos.legal_basis) {
+          contextParts.push(`Juridische grondslag: ${rkos.legal_basis}`);
+        }
+        if (rkos.strengths?.length > 0) {
+          contextParts.push(`Sterke punten: ${rkos.strengths.join('; ')}`);
+        }
+      }
+      
+      // Add case description
+      if (caseData.description) {
+        contextParts.push(`Zaakbeschrijving: ${caseData.description}`);
+      }
+
+      const analysisText = contextParts.filter(Boolean).join('\n\n');
+
+      if (!analysisText.trim()) {
+        return res.status(400).json({ error: 'Geen analyse inhoud beschikbaar' });
+      }
+
+      // Generate search query using OpenAI
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      console.log('🤖 Generating legislation search query using AI...');
+      console.log(`📄 Analysis context length: ${analysisText.length} chars`);
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `Je bent een Nederlandse juridische expert gespecialiseerd in het vinden van relevante wetgeving.
+
+Je taak is om op basis van een juridische analyse een zoekopdracht te genereren voor het vinden van relevante wetsartikelen in een vectordatabase met Nederlandse wetgeving.
+
+Analyseer het juridisch advies en de analyse zorgvuldig en identificeer:
+1. Welke wetsartikelen expliciet worden genoemd (bijv. "art. 7:201 BW", "artikel 6:74 BW")
+2. Welke rechtsgebieden relevant zijn (huur, koop, arbeid, etc.)
+3. Welke juridische concepten centraal staan (wanprestatie, ontbinding, schadevergoeding, etc.)
+
+BELANGRIJK:
+- Als er specifieke wetsartikelen worden genoemd, neem deze op in de zoekopdracht
+- Combineer juridische termen met feitelijke omstandigheden
+- Houd rekening met het Nederlandse Burgerlijk Wetboek structuur (Boek 1-8)
+- Noem relevante wetboeken als filter (bijv. "Burgerlijk Wetboek Boek 7" voor huurrecht)
+
+Genereer een JSON response met:
+{
+  "query": "De zoekopdracht voor de vectordatabase (max 200 woorden, focus op juridische termen en concepten)",
+  "suggestedFilters": ["Array van wetboek titels om in te zoeken, bijv. 'Burgerlijk Wetboek Boek 7'"],
+  "mentionedArticles": ["Array van specifiek genoemde artikelen, bijv. 'art. 7:201 BW'"],
+  "legalConcepts": ["Array van juridische concepten, bijv. 'huurovereenkomst', 'gebreken', 'ontbinding'"]
+}`
+          },
+          {
+            role: "user",
+            content: `Analyseer de volgende juridische analyse en genereer een zoekopdracht voor relevante wetgeving:\n\n${analysisText}`
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 1000,
+        response_format: { type: "json_object" }
+      });
+
+      const responseContent = response.choices[0].message.content;
+      if (!responseContent) {
+        throw new Error('AI returned empty response');
+      }
+
+      let parsedResponse;
+      try {
+        parsedResponse = JSON.parse(responseContent);
+      } catch (e) {
+        console.error('❌ Failed to parse JSON response:', responseContent);
+        throw new Error('AI returned invalid JSON. Please try again.');
+      }
+
+      const generatedQuery = parsedResponse.query || '';
+      const suggestedFilters = Array.isArray(parsedResponse.suggestedFilters) 
+        ? parsedResponse.suggestedFilters 
+        : [];
+      const mentionedArticles = Array.isArray(parsedResponse.mentionedArticles)
+        ? parsedResponse.mentionedArticles
+        : [];
+      const legalConcepts = Array.isArray(parsedResponse.legalConcepts)
+        ? parsedResponse.legalConcepts
+        : [];
+
+      if (!generatedQuery) {
+        throw new Error('AI did not generate a search query. Please try again.');
+      }
+
+      console.log(`✅ Generated legislation query: "${generatedQuery.substring(0, 100)}..."`);
+      console.log(`📚 Suggested filters: ${suggestedFilters.join(', ') || 'none'}`);
+      console.log(`📖 Mentioned articles: ${mentionedArticles.join(', ') || 'none'}`);
+
+      res.json({
+        query: generatedQuery,
+        suggestedFilters,
+        mentionedArticles,
+        legalConcepts,
+        caseTitle: caseData.title
+      });
+
+    } catch (error: any) {
+      console.error('Error generating legislation query:', error);
+      res.status(500).json({ 
+        error: error.message || 'Failed to generate legislation search query' 
+      });
+    }
+  });
+
+  // Get saved wetgeving data for a case
+  app.get('/api/wetgeving/:caseId', async (req, res) => {
+    try {
+      const { caseId } = req.params;
+      
+      if (!caseId) {
+        return res.status(400).json({ error: 'Case ID is required' });
+      }
+
+      // Find latest analysis with wetgeving data
+      const analysisRecords = await db
+        .select()
+        .from(analyses)
+        .where(eq(analyses.caseId, caseId))
+        .orderBy(desc(analyses.createdAt));
+
+      if (!analysisRecords || analysisRecords.length === 0) {
+        return res.json({ searchResults: [], savedQuery: null });
+      }
+
+      // Find latest analysis that has legislation data
+      const latestWithData = analysisRecords.find((a: any) => 
+        a.legislationSearchResults && a.legislationSearchResults !== null
+      );
+
+      if (!latestWithData) {
+        return res.json({ searchResults: [], savedQuery: null });
+      }
+
+      const legislationData = (latestWithData as any).legislationSearchResults || {};
+
+      res.json({
+        searchResults: legislationData.results || [],
+        savedQuery: legislationData.query || null,
+        lastSearchDate: legislationData.searchDate || null
+      });
+
+    } catch (error: any) {
+      console.error('Error fetching wetgeving data:', error);
+      res.status(500).json({ 
+        error: error.message || 'Fout bij ophalen van wetgeving data' 
+      });
+    }
+  });
+
+  // Save wetgeving search results
+  app.patch('/api/wetgeving/:caseId/save-search', async (req, res) => {
+    try {
+      const { caseId } = req.params;
+      const { results, query } = req.body;
+      
+      if (!caseId) {
+        return res.status(400).json({ error: 'Case ID is required' });
+      }
+
+      console.log(`💾 Saving ${results?.length || 0} legislation results for case ${caseId}`);
+
+      // Find the latest analysis for this case
+      const analysisRecords = await db
+        .select()
+        .from(analyses)
+        .where(eq(analyses.caseId, caseId))
+        .orderBy(desc(analyses.createdAt));
+
+      if (!analysisRecords || analysisRecords.length === 0) {
+        return res.status(404).json({ error: 'Geen analyse gevonden voor deze zaak' });
+      }
+
+      const latestAnalysis = analysisRecords[0];
+
+      // Save legislation search results
+      await db
+        .update(analyses)
+        .set({ 
+          legislationSearchResults: {
+            results: results || [],
+            query: query || '',
+            searchDate: new Date().toISOString()
+          }
+        })
+        .where(eq(analyses.id, latestAnalysis.id));
+
+      console.log('✅ Legislation search results saved to database');
+
+      res.json({ 
+        success: true,
+        message: 'Wetgeving zoekresultaten opgeslagen' 
+      });
+
+    } catch (error: any) {
+      console.error('Error saving legislation results:', error);
+      res.status(500).json({ 
+        error: error.message || 'Fout bij opslaan van wetgeving resultaten' 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
