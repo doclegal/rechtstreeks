@@ -27,6 +27,7 @@ import Warranty from "@/pages/Warranty";
 import Dossier from "@/pages/Dossier";
 import Chat from "@/pages/Chat";
 import QnA from "@/pages/QnA";
+import Inbox from "@/pages/Inbox";
 import ResolvePage from "@/pages/ResolvePage";
 import InvitationAccept from "@/pages/InvitationAccept";
 import Jurisprudentie from "@/pages/Jurisprudentie";
@@ -52,6 +53,7 @@ const protectedRoutes = [
   { path: "/dossier", component: Dossier },
   { path: "/chat", component: Chat },
   { path: "/qna", component: QnA },
+  { path: "/inbox", component: Inbox },
   { path: "/edit-case/:id", component: EditCase },
   { path: "/step/:stepId", component: StepView },
   { path: "/warranty", component: Warranty },

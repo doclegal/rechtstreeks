@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { UserCircle, ChevronLeft, X } from "lucide-react";
+import { UserCircle, ChevronLeft, X, MessageCircle, HelpCircle } from "lucide-react";
 import { AskJuristDialog } from "@/components/AskJuristDialog";
 
 export function HelpSidebar() {
@@ -32,6 +33,38 @@ export function HelpSidebar() {
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Chat Link */}
+            <Link
+              href="/chat"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted border border-border transition-colors cursor-pointer"
+              data-testid="link-chat-sidebar"
+            >
+              <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center flex-shrink-0">
+                <MessageCircle className="h-5 w-5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-foreground">Chat</h4>
+                <p className="text-sm text-muted-foreground">AI juridische chatassistent</p>
+              </div>
+            </Link>
+
+            {/* Q&A Link */}
+            <Link
+              href="/qna"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted border border-border transition-colors cursor-pointer"
+              data-testid="link-qna-sidebar"
+            >
+              <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0">
+                <HelpCircle className="h-5 w-5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-foreground">Q&A</h4>
+                <p className="text-sm text-muted-foreground">Veelgestelde vragen over uw zaak</p>
+              </div>
+            </Link>
+
             {/* Vraag een Jurist Card */}
             <div
               className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border-2 border-blue-300 dark:border-blue-700 rounded-lg p-4 cursor-pointer hover:shadow-lg transition-shadow"

@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
-import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle, ArrowLeft, Shield, FileText, FileSearch, Mail, Palette, Briefcase, MessageCircle, Handshake } from "lucide-react";
+import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle, ArrowLeft, Shield, FileText, FileSearch, Mail, Palette, Briefcase, MessageCircle, Handshake, Inbox } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { HelpSidebar } from "@/components/HelpSidebar";
@@ -161,33 +161,16 @@ export default function Layout({ children }: LayoutProps) {
                   Dagvaarding
                 </Link>
                 <div className="h-6 w-px bg-border" />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button 
-                      className={`font-medium transition-colors relative flex items-center gap-2 ${
-                        isActiveRoute('/chat', ['/qna']) || location === '/qna' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                      data-testid="button-help-menu"
-                    >
-                      <HelpCircle className="h-4 w-4" />
-                      Help
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuItem asChild>
-                      <Link href="/chat" data-testid="link-chat-submenu">
-                        <MessageCircle className="mr-2 h-4 w-4" />
-                        Chat
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/qna" data-testid="link-qna-submenu">
-                        <HelpCircle className="mr-2 h-4 w-4" />
-                        Q&A
-                      </Link>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <Link 
+                  href="/inbox" 
+                  className={`font-medium transition-colors flex items-center gap-2 ${
+                    isActiveRoute('/inbox') ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  data-testid="link-inbox"
+                >
+                  <Inbox className="h-4 w-4" />
+                  Inbox
+                </Link>
               </nav>
             </div>
             
@@ -238,15 +221,9 @@ export default function Layout({ children }: LayoutProps) {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/chat" data-testid="link-chat-mobile">
-                      <MessageCircle className="mr-2 h-4 w-4" />
-                      Chat
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/qna" data-testid="link-qna-mobile">
-                      <HelpCircle className="mr-2 h-4 w-4" />
-                      Q&A
+                    <Link href="/inbox" data-testid="link-inbox-mobile">
+                      <Inbox className="mr-2 h-4 w-4" />
+                      Inbox
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
