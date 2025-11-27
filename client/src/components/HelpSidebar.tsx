@@ -105,14 +105,6 @@ export function HelpSidebar() {
               </Button>
             </div>
 
-            {/* Placeholder voor toekomstige content */}
-            <div className="bg-muted/50 rounded-lg p-4 border border-border">
-              <h4 className="font-medium text-foreground mb-2 text-sm">Veelgestelde vragen</h4>
-              <p className="text-xs text-muted-foreground">
-                Binnenkort beschikbaar: snelle antwoorden op veelgestelde vragen.
-              </p>
-            </div>
-
             <div className="bg-muted/50 rounded-lg p-4 border border-border">
               <h4 className="font-medium text-foreground mb-2 text-sm">Tips & Tricks</h4>
               <p className="text-xs text-muted-foreground">
