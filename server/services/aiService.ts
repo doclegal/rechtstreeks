@@ -2574,51 +2574,73 @@ Gebruik duidelijke, begrijpelijke taal zonder juridisch jargon. Focus op de kern
     caseDescription: string;
     claimAmount: string;
     counterpartyName: string;
-    letters: Array<{ briefType: string; createdAt: string; tone: string; html?: string }>;
-    documents: Array<{ filename: string; extractedText?: string; createdAt: string }>;
+    letters: Array<{ briefType: string; createdAt: string; createdAtISO?: string; tone: string; status?: string; html?: string }>;
+    documents: Array<{ filename: string; extractedText?: string; createdAt: string; createdAtISO?: string; documentAnalysis?: any }>;
   }): Promise<{ summary: string; timeline: Array<{ date: string; action: string }>; status: string; nextStep?: string }> {
     try {
-      const systemPrompt = `Je bent een juridische assistent die de stand van zaken van een onderhandeling samenvat.
+      const systemPrompt = `Je bent een juridische assistent die de EXACTE stand van zaken van een onderhandeling samenvat.
 
-Analyseer de gegeven zaak en verstuurde brieven en geef een PRAKTISCHE statussamenvatting.
+Je krijgt een lijst van verstuurde brieven MET hun exacte datums en types, en documenten uit het dossier (die mogelijk reacties van de wederpartij bevatten).
 
-STRUCTUUR VAN DE SAMENVATTING (in deze volgorde):
-1. GESCHIL: Eén zin over wat er aan de hand is (bijv. "Jan heeft een geschil met Bedrijf X over een defect product van €500")
-2. COMMUNICATIE: Welke brieven zijn verstuurd, wat is er als laatste geëist, en is er reactie gekomen van de wederpartij?
-3. WIE IS AAN ZET: Duidelijk aangeven of we wachten op reactie van de wederpartij, of dat de gebruiker zelf actie moet ondernemen
+ANALYSEER ZORGVULDIG:
+1. BRIEVEN: Bekijk elk type brief (INGEBREKESTELLING, LAATSTE_AANMANING, INFORMATIEVERZOEK, etc.) en de exacte datum
+2. DOCUMENTEN: Check of er documenten zijn die reacties van de wederpartij kunnen zijn (kijk naar bestandsnamen en inhoud)
+3. CHRONOLOGIE: Wat is er eerst gestuurd, wat daarna, en is er reactie gekomen?
 
-Bij het bepalen van de status:
-- "in_afwachting": Er is een brief verstuurd en we wachten op reactie van de wederpartij
-- "lopend": Er is correspondentie gaande, beide partijen reageren
-- "geen_reactie": De wederpartij heeft niet gereageerd ondanks herhaalde pogingen
-- "opgelost": Het geschil is opgelost (schikking, betaling, etc.)
-- "geescaleerd": Zaak is doorverwezen naar rechtbank/incasso/deurwaarder
+STRUCTUUR VAN DE SAMENVATTING (3 delen in vloeiende tekst):
+
+DEEL 1 - GESCHIL (1 zin): Wat is het geschil? Noem de wederpartij bij naam.
+Voorbeeld: "U heeft een geschil met Van Loon Installatietechniek B.V. over een onterecht ontslag op staande voet."
+
+DEEL 2 - COMMUNICATIE (1-2 zinnen): Noem SPECIFIEK welke brieven op welke datum zijn verstuurd. Vermeld of er reactie is gekomen.
+Voorbeeld: "Op 18 november heeft u een Laatste Aanmaning verstuurd. Op 24 november volgde een Informatieverzoek. Er is nog geen reactie ontvangen."
+
+DEEL 3 - WIE IS AAN ZET (1 zin): Duidelijk aangeven wie nu actie moet ondernemen.
+Begin met: "We wachten nu op reactie van [wederpartij]..." OF "U bent aan zet om..."
+
+STATUS BEPALING:
+- "in_afwachting": Laatste actie was een brief van ons, we wachten op reactie wederpartij
+- "lopend": Er is recente correspondentie van beide kanten
+- "geen_reactie": Meerdere brieven verstuurd zonder enige reactie
+- "opgelost": Zaak is afgerond (schikking, betaling, intrekking)
+- "geescaleerd": Verwezen naar rechtbank/deurwaarder
 
 Geef je antwoord in het Nederlands als JSON:
 {
-  "summary": "Begin met wat het geschil is. Dan kort welke communicatie er is geweest. Eindig ALTIJD met duidelijk wie nu aan zet is: 'U wacht op reactie van [wederpartij]' OF 'U bent aan zet om [actie]'",
+  "summary": "[GESCHIL] + [COMMUNICATIE met exacte datums] + [WIE IS AAN ZET]",
   "timeline": [
-    { "date": "YYYY-MM-DD", "action": "Beschrijving van verstuurde brief of reactie" }
+    { "date": "YYYY-MM-DD", "action": "Type brief of reactie met korte beschrijving" }
   ],
   "status": "in_afwachting|lopend|geen_reactie|opgelost|geescaleerd",
-  "nextStep": "Concrete volgende actie die de gebruiker kan ondernemen"
+  "nextStep": "We wachten op reactie van [wederpartij] op [type brief/verzoek]." OF "Concrete actie voor gebruiker"
 }`;
 
       // Include letter content (stripped of HTML tags) for AI analysis
       const stripHtml = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
       
-      const lettersSummary = params.letters.map(l => ({
+      // Provide detailed letter info with exact dates (in Dutch format) and full content
+      const lettersSummary = params.letters.map((l, index) => ({
+        volgorde: index + 1,
         type: l.briefType,
-        date: l.createdAt,
-        tone: l.tone,
-        content: l.html ? stripHtml(l.html).substring(0, 2000) : ''
+        datum: l.createdAt, // Already in Dutch format (e.g., "24 november 2024")
+        toon: l.tone,
+        status: l.status || "verstuurd",
+        inhoud: l.html ? stripHtml(l.html).substring(0, 3000) : ''
       }));
 
-      const documentsSummary = params.documents.slice(0, 5).map(d => ({
-        filename: d.filename,
-        date: d.createdAt,
-        excerpt: d.extractedText ? d.extractedText.substring(0, 500) : ''
-      }));
+      // Provide detailed document info including analysis (may identify counterparty responses)
+      const documentsSummary = params.documents.slice(0, 10).map(d => {
+        const analysis = d.documentAnalysis || {};
+        return {
+          bestandsnaam: d.filename,
+          datum_toegevoegd: d.createdAt, // Already in Dutch format
+          // Include AI analysis summary if available (helps identify document purpose)
+          analyse_samenvatting: analysis.summary || null,
+          document_type: analysis.type || null,
+          mogelijk_van_wederpartij: analysis.belongsToCase === false ? true : null,
+          inhoud: d.extractedText ? d.extractedText.substring(0, 1500) : ''
+        };
+      });
 
       const userContent = JSON.stringify({
         zaak: {
@@ -2627,8 +2649,9 @@ Geef je antwoord in het Nederlands als JSON:
           vorderingsbedrag: params.claimAmount,
           wederpartij: params.counterpartyName
         },
-        verstuurde_brieven: lettersSummary,
-        documenten: documentsSummary
+        verstuurde_brieven_chronologisch: lettersSummary,
+        documenten_in_dossier: documentsSummary,
+        instructie: "Bekijk de brieven in chronologische volgorde. Check de documenten op mogelijke reacties van de wederpartij."
       });
 
       const response = await this.callLLMWithJSONResponse(systemPrompt, userContent);

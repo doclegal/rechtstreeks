@@ -685,22 +685,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Generate AI summary
+      // Format letters with human-readable dates for AI
+      const formatDate = (date: Date | null | undefined): string => {
+        if (!date) return "onbekende datum";
+        return date.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+      };
+      
+      // Sort letters by date (oldest first) to show chronological order
+      const sortedLetters = [...letters].sort((a, b) => 
+        (a.createdAt?.getTime() || 0) - (b.createdAt?.getTime() || 0)
+      );
+      
+      // Generate AI summary with detailed letter and document info
       const summary = await aiService.generateNegotiationSummary({
         caseTitle: caseData.title || "Onbekende zaak",
         caseDescription: caseData.description || "",
         claimAmount: caseData.claimAmount?.toString() || "0",
         counterpartyName: caseData.counterpartyName || "Wederpartij",
-        letters: letters.map(l => ({
+        letters: sortedLetters.map(l => ({
           briefType: l.briefType || "brief",
-          createdAt: l.createdAt?.toISOString() || new Date().toISOString(),
+          createdAt: formatDate(l.createdAt),
+          createdAtISO: l.createdAt?.toISOString() || new Date().toISOString(),
           tone: l.tone || "zakelijk",
+          status: l.status || "draft",
           html: l.html || undefined
         })),
         documents: documents.map(d => ({
           filename: d.filename || "document",
           extractedText: d.extractedText || undefined,
-          createdAt: d.createdAt?.toISOString() || new Date().toISOString()
+          createdAt: formatDate(d.createdAt),
+          createdAtISO: d.createdAt?.toISOString() || new Date().toISOString(),
+          // Include document analysis if available (may indicate if from counterparty)
+          documentAnalysis: d.documentAnalysis as any || undefined
         }))
       });
       
