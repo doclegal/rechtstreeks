@@ -647,36 +647,33 @@ export default function Wetgeving() {
           Artikel {article.articleNumber.replace(/^7:/, '')}
         </p>
 
-        <div className="text-sm text-muted-foreground space-y-2">
-          {displayParagraphs.map((para, idx) => (
-            <p key={`${article.articleKey}-para-${idx}`}>
-              {para}
-            </p>
-          ))}
-          {!expanded && hasMore && allParagraphs.length > 3 && (
-            <p className="text-muted-foreground/60">...</p>
-          )}
-        </div>
-
-        {hasMore && (
-          <button
-            onClick={onToggle}
-            className="inline-flex items-center text-sm text-primary hover:underline"
-            data-testid={`button-toggle-${testIdPrefix}-${index}`}
-          >
-            {expanded ? (
-              <>
-                <ChevronUp className="h-3 w-3 mr-1" />
-                Minder tonen
-              </>
-            ) : (
-              <>
-                <ChevronDown className="h-3 w-3 mr-1" />
-                Lees verder
-              </>
-            )}
-          </button>
+        {expanded && (
+          <div className="text-sm text-muted-foreground space-y-2">
+            {allParagraphs.map((para, idx) => (
+              <p key={`${article.articleKey}-para-${idx}`}>
+                {para}
+              </p>
+            ))}
+          </div>
         )}
+
+        <button
+          onClick={onToggle}
+          className="inline-flex items-center text-sm text-primary hover:underline"
+          data-testid={`button-toggle-${testIdPrefix}-${index}`}
+        >
+          {expanded ? (
+            <>
+              <ChevronUp className="h-3 w-3 mr-1" />
+              Minder tonen
+            </>
+          ) : (
+            <>
+              <ChevronDown className="h-3 w-3 mr-1" />
+              Lees verder
+            </>
+          )}
+        </button>
       </div>
     );
   };
