@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { ArrowLeft, Search, Trash2, Sparkles, BookOpen, Loader2, ChevronDown, ChevronUp, FileText, Plus, X } from "lucide-react";
+import { ArrowLeft, Search, Trash2, Sparkles, BookOpen, Loader2, ChevronDown, ChevronUp, FileText, Plus, X, MessageSquare, BookText } from "lucide-react";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -425,6 +425,15 @@ export default function Wetgeving() {
               </Badge>
             )
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-6 text-xs px-2"
+            data-testid={`button-get-commentary-${testIdPrefix}-${index}`}
+          >
+            <MessageSquare className="h-3 w-3 mr-1" />
+            Commentaar ophalen
+          </Button>
         </div>
 
         {article.sectionTitle && (
@@ -647,23 +656,23 @@ export default function Wetgeving() {
           </Card>
         </div>
 
-        {/* Right column: Placeholder for new functionality */}
+        {/* Right column: Tekst & Commentaar */}
         <div className="space-y-6">
-          <Card data-testid="card-new-functionality">
+          <Card data-testid="card-text-commentary">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5" />
-                Nieuwe functionaliteit
+                <BookText className="h-5 w-5" />
+                Tekst &amp; Commentaar
               </CardTitle>
               <CardDescription>
-                Hier komt nieuwe functionaliteit
+                Bekijk wettekst met juridisch commentaar
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-12 text-muted-foreground">
-                <Sparkles className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                <p className="text-sm">Binnenkort beschikbaar</p>
-                <p className="text-xs">Deze ruimte is gereserveerd voor nieuwe functionaliteit</p>
+                <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                <p className="text-sm">Selecteer een artikel</p>
+                <p className="text-xs">Klik op "Commentaar ophalen" bij een artikel om de tekst en commentaar te bekijken</p>
               </div>
             </CardContent>
           </Card>
