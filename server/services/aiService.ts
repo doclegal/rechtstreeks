@@ -2605,6 +2605,11 @@ STATUS BEPALING:
 - "opgelost": Zaak is afgerond (schikking, betaling, intrekking)
 - "geescaleerd": Verwezen naar rechtbank/deurwaarder
 
+BELANGRIJK VOOR nextStep:
+- Noem ALTIJD de EXACTE DATUM van de laatste brief (bijv. "van 24 november")
+- Beschrijf KORT wat er in die brief werd geëist/verzocht (lees de inhoud!)
+- Voorbeeld: "We wachten op reactie van Bedrijf X op het informatieverzoek van 24 november waarin werd verzocht om het ontslag in te trekken en aan de loondoorbetalingsverplichting te voldoen."
+
 Geef je antwoord in het Nederlands als JSON:
 {
   "summary": "[GESCHIL] + [COMMUNICATIE met exacte datums] + [WIE IS AAN ZET]",
@@ -2612,7 +2617,7 @@ Geef je antwoord in het Nederlands als JSON:
     { "date": "YYYY-MM-DD", "action": "Type brief of reactie met korte beschrijving" }
   ],
   "status": "in_afwachting|lopend|geen_reactie|opgelost|geescaleerd",
-  "nextStep": "We wachten op reactie van [wederpartij] op [type brief/verzoek]." OF "Concrete actie voor gebruiker"
+  "nextStep": "We wachten op reactie van [wederpartij] op [type brief] van [DATUM] waarin [KORTE SAMENVATTING VAN WAT ER GEËIST/VERZOCHT WERD]."
 }`;
 
       // Include letter content (stripped of HTML tags) for AI analysis
