@@ -125,7 +125,9 @@ export default function Wetgeving() {
 
       const response = await apiRequest('POST', '/api/wetgeving/search', {
         query: queryToSearch,
-        topK: 15
+        topK: 200,  // First-stage retrieval count for reranking
+        rerankTopN: 30,
+        maxLaws: 10
       });
       
       const data = await response.json();
@@ -189,7 +191,9 @@ export default function Wetgeving() {
 
       const searchResponse = await apiRequest('POST', '/api/wetgeving/search', {
         query: queryData.query,
-        topK: 15
+        topK: 200,  // First-stage retrieval count for reranking
+        rerankTopN: 30,
+        maxLaws: 10
       });
       
       const searchData = await searchResponse.json();

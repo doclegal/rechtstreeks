@@ -8224,11 +8224,34 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
       console.log(`\n✅ WETGEVING SEARCH COMPLETE`);
       console.log(`📊 ${formattedLaws.length} laws, ${totalArticles} total articles`);
       
+      // Create results array for frontend compatibility (expects 'results' field)
+      const results = flatResults.slice(0, 50).map(article => ({
+        id: article.id,
+        title: article.lawTitle,
+        article_number: article.articleNumber,
+        lid: article.lid,
+        text: article.text,
+        textPreview: article.textPreview,
+        score: article.rerankScore || article.score,
+        scorePercent: article.scorePercent,
+        citatie: article.citatie,
+        bronUrl: article.bronUrl,
+        bwb_id: article.lawBwbId,
+        boek_nummer: article.boekNummer,
+        titel_nummer: article.titelNummer,
+        hoofdstuk_nummer: article.hoofdstukNummer,
+        structure_path: article.structurePath,
+        is_current: article.isCurrent,
+        valid_from: article.validFrom
+      }));
+
       res.json({
         query,
         enhancedQuery: enhancedQuery.substring(0, 500),
+        results,  // Frontend expects this field
+        totalResults: results.length, // Frontend expects this field
         laws: formattedLaws,
-        flatResults: flatResults.slice(0, 50), // Top 50 flat results
+        flatResults: flatResults.slice(0, 50),
         totalLaws: formattedLaws.length,
         totalArticles,
         namespace: 'laws-current',
