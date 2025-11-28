@@ -408,11 +408,13 @@ export default function Letters() {
             <>
               <Separator className="my-8" />
 
-              {/* Document Overview */}
-              <div>
-                <h2 className="text-xl font-semibold text-foreground mb-4">Gegenereerde brieven</h2>
-                <div className="space-y-3">
-                  {letters.map((letter: any, index: number) => (
+              {/* Document Overview - Two Columns */}
+              <div className="grid md:grid-cols-2 gap-8">
+                {/* Gegenereerde brieven */}
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground mb-4">Gegenereerde brieven</h2>
+                  <div className="space-y-3">
+                    {letters.map((letter: any, index: number) => (
                     <Dialog 
                       key={letter.id}
                       open={previewDialogOpen && selectedLetterType === letter.id}
@@ -544,7 +546,26 @@ export default function Letters() {
                         </div>
                       </DialogContent>
                     </Dialog>
-                  ))}
+                    ))}
+                  </div>
+                </div>
+
+                {/* Ontvangen brieven */}
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground mb-4">Ontvangen brieven</h2>
+                  <Card className="border-dashed">
+                    <CardContent className="py-12">
+                      <div className="text-center">
+                        <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                        <p className="text-muted-foreground mb-4">
+                          Brieven van de wederpartij verschijnen hier
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Upload antwoorden en correspondentie van de wederpartij naar uw dossier
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
             </>
