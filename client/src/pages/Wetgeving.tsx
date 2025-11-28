@@ -562,23 +562,32 @@ export default function Wetgeving() {
   const extractCleanLidText = (text: string): string => {
     if (!text) return '';
     
-    console.log('🔍 Raw lid text (first 200 chars):', text.substring(0, 200));
-    
     let cleaned = text;
     
     const pathMatch = cleaned.match(/^(Boek\s+\d+[^>]*(?:\s*>\s*[^>]+)*\s*Artikel\s+[\d:]+\s*Lid\s+\d+\s*)/i);
     if (pathMatch) {
       cleaned = cleaned.substring(pathMatch[1].length);
-      console.log('🔍 After path removal:', cleaned.substring(0, 100));
     }
     
     cleaned = cleaned.replace(/^(\d+)\s+Lid\s+\d+\s+(\d+)\s+/i, '$2 ');
     
     cleaned = cleaned.replace(/^Lid\s+\d+\s+/i, '');
     
-    console.log('🔍 Final cleaned text:', cleaned.substring(0, 100));
-    
     return cleaned.trim();
+  };
+  
+  const formatLidTextWithParagraphs = (text: string): string[] => {
+    if (!text) return [];
+    
+    const cleaned = extractCleanLidText(text);
+    
+    const parts = cleaned.split(/(?=\d+\s+[A-Z])/);
+    
+    if (parts.length <= 1) {
+      return [cleaned];
+    }
+    
+    return parts.filter(p => p.trim().length > 0);
   };
 
   const GroupedArticleCard = ({
@@ -594,8 +603,15 @@ export default function Wetgeving() {
     onToggle: () => void;
     testIdPrefix: string;
   }) => {
-    const combinedText = article.leden.map(lid => lid.text).join('\n');
-    const totalTextLength = combinedText.length;
+    const allParagraphs: string[] = [];
+    for (const lid of article.leden) {
+      const parts = formatLidTextWithParagraphs(lid.text);
+      allParagraphs.push(...parts);
+    }
+    
+    const totalTextLength = allParagraphs.join(' ').length;
+    const displayParagraphs = expanded ? allParagraphs : allParagraphs.slice(0, 3);
+    const hasMore = allParagraphs.length > 3 || totalTextLength > 500;
     
     return (
       <div 
@@ -623,18 +639,18 @@ export default function Wetgeving() {
           Artikel {article.articleNumber.replace(/^7:/, '')}
         </p>
 
-        <div className={`text-sm text-muted-foreground ${!expanded ? 'line-clamp-8' : ''}`}>
-          {article.leden.map((lid) => {
-            const cleanText = extractCleanLidText(lid.text);
-            return (
-              <p key={`${article.articleKey}-lid-${lid.lid}`} className="mb-2">
-                {cleanText}
-              </p>
-            );
-          })}
+        <div className="text-sm text-muted-foreground space-y-2">
+          {displayParagraphs.map((para, idx) => (
+            <p key={`${article.articleKey}-para-${idx}`}>
+              {para}
+            </p>
+          ))}
+          {!expanded && hasMore && allParagraphs.length > 3 && (
+            <p className="text-muted-foreground/60">...</p>
+          )}
         </div>
 
-        {totalTextLength > 500 && (
+        {hasMore && (
           <button
             onClick={onToggle}
             className="inline-flex items-center text-sm text-primary hover:underline"
