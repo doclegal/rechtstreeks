@@ -8466,28 +8466,48 @@ Genereer een JSON response met:
         console.log(`📖 Parsed as Book ${bookNumber}, Article ${articleOnly}`);
       }
       
-      // Build search text for semantic search
-      // Use a more natural query that includes the full article reference
-      // This works better with semantic search than just formal references
+      // Build search text for semantic search (used as fallback)
       const regulationLowerCase = regulation.toLowerCase();
-      const alreadyHasBook = bookNumber && regulationLowerCase.includes(`boek ${bookNumber}`);
-      
-      // Build multiple search queries to try
-      const fullArticleRef = bookNumber ? `${bookNumber}:${articleOnly}` : articleOnly;
-      const searchText = `artikel ${fullArticleRef} ${regulation} wetgeving arbeidsrecht`;
+      const fullArticleRef = bookNumber ? `${bookNumber}:${articleOnly}` : articleBase;
+      const searchText = `artikel ${articleBase} ${regulation}`;
       
       console.log(`🔍 Search text: "${searchText}"`);
+      console.log(`🔍 Article base for filter: "${articleBase}"`);
       
-      // Use semantic search without filters, then filter client-side
-      // This is more reliable than metadata filters which may not work properly
-      const results = await searchVectors({
-        text: searchText,
-        topK: topK,
-        scoreThreshold: 0,
-        namespace: 'laws-current'
-      });
-
-      console.log(`📊 Initial search returned ${results.length} results`);
+      // STRATEGY 1: Use metadata filter on article_number for exact match
+      // This is much more accurate than semantic search for specific articles
+      console.log(`📋 STRATEGY 1: Metadata filter on article_number = "${articleBase}"`);
+      
+      let results: any[] = [];
+      
+      // Try exact article_number filter first
+      try {
+        results = await searchVectors({
+          text: searchText,
+          topK: topK,
+          scoreThreshold: 0,
+          namespace: 'laws-current',
+          filter: {
+            article_number: { $eq: articleBase },
+            is_current: { $eq: true }
+          }
+        });
+        console.log(`📊 Metadata filter search returned ${results.length} results`);
+      } catch (filterError) {
+        console.log(`⚠️ Metadata filter failed, falling back to semantic search`);
+      }
+      
+      // If no results with exact filter, try semantic search
+      if (results.length === 0) {
+        console.log(`📋 STRATEGY 2: Semantic search (no exact article found)`);
+        results = await searchVectors({
+          text: searchText,
+          topK: topK,
+          scoreThreshold: 0,
+          namespace: 'laws-current'
+        });
+        console.log(`📊 Semantic search returned ${results.length} results`);
+      }
       
       // Debug: Log first few article numbers to see format
       if (results.length > 0) {
@@ -8499,31 +8519,20 @@ Genereer een JSON response met:
         console.log(`📊 Sample article numbers:`, JSON.stringify(sampleArticles));
       }
 
-      // Filter results to match:
-      // 1. Article number match (exact or starts with base)
-      // 2. Regulation title contains our search terms
-      // 3. is_current = true (only current versions)
+      // Filter results to match regulation title
       const regulationLower = regulation.toLowerCase();
-      // Filter out common words that are too generic
       const stopWords = ['de', 'het', 'van', 'inzake', 'en', 'over'];
       const regulationWords = regulationLower.split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w));
       
       // Helper function to check if article numbers match
-      // Handles formats like "2.20" matching "2.20", "2.1" matching "2.1", etc.
       const articleNumberMatches = (resultArticle: string, searchArticle: string): boolean => {
         if (!resultArticle || !searchArticle) return false;
         const resultClean = resultArticle.trim().toLowerCase();
         const searchClean = searchArticle.trim().toLowerCase();
-        
-        // Exact match
-        if (resultClean === searchClean) return true;
-        
-        // For numbered articles like "2.20", check exact match to avoid "2.2" matching "2.20"
-        // But allow "2.20" to match when searching for "2.20 lid 2 sub b"
         return resultClean === searchClean;
       };
       
-      console.log(`📊 Matching with articleBase: "${articleBase}", articleOnly: "${articleOnly}"`);
+      console.log(`📊 Matching with articleBase: "${articleBase}"`);
       console.log(`📊 Regulation words for matching: ${JSON.stringify(regulationWords)}`);
       
       const filteredResults = results.filter((result: any) => {
