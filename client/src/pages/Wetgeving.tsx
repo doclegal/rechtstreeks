@@ -537,16 +537,26 @@ export default function Wetgeving() {
       )}
 
       {result.bronUrl && (
-        <a
-          href={result.bronUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center text-sm text-primary hover:underline"
-          data-testid={`button-view-source-${testIdPrefix}-${index}`}
-        >
-          <ExternalLink className="h-3 w-3 mr-1" />
-          Bekijk op wetten.overheid.nl
-        </a>
+        <div className="space-y-2">
+          <a
+            href={result.bronUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center text-sm text-primary hover:underline"
+            data-testid={`button-view-source-${testIdPrefix}-${index}`}
+          >
+            <ExternalLink className="h-3 w-3 mr-1" />
+            Bekijk op wetten.overheid.nl
+          </a>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            data-testid={`button-get-comments-${testIdPrefix}-${index}`}
+          >
+            Commentaar ophalen
+          </Button>
+        </div>
       )}
     </div>
   );
