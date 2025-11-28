@@ -17,17 +17,25 @@ interface LegislationResult {
   score: number;
   scorePercent: string;
   bwbId?: string;
+  bwb_id?: string;
   title?: string;
   articleNumber?: string;
+  article_number?: string;
   paragraphNumber?: string;
+  paragraph_number?: string;
   lid?: string;
   sectionTitle?: string;
+  section_title?: string;
+  structure_path?: string;
   validFrom?: string;
+  valid_from?: string;
   validTo?: string;
   isCurrent?: boolean;
+  is_current?: boolean;
   text?: string;
   citatie?: string;
   bronUrl?: string | null;
+  bron_url?: string | null;
   sourceQuery?: string;
 }
 
@@ -88,11 +96,13 @@ export default function Wetgeving() {
     const grouped = new Map<string, GroupedArticle>();
     
     for (const result of results) {
-      const articleNum = result.articleNumber || 'unknown';
-      const bwbId = result.bwbId || 'unknown';
+      const articleNum = result.articleNumber || result.article_number || 'unknown';
+      const bwbId = result.bwbId || result.bwb_id || 'unknown';
       const key = `${bwbId}:${articleNum}`;
       
-      const lidNumber = result.lid || result.paragraphNumber || '1';
+      const lidNumber = result.lid || result.paragraphNumber || result.paragraph_number || '1';
+      const sectionTitle = result.sectionTitle || result.section_title || result.structure_path;
+      const bronUrl = result.bronUrl || result.bron_url;
       
       if (!grouped.has(key)) {
         grouped.set(key, {
@@ -100,12 +110,12 @@ export default function Wetgeving() {
           articleNumber: articleNum,
           title: result.title || '',
           bwbId: bwbId,
-          bronUrl: result.bronUrl || null,
+          bronUrl: bronUrl || null,
           bestScore: result.score,
           bestScorePercent: result.scorePercent,
           bestRank: result.rank,
           sourceQuery: result.sourceQuery,
-          sectionTitle: result.sectionTitle,
+          sectionTitle: sectionTitle,
           leden: []
         });
       }
@@ -118,8 +128,8 @@ export default function Wetgeving() {
         article.bestRank = result.rank;
       }
       
-      if (!article.sectionTitle && result.sectionTitle) {
-        article.sectionTitle = result.sectionTitle;
+      if (!article.sectionTitle && sectionTitle) {
+        article.sectionTitle = sectionTitle;
       }
       
       const existingLid = article.leden.find(l => l.lid === lidNumber);
