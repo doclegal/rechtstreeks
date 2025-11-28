@@ -559,6 +559,13 @@ export default function Wetgeving() {
     });
   };
 
+  const extractCleanLidText = (text: string): string => {
+    return text
+      .replace(/^Boek \d+:.*?(?=\d\s)/s, '')
+      .replace(/^Lid \d+\s*/i, '')
+      .trim();
+  };
+
   const GroupedArticleCard = ({
     article,
     index,
@@ -601,12 +608,16 @@ export default function Wetgeving() {
           Artikel {article.articleNumber.replace(/^7:/, '')}
         </p>
 
-        <div className={`text-sm text-muted-foreground ${!expanded ? 'line-clamp-6' : ''}`}>
-          {article.leden.map((lid, lidIndex) => (
-            <p key={`${article.articleKey}-lid-${lid.lid}`} className="mb-1">
-              {lid.text}
-            </p>
-          ))}
+        <div className={`text-sm text-muted-foreground ${!expanded ? 'line-clamp-8' : ''}`}>
+          {article.leden.map((lid) => {
+            const cleanText = extractCleanLidText(lid.text);
+            const startsWithNumber = /^\d+\s/.test(cleanText);
+            return (
+              <p key={`${article.articleKey}-lid-${lid.lid}`} className="mb-1">
+                {startsWithNumber ? cleanText : `${lid.lid} ${cleanText}`}
+              </p>
+            );
+          })}
         </div>
 
         {totalTextLength > 500 && (
