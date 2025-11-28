@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Upload, FileSearch, CheckCircle, Mail, AlertTriangle, FileText, Scale, ArrowRight, UserCircle, Handshake } from "lucide-react";
+import { Upload, FileSearch, CheckCircle, Mail, AlertTriangle, FileText, Scale, ArrowRight, UserCircle, Handshake, Gavel } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -228,7 +228,42 @@ export default function Landing() {
               </CardContent>
             </Card>
 
-            {/* Feature 5: Generate Letters */}
+            {/* Feature 5: Jurisprudentie */}
+            <Card className="overflow-hidden">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Gavel className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg text-foreground mb-2">
+                      5. Relevante rechtspraak
+                    </h3>
+                    <p className="text-muted-foreground mb-3">
+                      AI zoekt automatisch naar relevante jurisprudentie en gerechtelijke uitspraken voor jouw zaak.
+                    </p>
+                    <div className="bg-muted/50 rounded-lg p-4 border border-border">
+                      <div className="text-sm space-y-2">
+                        <div className="flex items-start gap-2">
+                          <CheckCircle className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                          <span className="text-foreground/80">Vergelijkbare rechtszaken</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <CheckCircle className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                          <span className="text-foreground/80">Uitspraken van rechters</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <CheckCircle className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                          <span className="text-foreground/80">Juridische precedenten</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Feature 6: Generate Letters */}
             <Card className="overflow-hidden">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
@@ -237,7 +272,7 @@ export default function Landing() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg text-foreground mb-2">
-                      5. Maak juridische brieven
+                      6. Maak juridische brieven
                     </h3>
                     <p className="text-muted-foreground mb-3">
                       AI schrijft brieven voor jou. Bijvoorbeeld: aanmaning, ingebrekestelling.
@@ -263,7 +298,7 @@ export default function Landing() {
               </CardContent>
             </Card>
 
-            {/* Feature 6: Missing Info */}
+            {/* Feature 7: Missing Info */}
             <Card className="overflow-hidden">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
@@ -272,7 +307,7 @@ export default function Landing() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg text-foreground mb-2">
-                      6. Weet wat je nog nodig hebt
+                      7. Weet wat je nog nodig hebt
                     </h3>
                     <p className="text-muted-foreground mb-3">
                       AI vertelt welke informatie of documenten nog ontbreken.
@@ -298,7 +333,7 @@ export default function Landing() {
               </CardContent>
             </Card>
 
-            {/* Feature 7: Oplossen (Online Mediation) */}
+            {/* Feature 8: Oplossen (Online Mediation) */}
             <Card className="overflow-hidden md:col-span-2">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
@@ -307,7 +342,7 @@ export default function Landing() {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg text-foreground mb-2">
-                      7. Oplossen via online mediation
+                      8. Oplossen via online mediation
                     </h3>
                     <p className="text-muted-foreground mb-3">
                       Los je geschil online op met behulp van een mediator, zonder naar de rechter te hoeven. 
@@ -349,7 +384,7 @@ export default function Landing() {
               </CardContent>
             </Card>
 
-            {/* Feature 8: Dagvaarding maken */}
+            {/* Feature 9: Dagvaarding maken */}
             <Card className="overflow-hidden md:col-span-2 border-2 border-primary/20">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
@@ -358,7 +393,7 @@ export default function Landing() {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg text-foreground mb-2">
-                      8. Maak zelf een dagvaarding
+                      9. Maak zelf een dagvaarding
                     </h3>
                     <p className="text-muted-foreground mb-3">
                       Wij begeleiden je stap voor stap bij het maken van een dagvaarding voor de kantonrechter. 
