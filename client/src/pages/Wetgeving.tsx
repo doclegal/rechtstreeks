@@ -560,19 +560,25 @@ export default function Wetgeving() {
   };
 
   const extractCleanLidText = (text: string): string => {
+    if (!text) return '';
+    
+    console.log('🔍 Raw lid text (first 200 chars):', text.substring(0, 200));
+    
     let cleaned = text;
     
-    cleaned = cleaned.replace(/^Boek\s+\d+[^>]*(?:>\s*[^>]+)*\s*/i, '');
+    const pathMatch = cleaned.match(/^(Boek\s+\d+[^>]*(?:\s*>\s*[^>]+)*\s*Artikel\s+[\d:]+\s*Lid\s+\d+\s*)/i);
+    if (pathMatch) {
+      cleaned = cleaned.substring(pathMatch[1].length);
+      console.log('🔍 After path removal:', cleaned.substring(0, 100));
+    }
     
-    cleaned = cleaned.replace(/^Artikel\s+[\d:]+\s*/i, '');
+    cleaned = cleaned.replace(/^(\d+)\s+Lid\s+\d+\s+(\d+)\s+/i, '$2 ');
     
-    cleaned = cleaned.replace(/^Lid\s+\d+\s*/i, '');
+    cleaned = cleaned.replace(/^Lid\s+\d+\s+/i, '');
     
-    cleaned = cleaned.replace(/^\d+\s+Lid\s+\d+\s+/i, '');
+    console.log('🔍 Final cleaned text:', cleaned.substring(0, 100));
     
-    cleaned = cleaned.trim();
-    
-    return cleaned;
+    return cleaned.trim();
   };
 
   const GroupedArticleCard = ({
