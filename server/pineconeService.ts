@@ -353,7 +353,8 @@ export interface LegislationSearchResult {
 export async function searchLegislationWithRerank(
   query: string,
   topK: number = 200,
-  rerankTopN: number = 30
+  rerankTopN: number = 30,
+  maxDocsForRerank: number = 200  // Max documents to send to reranker (Pinecone limit: 1000)
 ): Promise<LegislationSearchResult[]> {
   try {
     console.log(`\n📜 LEGISLATION SEARCH WITH RERANK PIPELINE`);
@@ -374,8 +375,11 @@ export async function searchLegislationWithRerank(
       return [];
     }
     
-    console.log(`\n--- STAGE 2: Prepare documents for reranking ---`);
-    const documentsForRerank: RerankDocument[] = firstStageResults.slice(0, 100).map(result => {
+    // Use all first-stage results up to maxDocsForRerank limit
+    const docsToRerank = Math.min(firstStageResults.length, maxDocsForRerank);
+    
+    console.log(`\n--- STAGE 2: Prepare documents for reranking (${docsToRerank} docs) ---`);
+    const documentsForRerank: RerankDocument[] = firstStageResults.slice(0, docsToRerank).map(result => {
       const meta = result.metadata as any;
       const lawTitle = meta?.title || 'Onbekende wet';
       const boek = meta?.boek_nummer ? `Boek ${meta.boek_nummer}` : '';
