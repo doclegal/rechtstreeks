@@ -267,3 +267,341 @@ export async function checkIndexExists(): Promise<boolean> {
     return false;
   }
 }
+
+export interface RerankDocument {
+  id: string;
+  text: string;
+}
+
+export interface RerankResult {
+  id: string;
+  score: number;
+  text: string;
+  index: number;
+}
+
+export async function rerankDocuments(
+  query: string,
+  documents: RerankDocument[],
+  topN: number = 30
+): Promise<RerankResult[]> {
+  try {
+    const pc = getPineconeClient();
+    
+    console.log(`🔄 RERANKING with bge-reranker-v2-m3`);
+    console.log(`📝 Query: "${query.substring(0, 100)}..."`);
+    console.log(`📚 Documents to rerank: ${documents.length}`);
+    console.log(`🎯 Top N: ${topN}`);
+    
+    if (documents.length === 0) {
+      console.log('⚠️ No documents to rerank');
+      return [];
+    }
+    
+    const response = await pc.inference.rerank(
+      "bge-reranker-v2-m3",
+      query,
+      documents.map(d => ({ id: d.id, text: d.text })),
+      { topN, returnDocuments: true }
+    );
+    
+    const results: RerankResult[] = (response.data || []).map((item: any) => ({
+      id: item.document?.id || documents[item.index]?.id || '',
+      score: item.score || 0,
+      text: item.document?.text || documents[item.index]?.text || '',
+      index: item.index
+    }));
+    
+    console.log(`✅ Reranking complete: ${results.length} results`);
+    if (results.length > 0) {
+      console.log(`📊 Top 5 rerank scores: ${results.slice(0, 5).map(r => r.score.toFixed(4)).join(', ')}`);
+    }
+    
+    return results;
+  } catch (error) {
+    console.error("❌ Error in reranking:", error);
+    throw error;
+  }
+}
+
+export interface LegislationSearchResult {
+  id: string;
+  score: number;
+  rerankScore?: number;
+  metadata: {
+    bwb_id?: string;
+    title?: string;
+    law_code?: string;
+    boek_nummer?: string;
+    boek_titel?: string;
+    titel_nummer?: string;
+    titel_naam?: string;
+    hoofdstuk_nummer?: string;
+    article_number?: string;
+    lid?: string;
+    structure_path?: string;
+    text?: string;
+    is_current?: boolean;
+    valid_from?: string;
+    chunk_index?: number;
+    total_chunks?: number;
+    type?: string;
+  };
+  text?: string;
+}
+
+export async function searchLegislationWithRerank(
+  query: string,
+  topK: number = 200,
+  rerankTopN: number = 30
+): Promise<LegislationSearchResult[]> {
+  try {
+    console.log(`\n📜 LEGISLATION SEARCH WITH RERANK PIPELINE`);
+    console.log(`📝 Query: "${query.substring(0, 150)}..."`);
+    
+    console.log(`\n--- STAGE 1: First-stage retrieval (top_k=${topK}) ---`);
+    const firstStageResults = await searchVectors({
+      text: query,
+      topK: topK,
+      scoreThreshold: 0,
+      namespace: 'laws-current'
+    });
+    
+    console.log(`📊 First-stage retrieved ${firstStageResults.length} results`);
+    
+    if (firstStageResults.length === 0) {
+      console.log('⚠️ No results from first-stage retrieval');
+      return [];
+    }
+    
+    console.log(`\n--- STAGE 2: Prepare documents for reranking ---`);
+    const documentsForRerank: RerankDocument[] = firstStageResults.slice(0, 100).map(result => {
+      const meta = result.metadata as any;
+      const lawTitle = meta?.title || 'Onbekende wet';
+      const boek = meta?.boek_nummer ? `Boek ${meta.boek_nummer}` : '';
+      const titel = meta?.titel_nummer ? `Titel ${meta.titel_nummer}` : '';
+      const art = meta?.article_number ? `Art. ${meta.article_number}` : '';
+      const lid = meta?.lid ? `lid ${meta.lid}` : '';
+      
+      const contextParts = [lawTitle, boek, titel, art, lid].filter(Boolean);
+      const contextHeader = contextParts.join(', ');
+      
+      const text = `${contextHeader}\n\n${result.text || meta?.text || ''}`;
+      
+      return {
+        id: result.id,
+        text: text.substring(0, 8000)
+      };
+    });
+    
+    console.log(`📚 Prepared ${documentsForRerank.length} documents for reranking`);
+    
+    console.log(`\n--- STAGE 3: Rerank with bge-reranker-v2-m3 ---`);
+    const rerankedResults = await rerankDocuments(query, documentsForRerank, rerankTopN);
+    
+    console.log(`\n--- STAGE 4: Map reranked results back to original metadata ---`);
+    const resultMap = new Map(firstStageResults.map(r => [r.id, r]));
+    
+    const finalResults: LegislationSearchResult[] = rerankedResults.map(reranked => {
+      const original = resultMap.get(reranked.id);
+      const meta = original?.metadata as any || {};
+      
+      return {
+        id: reranked.id,
+        score: original?.score || 0,
+        rerankScore: reranked.score,
+        metadata: {
+          bwb_id: meta.bwb_id,
+          title: meta.title,
+          law_code: meta.law_code,
+          boek_nummer: meta.boek_nummer,
+          boek_titel: meta.boek_titel,
+          titel_nummer: meta.titel_nummer,
+          titel_naam: meta.titel_naam,
+          hoofdstuk_nummer: meta.hoofdstuk_nummer,
+          article_number: meta.article_number,
+          lid: meta.lid,
+          structure_path: meta.structure_path,
+          text: meta.text,
+          is_current: meta.is_current,
+          valid_from: meta.valid_from,
+          chunk_index: meta.chunk_index,
+          total_chunks: meta.total_chunks,
+          type: meta.type
+        },
+        text: original?.text || meta.text
+      };
+    });
+    
+    console.log(`✅ Final results: ${finalResults.length} reranked legislation chunks`);
+    
+    return finalResults;
+  } catch (error) {
+    console.error("❌ Error in legislation search with rerank:", error);
+    throw error;
+  }
+}
+
+export interface GroupedLawResult {
+  bwbId: string;
+  title: string;
+  lawCode?: string;
+  lawScore: number;
+  articles: {
+    articleNumber: string;
+    lid?: string;
+    score: number;
+    rerankScore: number;
+    text: string;
+    boekNummer?: string;
+    titelNummer?: string;
+    hoofdstukNummer?: string;
+    structurePath?: string;
+    isCurrent?: boolean;
+    validFrom?: string;
+    id: string;
+  }[];
+}
+
+export function groupResultsByLaw(
+  results: LegislationSearchResult[],
+  maxLaws: number = 10,
+  maxArticlesPerLaw: number = 20
+): GroupedLawResult[] {
+  console.log(`\n--- STAGE 5: Group results by law (bwb_id) ---`);
+  
+  const lawGroups = new Map<string, {
+    title: string;
+    lawCode?: string;
+    articles: LegislationSearchResult[];
+    maxRerankScore: number;
+  }>();
+  
+  for (const result of results) {
+    const bwbId = result.metadata.bwb_id || 'unknown';
+    const title = result.metadata.title || 'Onbekende wet';
+    
+    if (!lawGroups.has(bwbId)) {
+      lawGroups.set(bwbId, {
+        title,
+        lawCode: result.metadata.law_code,
+        articles: [],
+        maxRerankScore: result.rerankScore || 0
+      });
+    }
+    
+    const group = lawGroups.get(bwbId)!;
+    group.articles.push(result);
+    if ((result.rerankScore || 0) > group.maxRerankScore) {
+      group.maxRerankScore = result.rerankScore || 0;
+    }
+  }
+  
+  console.log(`📊 Found ${lawGroups.size} unique laws`);
+  
+  const sortedLaws = Array.from(lawGroups.entries())
+    .sort((a, b) => b[1].maxRerankScore - a[1].maxRerankScore)
+    .slice(0, maxLaws);
+  
+  console.log(`📋 Top ${sortedLaws.length} laws by rerank score:`);
+  sortedLaws.forEach(([bwbId, group], idx) => {
+    console.log(`   ${idx + 1}. ${group.title} (score: ${group.maxRerankScore.toFixed(4)}, ${group.articles.length} articles)`);
+  });
+  
+  const groupedResults: GroupedLawResult[] = sortedLaws.map(([bwbId, group]) => {
+    const sortedArticles = group.articles
+      .sort((a, b) => (b.rerankScore || 0) - (a.rerankScore || 0))
+      .slice(0, maxArticlesPerLaw)
+      .map(article => ({
+        articleNumber: article.metadata.article_number || '',
+        lid: article.metadata.lid,
+        score: article.score,
+        rerankScore: article.rerankScore || 0,
+        text: article.text || article.metadata.text || '',
+        boekNummer: article.metadata.boek_nummer,
+        titelNummer: article.metadata.titel_nummer,
+        hoofdstukNummer: article.metadata.hoofdstuk_nummer,
+        structurePath: article.metadata.structure_path,
+        isCurrent: article.metadata.is_current,
+        validFrom: article.metadata.valid_from,
+        id: article.id
+      }));
+    
+    return {
+      bwbId,
+      title: group.title,
+      lawCode: group.lawCode,
+      lawScore: group.maxRerankScore,
+      articles: sortedArticles
+    };
+  });
+  
+  return groupedResults;
+}
+
+export async function expandLawContext(
+  bwbId: string,
+  articleNumbers: string[],
+  topK: number = 50
+): Promise<LegislationSearchResult[]> {
+  console.log(`\n--- STAGE 6: Context expansion for ${bwbId} ---`);
+  console.log(`📖 Target articles: ${articleNumbers.join(', ')}`);
+  
+  const expandedResults: LegislationSearchResult[] = [];
+  
+  for (const articleNumber of articleNumbers) {
+    try {
+      const articleResults = await searchVectors({
+        text: `artikel ${articleNumber}`,
+        topK: 20,
+        scoreThreshold: 0,
+        namespace: 'laws-current',
+        filter: {
+          bwb_id: { $eq: bwbId },
+          article_number: { $eq: articleNumber },
+          is_current: { $eq: true }
+        }
+      });
+      
+      console.log(`   📄 Article ${articleNumber}: found ${articleResults.length} chunks (all leden)`);
+      
+      for (const result of articleResults) {
+        const meta = result.metadata as any;
+        expandedResults.push({
+          id: result.id,
+          score: result.score,
+          metadata: {
+            bwb_id: meta.bwb_id,
+            title: meta.title,
+            law_code: meta.law_code,
+            boek_nummer: meta.boek_nummer,
+            boek_titel: meta.boek_titel,
+            titel_nummer: meta.titel_nummer,
+            titel_naam: meta.titel_naam,
+            hoofdstuk_nummer: meta.hoofdstuk_nummer,
+            article_number: meta.article_number,
+            lid: meta.lid,
+            structure_path: meta.structure_path,
+            text: meta.text,
+            is_current: meta.is_current,
+            valid_from: meta.valid_from,
+            chunk_index: meta.chunk_index,
+            total_chunks: meta.total_chunks,
+            type: meta.type
+          },
+          text: result.text || meta.text
+        });
+      }
+    } catch (error) {
+      console.error(`   ⚠️ Error expanding article ${articleNumber}:`, error);
+    }
+  }
+  
+  const uniqueResults = Array.from(
+    new Map(expandedResults.map(r => [r.id, r])).values()
+  );
+  
+  console.log(`✅ Context expansion complete: ${uniqueResults.length} total chunks`);
+  
+  return uniqueResults;
+}

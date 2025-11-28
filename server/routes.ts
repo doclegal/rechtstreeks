@@ -7177,7 +7177,16 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   });
 
   // Pinecone vector endpoints
-  const { upsertVectors, searchVectors, searchDualNamespaces, checkIndexExists } = await import('./pineconeService');
+  const { 
+    upsertVectors, 
+    searchVectors, 
+    searchDualNamespaces, 
+    checkIndexExists,
+    searchLegislationWithRerank,
+    groupResultsByLaw,
+    expandLawContext,
+    rerankDocuments
+  } = await import('./pineconeService');
 
   // Generate AI-powered jurisprudence search query from legal advice
   app.post('/api/pinecone/generate-query', async (req, res) => {
@@ -8024,62 +8033,212 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
   // WETGEVING (LEGISLATION) ENDPOINTS
   // ============================================
 
-  // Search for legislation in Pinecone (laws-current namespace)
+  // Search for legislation in Pinecone with multi-stage retrieval + rerank
   app.post('/api/wetgeving/search', async (req, res) => {
     try {
-      const { query, filters, topK = 10 } = req.body;
+      const { 
+        query, 
+        caseId,
+        topK = 200,           // First-stage retrieval count
+        rerankTopN = 30,      // Reranked results count  
+        maxLaws = 10,         // Max laws to return
+        maxArticlesPerLaw = 20, // Max articles per law
+        expandContext = true  // Whether to expand context (all leden, nearby articles)
+      } = req.body;
       
       if (!query || typeof query !== 'string') {
         return res.status(400).json({ error: 'Search query is required' });
       }
 
-      console.log(`📜 WETGEVING SEARCH`);
-      console.log(`📝 Query: "${query.substring(0, 100)}..."`);
-      if (filters) {
-        console.log(`📋 Filters:`, JSON.stringify(filters, null, 2));
+      console.log(`\n========================================`);
+      console.log(`📜 WETGEVING SEARCH WITH RERANK PIPELINE`);
+      console.log(`========================================`);
+      console.log(`📝 Query: "${query.substring(0, 150)}..."`);
+      console.log(`⚙️ Config: topK=${topK}, rerankTopN=${rerankTopN}, maxLaws=${maxLaws}`);
+      
+      // STEP 1: Build enhanced query string
+      // Include case context if available
+      let enhancedQuery = query;
+      
+      if (caseId) {
+        try {
+          const [caseData] = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
+          if (caseData) {
+            const analysisRecords = await db
+              .select()
+              .from(analyses)
+              .where(eq(analyses.caseId, caseId))
+              .orderBy(desc(analyses.createdAt))
+              .limit(1);
+            
+            const latestAnalysis = analysisRecords[0];
+            
+            let contextParts: string[] = [query];
+            
+            if (caseData.title) {
+              contextParts.push(`Zaak: ${caseData.title}`);
+            }
+            
+            if (latestAnalysis?.legalAdviceJson) {
+              const advice: any = latestAnalysis.legalAdviceJson;
+              if (advice.summary) {
+                contextParts.push(`Samenvatting: ${advice.summary.substring(0, 300)}`);
+              }
+            }
+            
+            if (latestAnalysis?.succesKansAnalysis) {
+              const analysis: any = latestAnalysis.succesKansAnalysis;
+              if (analysis.juridisch_kader) {
+                contextParts.push(`Juridisch kader: ${analysis.juridisch_kader.substring(0, 300)}`);
+              }
+            }
+            
+            enhancedQuery = contextParts.join('\n\n');
+            console.log(`📋 Enhanced query with case context (${enhancedQuery.length} chars)`);
+          }
+        } catch (e) {
+          console.log(`⚠️ Could not fetch case context: ${e}`);
+        }
       }
       
-      // Search in laws-current namespace
-      const results = await searchVectors({
-        text: query,
-        filter: filters,
-        topK: topK,
-        scoreThreshold: 0.10,
-        namespace: 'laws-current'
-      });
-
-      console.log(`📊 Found ${results.length} legislation results`);
-
-      // Format results for legislation display
-      const formattedResults = results.map((result, idx) => ({
-        id: result.id,
-        rank: idx + 1,
-        score: result.score,
-        scorePercent: (result.score * 100).toFixed(1) + '%',
-        // Legislation-specific fields
-        bwbId: result.metadata?.bwb_id || (result.metadata as any)?.bwbId,
-        title: result.metadata?.title,
-        articleNumber: result.metadata?.article_number || (result.metadata as any)?.articleNumber,
-        paragraphNumber: result.metadata?.paragraph_number || (result.metadata as any)?.paragraphNumber,
-        sectionTitle: result.metadata?.section_title || (result.metadata as any)?.sectionTitle,
-        validFrom: result.metadata?.valid_from || (result.metadata as any)?.validFrom,
-        validTo: result.metadata?.valid_to || (result.metadata as any)?.validTo,
-        isCurrent: result.metadata?.is_current ?? (result.metadata as any)?.isCurrent ?? true,
-        text: result.text || (result.metadata as any)?.text,
-        // Generate reference
-        citatie: result.metadata?.article_number 
-          ? `art. ${result.metadata.article_number} ${result.metadata?.title || ''}`
-          : result.metadata?.title || 'Onbekend artikel',
-        bronUrl: result.metadata?.bwb_id 
-          ? `https://wetten.overheid.nl/${result.metadata.bwb_id}`
-          : null
+      // Add focus instruction for reranking
+      enhancedQuery += '\n\nFocus: vind de meest relevante wetsartikelen en bepalingen.';
+      
+      // STEP 2-4: First-stage retrieval + rerank
+      const rerankedResults = await searchLegislationWithRerank(
+        enhancedQuery,
+        topK,
+        rerankTopN
+      );
+      
+      if (rerankedResults.length === 0) {
+        return res.json({
+          query,
+          laws: [],
+          flatResults: [],
+          totalLaws: 0,
+          totalArticles: 0,
+          namespace: 'laws-current'
+        });
+      }
+      
+      // STEP 5: Group by law (bwb_id) and score
+      const groupedLaws = groupResultsByLaw(rerankedResults, maxLaws, maxArticlesPerLaw);
+      
+      // STEP 6: Context expansion (optional)
+      if (expandContext && groupedLaws.length > 0) {
+        console.log(`\n--- STAGE 6: Context expansion ---`);
+        
+        for (const law of groupedLaws.slice(0, 5)) { // Expand top 5 laws
+          const topArticleNumbers = Array.from(new Set(
+            law.articles.slice(0, 5).map(a => a.articleNumber).filter(Boolean)
+          ));
+          
+          if (topArticleNumbers.length > 0) {
+            try {
+              const expandedResults = await expandLawContext(law.bwbId, topArticleNumbers);
+              
+              // Merge expanded results into existing articles
+              const existingIds = new Set(law.articles.map(a => a.id));
+              for (const expanded of expandedResults) {
+                if (!existingIds.has(expanded.id)) {
+                  law.articles.push({
+                    articleNumber: expanded.metadata.article_number || '',
+                    lid: expanded.metadata.lid,
+                    score: expanded.score,
+                    rerankScore: 0, // Expanded results don't have rerank score
+                    text: expanded.text || expanded.metadata.text || '',
+                    boekNummer: expanded.metadata.boek_nummer,
+                    titelNummer: expanded.metadata.titel_nummer,
+                    hoofdstukNummer: expanded.metadata.hoofdstuk_nummer,
+                    structurePath: expanded.metadata.structure_path,
+                    isCurrent: expanded.metadata.is_current,
+                    validFrom: expanded.metadata.valid_from,
+                    id: expanded.id
+                  });
+                  existingIds.add(expanded.id);
+                }
+              }
+              
+              // Re-sort articles by articleNumber then lid for logical order
+              law.articles.sort((a, b) => {
+                const artCompare = (a.articleNumber || '').localeCompare(b.articleNumber || '', undefined, { numeric: true });
+                if (artCompare !== 0) return artCompare;
+                return (a.lid || '').localeCompare(b.lid || '', undefined, { numeric: true });
+              });
+              
+            } catch (e) {
+              console.log(`⚠️ Context expansion failed for ${law.bwbId}: ${e}`);
+            }
+          }
+        }
+      }
+      
+      // STEP 7: Format final output for UI
+      console.log(`\n--- STAGE 7: Final assembly ---`);
+      
+      const formattedLaws = groupedLaws.map((law, lawIdx) => ({
+        rank: lawIdx + 1,
+        bwbId: law.bwbId,
+        title: law.title,
+        lawCode: law.lawCode,
+        lawScore: law.lawScore,
+        lawScorePercent: (law.lawScore * 100).toFixed(1) + '%',
+        bronUrl: `https://wetten.overheid.nl/${law.bwbId}`,
+        articleCount: law.articles.length,
+        articles: law.articles.map((article, artIdx) => ({
+          rank: artIdx + 1,
+          id: article.id,
+          articleNumber: article.articleNumber,
+          lid: article.lid,
+          score: article.score,
+          rerankScore: article.rerankScore,
+          scorePercent: (article.rerankScore * 100).toFixed(1) + '%',
+          text: article.text,
+          textPreview: article.text?.substring(0, 300) + (article.text?.length > 300 ? '...' : ''),
+          boekNummer: article.boekNummer,
+          titelNummer: article.titelNummer,
+          hoofdstukNummer: article.hoofdstukNummer,
+          structurePath: article.structurePath,
+          isCurrent: article.isCurrent,
+          validFrom: article.validFrom,
+          citatie: article.articleNumber 
+            ? `art. ${article.articleNumber}${article.lid ? ` lid ${article.lid}` : ''} ${law.title}`
+            : law.title,
+          bronUrl: `https://wetten.overheid.nl/${law.bwbId}#${article.articleNumber || ''}`
+        }))
       }));
-
+      
+      // Also create flat results list for backward compatibility
+      const flatResults = formattedLaws.flatMap(law => 
+        law.articles.map(article => ({
+          ...article,
+          lawTitle: law.title,
+          lawBwbId: law.bwbId,
+          lawScore: law.lawScore
+        }))
+      );
+      
+      const totalArticles = formattedLaws.reduce((sum, law) => sum + law.articles.length, 0);
+      
+      console.log(`\n✅ WETGEVING SEARCH COMPLETE`);
+      console.log(`📊 ${formattedLaws.length} laws, ${totalArticles} total articles`);
+      
       res.json({
         query,
-        results: formattedResults,
-        totalResults: formattedResults.length,
-        namespace: 'laws-current'
+        enhancedQuery: enhancedQuery.substring(0, 500),
+        laws: formattedLaws,
+        flatResults: flatResults.slice(0, 50), // Top 50 flat results
+        totalLaws: formattedLaws.length,
+        totalArticles,
+        namespace: 'laws-current',
+        pipeline: {
+          firstStageTopK: topK,
+          rerankTopN,
+          maxLaws,
+          maxArticlesPerLaw,
+          expandContext
+        }
       });
 
     } catch (error: any) {

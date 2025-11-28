@@ -1,0 +1,247 @@
+You are updating the “Wetgeving” (legislation) search system.
+Your task is to implement a multi-stage retrieval + rerank strategy that allows the AI to identify the most relevant laws, articles, and surrounding provisions for any user-supplied legal question.
+
+Context
+
+All legislation chunks are stored in a Pinecone namespace named laws-current.
+
+Records cannot be modified; use only existing metadata fields such as:
+
+id, text, title (regulation/law name)
+
+bwb_id
+
+law_code
+
+boek_nummer (book)
+
+titel_nummer (title)
+
+hoofdstuk_nummer (chapter)
+
+article_number
+
+lid / paragraph
+
+structure_path
+
+
+
+The search and rerank logic must automatically determine relevancy based on the user input.
+
+Overall Goal
+
+The system must:
+
+Determine which laws are relevant for the secific case.
+
+Identify the most relevant articles and their paragraphs.
+
+Expand results to include surrounding context (all paragraphs of the same article, nearby articles in the same title/chapter).
+
+Return a clean, sorted list of laws + articles to the UI.
+
+Processing Pipeline
+1. Build a semantic query string
+
+Use the user’s input and legal knowledge of the case such as case-details, /dossier, /volledige-analyse, /analyse-details, /jurisprudentie.
+Append the info to the query string.
+
+The same query string is used for both:
+
+Pinecone vector search
+
+Rerank input
+
+Example query construction:
+
+<user search terms>
+Relevant legal question(s):
+<inferred or provided case description>
+Focus: find the most relevant statutory provisions (articles and paragraphs).
+
+2. First-stage retrieval from Pinecone (laws-current)
+
+Perform a broad semantic search:
+
+Use serverless Pinecone search with integrated embeddings.
+
+top_k = 150–200
+
+include_metadata = true
+
+No law restrictions; always search the entire namespace.
+
+Return at least:
+
+id
+
+text
+
+title
+
+bwb_id
+
+law_code
+
+boek_nummer, titel_nummer, hoofdstuk_nummer
+
+article_number, lid
+
+This stage is recall-oriented: the goal is breadth, not precision.
+
+3. Prepare documents for reranking
+
+From the first-stage matches:
+
+Select up to 100 documents (due to rerank limits).
+
+For each match, create a document object:
+
+{
+  "id": "<record id>",
+  "text": "<law title + article context + record text>"
+}
+
+
+Suggested text format:
+
+<title of the law> – Boek <boek_nummer>, Titel <titel_nummer>, Art. <article_number>, lid <lid>
+
+<original text field>
+
+
+Maintain a mapping from rerank document id → original Pinecone record.
+
+4. Rerank with Pinecone Inference
+
+Use the bge-reranker-v2-m3 model:
+
+pc.inference.rerank(
+  model="bge-reranker-v2-m3",
+  query=<query string>,
+  documents=<list of prepared docs>,
+  top_n=30,
+  return_documents=True
+)
+
+
+Keep only the top 30 documents after reranking.
+
+These now represent the most relevant paragraphs.
+
+5. Group reranked records by law (bwb_id)
+
+For each of the top 30 reranked documents:
+
+Retrieve the original metadata.
+
+Group by bwb_id.
+
+For each law, compute a law-level score:
+
+Use the highest rerank score among its paragraphs.
+
+Sort laws by this score and keep only the top 5–10 laws.
+
+This forms the list of candidate laws for detailed exploration.
+
+6. Second-stage intra-law retrieval + context expansion
+
+For each selected bwb_id:
+
+6A. Intra-law semantic search
+
+Optionally run an additional Pinecone search restricted by metadata:
+
+filter: { "bwb_id": <law id> }
+top_k: 50
+
+
+Or reuse the reranked chunks belonging to that bwb_id if performance is preferred.
+
+6B. Expand context within the law
+
+For every selected article:
+
+Fetch all paragraphs (leden) belonging to that article:
+
+filter: {
+  "bwb_id": <law>,
+  "article_number": <article>,
+  "is_current": true
+}
+
+
+Identify adjacent articles in the same title/chapter (if metadata available):
+
+previous article
+
+next article
+
+Fetch their chunks as well.
+
+This ensures the UI receives:
+
+complete articles
+
+legally relevant nearby articles
+
+definitions / scopes often used in interpretation
+
+6C. Score sorting
+
+Within each law:
+
+Sort articles (and their paragraphs) by:
+
+rerank score (primary)
+
+secondary intra-law score (if used)
+
+Limit to 10–20 top articles per law.
+
+7. Final assembly → output to UI
+
+Sort and return data structured for UI rendering:
+
+Law-level
+
+title
+
+bwb_id
+
+law_code
+
+law-level relevance score
+
+Article-level
+
+article_number
+
+lid (paragraph)
+
+short snippet from text (including 'Verder lezen')
+
+final score
+
+hierarchical metadata:
+boek_nummer, titel_nummer, hoofdstuk_nummer
+
+The frontend uses this to populate the existing “law cards”.
+
+Important Rules
+
+Never hard-code relevant / irrelevant laws.
+
+Always:
+
+Global semantic search.
+
+Rerank top results.
+
+Group by law.
+
+Only then decide which laws, articles, and paragraphs matter.
+
+This pipeline applies only to the laws-current namespace (legislation), not case law.
