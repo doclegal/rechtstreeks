@@ -70,6 +70,63 @@ interface ArticleSuggestion {
   reason: string;
 }
 
+interface CommentaryResult {
+  article: {
+    id: string;
+    lawTitle: string;
+    boekNummer?: string;
+    boekTitel?: string;
+    titelNummer?: string;
+    titelNaam?: string;
+    articleNumber: string;
+    validFrom?: string;
+    text: string;
+    bwbId: string;
+    wettenLink: string;
+  };
+  commentary: {
+    article_title: string;
+    article_wetten_link: string;
+    short_intro: string;
+    systematiek: string;
+    kernbegrippen: Array<{
+      term: string;
+      explanation: string;
+      nuances?: string;
+    }>;
+    reikwijdte_en_beperkingen: string;
+    belangrijkste_rechtspraak: Array<{
+      ecli: string;
+      court: string;
+      date: string;
+      summary: string;
+      importance: string;
+      source_url: string;
+    }>;
+    online_bronnen: Array<{
+      title: string;
+      url: string;
+      source_type: string;
+      used_for: string;
+    }>;
+    disclaimers: string[];
+  };
+  sources: {
+    wettenLink: string;
+    jurisprudence: Array<{
+      ecli: string;
+      court: string;
+      source_url: string;
+    }>;
+    onlineSources: Array<{
+      title: string;
+      url: string;
+      source_type: string;
+    }>;
+  };
+  generatedAt: string;
+}
+
 export default function Wetgeving() {
   const { isLoading: authLoading } = useAuth();
   const currentCase = useActiveCase();
@@ -82,6 +139,8 @@ export default function Wetgeving() {
   const [expandedGroupedArticles, setExpandedGroupedArticles] = useState<Set<string>>(new Set());
   const [aiExplanation, setAiExplanation] = useState("");
   const [isSearchingAll, setIsSearchingAll] = useState(false);
+  const [selectedCommentary, setSelectedCommentary] = useState<CommentaryResult | null>(null);
+  const [loadingCommentaryFor, setLoadingCommentaryFor] = useState<string | null>(null);
 
   const { data: savedData, isLoading: savedDataLoading } = useQuery({
     queryKey: ['/api/wetgeving', currentCase?.id],
@@ -345,10 +404,39 @@ export default function Wetgeving() {
     }
   });
 
+  const fetchCommentary = async (article: GroupedArticle) => {
+    const key = article.articleKey;
+    setLoadingCommentaryFor(key);
+    
+    try {
+      const response = await apiRequest('POST', '/api/wetgeving/commentary', {
+        bwbId: article.bwbId,
+        articleNumber: article.articleNumber
+      });
+      
+      const data = await response.json();
+      setSelectedCommentary(data);
+      
+      toast({
+        title: "Commentaar geladen",
+        description: `Tekst & Commentaar voor Art. ${article.articleNumber} is beschikbaar`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Fout bij laden",
+        description: error.message || "Kon commentaar niet ophalen",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingCommentaryFor(null);
+    }
+  };
+
   const clearArticleResults = async () => {
     setArticleResults([]);
     setArticleEntries([{ id: '1', regulation: '', articleNumber: '' }]);
     setAiExplanation('');
+    setSelectedCommentary(null);
     
     if (currentCase?.id) {
       try {
@@ -443,12 +531,16 @@ export default function Wetgeving() {
     index,
     expanded,
     onToggle,
+    onGetCommentary,
+    isLoadingCommentary,
     testIdPrefix
   }: {
     article: GroupedArticle;
     index: number;
     expanded: boolean;
     onToggle: () => void;
+    onGetCommentary: () => void;
+    isLoadingCommentary: boolean;
     testIdPrefix: string;
   }) => {
     const allParagraphs: string[] = [];
@@ -483,10 +575,16 @@ export default function Wetgeving() {
             variant="outline"
             size="sm"
             className="h-6 text-xs px-2"
+            onClick={onGetCommentary}
+            disabled={isLoadingCommentary}
             data-testid={`button-get-commentary-${testIdPrefix}-${index}`}
           >
-            <MessageSquare className="h-3 w-3 mr-1" />
-            Commentaar ophalen
+            {isLoadingCommentary ? (
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+            ) : (
+              <MessageSquare className="h-3 w-3 mr-1" />
+            )}
+            {isLoadingCommentary ? 'Laden...' : 'Commentaar ophalen'}
           </Button>
         </div>
 
@@ -701,6 +799,8 @@ export default function Wetgeving() {
                       index={index}
                       expanded={expandedGroupedArticles.has(article.articleKey)}
                       onToggle={() => toggleExpandedGrouped(article.articleKey)}
+                      onGetCommentary={() => fetchCommentary(article)}
+                      isLoadingCommentary={loadingCommentaryFor === article.articleKey}
                       testIdPrefix="result-article"
                     />
                   ))}
@@ -719,15 +819,189 @@ export default function Wetgeving() {
                 Tekst &amp; Commentaar
               </CardTitle>
               <CardDescription>
-                Bekijk wettekst met juridisch commentaar
+                {selectedCommentary 
+                  ? selectedCommentary.commentary.article_title
+                  : 'Bekijk wettekst met juridisch commentaar'}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12 text-muted-foreground">
-                <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                <p className="text-sm">Selecteer een artikel</p>
-                <p className="text-xs">Klik op "Commentaar ophalen" bij een artikel om de tekst en commentaar te bekijken</p>
-              </div>
+              {!selectedCommentary ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                  <p className="text-sm">Selecteer een artikel</p>
+                  <p className="text-xs">Klik op "Commentaar ophalen" bij een artikel om de tekst en commentaar te bekijken</p>
+                </div>
+              ) : (
+                <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-2">
+                  {/* Article text section */}
+                  <div className="border rounded-lg p-4 bg-muted/20">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-sm">Wettekst</h3>
+                      <a 
+                        href={selectedCommentary.article.wettenLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:underline flex items-center gap-1"
+                        data-testid="link-wetten-overheid"
+                      >
+                        <FileText className="h-3 w-3" />
+                        Bekijk op wetten.overheid.nl
+                      </a>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        <Badge variant="outline" className="text-xs">
+                          {selectedCommentary.article.lawTitle}
+                        </Badge>
+                        {selectedCommentary.article.boekTitel && (
+                          <Badge variant="secondary" className="text-xs">
+                            Boek {selectedCommentary.article.boekNummer}: {selectedCommentary.article.boekTitel}
+                          </Badge>
+                        )}
+                        {selectedCommentary.article.validFrom && (
+                          <Badge variant="outline" className="text-xs">
+                            Geldig vanaf: {selectedCommentary.article.validFrom}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm whitespace-pre-wrap font-mono bg-background p-3 rounded border">
+                        {selectedCommentary.article.text}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Commentary sections */}
+                  <div className="space-y-4">
+                    {/* Short intro */}
+                    {selectedCommentary.commentary.short_intro && (
+                      <div>
+                        <h4 className="font-semibold text-sm mb-2">Inleiding</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedCommentary.commentary.short_intro}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Systematiek */}
+                    {selectedCommentary.commentary.systematiek && (
+                      <div>
+                        <h4 className="font-semibold text-sm mb-2">Systematiek</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedCommentary.commentary.systematiek}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Kernbegrippen */}
+                    {selectedCommentary.commentary.kernbegrippen?.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-sm mb-2">Kernbegrippen</h4>
+                        <div className="space-y-2">
+                          {selectedCommentary.commentary.kernbegrippen.map((begrip, idx) => (
+                            <div key={idx} className="border-l-2 border-primary/30 pl-3">
+                              <p className="font-medium text-sm">{begrip.term}</p>
+                              <p className="text-sm text-muted-foreground">{begrip.explanation}</p>
+                              {begrip.nuances && (
+                                <p className="text-xs text-muted-foreground italic mt-1">{begrip.nuances}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reikwijdte en beperkingen */}
+                    {selectedCommentary.commentary.reikwijdte_en_beperkingen && (
+                      <div>
+                        <h4 className="font-semibold text-sm mb-2">Reikwijdte en beperkingen</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedCommentary.commentary.reikwijdte_en_beperkingen}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Belangrijkste rechtspraak */}
+                    {selectedCommentary.commentary.belangrijkste_rechtspraak?.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-sm mb-2">Belangrijkste rechtspraak</h4>
+                        <div className="space-y-2">
+                          {selectedCommentary.commentary.belangrijkste_rechtspraak.map((caseItem, idx) => (
+                            <div key={idx} className="border rounded p-2 bg-muted/20">
+                              <div className="flex items-center gap-2 mb-1">
+                                <a 
+                                  href={caseItem.source_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs font-mono text-primary hover:underline"
+                                  data-testid={`link-ecli-${idx}`}
+                                >
+                                  {caseItem.ecli}
+                                </a>
+                                <Badge variant="outline" className="text-xs">
+                                  {caseItem.court}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">{caseItem.date}</span>
+                              </div>
+                              <p className="text-sm">{caseItem.summary}</p>
+                              {caseItem.importance && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  <strong>Belang:</strong> {caseItem.importance}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Online bronnen */}
+                    {selectedCommentary.commentary.online_bronnen?.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-sm mb-2">Online bronnen</h4>
+                        <div className="space-y-1">
+                          {selectedCommentary.commentary.online_bronnen.map((bron, idx) => (
+                            <div key={idx} className="flex items-start gap-2">
+                              <a 
+                                href={bron.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-primary hover:underline flex-1"
+                                data-testid={`link-source-${idx}`}
+                              >
+                                {bron.title}
+                              </a>
+                              <Badge variant="secondary" className="text-xs shrink-0">
+                                {bron.source_type}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Disclaimers */}
+                    {selectedCommentary.commentary.disclaimers?.length > 0 && (
+                      <div className="border-t pt-4 mt-4">
+                        <p className="text-xs text-muted-foreground">
+                          {selectedCommentary.commentary.disclaimers.join(' ')}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Clear button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedCommentary(null)}
+                    className="w-full"
+                    data-testid="button-clear-commentary"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Commentaar sluiten
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

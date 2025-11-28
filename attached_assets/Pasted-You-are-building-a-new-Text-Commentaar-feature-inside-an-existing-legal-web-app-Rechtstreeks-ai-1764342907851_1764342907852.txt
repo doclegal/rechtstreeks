@@ -1,0 +1,385 @@
+You are building a new “Text & Commentaar” feature inside an existing legal web app (Rechtstreeks.ai).
+The app is written in modern web stack (backend + frontend) and already has working integrations and credentials for:
+
+Pinecone (with multiple namespaces: a “laws-current” namespace for legislation and “ECLI_NL” / “WEB_ECLI” namespaces for case law),
+
+Serper.dev (SERPER_API_KEY) for websearch,
+
+OpenAI as the main LLM provider.
+
+Your task is to implement a complete end-to-end feature that does the following:
+
+
+Functional goal
+
+For any Dutch statutory article (e.g. “art. 7:17 BW”), the app should:
+
+Show the exact statutory text (including all paragraphs) as stored in Pinecone, without any modification.
+
+Generate an AI-written Text & Commentaar-style explanation in Dutch, based on:
+
+the statutory text itself,
+
+relevant online doctrinal/literature sources found via Serper,
+
+relevant Dutch case law (only Hoge Raad and Gerechtshoven) retrieved from Pinecone.
+
+Display all relevant sources with clickable links:
+
+a link to the official article on wetten.overheid.nl,
+
+links to the underlying decisions on rechtspraak.nl (from the Pinecone source_url field),
+
+links to the literature / web sources (from Serper results).
+
+All AI-generated explanatory text must be in Dutch.
+
+
+Data model assumptions
+
+1. Legislation (Pinecone, “wetgeving” namespace)
+Each legislation record in Pinecone has (at least) the following fields:
+
+id: e.g. "BWBR0028744#art79#2020-07-08"
+
+bwb_id: e.g. "BWBR0028744"
+
+article_number: e.g. "79"
+
+boek_nummer: e.g. "2"
+
+boek_titel: e.g. "Rechtspersonen"
+
+titel_nummer: e.g. "3"
+
+titel_naam: e.g. "De vereniging"
+
+text: full article text (including heading, article number and all paragraphs),
+
+valid_from: e.g. "2020-07-08"
+
+is_current: boolean
+
+title: e.g. "Burgerlijk Wetboek Boek 2"
+
+type: "wetgeving"
+
+
+2. Case law (Pinecone, “ECLI_NL” and “WEB_ECLI” namespaces)
+Each case law record has (at least) the following fields:
+
+id: e.g. "ECLI:NL:RBZWB:2025:364"
+
+ecli: same as id
+
+court: e.g. "Rechtbank Zeeland-West-Brabant"
+
+court_level: e.g. "Rechtbank", "Gerechtshof", "Hoge Raad"
+
+decision_date: "YYYY-MM-DD"
+
+legal_area: e.g. "Civiel recht; Arbeidsrecht"
+
+procedure_type: e.g. "Kort geding"
+
+source_url: URL on https://uitspraken.rechtspraak.nl/...
+
+text: a summary of the decision
+
+title: optional title or "Geen titel"
+
+You do not need to change the existing Pinecone structure.
+
+
+
+Required flow
+
+Implement the following logical flow:
+
+Step 1 – User input and article resolution
+
+User enters a reference like "art. 7:17 BW".
+
+Parse the input into a normalized representation (bwb_id, boek_nummer, article_number).
+Assume you have (or write) a small mapping layer from “human format” (“7:17 BW”) to the correct bwb_id and article number.
+
+Step 2 – Fetch article from Pinecone (“wetgeving”)
+
+Query Pinecone in the wetgeving namespace using metadata filters:
+
+bwb_id = ...
+
+article_number = ...
+
+is_current = true
+
+Retrieve the single current record for that article.
+
+Do not vector search here if it is not needed; rely on metadata filters.
+
+Build an ArticleViewModel containing:
+
+law title (title),
+
+book and title info (boek_nummer, boek_titel, titel_nummer, titel_naam),
+
+article label (article_number),
+
+valid_from,
+
+text (full, exact statutory text).
+
+Construct an official link to wetten.overheid.nl for this article, using bwb_id, valid_from and article_number (e.g. https://wetten.overheid.nl/{bwb_id}/{valid_from}#Artikel{article_number}).
+
+The UI must display:
+
+the article heading (law + book + article),
+
+the full text field exactly as stored,
+
+the effective date (valid_from),
+
+and a clear clickable link “Bekijk wetstekst op wetten.overheid.nl”.
+
+
+
+Step 3 – Issue analysis (AI)
+
+Send the following to OpenAI (LLM) in a “provision analysis” step:
+
+the full article text (text),
+
+metadata: bwb_id, article_number, boek_titel, titel_naam,
+
+and, when available, the current case context from your analysis flow (e.g. an analysis_details object coming from /analyse-details or a similar endpoint), containing a structured description of:
+
+the type of dispute,
+
+the relevant facts,
+
+the claimed legal basis(es),
+
+the key legal questions identified for this case.
+
+The model must not analyse the provision in the abstract only, but explicitly take into account the specific dispute and the perspective from which interpretation is requested.
+
+Example: art. 6:162 BW (onrechtmatige daad) is very broad. If the underlying case is about imitation of a product (look-alike / productnabootsing), the model must:
+
+treat the provision in the context of product imitation and unfair competition,
+
+focus its key_issues and search_questions on questions like “wanprestatie vs. OD”, “nabootsing als onrechtmatige daad”, “slaafse nabootsing”, etc.,
+
+not generate generic search questions about traffic accidents, environmental torts, or unrelated categories of tort.
+
+You must therefore always pass the relevant case context (analysis_details) along with the statutory text, and instruct the model to:
+
+align provision_summary and key_issues with the concrete dispute;
+
+formulate search_questions that are tailored to the specific legal angle in this case (e.g. “onrechtmatige daad in the context of product imitation”) instead of generic doctrine;
+
+suggest related_provisions that actually matter for this factual situation (e.g. combination of art. 6:162 BW with specific IP or unfair competition provisions, if those are part of the claimed bases).
+
+The model must return a structured JSON with:
+
+provision_summary: short neutral summary, explicitly framed in light of the current case if context was provided,
+
+key_issues: array of objects with name, description, priority, focused on the dispute,
+
+related_provisions: list of related articles that are plausibly relevant for this case,
+
+search_questions: list of concrete search queries (for legal interpretation, doctrinal discussion etc.) that already embed the case context where appropriate (e.g. “onrechtmatige daad + productnabootsing + HR + slaafse nabootsing”),
+
+suggested_legal_area: a generic string like "Civiel recht; Arbeidsrecht".
+
+The content of this JSON can be in Dutch; the structure must remain stable.
+
+
+Step 4 – Web search via Serper (doctrinal/literature sources)
+
+From search_questions, derive 2–5 well-focused web search queries.
+
+Use Serper.dev to execute these queries.
+
+Collect a set of results with title, url, snippet, domain and a relevance score.
+
+Add a filtering step (can be another LLM call) that:
+
+removes obviously low-quality SEO garbage,
+
+prefers reliable sources: universities, respected law firms, serious legal blogs, official bodies, etc.,
+
+selects only results that clearly discuss interpretation of the article or its key issues.
+
+Normalize these into an online_sources[] array:
+
+title
+
+url
+
+source_type (e.g. "blog", "university", "law_firm")
+
+relevance
+
+snippet
+
+These online_sources must later be shown as clickable links in the UI.
+
+
+
+Step 5 – Case law retrieval from Pinecone (Hoge Raad and Gerechtshoven only)
+
+Build a natural language query string combining:
+
+the article reference (e.g. “art. 7:17 BW”),
+
+the provision_summary,
+
+the key_issues[].name and key_issues[].description,
+
+suggested_legal_area.
+
+Compute an embedding for this query string.
+
+Query both case law namespaces: ECLI_NL and WEB_ECLI with:
+
+top_k = 20
+
+metadata filter: court_level IN ["Hoge Raad", "Gerechtshof"]
+
+optional filter on legal_area when appropriate.
+
+Combine results from both namespaces into one list:
+
+deduplicate records by ecli,
+
+apply a ranking:
+
+Hoge Raad decisions first,
+
+then Gerechtshof decisions,
+
+within those groups: sort by similarity score and recency (decision_date).
+
+Take the top 10 and normalize them into a jurisprudence[] array:
+
+ecli
+
+court
+
+court_level
+
+decision_date
+
+legal_area
+
+procedure_type
+
+source_url (rechtspraak.nl link)
+
+summary (from the Pinecone text field)
+
+title
+
+Very important: the later AI comment generator must be instructed to only use these ECLI references and never invent ECLI numbers.
+
+
+
+Step 6 – Commentaar generator (AI, output in Dutch)
+
+Now call OpenAI again with:
+
+ArticleViewModel (including the official wetten link),
+
+the issue_analysis JSON,
+
+the online_sources[] array,
+
+the jurisprudence[] array.
+
+Ask the model (in Dutch) to produce a structured JSON object representing a Text & Commentaar-style explanation of the article, with at least:
+
+article_title: a human readable title, e.g. "Art. 7:17 BW – Conformiteit".
+
+article_wetten_link: the official wetten.overheid.nl URL you constructed earlier.
+
+short_intro: brief introduction to the function of the provision.
+
+systematiek: explanation of the place and role of the article in the system of the law.
+
+kernbegrippen: array with objects (term, explanation, nuances).
+
+reikwijdte_en_beperkingen: scope and main limitations.
+
+belangrijkste_rechtspraak: array of objects referencing ONLY the provided jurisprudence[], each with:
+
+ecli, court, date, summary, importance, source_url.
+
+online_bronnen: array mirroring online_sources[] but possibly grouped and with a short indication “used_for”.
+
+disclaimers: short list of textual disclaimers.
+
+All explanatory text fields must be in Dutch.
+
+The model must always include the wetten-link, at least one rechtspraak-link (if any jurisprudence was found), and all used literature/online links in the output JSON.
+
+
+
+
+Step 7 – UI composition
+
+Implement a frontend view that, for a selected article, shows:
+
+The statutory article block:
+
+article heading and meta (law, book, title, valid_from date),
+
+the full raw text from Pinecone (exact, no modifications),
+
+the clickable link to wetten.overheid.nl.
+
+The commentary block:
+
+sections for short_intro, systematiek, kernbegrippen, reikwijdte_en_beperkingen, and belangrijkste_rechtspraak, rendered with headings and paragraphs.
+
+The sources block:
+
+“Gebruikte wetsbron” → show the wetten link from article_wetten_link.
+
+“Gebruikte rechtspraak” → list each item in belangrijkste_rechtspraak with:
+
+ECLI, court, date and a clickable link to source_url (rechtspraak.nl).
+
+“Gebruikte literatuur / online bronnen” → list each item in online_bronnen with a clickable url, the title and an indication of source type.
+
+Make sure the UI clearly separates: article text, commentary-text, and sources.
+
+
+
+
+Step 8 – Caching (optional, but recommended)
+
+Implement a simple caching layer keyed by:
+
+the id of the legislation record (e.g. BWBR0028744#art79#2020-07-08).
+
+Cache:
+
+the issue_analysis,
+
+the jurisprudence[],
+
+the online_sources[],
+
+the final commentary JSON.
+
+On repeated requests for the same article, show the cached result immediately and optionally provide a “Refresh commentary” button that re-runs steps 3–6 to pick up new case law or sources.
+
+General constraints
+
+All user-visible explanatory text must be in Dutch.
+
+You may assume all environment variables and credentials for OpenAI, Serper, and Pinecone are already configured in the project. You only need to call the existing clients.
+
+Enforce a clear separation between data retrieval (Pinecone/Serper) and AI generation (OpenAI), to keep the flow maintainable.
+
+Do not generate example code in this description; focus on the architecture, data flow and integration points so that the implementation can be created consistently across backend and frontend.

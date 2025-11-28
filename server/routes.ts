@@ -8967,6 +8967,33 @@ Genereer een JSON response met:
     }
   });
 
+  // Get article commentary
+  app.post('/api/wetgeving/commentary', async (req, res) => {
+    try {
+      const { bwbId, articleNumber, caseContext, forceRefresh } = req.body;
+      
+      if (!bwbId || !articleNumber) {
+        return res.status(400).json({ 
+          error: 'bwbId en articleNumber zijn verplicht' 
+        });
+      }
+      
+      console.log(`📚 Generating commentary for ${bwbId} art. ${articleNumber}${forceRefresh ? ' (force refresh)' : ''}`);
+      
+      const { getArticleCommentary } = await import('./services/commentaryService');
+      
+      const result = await getArticleCommentary(bwbId, articleNumber, caseContext, forceRefresh === true);
+      
+      res.json(result);
+      
+    } catch (error: any) {
+      console.error('Error generating commentary:', error);
+      res.status(500).json({ 
+        error: error.message || 'Fout bij genereren van commentaar' 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
