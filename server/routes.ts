@@ -8894,7 +8894,7 @@ Genereer een JSON response met:
       );
 
       if (!latestWithData) {
-        return res.json({ searchResults: [], savedQuery: null });
+        return res.json({ searchResults: [], savedQuery: null, articleEntries: [] });
       }
 
       const legislationData = (latestWithData as any).legislationSearchResults || {};
@@ -8902,6 +8902,7 @@ Genereer een JSON response met:
       res.json({
         searchResults: legislationData.results || [],
         savedQuery: legislationData.query || null,
+        articleEntries: legislationData.articleEntries || [],
         lastSearchDate: legislationData.searchDate || null
       });
 
@@ -8917,7 +8918,7 @@ Genereer een JSON response met:
   app.patch('/api/wetgeving/:caseId/save-search', async (req, res) => {
     try {
       const { caseId } = req.params;
-      const { results, query } = req.body;
+      const { results, query, articleEntries } = req.body;
       
       if (!caseId) {
         return res.status(400).json({ error: 'Case ID is required' });
@@ -8945,6 +8946,7 @@ Genereer een JSON response met:
           legislationSearchResults: {
             results: results || [],
             query: query || '',
+            articleEntries: articleEntries || [],
             searchDate: new Date().toISOString()
           }
         })

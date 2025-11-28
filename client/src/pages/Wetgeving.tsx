@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 interface LegislationResult {
@@ -82,6 +82,24 @@ export default function Wetgeving() {
   const [expandedGroupedArticles, setExpandedGroupedArticles] = useState<Set<string>>(new Set());
   const [aiExplanation, setAiExplanation] = useState("");
   const [isSearchingAll, setIsSearchingAll] = useState(false);
+
+  const { data: savedData, isLoading: savedDataLoading } = useQuery({
+    queryKey: ['/api/wetgeving', currentCase?.id],
+    enabled: !!currentCase?.id,
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/wetgeving/${currentCase?.id}`);
+      return response.json();
+    }
+  });
+
+  useEffect(() => {
+    if (savedData?.searchResults && savedData.searchResults.length > 0) {
+      setArticleResults(savedData.searchResults);
+    }
+    if (savedData?.articleEntries && savedData.articleEntries.length > 0) {
+      setArticleEntries(savedData.articleEntries);
+    }
+  }, [savedData]);
 
   const groupResultsByArticle = (results: LegislationResult[]): GroupedArticle[] => {
     const grouped = new Map<string, GroupedArticle>();
@@ -177,6 +195,23 @@ export default function Wetgeving() {
     ));
   };
 
+  const saveSearchResults = async (results: LegislationResult[], entries: ArticleEntry[]) => {
+    if (!currentCase?.id) return;
+    
+    try {
+      await apiRequest('PATCH', `/api/wetgeving/${currentCase.id}/save-search`, {
+        results: results,
+        articleEntries: entries
+      });
+      
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/wetgeving', currentCase.id] 
+      });
+    } catch (error) {
+      console.error('Failed to save search results:', error);
+    }
+  };
+
   const searchAllArticles = async () => {
     const validEntries = articleEntries.filter(e => e.regulation.trim() && e.articleNumber.trim());
     
@@ -209,6 +244,8 @@ export default function Wetgeving() {
       }
 
       setArticleResults(allResults);
+      
+      await saveSearchResults(allResults, validEntries);
       
       toast({
         title: "Zoeken voltooid",
@@ -283,6 +320,8 @@ export default function Wetgeving() {
 
         setArticleResults(allResults);
         
+        await saveSearchResults(allResults, newEntries);
+        
         toast({
           title: "Artikelen geïdentificeerd en gezocht",
           description: `${articles.length} artikelen gevonden, ${allResults.length} resultaten totaal`,
@@ -306,13 +345,28 @@ export default function Wetgeving() {
     }
   });
 
-  const clearArticleResults = () => {
+  const clearArticleResults = async () => {
     setArticleResults([]);
     setArticleEntries([{ id: '1', regulation: '', articleNumber: '' }]);
     setAiExplanation('');
+    
+    if (currentCase?.id) {
+      try {
+        await apiRequest('PATCH', `/api/wetgeving/${currentCase.id}/save-search`, {
+          results: [],
+          articleEntries: []
+        });
+        
+        queryClient.invalidateQueries({ 
+          queryKey: ['/api/wetgeving', currentCase.id] 
+        });
+      } catch (error) {
+        console.error('Failed to clear search results:', error);
+      }
+    }
   };
 
-  if (authLoading) {
+  if (authLoading || savedDataLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
