@@ -560,10 +560,19 @@ export default function Wetgeving() {
   };
 
   const extractCleanLidText = (text: string): string => {
-    return text
-      .replace(/^Boek \d+:.*?(?=\d\s)/s, '')
-      .replace(/^Lid \d+\s*/i, '')
-      .trim();
+    let cleaned = text;
+    
+    cleaned = cleaned.replace(/^Boek\s+\d+[^>]*(?:>\s*[^>]+)*\s*/i, '');
+    
+    cleaned = cleaned.replace(/^Artikel\s+[\d:]+\s*/i, '');
+    
+    cleaned = cleaned.replace(/^Lid\s+\d+\s*/i, '');
+    
+    cleaned = cleaned.replace(/^\d+\s+Lid\s+\d+\s+/i, '');
+    
+    cleaned = cleaned.trim();
+    
+    return cleaned;
   };
 
   const GroupedArticleCard = ({
@@ -611,10 +620,9 @@ export default function Wetgeving() {
         <div className={`text-sm text-muted-foreground ${!expanded ? 'line-clamp-8' : ''}`}>
           {article.leden.map((lid) => {
             const cleanText = extractCleanLidText(lid.text);
-            const startsWithNumber = /^\d+\s/.test(cleanText);
             return (
-              <p key={`${article.articleKey}-lid-${lid.lid}`} className="mb-1">
-                {startsWithNumber ? cleanText : `${lid.lid} ${cleanText}`}
+              <p key={`${article.articleKey}-lid-${lid.lid}`} className="mb-2">
+                {cleanText}
               </p>
             );
           })}
