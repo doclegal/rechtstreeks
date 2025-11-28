@@ -41,6 +41,7 @@ interface GroupedArticle {
   bestScorePercent: string;
   bestRank: number;
   sourceQuery?: string;
+  sectionTitle?: string;
   leden: {
     lid: string;
     text: string;
@@ -104,6 +105,7 @@ export default function Wetgeving() {
           bestScorePercent: result.scorePercent,
           bestRank: result.rank,
           sourceQuery: result.sourceQuery,
+          sectionTitle: result.sectionTitle,
           leden: []
         });
       }
@@ -116,6 +118,10 @@ export default function Wetgeving() {
         article.bestRank = result.rank;
       }
       
+      if (!article.sectionTitle && result.sectionTitle) {
+        article.sectionTitle = result.sectionTitle;
+      }
+      
       const existingLid = article.leden.find(l => l.lid === lidNumber);
       if (!existingLid && result.text) {
         article.leden.push({
@@ -126,15 +132,16 @@ export default function Wetgeving() {
       }
     }
     
-    for (const article of grouped.values()) {
-      article.leden.sort((a, b) => {
+    const groupedArray = Array.from(grouped.values());
+    for (const article of groupedArray) {
+      article.leden.sort((a: { lid: string }, b: { lid: string }) => {
         const numA = parseInt(a.lid) || 0;
         const numB = parseInt(b.lid) || 0;
         return numA - numB;
       });
     }
     
-    return Array.from(grouped.values()).sort((a, b) => a.bestRank - b.bestRank);
+    return groupedArray.sort((a, b) => a.bestRank - b.bestRank);
   };
 
   const groupedTermResults = groupResultsByArticle(termResults);
@@ -565,57 +572,47 @@ export default function Wetgeving() {
     onToggle: () => void;
     testIdPrefix: string;
   }) => {
-    const totalTextLength = article.leden.reduce((sum, lid) => sum + (lid.text?.length || 0), 0);
+    const combinedText = article.leden.map(lid => lid.text).join('\n');
+    const totalTextLength = combinedText.length;
     
     return (
       <div 
-        className="border rounded-lg p-4 bg-muted/30 space-y-3"
+        className="border rounded-lg p-4 bg-muted/30 space-y-2"
         data-testid={`${testIdPrefix}-${index}`}
       >
         <div className="flex flex-wrap items-center gap-2">
-          <Badge className="font-medium">
-            #{article.bestRank}
-          </Badge>
-          <Badge variant="secondary" className="font-mono text-xs">
+          <Badge className="bg-green-600 hover:bg-green-700 text-white font-mono text-xs">
             Art. {article.articleNumber}
           </Badge>
           {article.title && (
-            <Badge variant="outline" className="text-xs max-w-xs truncate">
-              <BookText className="h-3 w-3 mr-1 flex-shrink-0" />
+            <Badge variant="secondary" className="text-xs">
               {article.title}
             </Badge>
           )}
-          {article.sourceQuery && (
-            <Badge variant="default" className="text-xs bg-primary/20 text-primary">
-              {article.sourceQuery}
-            </Badge>
-          )}
-          <Badge variant="outline" className="text-xs">
-            {article.leden.length} {article.leden.length === 1 ? 'lid' : 'leden'}
-          </Badge>
-          <Badge variant="outline" className="text-xs ml-auto">
-            Score: {article.bestScorePercent}
-          </Badge>
         </div>
 
-        <div className="space-y-3">
+        {article.sectionTitle && (
+          <p className="text-xs text-muted-foreground">
+            {article.sectionTitle}
+          </p>
+        )}
+
+        <p className="text-sm font-semibold">
+          Artikel {article.articleNumber.replace(/^7:/, '')}
+        </p>
+
+        <div className={`text-sm text-muted-foreground ${!expanded ? 'line-clamp-6' : ''}`}>
           {article.leden.map((lid, lidIndex) => (
-            <div key={`${article.articleKey}-lid-${lid.lid}`} className="border-l-2 border-primary/30 pl-3">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-medium text-primary">Lid {lid.lid}</span>
-                <span className="text-xs text-muted-foreground">({Math.round(lid.score * 100)}%)</span>
-              </div>
-              <p className={`text-sm text-muted-foreground whitespace-pre-wrap ${!expanded && lidIndex > 0 ? 'line-clamp-2' : !expanded ? 'line-clamp-4' : ''}`}>
-                {lid.text}
-              </p>
-            </div>
+            <p key={`${article.articleKey}-lid-${lid.lid}`} className="mb-1">
+              {lid.text}
+            </p>
           ))}
         </div>
 
-        {(totalTextLength > 400 || article.leden.length > 2) && (
+        {totalTextLength > 500 && (
           <button
             onClick={onToggle}
-            className="inline-flex items-center text-sm text-primary hover:underline pt-1"
+            className="inline-flex items-center text-sm text-primary hover:underline"
             data-testid={`button-toggle-${testIdPrefix}-${index}`}
           >
             {expanded ? (
@@ -626,25 +623,23 @@ export default function Wetgeving() {
             ) : (
               <>
                 <ChevronDown className="h-3 w-3 mr-1" />
-                Alle leden tonen
+                Lees verder
               </>
             )}
           </button>
         )}
 
         {article.bronUrl && (
-          <div className="pt-2 border-t">
-            <a
-              href={article.bronUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center text-sm text-primary hover:underline"
-              data-testid={`button-view-source-${testIdPrefix}-${index}`}
-            >
-              <ExternalLink className="h-3 w-3 mr-1" />
-              Bekijk op wetten.overheid.nl
-            </a>
-          </div>
+          <a
+            href={article.bronUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center text-xs text-primary hover:underline"
+            data-testid={`button-view-source-${testIdPrefix}-${index}`}
+          >
+            <ExternalLink className="h-3 w-3 mr-1" />
+            Bekijk op wetten.overheid.nl
+          </a>
         )}
       </div>
     );
