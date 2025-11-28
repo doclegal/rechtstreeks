@@ -2580,14 +2580,20 @@ Gebruik duidelijke, begrijpelijke taal zonder juridisch jargon. Focus op de kern
     try {
       const systemPrompt = `Je bent een juridische assistent die de stand van zaken van een onderhandeling samenvat.
 
-Analyseer de gegeven informatie over een juridische zaak en geef een beknopte samenvatting van:
-1. De huidige stand van de onderhandeling
+Analyseer de gegeven informatie over een juridische zaak, inclusief de INHOUD van verstuurde brieven, en geef een beknopte samenvatting van:
+1. De huidige stand van de onderhandeling (op basis van de briefinhoud)
 2. Een chronologisch overzicht van de belangrijkste acties
 3. Wat de volgende logische stap zou zijn
 
+Let specifiek op:
+- Welke eisen/vorderingen zijn gesteld in de brieven
+- Welke reactietermijnen zijn genoemd
+- Of er sprake is van escalatie of schikking
+- De toon en houding in de correspondentie
+
 Geef je antwoord in het Nederlands als JSON:
 {
-  "summary": "Een korte samenvatting van 2-3 zinnen over de huidige stand van de onderhandeling",
+  "summary": "Een korte samenvatting van 2-3 zinnen over de huidige stand van de onderhandeling, gebaseerd op de briefinhoud",
   "timeline": [
     { "date": "YYYY-MM-DD", "action": "Beschrijving van de actie" }
   ],
@@ -2595,10 +2601,14 @@ Geef je antwoord in het Nederlands als JSON:
   "nextStep": "Aanbevolen volgende stap"
 }`;
 
+      // Include letter content (stripped of HTML tags) for AI analysis
+      const stripHtml = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      
       const lettersSummary = params.letters.map(l => ({
         type: l.briefType,
         date: l.createdAt,
-        tone: l.tone
+        tone: l.tone,
+        content: l.html ? stripHtml(l.html).substring(0, 2000) : ''
       }));
 
       const documentsSummary = params.documents.slice(0, 5).map(d => ({
