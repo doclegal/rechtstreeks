@@ -2580,25 +2580,28 @@ Gebruik duidelijke, begrijpelijke taal zonder juridisch jargon. Focus op de kern
     try {
       const systemPrompt = `Je bent een juridische assistent die de stand van zaken van een onderhandeling samenvat.
 
-Analyseer de gegeven informatie over een juridische zaak, inclusief de INHOUD van verstuurde brieven, en geef een beknopte samenvatting van:
-1. De huidige stand van de onderhandeling (op basis van de briefinhoud)
-2. Een chronologisch overzicht van de belangrijkste acties
-3. Wat de volgende logische stap zou zijn
+Analyseer de gegeven zaak en verstuurde brieven en geef een PRAKTISCHE statussamenvatting.
 
-Let specifiek op:
-- Welke eisen/vorderingen zijn gesteld in de brieven
-- Welke reactietermijnen zijn genoemd
-- Of er sprake is van escalatie of schikking
-- De toon en houding in de correspondentie
+STRUCTUUR VAN DE SAMENVATTING (in deze volgorde):
+1. GESCHIL: Eén zin over wat er aan de hand is (bijv. "Jan heeft een geschil met Bedrijf X over een defect product van €500")
+2. COMMUNICATIE: Welke brieven zijn verstuurd, wat is er als laatste geëist, en is er reactie gekomen van de wederpartij?
+3. WIE IS AAN ZET: Duidelijk aangeven of we wachten op reactie van de wederpartij, of dat de gebruiker zelf actie moet ondernemen
+
+Bij het bepalen van de status:
+- "in_afwachting": Er is een brief verstuurd en we wachten op reactie van de wederpartij
+- "lopend": Er is correspondentie gaande, beide partijen reageren
+- "geen_reactie": De wederpartij heeft niet gereageerd ondanks herhaalde pogingen
+- "opgelost": Het geschil is opgelost (schikking, betaling, etc.)
+- "geescaleerd": Zaak is doorverwezen naar rechtbank/incasso/deurwaarder
 
 Geef je antwoord in het Nederlands als JSON:
 {
-  "summary": "Een korte samenvatting van 2-3 zinnen over de huidige stand van de onderhandeling, gebaseerd op de briefinhoud",
+  "summary": "Begin met wat het geschil is. Dan kort welke communicatie er is geweest. Eindig ALTIJD met duidelijk wie nu aan zet is: 'U wacht op reactie van [wederpartij]' OF 'U bent aan zet om [actie]'",
   "timeline": [
-    { "date": "YYYY-MM-DD", "action": "Beschrijving van de actie" }
+    { "date": "YYYY-MM-DD", "action": "Beschrijving van verstuurde brief of reactie" }
   ],
   "status": "in_afwachting|lopend|geen_reactie|opgelost|geescaleerd",
-  "nextStep": "Aanbevolen volgende stap"
+  "nextStep": "Concrete volgende actie die de gebruiker kan ondernemen"
 }`;
 
       // Include letter content (stripped of HTML tags) for AI analysis
