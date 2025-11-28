@@ -8,8 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
-import { FileText, PlusCircle, Download, Mail, ArrowLeft, Trash2, Upload, Clock } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { FileText, PlusCircle, Download, Mail, ArrowLeft, Trash2, Upload, Clock, MessageSquare, RefreshCw } from "lucide-react";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Separator } from "@/components/ui/separator";
 import { RIcon } from "@/components/RIcon";
 import { format } from "date-fns";
@@ -17,6 +17,7 @@ import { nl } from "date-fns/locale";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { AskJuristButton } from "@/components/AskJuristButton";
 import { PageInfoDialog } from "@/components/PageInfoDialog";
+import { Badge } from "@/components/ui/badge";
 
 export default function Letters() {
   const { user, isLoading: authLoading } = useAuth();
@@ -29,6 +30,17 @@ export default function Letters() {
 
   const letterMutation = useGenerateLetter(caseId || "");
   const deleteLetterMutation = useDeleteLetter(caseId || "");
+
+  // Fetch negotiation summary
+  const { data: negotiationSummary, isLoading: summaryLoading, refetch: refetchSummary } = useQuery<{
+    summary: string;
+    timeline: Array<{ date: string; action: string }>;
+    status: string;
+    nextStep?: string;
+  }>({
+    queryKey: ['/api/cases', caseId, 'negotiation-summary'],
+    enabled: !!caseId,
+  });
 
   const [briefType, setBriefType] = useState<string>("LAATSTE_AANMANING");
   const [tone, setTone] = useState<string>("zakelijk-vriendelijk");
@@ -279,8 +291,8 @@ export default function Letters() {
         </Link>
       </Button>
       
-      {/* Header */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+      {/* Header with Negotiation Status Tile */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="flex items-start">
           <div className="flex items-start gap-2">
             <div>
@@ -306,9 +318,83 @@ export default function Letters() {
             />
           </div>
         </div>
-        <div className="flex items-start lg:hidden">
-          <AskJuristButton context="Onderhandelen" variant="outline" />
-        </div>
+        
+        {/* Empty middle column for spacing on large screens */}
+        <div className="hidden lg:block" />
+        
+        {/* Negotiation Status Tile - Right side */}
+        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800" data-testid="tile-negotiation-status">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-blue-800 dark:text-blue-200">Stand van zaken</span>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => refetchSummary()}
+                disabled={summaryLoading}
+                className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200"
+                data-testid="button-refresh-summary"
+              >
+                <RefreshCw className={`h-3 w-3 ${summaryLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {summaryLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <span>AI analyseert onderhandeling...</span>
+              </div>
+            ) : negotiationSummary ? (
+              <div className="space-y-2">
+                <p className="text-sm text-foreground leading-relaxed">
+                  {negotiationSummary.summary || "Geen samenvatting beschikbaar."}
+                </p>
+                {negotiationSummary.status && (
+                  <Badge 
+                    variant="outline" 
+                    className={`text-xs ${
+                      negotiationSummary.status === 'niet_gestart' ? 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300' :
+                      negotiationSummary.status === 'lopend' ? 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900 dark:text-blue-300' :
+                      negotiationSummary.status === 'in_afwachting' ? 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900 dark:text-yellow-300' :
+                      negotiationSummary.status === 'geen_reactie' ? 'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900 dark:text-orange-300' :
+                      negotiationSummary.status === 'opgelost' ? 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900 dark:text-green-300' :
+                      negotiationSummary.status === 'geescaleerd' ? 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900 dark:text-red-300' :
+                      negotiationSummary.status === 'onbekend' ? 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300' :
+                      'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300'
+                    }`}
+                    data-testid="badge-negotiation-status"
+                  >
+                    {negotiationSummary.status === 'niet_gestart' ? 'Niet gestart' :
+                     negotiationSummary.status === 'lopend' ? 'Lopend' :
+                     negotiationSummary.status === 'in_afwachting' ? 'In afwachting' :
+                     negotiationSummary.status === 'geen_reactie' ? 'Geen reactie' :
+                     negotiationSummary.status === 'opgelost' ? 'Opgelost' :
+                     negotiationSummary.status === 'geescaleerd' ? 'Geëscaleerd' :
+                     negotiationSummary.status === 'onbekend' ? 'Onbekend' :
+                     'Status onbekend'}
+                  </Badge>
+                )}
+                {negotiationSummary.nextStep && (
+                  <p className="text-xs text-muted-foreground mt-2 italic">
+                    Volgende stap: {negotiationSummary.nextStep}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Genereer uw eerste brief om de onderhandeling te starten.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+      
+      <div className="flex items-start lg:hidden mb-4">
+        <AskJuristButton context="Onderhandelen" variant="outline" />
       </div>
 
       {!hasAnalysis ? (

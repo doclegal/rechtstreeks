@@ -657,6 +657,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Negotiation summary endpoint - AI-generated status of negotiation progress
+  app.get('/api/cases/:id/negotiation-summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseData = await storage.getCase(req.params.id);
+      
+      if (!caseData) {
+        return res.status(404).json({ message: "Zaak niet gevonden" });
+      }
+      
+      if (!canAccessCase(userId, caseData)) {
+        return res.status(403).json({ message: "Geen toegang tot deze zaak" });
+      }
+      
+      // Get letters and documents for this case
+      const letters = await storage.getLettersByCase(req.params.id);
+      const documents = await storage.getDocumentsByCase(req.params.id);
+      
+      // If no letters, return empty summary
+      if (!letters || letters.length === 0) {
+        return res.json({
+          summary: "Er zijn nog geen brieven verstuurd. Start de onderhandeling door een brief te genereren.",
+          timeline: [],
+          status: "niet_gestart",
+          nextStep: "Genereer een eerste aanmaning of ingebrekestelling"
+        });
+      }
+      
+      // Generate AI summary
+      const summary = await aiService.generateNegotiationSummary({
+        caseTitle: caseData.title || "Onbekende zaak",
+        caseDescription: caseData.description || "",
+        claimAmount: caseData.claimAmount?.toString() || "0",
+        counterpartyName: caseData.counterpartyName || "Wederpartij",
+        letters: letters.map(l => ({
+          briefType: l.briefType || "brief",
+          createdAt: l.createdAt?.toISOString() || new Date().toISOString(),
+          tone: l.tone || "zakelijk",
+          html: l.html || undefined
+        })),
+        documents: documents.map(d => ({
+          filename: d.filename || "document",
+          extractedText: d.extractedText || undefined,
+          createdAt: d.createdAt?.toISOString() || new Date().toISOString()
+        }))
+      });
+      
+      res.json(summary);
+    } catch (error) {
+      console.error("Error generating negotiation summary:", error);
+      res.status(500).json({ message: "Fout bij genereren samenvatting" });
+    }
+  });
+
   // Helper function to analyze a single document using Dossier_check.flow
   async function analyzeDocumentWithMindStudio(documentId: string, caseId: string) {
     try {

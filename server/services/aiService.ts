@@ -2568,6 +2568,111 @@ Gebruik duidelijke, begrijpelijke taal zonder juridisch jargon. Focus op de kern
       };
     }
   }
+  // NEW: Generate negotiation status summary
+  async generateNegotiationSummary(params: {
+    caseTitle: string;
+    caseDescription: string;
+    claimAmount: string;
+    counterpartyName: string;
+    letters: Array<{ briefType: string; createdAt: string; tone: string; html?: string }>;
+    documents: Array<{ filename: string; extractedText?: string; createdAt: string }>;
+  }): Promise<{ summary: string; timeline: Array<{ date: string; action: string }>; status: string; nextStep?: string }> {
+    try {
+      const systemPrompt = `Je bent een juridische assistent die de stand van zaken van een onderhandeling samenvat.
+
+Analyseer de gegeven informatie over een juridische zaak en geef een beknopte samenvatting van:
+1. De huidige stand van de onderhandeling
+2. Een chronologisch overzicht van de belangrijkste acties
+3. Wat de volgende logische stap zou zijn
+
+Geef je antwoord in het Nederlands als JSON:
+{
+  "summary": "Een korte samenvatting van 2-3 zinnen over de huidige stand van de onderhandeling",
+  "timeline": [
+    { "date": "YYYY-MM-DD", "action": "Beschrijving van de actie" }
+  ],
+  "status": "in_afwachting|lopend|geen_reactie|opgelost|geescaleerd",
+  "nextStep": "Aanbevolen volgende stap"
+}`;
+
+      const lettersSummary = params.letters.map(l => ({
+        type: l.briefType,
+        date: l.createdAt,
+        tone: l.tone
+      }));
+
+      const documentsSummary = params.documents.slice(0, 5).map(d => ({
+        filename: d.filename,
+        date: d.createdAt,
+        excerpt: d.extractedText ? d.extractedText.substring(0, 500) : ''
+      }));
+
+      const userContent = JSON.stringify({
+        zaak: {
+          titel: params.caseTitle,
+          beschrijving: params.caseDescription,
+          vorderingsbedrag: params.claimAmount,
+          wederpartij: params.counterpartyName
+        },
+        verstuurde_brieven: lettersSummary,
+        documenten: documentsSummary
+      });
+
+      const response = await this.callLLMWithJSONResponse(systemPrompt, userContent);
+      
+      // Defensive JSON parsing with validation
+      let result: any;
+      try {
+        result = JSON.parse(response);
+      } catch (parseError) {
+        console.error("Failed to parse negotiation summary response as JSON:", parseError);
+        return {
+          summary: "De AI-samenvatting kon niet worden verwerkt. Probeer het later opnieuw.",
+          timeline: [],
+          status: "onbekend"
+        };
+      }
+
+      // Validate and normalize the result
+      // Use 'onbekend' for any unrecognized status to surface potential issues
+      const validStatuses = ['in_afwachting', 'lopend', 'geen_reactie', 'opgelost', 'geescaleerd', 'niet_gestart'];
+      const status = validStatuses.includes(result.status) ? result.status : 'onbekend';
+
+      // Validate and sanitize timeline entries - ensure both date and action are non-empty
+      // Also validate date format (must be a valid calendar date)
+      const rawTimeline = Array.isArray(result.timeline) ? result.timeline : [];
+      const validTimeline = rawTimeline
+        .filter((entry: any) => entry && typeof entry === 'object')
+        .map((entry: any) => ({
+          date: typeof entry.date === 'string' ? entry.date.trim() : '',
+          action: typeof entry.action === 'string' ? entry.action.trim() : ''
+        }))
+        .filter((entry: { date: string; action: string }) => {
+          if (!entry.date || !entry.action) return false;
+          // Validate date is a valid calendar date using Date object
+          const dateObj = new Date(entry.date);
+          const isValidDate = !isNaN(dateObj.getTime());
+          // Additional check: ensure it's a reasonable date (not in distant past/future)
+          const year = dateObj.getFullYear();
+          const isReasonableYear = year >= 2000 && year <= 2100;
+          return isValidDate && isReasonableYear;
+        });
+
+      return {
+        summary: typeof result.summary === 'string' ? result.summary : "Geen samenvatting beschikbaar",
+        timeline: validTimeline,
+        status,
+        nextStep: typeof result.nextStep === 'string' ? result.nextStep : undefined
+      };
+    } catch (error) {
+      console.error("Error generating negotiation summary:", error);
+      return {
+        summary: "Er is een fout opgetreden bij het genereren van de samenvatting.",
+        timeline: [],
+        status: "onbekend"
+      };
+    }
+  }
 }
 
 export const aiService = new AIService();
