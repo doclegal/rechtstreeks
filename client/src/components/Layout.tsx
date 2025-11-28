@@ -140,7 +140,7 @@ export default function Layout({ children }: LayoutProps) {
                   }`}
                   data-testid="link-letters"
                 >
-                  Brieven
+                  Onderhandelen
                 </Link>
                 <Link 
                   href="/resolve" 
@@ -229,7 +229,7 @@ export default function Layout({ children }: LayoutProps) {
                   <DropdownMenuItem asChild>
                     <Link href="/letters" data-testid="link-letters-mobile">
                       <Mail className="mr-2 h-4 w-4" />
-                      Brieven
+                      Onderhandelen
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>

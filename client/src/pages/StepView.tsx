@@ -309,7 +309,7 @@ export default function StepView() {
                 <p className="text-muted-foreground mb-4">
                   Hier vindt u alle gegenereerde brieven voor uw zaak.
                 </p>
-                <Badge variant="outline">Brieven voor zaak {currentCase.id}</Badge>
+                <Badge variant="outline">Onderhandelingen voor zaak {currentCase.id}</Badge>
               </CardContent>
             </Card>
           ) : (

@@ -55,7 +55,7 @@ export function BottomNav() {
             <span className="text-xs mt-1">Analyse</span>
           </button>
 
-          {/* Brieven */}
+          {/* Onderhandelen */}
           <button
             onClick={() => setLocation("/letters")}
             className={`flex flex-col items-center justify-center h-full w-full transition-colors ${
@@ -66,7 +66,7 @@ export function BottomNav() {
             data-testid="button-bottomnav-letters"
           >
             <Mail className="h-5 w-5" />
-            <span className="text-xs mt-1">Brieven</span>
+            <span className="text-xs mt-1">Onderhandelen</span>
           </button>
 
           {/* Jurist - Special styling with blue */}

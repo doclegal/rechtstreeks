@@ -286,14 +286,14 @@ export default function Letters() {
             <div>
               <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
                 <Mail className="h-8 w-8 text-primary" />
-                Brieven
+                Onderhandelen
               </h1>
               <p className="text-muted-foreground">
-                Genereer en beheer juridische brieven voor uw zaak
+                Onderhandel en genereer juridische brieven voor uw zaak
               </p>
             </div>
             <PageInfoDialog
-              title="Brieven"
+              title="Onderhandelen"
               description="Genereer professionele juridische brieven met AI-ondersteuning om uw zaak formeel aan te kaarten bij de wederpartij."
               features={[
                 "Genereer verschillende soorten juridische brieven (aanmaning, ingebrekestelling, informatieverzoek)",
@@ -307,7 +307,7 @@ export default function Letters() {
           </div>
         </div>
         <div className="flex items-start lg:hidden">
-          <AskJuristButton context="Brieven" variant="outline" />
+          <AskJuristButton context="Onderhandelen" variant="outline" />
         </div>
       </div>
 

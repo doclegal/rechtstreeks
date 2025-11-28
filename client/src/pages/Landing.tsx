@@ -307,7 +307,7 @@ export default function Landing() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg text-foreground mb-2">
-                      7. Maak juridische brieven
+                      7. Onderhandel en schrijf brieven
                     </h3>
                     <p className="text-muted-foreground mb-3">
                       AI schrijft brieven voor jou. Bijvoorbeeld: aanmaning, ingebrekestelling.

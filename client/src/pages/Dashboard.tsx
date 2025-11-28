@@ -103,7 +103,7 @@ export default function Dashboard() {
       href: "/analysis"
     },
     {
-      label: "Laatste brief",
+      label: "Onderhandelen",
       date: lastLetterDate,
       completed: letters.length > 0,
       href: "/letters"
@@ -327,14 +327,14 @@ export default function Dashboard() {
           </Card>
         </Link>
 
-        {/* Brieven */}
+        {/* Onderhandelen */}
         <Link href="/letters" data-testid="tile-brieven">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full relative">
             <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
             <CardHeader>
               <CardTitle className="flex items-center gap-3">
                 <Mail className="h-6 w-6 text-primary" />
-                Brieven
+                Onderhandelen
               </CardTitle>
             </CardHeader>
             <CardContent>
