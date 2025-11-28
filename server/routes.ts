@@ -8439,18 +8439,30 @@ Genereer een JSON response met:
       console.log(`📚 Regulation: "${regulation}"`);
       console.log(`📖 Article: "${articleNumber}"`);
       
-      // Parse article number - handle formats like "art. 7:800", "7:201", "91", etc.
+      // Parse article number - handle formats like "art. 7:800", "7:201", "91", "2.20 lid 2 sub b", etc.
       // For BW articles: "7:800" means Book 7, Article 800
       // For other laws: "6" or "91" is just the article number
       let articleNumClean = articleNumber.replace(/^art\.?\s*/i, '').trim();
       let bookNumber: string | null = null;
       let articleOnly: string = articleNumClean;
+      let articleBase: string = articleNumClean; // Base article without lid/sub (for matching)
       
-      // Check if format is "book:article" (e.g., "7:800", "6:74")
-      const colonMatch = articleNumClean.match(/^(\d+):(\d+)$/);
+      // Remove "lid X", "sub Y", "onder X" parts for base matching
+      // Keep original for display but create base version for matching
+      articleBase = articleNumClean
+        .replace(/\s+lid\s+\d+(\s+sub\s+\w+)?/gi, '')
+        .replace(/\s+sub\s+\w+/gi, '')
+        .replace(/\s+onder\s+\w+/gi, '')
+        .trim();
+      
+      console.log(`📖 Article base (for matching): "${articleBase}"`);
+      
+      // Check if format is "book:article" (e.g., "7:800", "6:74", "6:162")
+      const colonMatch = articleNumClean.match(/^(\d+):(\d+\w*)$/);
       if (colonMatch) {
         bookNumber = colonMatch[1];
         articleOnly = colonMatch[2];
+        articleBase = articleOnly;
         console.log(`📖 Parsed as Book ${bookNumber}, Article ${articleOnly}`);
       }
       
@@ -8488,11 +8500,31 @@ Genereer een JSON response met:
       }
 
       // Filter results to match:
-      // 1. Exact article number match
+      // 1. Article number match (exact or starts with base)
       // 2. Regulation title contains our search terms
       // 3. is_current = true (only current versions)
       const regulationLower = regulation.toLowerCase();
-      const regulationWords = regulationLower.split(/\s+/).filter(w => w.length > 2);
+      // Filter out common words that are too generic
+      const stopWords = ['de', 'het', 'van', 'inzake', 'en', 'over'];
+      const regulationWords = regulationLower.split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w));
+      
+      // Helper function to check if article numbers match
+      // Handles formats like "2.20" matching "2.20", "2.1" matching "2.1", etc.
+      const articleNumberMatches = (resultArticle: string, searchArticle: string): boolean => {
+        if (!resultArticle || !searchArticle) return false;
+        const resultClean = resultArticle.trim().toLowerCase();
+        const searchClean = searchArticle.trim().toLowerCase();
+        
+        // Exact match
+        if (resultClean === searchClean) return true;
+        
+        // For numbered articles like "2.20", check exact match to avoid "2.2" matching "2.20"
+        // But allow "2.20" to match when searching for "2.20 lid 2 sub b"
+        return resultClean === searchClean;
+      };
+      
+      console.log(`📊 Matching with articleBase: "${articleBase}", articleOnly: "${articleOnly}"`);
+      console.log(`📊 Regulation words for matching: ${JSON.stringify(regulationWords)}`);
       
       const filteredResults = results.filter((result: any) => {
         const resultArticle = String(result.metadata?.article_number || '');
@@ -8502,12 +8534,15 @@ Genereer een JSON response met:
         // Must be current version
         if (!isCurrent) return false;
         
-        // Article number must match exactly
-        const articleMatches = resultArticle === articleOnly;
+        // Article number must match (use articleBase which has lid/sub removed)
+        const articleMatches = articleNumberMatches(resultArticle, articleBase);
         
-        // Regulation title must contain key words from search
-        // For "Burgerlijk Wetboek Boek 7", check if title contains these words
-        const titleMatches = regulationWords.some(word => resultTitle.includes(word));
+        // Regulation title must contain at least 2 key words from search, or a significant word
+        // This helps match "Benelux-verdrag inzake de intellectuele eigendom" with truncated titles
+        const significantWords = regulationWords.filter(w => w.length > 5);
+        const titleMatches = significantWords.length > 0 
+          ? significantWords.some(word => resultTitle.includes(word))
+          : regulationWords.filter(word => resultTitle.includes(word)).length >= 2;
         
         // If book number specified, title should contain "boek X"
         const bookMatches = !bookNumber || resultTitle.includes(`boek ${bookNumber}`);
@@ -8517,12 +8552,12 @@ Genereer een JSON response met:
 
       console.log(`📊 Filtered to ${filteredResults.length} matching articles (exact match)`);
 
-      // If no exact matches, first check if article exists anywhere in the results
+      // If no exact matches, try more flexible matching strategies
       let finalResults = filteredResults;
       if (filteredResults.length === 0) {
-        console.log('⚠️ No exact matches found for article ' + articleOnly);
+        console.log('⚠️ No exact matches found for article ' + articleBase);
         
-        // Look for exact article match anywhere in the 200 results (ignoring book filter initially)
+        // Strategy 1: Look for exact article match with any regulation containing key words
         const anyExactMatch = results.filter((result: any) => {
           const resultArticle = String(result.metadata?.article_number || '');
           const resultTitle = String(result.metadata?.title || '').toLowerCase();
@@ -8530,20 +8565,26 @@ Genereer een JSON response met:
           
           if (!isCurrent) return false;
           
-          // Check for exact article number match
-          if (resultArticle !== articleOnly) return false;
+          // Check for exact article number match using base article
+          if (!articleNumberMatches(resultArticle, articleBase)) return false;
           
-          // Must be from Burgerlijk Wetboek
+          // Check if title contains significant words from regulation
+          const significantWords = regulationWords.filter(w => w.length > 5);
+          const hasSignificantMatch = significantWords.some(word => resultTitle.includes(word));
+          
+          // Also check for common law abbreviations
           const isBW = resultTitle.includes('burgerlijk wetboek');
+          const isBenelux = resultTitle.includes('benelux');
+          const isIntellectueel = resultTitle.includes('intellectuele') || resultTitle.includes('eigendom');
           
-          return isBW;
+          return hasSignificantMatch || isBW || (isBenelux && isIntellectueel);
         });
         
         if (anyExactMatch.length > 0) {
-          console.log(`📊 Found ${anyExactMatch.length} exact article matches in BW`);
+          console.log(`📊 Found ${anyExactMatch.length} flexible article matches`);
           finalResults = anyExactMatch;
         } else {
-          // Try matching by text content containing the article reference
+          // Strategy 2: Try matching by text content containing the article reference
           finalResults = results.filter((result: any) => {
             const resultTitle = String(result.metadata?.title || '').toLowerCase();
             const resultText = String(result.text || result.metadata?.text || '').toLowerCase();
@@ -8554,26 +8595,27 @@ Genereer een JSON response met:
             // Book number must match in title
             if (bookNumber && !resultTitle.includes(`boek ${bookNumber}`)) return false;
             
-            // At least one regulation word matches
-            const titleMatches = regulationWords.some(word => resultTitle.includes(word));
+            // At least one significant regulation word matches
+            const significantWords = regulationWords.filter(w => w.length > 5);
+            const titleMatches = significantWords.some(word => resultTitle.includes(word));
             if (!titleMatches) return false;
             
             // Check if the text mentions the specific article number (with word boundaries)
             const articlePatterns = [
-              `artikel ${articleOnly} `,
-              `artikel ${articleOnly},`,
-              `artikel ${articleOnly}.`,
-              `art. ${articleOnly} `,
-              `art. ${articleOnly},`,
-              `${bookNumber}:${articleOnly} `,
-              `${bookNumber}:${articleOnly},`
+              `artikel ${articleBase} `,
+              `artikel ${articleBase},`,
+              `artikel ${articleBase}.`,
+              `art. ${articleBase} `,
+              `art. ${articleBase},`,
+              `${bookNumber}:${articleBase} `,
+              `${bookNumber}:${articleBase},`
             ];
             const textMentionsArticle = articlePatterns.some(p => resultText.includes(p));
             
             return textMentionsArticle;
           });
           
-          console.log(`📊 Text search found ${finalResults.length} results mentioning article ${articleOnly}`);
+          console.log(`📊 Text search found ${finalResults.length} results mentioning article ${articleBase}`);
         }
       }
 
