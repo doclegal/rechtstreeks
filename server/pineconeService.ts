@@ -354,7 +354,7 @@ export async function searchLegislationWithRerank(
   query: string,
   topK: number = 200,
   rerankTopN: number = 30,
-  maxDocsForRerank: number = 200  // Max documents to send to reranker (Pinecone limit: 1000)
+  maxDocsForRerank: number = 100  // Max documents for Pinecone bge-reranker-v2-m3 (limit: 100)
 ): Promise<LegislationSearchResult[]> {
   try {
     console.log(`\n📜 LEGISLATION SEARCH WITH RERANK PIPELINE`);
