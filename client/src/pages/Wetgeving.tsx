@@ -20,6 +20,7 @@ interface LegislationResult {
   title?: string;
   articleNumber?: string;
   paragraphNumber?: string;
+  lid?: string;
   sectionTitle?: string;
   validFrom?: string;
   validTo?: string;
@@ -28,6 +29,23 @@ interface LegislationResult {
   citatie?: string;
   bronUrl?: string | null;
   sourceQuery?: string;
+}
+
+interface GroupedArticle {
+  articleKey: string;
+  articleNumber: string;
+  title: string;
+  bwbId: string;
+  bronUrl: string | null;
+  bestScore: number;
+  bestScorePercent: string;
+  bestRank: number;
+  sourceQuery?: string;
+  leden: {
+    lid: string;
+    text: string;
+    score: number;
+  }[];
 }
 
 interface ArticleEntry {
@@ -61,8 +79,66 @@ export default function Wetgeving() {
   ]);
   const [articleResults, setArticleResults] = useState<LegislationResult[]>([]);
   const [expandedArticleResults, setExpandedArticleResults] = useState<Set<string>>(new Set());
+  const [expandedGroupedArticles, setExpandedGroupedArticles] = useState<Set<string>>(new Set());
   const [aiExplanation, setAiExplanation] = useState("");
   const [isSearchingAll, setIsSearchingAll] = useState(false);
+
+  const groupResultsByArticle = (results: LegislationResult[]): GroupedArticle[] => {
+    const grouped = new Map<string, GroupedArticle>();
+    
+    for (const result of results) {
+      const articleNum = result.articleNumber || 'unknown';
+      const bwbId = result.bwbId || 'unknown';
+      const key = `${bwbId}:${articleNum}`;
+      
+      const lidNumber = result.lid || result.paragraphNumber || '1';
+      
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          articleKey: key,
+          articleNumber: articleNum,
+          title: result.title || '',
+          bwbId: bwbId,
+          bronUrl: result.bronUrl || null,
+          bestScore: result.score,
+          bestScorePercent: result.scorePercent,
+          bestRank: result.rank,
+          sourceQuery: result.sourceQuery,
+          leden: []
+        });
+      }
+      
+      const article = grouped.get(key)!;
+      
+      if (result.score > article.bestScore) {
+        article.bestScore = result.score;
+        article.bestScorePercent = result.scorePercent;
+        article.bestRank = result.rank;
+      }
+      
+      const existingLid = article.leden.find(l => l.lid === lidNumber);
+      if (!existingLid && result.text) {
+        article.leden.push({
+          lid: lidNumber,
+          text: result.text,
+          score: result.score
+        });
+      }
+    }
+    
+    for (const article of grouped.values()) {
+      article.leden.sort((a, b) => {
+        const numA = parseInt(a.lid) || 0;
+        const numB = parseInt(b.lid) || 0;
+        return numA - numB;
+      });
+    }
+    
+    return Array.from(grouped.values()).sort((a, b) => a.bestRank - b.bestRank);
+  };
+
+  const groupedTermResults = groupResultsByArticle(termResults);
+  const groupedArticleResults = groupResultsByArticle(articleResults);
 
   const { data: savedData, isLoading: savedDataLoading } = useQuery({
     queryKey: ['/api/wetgeving', currentCase?.id],
@@ -464,6 +540,116 @@ export default function Wetgeving() {
     });
   };
 
+  const toggleExpandedGrouped = (articleKey: string) => {
+    setExpandedGroupedArticles(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(articleKey)) {
+        newSet.delete(articleKey);
+      } else {
+        newSet.add(articleKey);
+      }
+      return newSet;
+    });
+  };
+
+  const GroupedArticleCard = ({
+    article,
+    index,
+    expanded,
+    onToggle,
+    testIdPrefix
+  }: {
+    article: GroupedArticle;
+    index: number;
+    expanded: boolean;
+    onToggle: () => void;
+    testIdPrefix: string;
+  }) => {
+    const totalTextLength = article.leden.reduce((sum, lid) => sum + (lid.text?.length || 0), 0);
+    
+    return (
+      <div 
+        className="border rounded-lg p-4 bg-muted/30 space-y-3"
+        data-testid={`${testIdPrefix}-${index}`}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge className="font-medium">
+            #{article.bestRank}
+          </Badge>
+          <Badge variant="secondary" className="font-mono text-xs">
+            Art. {article.articleNumber}
+          </Badge>
+          {article.title && (
+            <Badge variant="outline" className="text-xs max-w-xs truncate">
+              <BookText className="h-3 w-3 mr-1 flex-shrink-0" />
+              {article.title}
+            </Badge>
+          )}
+          {article.sourceQuery && (
+            <Badge variant="default" className="text-xs bg-primary/20 text-primary">
+              {article.sourceQuery}
+            </Badge>
+          )}
+          <Badge variant="outline" className="text-xs">
+            {article.leden.length} {article.leden.length === 1 ? 'lid' : 'leden'}
+          </Badge>
+          <Badge variant="outline" className="text-xs ml-auto">
+            Score: {article.bestScorePercent}
+          </Badge>
+        </div>
+
+        <div className="space-y-3">
+          {article.leden.map((lid, lidIndex) => (
+            <div key={`${article.articleKey}-lid-${lid.lid}`} className="border-l-2 border-primary/30 pl-3">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-medium text-primary">Lid {lid.lid}</span>
+                <span className="text-xs text-muted-foreground">({Math.round(lid.score * 100)}%)</span>
+              </div>
+              <p className={`text-sm text-muted-foreground whitespace-pre-wrap ${!expanded && lidIndex > 0 ? 'line-clamp-2' : !expanded ? 'line-clamp-4' : ''}`}>
+                {lid.text}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {(totalTextLength > 400 || article.leden.length > 2) && (
+          <button
+            onClick={onToggle}
+            className="inline-flex items-center text-sm text-primary hover:underline pt-1"
+            data-testid={`button-toggle-${testIdPrefix}-${index}`}
+          >
+            {expanded ? (
+              <>
+                <ChevronUp className="h-3 w-3 mr-1" />
+                Minder tonen
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-3 w-3 mr-1" />
+                Alle leden tonen
+              </>
+            )}
+          </button>
+        )}
+
+        {article.bronUrl && (
+          <div className="pt-2 border-t">
+            <a
+              href={article.bronUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center text-sm text-primary hover:underline"
+              data-testid={`button-view-source-${testIdPrefix}-${index}`}
+            >
+              <ExternalLink className="h-3 w-3 mr-1" />
+              Bekijk op wetten.overheid.nl
+            </a>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const ResultCard = ({ 
     result, 
     index, 
@@ -824,7 +1010,7 @@ export default function Wetgeving() {
 
       {/* Two-column results */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left column: Term search results */}
+        {/* Left column: Term search results - grouped by article */}
         <Card data-testid="card-term-results">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -832,11 +1018,11 @@ export default function Wetgeving() {
               Resultaten: Termen
             </CardTitle>
             <CardDescription>
-              {termResults.length} artikelen gevonden
+              {groupedTermResults.length} artikelen gevonden ({termResults.length} leden)
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {termResults.length === 0 ? (
+            {groupedTermResults.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Search className="h-12 w-12 mx-auto mb-3 opacity-20" />
                 <p className="text-sm">Geen resultaten</p>
@@ -844,13 +1030,13 @@ export default function Wetgeving() {
               </div>
             ) : (
               <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-                {termResults.map((result, index) => (
-                  <ResultCard
-                    key={result.id}
-                    result={result}
+                {groupedTermResults.map((article, index) => (
+                  <GroupedArticleCard
+                    key={article.articleKey}
+                    article={article}
                     index={index}
-                    expanded={expandedTermResults.has(result.id)}
-                    onToggle={() => toggleExpandedTerm(result.id)}
+                    expanded={expandedGroupedArticles.has(article.articleKey)}
+                    onToggle={() => toggleExpandedGrouped(article.articleKey)}
                     testIdPrefix="result-term"
                   />
                 ))}
@@ -859,7 +1045,7 @@ export default function Wetgeving() {
           </CardContent>
         </Card>
 
-        {/* Right column: Article search results */}
+        {/* Right column: Article search results - grouped by article */}
         <Card data-testid="card-article-results">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -867,11 +1053,11 @@ export default function Wetgeving() {
               Resultaten: Artikelen
             </CardTitle>
             <CardDescription>
-              {articleResults.length} artikelleden gevonden
+              {groupedArticleResults.length} artikelen gevonden ({articleResults.length} leden)
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {articleResults.length === 0 ? (
+            {groupedArticleResults.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <FileText className="h-12 w-12 mx-auto mb-3 opacity-20" />
                 <p className="text-sm">Geen resultaten</p>
@@ -879,13 +1065,13 @@ export default function Wetgeving() {
               </div>
             ) : (
               <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-                {articleResults.map((result, index) => (
-                  <ResultCard
-                    key={`${result.id}-${index}`}
-                    result={result}
+                {groupedArticleResults.map((article, index) => (
+                  <GroupedArticleCard
+                    key={article.articleKey}
+                    article={article}
                     index={index}
-                    expanded={expandedArticleResults.has(result.id)}
-                    onToggle={() => toggleExpandedArticle(result.id)}
+                    expanded={expandedGroupedArticles.has(article.articleKey)}
+                    onToggle={() => toggleExpandedGrouped(article.articleKey)}
                     testIdPrefix="result-article"
                   />
                 ))}
