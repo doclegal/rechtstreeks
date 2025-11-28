@@ -623,9 +623,17 @@ export default function Wetgeving() {
             Art. {article.articleNumber}
           </Badge>
           {article.title && (
-            <Badge variant="secondary" className="text-xs">
-              {article.title}
-            </Badge>
+            article.bronUrl ? (
+              <a href={article.bronUrl} target="_blank" rel="noopener noreferrer">
+                <Badge variant="secondary" className="text-xs hover:bg-primary/20 cursor-pointer">
+                  {article.title}
+                </Badge>
+              </a>
+            ) : (
+              <Badge variant="secondary" className="text-xs">
+                {article.title}
+              </Badge>
+            )
           )}
         </div>
 
@@ -668,19 +676,6 @@ export default function Wetgeving() {
               </>
             )}
           </button>
-        )}
-
-        {article.bronUrl && (
-          <a
-            href={article.bronUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center text-xs text-primary hover:underline"
-            data-testid={`button-view-source-${testIdPrefix}-${index}`}
-          >
-            <ExternalLink className="h-3 w-3 mr-1" />
-            Bekijk op wetten.overheid.nl
-          </a>
         )}
       </div>
     );
