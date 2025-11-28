@@ -46,6 +46,18 @@ Preferred communication style: Simple, everyday language.
 - **Letter Generation**: AI-powered via MindStudio (DraftFirstLetter.flow), generates professional legal letters using dynamic templates and integrated jurisprudence references.
 - **Template Management System**: Dynamic templates with `[user_field]` and `{ai_field}`, automatic field extraction, dynamic rendering, and MindStudio integration for field mapping. Supports .txt, .docx, .pdf template formats.
 
+### Legislation Search & Commentary
+- **Search Engine**: Pinecone vector database with "laws-current" namespace for Dutch legislation.
+- **Multi-stage Pipeline**: Semantic search → BGE reranker → Article grouping by leden.
+- **Tekst & Commentaar Feature**: AI-generated Dutch legal commentary for statutory articles.
+  - **Article Retrieval**: Fetches complete articles from Pinecone with metadata filtering.
+  - **Provision Analysis**: OpenAI GPT-4o analyzes article for key issues and search questions.
+  - **Web Sources**: Serper.dev integration for doctrinal/literature sources (universities, law firms).
+  - **Case Law**: Searches ECLI_NL and WEB_ECLI namespaces for Hoge Raad and Gerechtshof decisions.
+  - **Commentary Generation**: AI generates structured Tekst & Commentaar-style explanation with sections: short_intro, systematiek, kernbegrippen, reikwijdte_en_beperkingen.
+  - **Caching**: In-memory cache with 24h TTL to prevent redundant generation.
+  - **UI Display**: Right column shows statutory text, commentary sections, case law references, and online sources.
+
 ### Jurisprudence Integration
 - **Search Engine**: Pinecone serverless vector database with semantic search.
 - **Index**: "rechtstreeks-dmacda9" (namespace "ECLI_NL") using multilingual-e5-large embeddings.
