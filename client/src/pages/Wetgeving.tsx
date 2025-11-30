@@ -192,8 +192,7 @@ export default function Wetgeving() {
   }, [savedData]);
 
   useEffect(() => {
-    const keys = new Set(savedLegislation.map(item => item.articleKey));
-    setSavedArticleKeys(keys);
+    setSavedArticleKeys(new Set(savedLegislation.map(item => item.articleKey)));
   }, [savedLegislation]);
 
   const saveLegislationMutation = useMutation({
@@ -545,6 +544,44 @@ export default function Wetgeving() {
       deleteLegislationMutation.mutate(articleKey);
     }
   };
+
+  const loadSavedCommentary = (savedItem: SavedLegislationItem) => {
+    if (!savedItem.commentary) {
+      toast({
+        title: "Geen commentaar",
+        description: "Dit artikel heeft nog geen opgeslagen commentaar. Klik op 'Commentaar ophalen' om commentaar te genereren.",
+        variant: "default",
+      });
+      return;
+    }
+
+    const commentaryResult: CommentaryResult = {
+      article: {
+        id: savedItem.id,
+        lawTitle: savedItem.lawTitle || '',
+        boekNummer: savedItem.boekNummer || undefined,
+        boekTitel: savedItem.boekTitel || undefined,
+        articleNumber: savedItem.articleNumber,
+        validFrom: savedItem.validFrom || undefined,
+        text: savedItem.articleText || '',
+        bwbId: savedItem.bwbId,
+        wettenLink: savedItem.wettenLink || `https://wetten.overheid.nl/${savedItem.bwbId}`
+      },
+      commentary: savedItem.commentary,
+      sources: savedItem.commentarySources || { wettenLink: '', jurisprudence: [], onlineSources: [] },
+      generatedAt: savedItem.commentaryGeneratedAt || new Date().toISOString()
+    };
+
+    setSelectedCommentary(commentaryResult);
+    
+    toast({
+      title: "Opgeslagen commentaar geladen",
+      description: `Commentaar voor Art. ${savedItem.articleNumber} wordt getoond`,
+    });
+  };
+
+  const savedArticlesWithCommentary = savedLegislation.filter(item => item.commentary);
+  const savedArticlesWithoutCommentary = savedLegislation.filter(item => !item.commentary);
 
   const clearArticleResults = async () => {
     setArticleResults([]);
@@ -980,6 +1017,108 @@ export default function Wetgeving() {
               )}
             </CardContent>
           </Card>
+
+          {/* Saved articles section */}
+          {savedLegislation.length > 0 && (
+            <Card data-testid="card-saved-articles">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Save className="h-5 w-5" />
+                  Opgeslagen Artikelen
+                  <Badge variant="secondary" className="ml-2">{savedLegislation.length}</Badge>
+                </CardTitle>
+                <CardDescription>
+                  {savedArticlesWithCommentary.length} met commentaar, {savedArticlesWithoutCommentary.length} zonder
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                  {savedLegislation.map((item, index) => (
+                    <div 
+                      key={item.id}
+                      className={`border rounded-lg p-3 ${item.commentary ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-800' : 'bg-muted/30'}`}
+                      data-testid={`saved-article-${index}`}
+                    >
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <Badge className="bg-green-600 hover:bg-green-700 text-white font-mono text-xs">
+                          Art. {item.articleNumber}
+                        </Badge>
+                        {item.lawTitle && (
+                          <Badge variant="secondary" className="text-xs truncate max-w-[200px]">
+                            {item.lawTitle}
+                          </Badge>
+                        )}
+                        {item.commentary && (
+                          <Badge variant="outline" className="text-xs border-green-500 text-green-600">
+                            <MessageSquare className="h-3 w-3 mr-1" />
+                            Commentaar
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        {item.commentary ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 text-xs px-2"
+                            onClick={() => loadSavedCommentary(item)}
+                            data-testid={`button-load-saved-commentary-${index}`}
+                          >
+                            <BookText className="h-3 w-3 mr-1" />
+                            Bekijk commentaar
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 text-xs px-2"
+                            onClick={() => {
+                              const groupedArticle: GroupedArticle = {
+                                articleKey: item.articleKey,
+                                articleNumber: item.articleNumber,
+                                title: item.lawTitle || '',
+                                bwbId: item.bwbId,
+                                bronUrl: item.wettenLink,
+                                bestScore: 0,
+                                bestScorePercent: '0%',
+                                bestRank: 0,
+                                leden: item.leden || []
+                              };
+                              fetchCommentary(groupedArticle);
+                            }}
+                            disabled={loadingCommentaryFor === item.articleKey}
+                            data-testid={`button-fetch-commentary-saved-${index}`}
+                          >
+                            {loadingCommentaryFor === item.articleKey ? (
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            ) : (
+                              <MessageSquare className="h-3 w-3 mr-1" />
+                            )}
+                            {loadingCommentaryFor === item.articleKey ? 'Laden...' : 'Commentaar ophalen'}
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-xs px-2 text-destructive hover:text-destructive"
+                          onClick={() => deleteArticle(item.articleKey)}
+                          disabled={deleteLegislationMutation.isPending}
+                          data-testid={`button-delete-saved-${index}`}
+                        >
+                          {deleteLegislationMutation.isPending ? (
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3 w-3 mr-1" />
+                          )}
+                          Verwijderen
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Right column: Tekst & Commentaar */}
