@@ -97,6 +97,8 @@ export function useAnalyzeCase(caseId: string) {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId] });
       queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId, "has-analysis"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId, "has-legal-advice"] });
       
       // Update toast message based on kanton check result
       if (data.kantonCheck) {
@@ -179,6 +181,8 @@ export function useFullAnalyzeCase(caseId: string) {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId] });
       queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId, "has-analysis"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId, "has-legal-advice"] });
       
       if (data.status === 'completed') {
         toast({
@@ -276,6 +280,8 @@ export function useGenerateLegalAdvice(caseId: string) {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId] });
       queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId, "has-analysis"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cases", caseId, "has-legal-advice"] });
       
       toast({
         title: "Juridisch advies gegenereerd",
