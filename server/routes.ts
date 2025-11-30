@@ -2,13 +2,13 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertCaseSchema, insertDocumentSchema, insertInvitationSchema, type CaseStatus, cases, analyses } from "@shared/schema";
+import { insertCaseSchema, insertDocumentSchema, insertInvitationSchema, type CaseStatus, cases, analyses, savedLegislation } from "@shared/schema";
 import { aiService, AIService } from "./services/aiService";
 import { fileService } from "./services/fileService";
 import { pdfService } from "./services/pdfService";
 import { mockIntegrations } from "./services/mockIntegrations";
 import { db, handleDatabaseError } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { getConversationHistory, saveChatMessage, callChatFlow } from "./services/chatService";
 import { callInfoQnAFlow, saveQnAPairs, getQnAItems, appendQnAPairs } from "./services/qnaService";
 import { validateSummonsV1 } from "@shared/summonsValidation";
@@ -8990,6 +8990,256 @@ Genereer een JSON response met:
       console.error('Error generating commentary:', error);
       res.status(500).json({ 
         error: error.message || 'Fout bij genereren van commentaar' 
+      });
+    }
+  });
+
+  // Get saved legislation for a case
+  app.get('/api/wetgeving/:caseId/saved', isAuthenticated, async (req, res) => {
+    try {
+      const { caseId } = req.params;
+      const user = req.user as any;
+      const userId = user?.claims?.sub || user?.id;
+      
+      if (!caseId) {
+        return res.status(400).json({ error: 'Case ID is required' });
+      }
+      
+      // Verify case ownership
+      const caseRecord = await db
+        .select()
+        .from(cases)
+        .where(eq(cases.id, caseId))
+        .limit(1);
+      
+      if (caseRecord.length === 0) {
+        return res.status(404).json({ error: 'Case not found' });
+      }
+      
+      if (caseRecord[0].ownerUserId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const savedItems = await db
+        .select()
+        .from(savedLegislation)
+        .where(eq(savedLegislation.caseId, caseId))
+        .orderBy(savedLegislation.createdAt);
+
+      console.log(`📖 Retrieved ${savedItems.length} saved legislation items for case ${caseId}`);
+      
+      res.json(savedItems);
+      
+    } catch (error: any) {
+      console.error('Error getting saved legislation:', error);
+      res.status(500).json({ 
+        error: error.message || 'Fout bij ophalen van opgeslagen wetgeving' 
+      });
+    }
+  });
+
+  // Save a legislation article (upsert)
+  app.post('/api/wetgeving/:caseId/saved', isAuthenticated, async (req, res) => {
+    try {
+      const { caseId } = req.params;
+      const { article, commentary, sources } = req.body;
+      const user = req.user as any;
+      const userId = user?.claims?.sub || user?.id;
+      
+      if (!caseId || !article) {
+        return res.status(400).json({ error: 'Case ID and article are required' });
+      }
+
+      // Verify case ownership
+      const caseRecord = await db
+        .select()
+        .from(cases)
+        .where(eq(cases.id, caseId))
+        .limit(1);
+      
+      if (caseRecord.length === 0) {
+        return res.status(404).json({ error: 'Case not found' });
+      }
+      
+      if (caseRecord[0].ownerUserId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const articleKey = `${article.bwbId}:${article.articleNumber}`;
+      
+      // Check if already exists
+      const existing = await db
+        .select()
+        .from(savedLegislation)
+        .where(and(
+          eq(savedLegislation.caseId, caseId),
+          eq(savedLegislation.articleKey, articleKey)
+        ))
+        .limit(1);
+
+      if (existing.length > 0) {
+        // Update existing
+        await db
+          .update(savedLegislation)
+          .set({
+            lawTitle: article.lawTitle,
+            articleText: article.text,
+            wettenLink: article.wettenLink,
+            boekNummer: article.boekNummer,
+            boekTitel: article.boekTitel,
+            validFrom: article.validFrom,
+            leden: article.leden,
+            commentary: commentary,
+            commentarySources: sources,
+            commentaryGeneratedAt: commentary ? new Date() : existing[0].commentaryGeneratedAt,
+            searchScore: article.bestScore?.toString(),
+            searchRank: article.bestRank
+          })
+          .where(eq(savedLegislation.id, existing[0].id));
+          
+        console.log(`📝 Updated saved legislation: ${articleKey} for case ${caseId}`);
+        
+        res.json({ 
+          success: true, 
+          id: existing[0].id,
+          articleKey: articleKey,
+          message: 'Artikel bijgewerkt' 
+        });
+      } else {
+        // Insert new
+        const [inserted] = await db
+          .insert(savedLegislation)
+          .values({
+            caseId,
+            bwbId: article.bwbId,
+            articleNumber: article.articleNumber,
+            articleKey,
+            lawTitle: article.lawTitle,
+            articleText: article.text,
+            wettenLink: article.wettenLink,
+            boekNummer: article.boekNummer,
+            boekTitel: article.boekTitel,
+            validFrom: article.validFrom,
+            leden: article.leden,
+            commentary: commentary,
+            commentarySources: sources,
+            commentaryGeneratedAt: commentary ? new Date() : null,
+            searchScore: article.bestScore?.toString(),
+            searchRank: article.bestRank
+          })
+          .returning();
+          
+        console.log(`💾 Saved new legislation: ${articleKey} for case ${caseId}`);
+        
+        res.json({ 
+          success: true, 
+          id: inserted.id,
+          articleKey: articleKey,
+          message: 'Artikel opgeslagen' 
+        });
+      }
+      
+    } catch (error: any) {
+      console.error('Error saving legislation:', error);
+      res.status(500).json({ 
+        error: error.message || 'Fout bij opslaan van wetgeving' 
+      });
+    }
+  });
+
+  // Delete a saved legislation article by articleKey
+  app.delete('/api/wetgeving/:caseId/saved/:articleKey', isAuthenticated, async (req, res) => {
+    try {
+      const { caseId, articleKey } = req.params;
+      const user = req.user as any;
+      const userId = user?.claims?.sub || user?.id;
+      
+      if (!caseId || !articleKey) {
+        return res.status(400).json({ error: 'Case ID and Article Key are required' });
+      }
+      
+      // Verify case ownership
+      const caseRecord = await db
+        .select()
+        .from(cases)
+        .where(eq(cases.id, caseId))
+        .limit(1);
+      
+      if (caseRecord.length === 0) {
+        return res.status(404).json({ error: 'Case not found' });
+      }
+      
+      if (caseRecord[0].ownerUserId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      // Decode the articleKey (it's URL encoded)
+      const decodedKey = decodeURIComponent(articleKey);
+
+      await db
+        .delete(savedLegislation)
+        .where(and(
+          eq(savedLegislation.caseId, caseId),
+          eq(savedLegislation.articleKey, decodedKey)
+        ));
+
+      console.log(`🗑️ Deleted saved legislation ${decodedKey} for case ${caseId}`);
+      
+      res.json({ 
+        success: true, 
+        articleKey: decodedKey,
+        message: 'Artikel verwijderd' 
+      });
+      
+    } catch (error: any) {
+      console.error('Error deleting saved legislation:', error);
+      res.status(500).json({ 
+        error: error.message || 'Fout bij verwijderen van wetgeving' 
+      });
+    }
+  });
+
+  // Delete all saved legislation for a case
+  app.delete('/api/wetgeving/:caseId/saved', isAuthenticated, async (req, res) => {
+    try {
+      const { caseId } = req.params;
+      const user = req.user as any;
+      const userId = user?.claims?.sub || user?.id;
+      
+      if (!caseId) {
+        return res.status(400).json({ error: 'Case ID is required' });
+      }
+      
+      // Verify case ownership
+      const caseRecord = await db
+        .select()
+        .from(cases)
+        .where(eq(cases.id, caseId))
+        .limit(1);
+      
+      if (caseRecord.length === 0) {
+        return res.status(404).json({ error: 'Case not found' });
+      }
+      
+      if (caseRecord[0].ownerUserId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const result = await db
+        .delete(savedLegislation)
+        .where(eq(savedLegislation.caseId, caseId));
+
+      console.log(`🗑️ Deleted all saved legislation for case ${caseId}`);
+      
+      res.json({ 
+        success: true, 
+        message: 'Alle artikelen verwijderd' 
+      });
+      
+    } catch (error: any) {
+      console.error('Error deleting all saved legislation:', error);
+      res.status(500).json({ 
+        error: error.message || 'Fout bij verwijderen van wetgeving' 
       });
     }
   });

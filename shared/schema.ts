@@ -192,6 +192,43 @@ export const analyses = pgTable("analyses", {
   index("idx_analyses_version").on(table.caseId, table.version),
 ]);
 
+// Saved legislation articles and commentary per case
+export const savedLegislation = pgTable("saved_legislation", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  caseId: varchar("case_id").notNull().references(() => cases.id, { onDelete: "cascade" }),
+  
+  // Article identification
+  bwbId: varchar("bwb_id").notNull(), // e.g., "BWBR0005289"
+  articleNumber: varchar("article_number").notNull(), // e.g., "7:17"
+  articleKey: varchar("article_key").notNull(), // Unique key: "bwbId:articleNumber"
+  
+  // Article content
+  lawTitle: text("law_title"), // e.g., "Burgerlijk Wetboek Boek 7"
+  articleText: text("article_text"), // The statutory text
+  wettenLink: text("wetten_link"), // Link to wetten.overheid.nl
+  boekNummer: varchar("boek_nummer"),
+  boekTitel: text("boek_titel"),
+  validFrom: varchar("valid_from"),
+  
+  // Grouped leden (paragraphs)
+  leden: jsonb("leden"), // [{lid: string, text: string, score: number}]
+  
+  // Generated commentary (from commentaryService)
+  commentary: jsonb("commentary"), // {article_title, short_intro, systematiek, kernbegrippen, reikwijdte_en_beperkingen, belangrijkste_rechtspraak}
+  commentarySources: jsonb("commentary_sources"), // {wettenLink, jurisprudence, onlineSources}
+  commentaryGeneratedAt: timestamp("commentary_generated_at"),
+  
+  // Search metadata
+  searchScore: decimal("search_score", { precision: 5, scale: 4 }),
+  searchRank: integer("search_rank"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("idx_saved_legislation_case").on(table.caseId),
+  index("idx_saved_legislation_article").on(table.bwbId, table.articleNumber),
+]);
+
 export const letters = pgTable("letters", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   caseId: varchar("case_id").notNull().references(() => cases.id, { onDelete: "cascade" }),
@@ -428,6 +465,7 @@ export const casesRelations = relations(cases, ({ one, many }) => ({
   events: many(events),
   webhooks: many(webhooks),
   chatMessages: many(chatMessages),
+  savedLegislation: many(savedLegislation),
 }));
 
 export const caseDocumentsRelations = relations(caseDocuments, ({ one }) => ({
@@ -444,6 +482,13 @@ export const caseDocumentsRelations = relations(caseDocuments, ({ one }) => ({
 export const analysesRelations = relations(analyses, ({ one }) => ({
   case: one(cases, {
     fields: [analyses.caseId],
+    references: [cases.id],
+  }),
+}));
+
+export const savedLegislationRelations = relations(savedLegislation, ({ one }) => ({
+  case: one(cases, {
+    fields: [savedLegislation.caseId],
     references: [cases.id],
   }),
 }));
@@ -636,6 +681,12 @@ export const insertJudgmentTextSchema = createInsertSchema(judgmentTexts).omit({
   fetchedAt: true,
 });
 
+export const insertSavedLegislationSchema = createInsertSchema(savedLegislation).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -673,3 +724,5 @@ export type QnaItem = typeof qnaItems.$inferSelect;
 export type InsertQnaItem = z.infer<typeof insertQnaItemSchema>;
 export type JudgmentText = typeof judgmentTexts.$inferSelect;
 export type InsertJudgmentText = z.infer<typeof insertJudgmentTextSchema>;
+export type SavedLegislation = typeof savedLegislation.$inferSelect;
+export type InsertSavedLegislation = z.infer<typeof insertSavedLegislationSchema>;

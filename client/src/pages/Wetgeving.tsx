@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { ArrowLeft, Search, Trash2, Sparkles, BookOpen, Loader2, ChevronDown, ChevronUp, FileText, Plus, X, MessageSquare, BookText } from "lucide-react";
+import { ArrowLeft, Search, Trash2, Sparkles, BookOpen, Loader2, ChevronDown, ChevronUp, FileText, Plus, X, MessageSquare, BookText, Save, Check } from "lucide-react";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,27 @@ import { Badge } from "@/components/ui/badge";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+
+interface SavedLegislationItem {
+  id: string;
+  caseId: string;
+  bwbId: string;
+  articleNumber: string;
+  articleKey: string;
+  lawTitle: string | null;
+  articleText: string | null;
+  wettenLink: string | null;
+  boekNummer: string | null;
+  boekTitel: string | null;
+  validFrom: string | null;
+  leden: any;
+  commentary: any;
+  commentarySources: any;
+  commentaryGeneratedAt: string | null;
+  searchScore: string | null;
+  searchRank: number | null;
+  createdAt: string;
+}
 
 interface LegislationResult {
   id: string;
@@ -141,12 +162,22 @@ export default function Wetgeving() {
   const [isSearchingAll, setIsSearchingAll] = useState(false);
   const [selectedCommentary, setSelectedCommentary] = useState<CommentaryResult | null>(null);
   const [loadingCommentaryFor, setLoadingCommentaryFor] = useState<string | null>(null);
+  const [savedArticleKeys, setSavedArticleKeys] = useState<Set<string>>(new Set());
 
   const { data: savedData, isLoading: savedDataLoading } = useQuery({
     queryKey: ['/api/wetgeving', currentCase?.id],
     enabled: !!currentCase?.id,
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/wetgeving/${currentCase?.id}`);
+      return response.json();
+    }
+  });
+
+  const { data: savedLegislation = [], isLoading: savedLegislationLoading } = useQuery<SavedLegislationItem[]>({
+    queryKey: ['/api/wetgeving', currentCase?.id, 'saved'],
+    enabled: !!currentCase?.id,
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/wetgeving/${currentCase?.id}/saved`);
       return response.json();
     }
   });
@@ -159,6 +190,58 @@ export default function Wetgeving() {
       setArticleEntries(savedData.articleEntries);
     }
   }, [savedData]);
+
+  useEffect(() => {
+    const keys = new Set(savedLegislation.map(item => item.articleKey));
+    setSavedArticleKeys(keys);
+  }, [savedLegislation]);
+
+  const saveLegislationMutation = useMutation({
+    mutationFn: async ({ article, commentary, sources }: { article: any; commentary?: any; sources?: any }) => {
+      const response = await apiRequest('POST', `/api/wetgeving/${currentCase?.id}/saved`, {
+        article,
+        commentary,
+        sources
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/wetgeving', currentCase?.id, 'saved'] });
+      toast({
+        title: "Artikel opgeslagen",
+        description: data.message || "Het artikel is bewaard voor deze zaak",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout bij opslaan",
+        description: error.message || "Kon artikel niet opslaan",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const deleteLegislationMutation = useMutation({
+    mutationFn: async (articleKey: string) => {
+      const encodedKey = encodeURIComponent(articleKey);
+      const response = await apiRequest('DELETE', `/api/wetgeving/${currentCase?.id}/saved/${encodedKey}`);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/wetgeving', currentCase?.id, 'saved'] });
+      toast({
+        title: "Artikel verwijderd",
+        description: data.message || "Het artikel is verwijderd",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout bij verwijderen",
+        description: error.message || "Kon artikel niet verwijderen",
+        variant: "destructive",
+      });
+    }
+  });
 
   const groupResultsByArticle = (results: LegislationResult[]): GroupedArticle[] => {
     const grouped = new Map<string, GroupedArticle>();
@@ -417,9 +500,23 @@ export default function Wetgeving() {
       const data = await response.json();
       setSelectedCommentary(data);
       
+      saveLegislationMutation.mutate({
+        article: {
+          ...article,
+          text: data.article?.text || article.leden.map((l: any) => l.text).join('\n'),
+          lawTitle: data.article?.lawTitle || article.title,
+          wettenLink: data.article?.wettenLink || article.bronUrl,
+          boekNummer: data.article?.boekNummer,
+          boekTitel: data.article?.boekTitel,
+          validFrom: data.article?.validFrom
+        },
+        commentary: data.commentary,
+        sources: data.sources
+      });
+      
       toast({
-        title: "Commentaar geladen",
-        description: `Tekst & Commentaar voor Art. ${article.articleNumber} is beschikbaar`,
+        title: "Commentaar geladen en opgeslagen",
+        description: `Tekst & Commentaar voor Art. ${article.articleNumber} is beschikbaar en bewaard`,
       });
     } catch (error: any) {
       toast({
@@ -429,6 +526,23 @@ export default function Wetgeving() {
       });
     } finally {
       setLoadingCommentaryFor(null);
+    }
+  };
+
+  const saveArticleWithoutCommentary = async (article: GroupedArticle) => {
+    saveLegislationMutation.mutate({
+      article: {
+        ...article,
+        text: article.leden.map((l: any) => l.text).join('\n'),
+        lawTitle: article.title,
+        wettenLink: article.bronUrl
+      }
+    });
+  };
+
+  const deleteArticle = async (articleKey: string) => {
+    if (savedArticleKeys.has(articleKey)) {
+      deleteLegislationMutation.mutate(articleKey);
     }
   };
 
@@ -533,7 +647,12 @@ export default function Wetgeving() {
     onToggle,
     onGetCommentary,
     isLoadingCommentary,
-    testIdPrefix
+    testIdPrefix,
+    isSaved,
+    onSave,
+    onDelete,
+    isSaving,
+    isDeleting
   }: {
     article: GroupedArticle;
     index: number;
@@ -542,6 +661,11 @@ export default function Wetgeving() {
     onGetCommentary: () => void;
     isLoadingCommentary: boolean;
     testIdPrefix: string;
+    isSaved: boolean;
+    onSave: () => void;
+    onDelete: () => void;
+    isSaving: boolean;
+    isDeleting: boolean;
   }) => {
     const allParagraphs: string[] = [];
     for (const lid of article.leden) {
@@ -551,13 +675,19 @@ export default function Wetgeving() {
     
     return (
       <div 
-        className="border rounded-lg p-4 bg-muted/30 space-y-2"
+        className={`border rounded-lg p-4 space-y-2 ${isSaved ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-800' : 'bg-muted/30'}`}
         data-testid={`${testIdPrefix}-${index}`}
       >
         <div className="flex flex-wrap items-center gap-2">
           <Badge className="bg-green-600 hover:bg-green-700 text-white font-mono text-xs">
             Art. {article.articleNumber}
           </Badge>
+          {isSaved && (
+            <Badge variant="outline" className="text-xs border-green-500 text-green-600">
+              <Check className="h-3 w-3 mr-1" />
+              Opgeslagen
+            </Badge>
+          )}
           {article.title && (
             article.bronUrl ? (
               <a href={article.bronUrl} target="_blank" rel="noopener noreferrer">
@@ -571,6 +701,9 @@ export default function Wetgeving() {
               </Badge>
             )
           )}
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -586,6 +719,40 @@ export default function Wetgeving() {
             )}
             {isLoadingCommentary ? 'Laden...' : 'Commentaar ophalen'}
           </Button>
+          
+          {!isSaved ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 text-xs px-2"
+              onClick={onSave}
+              disabled={isSaving}
+              data-testid={`button-save-${testIdPrefix}-${index}`}
+            >
+              {isSaving ? (
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              ) : (
+                <Save className="h-3 w-3 mr-1" />
+              )}
+              {isSaving ? 'Opslaan...' : 'Opslaan'}
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 text-xs px-2 text-destructive hover:text-destructive"
+              onClick={onDelete}
+              disabled={isDeleting}
+              data-testid={`button-delete-${testIdPrefix}-${index}`}
+            >
+              {isDeleting ? (
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              ) : (
+                <Trash2 className="h-3 w-3 mr-1" />
+              )}
+              {isDeleting ? 'Verwijderen...' : 'Verwijderen'}
+            </Button>
+          )}
         </div>
 
         {article.sectionTitle && (
@@ -802,6 +969,11 @@ export default function Wetgeving() {
                       onGetCommentary={() => fetchCommentary(article)}
                       isLoadingCommentary={loadingCommentaryFor === article.articleKey}
                       testIdPrefix="result-article"
+                      isSaved={savedArticleKeys.has(article.articleKey)}
+                      onSave={() => saveArticleWithoutCommentary(article)}
+                      onDelete={() => deleteArticle(article.articleKey)}
+                      isSaving={saveLegislationMutation.isPending}
+                      isDeleting={deleteLegislationMutation.isPending}
                     />
                   ))}
                 </div>
