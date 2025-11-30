@@ -8631,21 +8631,44 @@ Genereer een JSON response met:
       
       // Remove "lid X", "sub Y", "onder X" parts for base matching
       // Keep original for display but create base version for matching
+      // Note: We preserve legitimate suffixes like "bis", "ter", "quater" which are legal article variants
       articleBase = articleNumClean
         .replace(/\s+lid\s+\d+(\s+sub\s+\w+)?/gi, '')
         .replace(/\s+sub\s+\w+/gi, '')
         .replace(/\s+onder\s+\w+/gi, '')
         .trim();
       
-      console.log(`📖 Article base (for matching): "${articleBase}"`);
+      // Normalize article numbers: remove trailing zeros after decimal point
+      // "2.20" → "2.2", "2.10" → "2.1", "2.200" → "2.2"
+      // This matches how articles are stored in Pinecone
+      const normalizeArticleNumber = (artNum: string): string => {
+        // Handle decimal formats like "2.20", "2.10"
+        const decimalMatch = artNum.match(/^(\d+)\.(\d+)$/);
+        if (decimalMatch) {
+          const wholePart = decimalMatch[1];
+          const decimalPart = decimalMatch[2].replace(/0+$/, ''); // Remove trailing zeros
+          if (decimalPart) {
+            return `${wholePart}.${decimalPart}`;
+          }
+          return wholePart; // If all zeros, return just the whole part
+        }
+        return artNum;
+      };
       
-      // Check if format is "book:article" (e.g., "7:800", "6:74", "6:162")
+      const articleBaseNormalized = normalizeArticleNumber(articleBase);
+      console.log(`📖 Article base (for matching): "${articleBase}" → normalized: "${articleBaseNormalized}"`);
+      
+      // Use normalized version for searching
+      articleBase = articleBaseNormalized;
+      
+      // Check if format is "book:article" (e.g., "7:800", "6:74", "6:162", "2:20")
       const colonMatch = articleNumClean.match(/^(\d+):(\d+\w*)$/);
       if (colonMatch) {
         bookNumber = colonMatch[1];
         articleOnly = colonMatch[2];
-        articleBase = articleOnly;
-        console.log(`📖 Parsed as Book ${bookNumber}, Article ${articleOnly}`);
+        // Also normalize the article number in book-style references
+        articleBase = normalizeArticleNumber(articleOnly);
+        console.log(`📖 Parsed as Book ${bookNumber}, Article ${articleOnly} → normalized: ${articleBase}`);
       }
       
       // Build search text for semantic search (used as fallback)
