@@ -1127,10 +1127,60 @@ export default function Wetgeving() {
         <div className="space-y-6">
           <Card data-testid="card-text-commentary">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookText className="h-5 w-5" />
-                Tekst &amp; Commentaar
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <BookText className="h-5 w-5" />
+                  Tekst &amp; Commentaar
+                </CardTitle>
+                {selectedCommentary && (
+                  <div className="flex items-center gap-2">
+                    {savedArticleKeys.has(`${selectedCommentary.article.bwbId}:${selectedCommentary.article.articleNumber}`) ? (
+                      <Badge variant="outline" className="text-xs border-green-500 text-green-600">
+                        <Check className="h-3 w-3 mr-1" />
+                        Opgeslagen
+                      </Badge>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          saveLegislationMutation.mutate({
+                            article: {
+                              articleKey: `${selectedCommentary.article.bwbId}:${selectedCommentary.article.articleNumber}`,
+                              articleNumber: selectedCommentary.article.articleNumber,
+                              title: selectedCommentary.article.lawTitle,
+                              bwbId: selectedCommentary.article.bwbId,
+                              bronUrl: selectedCommentary.article.wettenLink,
+                              text: selectedCommentary.article.text,
+                              lawTitle: selectedCommentary.article.lawTitle,
+                              wettenLink: selectedCommentary.article.wettenLink,
+                              boekNummer: selectedCommentary.article.boekNummer,
+                              boekTitel: selectedCommentary.article.boekTitel,
+                              validFrom: selectedCommentary.article.validFrom,
+                              bestScore: 0,
+                              bestScorePercent: '0%',
+                              bestRank: 0,
+                              leden: []
+                            },
+                            commentary: selectedCommentary.commentary,
+                            sources: selectedCommentary.sources
+                          });
+                        }}
+                        disabled={saveLegislationMutation.isPending}
+                        data-testid="button-save-commentary"
+                      >
+                        {saveLegislationMutation.isPending ? (
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        ) : (
+                          <Save className="h-3 w-3 mr-1" />
+                        )}
+                        Opslaan
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
               <CardDescription>
                 {selectedCommentary 
                   ? selectedCommentary.commentary.article_title
