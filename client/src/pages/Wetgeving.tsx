@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
@@ -163,6 +163,7 @@ export default function Wetgeving() {
   const [selectedCommentary, setSelectedCommentary] = useState<CommentaryResult | null>(null);
   const [loadingCommentaryFor, setLoadingCommentaryFor] = useState<string | null>(null);
   const [savedArticleKeys, setSavedArticleKeys] = useState<Set<string>>(new Set());
+  const initialCommentaryLoadedRef = useRef(false);
 
   const { data: savedData, isLoading: savedDataLoading } = useQuery({
     queryKey: ['/api/wetgeving', currentCase?.id],
@@ -191,9 +192,39 @@ export default function Wetgeving() {
     }
   }, [savedData]);
 
+  const savedLegislationLength = savedLegislation.length;
+  const savedLegislationKeysString = savedLegislation.map(item => item.articleKey).join(',');
+
   useEffect(() => {
-    setSavedArticleKeys(new Set(savedLegislation.map(item => item.articleKey)));
-  }, [savedLegislation]);
+    const keys = savedLegislationKeysString.split(',').filter(k => k);
+    setSavedArticleKeys(new Set(keys));
+  }, [savedLegislationKeysString]);
+
+  useEffect(() => {
+    if (!initialCommentaryLoadedRef.current && savedLegislationLength > 0) {
+      const firstWithCommentary = savedLegislation.find(item => item.commentary);
+      if (firstWithCommentary) {
+        initialCommentaryLoadedRef.current = true;
+        const commentaryResult: CommentaryResult = {
+          article: {
+            id: firstWithCommentary.id,
+            lawTitle: firstWithCommentary.lawTitle || '',
+            boekNummer: firstWithCommentary.boekNummer || undefined,
+            boekTitel: firstWithCommentary.boekTitel || undefined,
+            articleNumber: firstWithCommentary.articleNumber,
+            validFrom: firstWithCommentary.validFrom || undefined,
+            text: firstWithCommentary.articleText || '',
+            bwbId: firstWithCommentary.bwbId,
+            wettenLink: firstWithCommentary.wettenLink || `https://wetten.overheid.nl/${firstWithCommentary.bwbId}`
+          },
+          commentary: firstWithCommentary.commentary,
+          sources: firstWithCommentary.commentarySources || { wettenLink: '', jurisprudence: [], onlineSources: [] },
+          generatedAt: firstWithCommentary.commentaryGeneratedAt || new Date().toISOString()
+        };
+        setSelectedCommentary(commentaryResult);
+      }
+    }
+  }, [savedLegislationLength, savedLegislation]);
 
   const saveLegislationMutation = useMutation({
     mutationFn: async ({ article, commentary, sources }: { article: any; commentary?: any; sources?: any }) => {
