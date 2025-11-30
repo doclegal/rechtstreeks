@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
@@ -580,8 +580,10 @@ export default function Wetgeving() {
     });
   };
 
-  const savedArticlesWithCommentary = savedLegislation.filter(item => item.commentary);
-  const savedArticlesWithoutCommentary = savedLegislation.filter(item => !item.commentary);
+  const savedArticlesWithCommentary = useMemo(() => 
+    savedLegislation.filter(item => item.commentary), [savedLegislation]);
+  const savedArticlesWithoutCommentary = useMemo(() => 
+    savedLegislation.filter(item => !item.commentary), [savedLegislation]);
 
   const clearArticleResults = async () => {
     setArticleResults([]);

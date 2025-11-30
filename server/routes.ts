@@ -8638,37 +8638,43 @@ Genereer een JSON response met:
         .replace(/\s+onder\s+\w+/gi, '')
         .trim();
       
-      // Normalize article numbers: remove trailing zeros after decimal point
-      // "2.20" → "2.2", "2.10" → "2.1", "2.200" → "2.2"
-      // This matches how articles are stored in Pinecone
-      const normalizeArticleNumber = (artNum: string): string => {
-        // Handle decimal formats like "2.20", "2.10"
+      // Generate article number variants for searching
+      // Some indexes store "2.20" and some store "2.2" - we try both
+      const getArticleVariants = (artNum: string): string[] => {
+        const variants: string[] = [artNum];
+        
+        // Handle decimal formats - generate both with and without trailing zeros
         const decimalMatch = artNum.match(/^(\d+)\.(\d+)$/);
         if (decimalMatch) {
           const wholePart = decimalMatch[1];
-          const decimalPart = decimalMatch[2].replace(/0+$/, ''); // Remove trailing zeros
-          if (decimalPart) {
-            return `${wholePart}.${decimalPart}`;
+          const decimalPart = decimalMatch[2];
+          
+          // Add variant without trailing zeros: "2.20" → "2.2"
+          const withoutTrailing = decimalPart.replace(/0+$/, '');
+          if (withoutTrailing && withoutTrailing !== decimalPart) {
+            variants.push(`${wholePart}.${withoutTrailing}`);
           }
-          return wholePart; // If all zeros, return just the whole part
+          
+          // Add variant with trailing zero if not present: "2.2" → "2.20"
+          if (!decimalPart.endsWith('0') && decimalPart.length === 1) {
+            variants.push(`${wholePart}.${decimalPart}0`);
+          }
         }
-        return artNum;
+        
+        return [...new Set(variants)]; // Remove duplicates
       };
       
-      const articleBaseNormalized = normalizeArticleNumber(articleBase);
-      console.log(`📖 Article base (for matching): "${articleBase}" → normalized: "${articleBaseNormalized}"`);
-      
-      // Use normalized version for searching
-      articleBase = articleBaseNormalized;
+      const articleVariants = getArticleVariants(articleBase);
+      console.log(`📖 Article base: "${articleBase}" → variants to try: ${JSON.stringify(articleVariants)}`);
       
       // Check if format is "book:article" (e.g., "7:800", "6:74", "6:162", "2:20")
       const colonMatch = articleNumClean.match(/^(\d+):(\d+\w*)$/);
       if (colonMatch) {
         bookNumber = colonMatch[1];
         articleOnly = colonMatch[2];
-        // Also normalize the article number in book-style references
-        articleBase = normalizeArticleNumber(articleOnly);
-        console.log(`📖 Parsed as Book ${bookNumber}, Article ${articleOnly} → normalized: ${articleBase}`);
+        // Don't normalize - keep original for book-style references
+        articleBase = articleOnly;
+        console.log(`📖 Parsed as Book ${bookNumber}, Article ${articleOnly}`);
       }
       
       // Build search text for semantic search (used as fallback)
@@ -8680,12 +8686,13 @@ Genereer een JSON response met:
       console.log(`🔍 Article base for filter: "${articleBase}"`);
       
       // STRATEGY 1: Use metadata filter on article_number for exact match
-      // This is much more accurate than semantic search for specific articles
-      console.log(`📋 STRATEGY 1: Metadata filter on article_number = "${articleBase}"`);
+      // Try all article number variants (e.g., "2.20" and "2.2")
+      const searchVariants = getArticleVariants(articleBase);
+      console.log(`📋 STRATEGY 1: Metadata filter on article_number variants: ${JSON.stringify(searchVariants)}`);
       
       let results: any[] = [];
       
-      // Try exact article_number filter first
+      // Try article_number filter with all variants
       try {
         results = await searchVectors({
           text: searchText,
@@ -8693,7 +8700,7 @@ Genereer een JSON response met:
           scoreThreshold: 0,
           namespace: 'laws-current',
           filter: {
-            article_number: { $eq: articleBase },
+            article_number: { $in: searchVariants },
             is_current: { $eq: true }
           }
         });
@@ -8729,15 +8736,21 @@ Genereer een JSON response met:
       const stopWords = ['de', 'het', 'van', 'inzake', 'en', 'over'];
       const regulationWords = regulationLower.split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w));
       
-      // Helper function to check if article numbers match
+      // Helper function to check if article numbers match (including variants)
       const articleNumberMatches = (resultArticle: string, searchArticle: string): boolean => {
         if (!resultArticle || !searchArticle) return false;
         const resultClean = resultArticle.trim().toLowerCase();
         const searchClean = searchArticle.trim().toLowerCase();
-        return resultClean === searchClean;
+        
+        // Direct match
+        if (resultClean === searchClean) return true;
+        
+        // Check all variants
+        const variants = getArticleVariants(searchClean);
+        return variants.some(v => v.toLowerCase() === resultClean);
       };
       
-      console.log(`📊 Matching with articleBase: "${articleBase}"`);
+      console.log(`📊 Matching with articleBase: "${articleBase}" and variants: ${JSON.stringify(searchVariants)}`);
       console.log(`📊 Regulation words for matching: ${JSON.stringify(regulationWords)}`);
       
       const filteredResults = results.filter((result: any) => {
