@@ -35,7 +35,7 @@ import {
   type CaseStatus,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, count } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
@@ -579,6 +579,14 @@ export class DatabaseStorage implements IStorage {
   // Chat operations
   async deleteChatMessages(caseId: string): Promise<void> {
     await db.delete(chatMessages).where(eq(chatMessages.caseId, caseId));
+  }
+
+  async getChatMessageCount(caseId: string): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(chatMessages)
+      .where(eq(chatMessages.caseId, caseId));
+    return result[0]?.count ?? 0;
   }
 }
 

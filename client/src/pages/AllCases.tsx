@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Link, useLocation } from "wouter";
-import { PlusCircle, FileText, Calendar, UserPlus } from "lucide-react";
+import { PlusCircle, FileText, Calendar, UserPlus, AlertCircle, MessageSquare, Scale, Gavel } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
 import { useCaseContext } from "@/contexts/CaseContext";
@@ -129,20 +129,59 @@ export default function AllCases() {
                       </Badge>
                     )}
                     
-                    {/* Success Chance Badge */}
-                    {(caseItem as any).fullAnalysis?.succesKansAnalysis?.chance_of_success !== undefined && (
+                    {/* Missing Information Badge */}
+                    {((caseItem as any).hasUnseenMissingItems || 
+                      ((caseItem as any).fullAnalysis?.missingInformation && 
+                       Array.isArray((caseItem as any).fullAnalysis.missingInformation) && 
+                       (caseItem as any).fullAnalysis.missingInformation.length > 0)) && (
                       <Badge 
                         variant="outline"
-                        className={`w-fit ${
-                          (caseItem as any).fullAnalysis.succesKansAnalysis.chance_of_success >= 70 
-                            ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200 border-green-300 dark:border-green-700' 
-                            : (caseItem as any).fullAnalysis.succesKansAnalysis.chance_of_success >= 40
-                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-700'
-                            : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200 border-red-300 dark:border-red-700'
-                        }`}
-                        data-testid={`badge-success-chance-${caseItem.id}`}
+                        className="w-fit bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-700"
+                        data-testid={`badge-missing-info-${caseItem.id}`}
                       >
-                        {(caseItem as any).fullAnalysis.succesKansAnalysis.chance_of_success}% kans op succes
+                        <AlertCircle className="h-3 w-3 mr-1" />
+                        Ontbrekende informatie
+                      </Badge>
+                    )}
+                    
+                    {/* New Messages Badge */}
+                    <Badge 
+                      variant="outline"
+                      className={`w-fit ${
+                        (caseItem as any).chatMessageCount > 0
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200 border-blue-300 dark:border-blue-700'
+                          : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-gray-300 dark:border-gray-600'
+                      }`}
+                      data-testid={`badge-messages-${caseItem.id}`}
+                    >
+                      <MessageSquare className="h-3 w-3 mr-1" />
+                      {(caseItem as any).chatMessageCount || 0} {(caseItem as any).chatMessageCount === 1 ? 'nieuw bericht' : 'nieuwe berichten'}
+                    </Badge>
+                    
+                    {/* Mediation Started Badge */}
+                    {(caseItem as any).currentStep && 
+                     ['mediation', 'resolve', 'conversation', 'party-input', 'summary', 'solution'].some(
+                       step => (caseItem as any).currentStep?.toLowerCase().includes(step)
+                     ) && (
+                      <Badge 
+                        variant="outline"
+                        className="w-fit bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200 border-purple-300 dark:border-purple-700"
+                        data-testid={`badge-mediation-${caseItem.id}`}
+                      >
+                        <Scale className="h-3 w-3 mr-1" />
+                        Mediation gestart
+                      </Badge>
+                    )}
+                    
+                    {/* Procedure Started Badge */}
+                    {['FILED', 'PROCEEDINGS_ONGOING', 'JUDGMENT'].includes(caseItem.status) && (
+                      <Badge 
+                        variant="outline"
+                        className="w-fit bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700"
+                        data-testid={`badge-procedure-${caseItem.id}`}
+                      >
+                        <Gavel className="h-3 w-3 mr-1" />
+                        Procedure gestart
                       </Badge>
                     )}
                   </div>

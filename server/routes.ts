@@ -285,6 +285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const letters = await storage.getLettersByCase(caseData.id);
           const summons = await storage.getSummonsByCase(caseData.id);
           const progress = storage.computeProgress(caseData);
+          const chatMessageCount = await storage.getChatMessageCount(caseData.id);
           
           return {
             ...caseData,
@@ -295,6 +296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             letters,
             summons,
             progress,
+            chatMessageCount,
           };
         })
       );
