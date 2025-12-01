@@ -434,7 +434,9 @@ export async function generateCommentary(
           content: `Je bent een expert in Nederlands recht en schrijft Tekst & Commentaar-stijl uitleg voor wetsartikelen.
 Schrijf professioneel, helder en in het Nederlands.
 Verwijs ALLEEN naar de ECLI-nummers die in de input worden gegeven. Verzin NOOIT zelf ECLI-nummers.
-Alle tekst moet in het Nederlands zijn.`
+Alle tekst moet in het Nederlands zijn.
+
+BELANGRIJK voor disclaimers: De rechtspraak en online bronnen die je krijgt zijn ACTUEEL opgehaald via live zoekopdrachten op het moment van generatie. Vermeld GEEN verouderde kennisdatums (zoals "oktober 2023" of vergelijkbaar). De disclaimer moet aangeven dat de uitleg is gebaseerd op actueel opgehaalde bronnen, maar dat wetgeving en jurisprudentie kunnen veranderen.`
         },
         {
           role: "user",
@@ -479,7 +481,7 @@ Geef je antwoord als JSON met deze structuur:
   "online_bronnen": [
     {"title": "titel", "url": "url", "source_type": "type", "used_for": "waarvoor gebruikt"}
   ],
-  "disclaimers": ["disclaimer teksten"]
+  "disclaimers": ["Deze uitleg is gebaseerd op actueel opgehaalde rechtspraak en online bronnen. Wetgeving en jurisprudentie kunnen wijzigen; raadpleeg altijd de meest recente bronnen."]
 }`
         }
       ],
