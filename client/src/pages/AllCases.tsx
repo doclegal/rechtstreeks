@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Link, useLocation } from "wouter";
-import { PlusCircle, FileText, Calendar, UserPlus, AlertCircle, MessageSquare, Scale, Gavel } from "lucide-react";
+import { PlusCircle, FileText, Calendar, UserPlus, AlertCircle, Scale, Gavel } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
 import { useCaseContext } from "@/contexts/CaseContext";
@@ -143,20 +143,6 @@ export default function AllCases() {
                         Ontbrekende informatie
                       </Badge>
                     )}
-                    
-                    {/* New Messages Badge */}
-                    <Badge 
-                      variant="outline"
-                      className={`w-fit ${
-                        (caseItem as any).chatMessageCount > 0
-                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200 border-blue-300 dark:border-blue-700'
-                          : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-gray-300 dark:border-gray-600'
-                      }`}
-                      data-testid={`badge-messages-${caseItem.id}`}
-                    >
-                      <MessageSquare className="h-3 w-3 mr-1" />
-                      {(caseItem as any).chatMessageCount || 0} {(caseItem as any).chatMessageCount === 1 ? 'nieuw bericht' : 'nieuwe berichten'}
-                    </Badge>
                     
                     {/* Mediation Started Badge */}
                     {(caseItem as any).currentStep && 
