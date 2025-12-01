@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, FileSearch, CheckCircle, AlertTriangle, Info, Lightbulb } from "lucide-react";
+import { ArrowLeft, FileSearch, CheckCircle, AlertTriangle, Info, Lightbulb, FileText } from "lucide-react";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -119,6 +119,22 @@ export default function VolledigeAnalyseDetails() {
                 <CardContent>
                   <p className="text-sm leading-relaxed" data-testid="text-success-assessment">
                     {succesKansAnalysis.assessment}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {succesKansAnalysis.summary_verdict && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-primary" />
+                    Samenvatting van het geschil
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm leading-relaxed" data-testid="text-dispute-summary">
+                    {succesKansAnalysis.summary_verdict}
                   </p>
                 </CardContent>
               </Card>
