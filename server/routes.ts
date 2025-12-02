@@ -8971,7 +8971,9 @@ Genereer een JSON response met:
         const queryLower = query.toLowerCase();
         regelingen = regelingen.filter((r: any) => {
           const titel = (r.officieleTitel || r.citeerTitel || '').toLowerCase();
-          const type = (r.type || '').toLowerCase();
+          // type can be an object or string, handle both cases
+          const typeStr = typeof r.type === 'string' ? r.type : (r.type?.waarde || '');
+          const type = typeStr.toLowerCase();
           return titel.includes(queryLower) || type.includes(queryLower);
         });
         console.log(`📊 After query filter: ${regelingen.length} regelingen`);
