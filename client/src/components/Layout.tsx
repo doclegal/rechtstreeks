@@ -142,15 +142,7 @@ export default function Layout({ children }: LayoutProps) {
                 >
                   Onderhandelen
                 </Link>
-                <Link 
-                  href="/resolve" 
-                  className={`font-medium transition-colors ${
-                    isActiveRoute('/resolve') ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                  data-testid="link-resolve"
-                >
-                  Oplossen
-                </Link>
+                {/* Oplossen menu item temporarily hidden */}
                 <Link 
                   href="/summons" 
                   className={`font-medium transition-colors ${
@@ -232,12 +224,7 @@ export default function Layout({ children }: LayoutProps) {
                       Onderhandelen
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/resolve" data-testid="link-resolve-mobile">
-                      <Handshake className="mr-2 h-4 w-4" />
-                      Oplossen
-                    </Link>
-                  </DropdownMenuItem>
+                  {/* Oplossen menu item temporarily hidden */}
                   <DropdownMenuItem asChild>
                     <Link href="/summons" data-testid="link-summons-mobile">
                       <FileText className="mr-2 h-4 w-4" />
