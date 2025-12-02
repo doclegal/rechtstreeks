@@ -8638,35 +8638,11 @@ Genereer een JSON response met:
         .replace(/\s+onder\s+\w+/gi, '')
         .trim();
       
-      // Generate article number variants for Pinecone metadata filter
-      // This is necessary because Pinecone may store "2.20" as "2.2" (without trailing zero)
-      // We generate variants for SEARCHING, but display uses the original searched value
-      const getArticleVariants = (artNum: string): string[] => {
-        const variants: string[] = [artNum]; // Original always first
-        
-        // Only process decimal formats when a dot is present in input
-        const decimalMatch = artNum.match(/^(\d+)\.(\d+)$/);
-        if (decimalMatch) {
-          const wholePart = decimalMatch[1];
-          const decimalPart = decimalMatch[2];
-          
-          // Add variant without trailing zeros: "2.20" → "2.2"
-          const withoutTrailing = decimalPart.replace(/0+$/, '');
-          if (withoutTrailing && withoutTrailing.length > 0 && withoutTrailing !== decimalPart) {
-            variants.push(`${wholePart}.${withoutTrailing}`);
-          }
-          
-          // Add variant with trailing zero if not present: "2.2" → "2.20"
-          if (!decimalPart.endsWith('0') && decimalPart.length === 1) {
-            variants.push(`${wholePart}.${decimalPart}0`);
-          }
-        }
-        
-        return [...new Set(variants)]; // Remove duplicates
-      };
-      
-      const articleVariants = getArticleVariants(articleBase);
-      console.log(`📖 Article base: "${articleBase}" → variants to try: ${JSON.stringify(articleVariants)}`);
+      // EXACT matching only - no variant generation
+      // User searches "2.2" → only find "2.2"
+      // User searches "2.20" → only find "2.20"
+      // User searches "2" → only find "2"
+      console.log(`📖 Article base for EXACT match: "${articleBase}"`);
       
       // Check if format is "book:article" (e.g., "7:800", "6:74", "6:162", "2:20")
       const colonMatch = articleNumClean.match(/^(\d+):(\d+\w*)$/);
@@ -8686,14 +8662,12 @@ Genereer een JSON response met:
       console.log(`🔍 Search text: "${searchText}"`);
       console.log(`🔍 Article base for filter: "${articleBase}"`);
       
-      // STRATEGY 1: Use metadata filter on article_number for exact match
-      // Try all article number variants (e.g., "2.20" and "2.2")
-      const searchVariants = getArticleVariants(articleBase);
-      console.log(`📋 STRATEGY 1: Metadata filter on article_number variants: ${JSON.stringify(searchVariants)}`);
+      // STRATEGY 1: Use metadata filter on article_number for EXACT match only
+      console.log(`📋 STRATEGY 1: Metadata filter for EXACT article_number: "${articleBase}"`);
       
       let results: any[] = [];
       
-      // Try article_number filter with all variants
+      // Try article_number filter with EXACT value only
       try {
         results = await searchVectors({
           text: searchText,
@@ -8701,7 +8675,7 @@ Genereer een JSON response met:
           scoreThreshold: 0,
           namespace: 'laws-current',
           filter: {
-            article_number: { $in: searchVariants },
+            article_number: { $eq: articleBase },
             is_current: { $eq: true }
           }
         });
@@ -8737,21 +8711,17 @@ Genereer een JSON response met:
       const stopWords = ['de', 'het', 'van', 'inzake', 'en', 'over'];
       const regulationWords = regulationLower.split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w));
       
-      // Helper function to check if article numbers match (including variants)
+      // Helper function to check if article numbers match EXACTLY
       const articleNumberMatches = (resultArticle: string, searchArticle: string): boolean => {
         if (!resultArticle || !searchArticle) return false;
         const resultClean = resultArticle.trim().toLowerCase();
         const searchClean = searchArticle.trim().toLowerCase();
         
-        // Direct match
-        if (resultClean === searchClean) return true;
-        
-        // Check all variants
-        const variants = getArticleVariants(searchClean);
-        return variants.some(v => v.toLowerCase() === resultClean);
+        // EXACT match only - no variants
+        return resultClean === searchClean;
       };
       
-      console.log(`📊 Matching with articleBase: "${articleBase}" and variants: ${JSON.stringify(searchVariants)}`);
+      console.log(`📊 Matching with EXACT articleBase: "${articleBase}"`);
       console.log(`📊 Regulation words for matching: ${JSON.stringify(regulationWords)}`);
       
       const filteredResults = results.filter((result: any) => {
@@ -8855,12 +8825,12 @@ Genereer een JSON response met:
       });
 
       // Format results for legislation display
-      // Keep real articleNumber from Pinecone for grouping logic
-      // Add displayArticleNumber for UI display (uses searched value to preserve precision like "2.20")
-      const searchedDisplayNumber = bookNumber ? `${bookNumber}:${articleOnly}` : articleBase;
+      // With EXACT matching, articleNumber from Pinecone should match exactly what user searched
+      // Use the REAL metadata value for both display and grouping to ensure data integrity
       
       const formattedResults = finalResults.map((result: any, idx: number) => {
         const realArticleNumber = result.metadata?.article_number || (result.metadata as any)?.articleNumber;
+        const displayNumber = bookNumber ? `${bookNumber}:${realArticleNumber}` : realArticleNumber;
         return {
           id: result.id,
           rank: idx + 1,
@@ -8868,8 +8838,8 @@ Genereer een JSON response met:
           scorePercent: (result.score * 100).toFixed(1) + '%',
           bwbId: result.metadata?.bwb_id || (result.metadata as any)?.bwbId,
           title: result.metadata?.title,
-          articleNumber: realArticleNumber, // Keep real metadata value for grouping
-          displayArticleNumber: searchedDisplayNumber, // Use searched value for UI display
+          articleNumber: realArticleNumber, // Real metadata value for grouping
+          displayArticleNumber: realArticleNumber, // Same real value for display (exact match)
           paragraphNumber: result.metadata?.paragraph_number || (result.metadata as any)?.paragraphNumber,
           sectionTitle: result.metadata?.section_title || (result.metadata as any)?.sectionTitle,
           validFrom: result.metadata?.valid_from || (result.metadata as any)?.validFrom,
@@ -8877,7 +8847,7 @@ Genereer een JSON response met:
           isCurrent: result.metadata?.is_current ?? (result.metadata as any)?.isCurrent ?? true,
           text: result.text || (result.metadata as any)?.text,
           chunkIndex: result.metadata?.chunk_index,
-          citatie: `art. ${searchedDisplayNumber} ${result.metadata?.title || ''}`,
+          citatie: `art. ${displayNumber} ${result.metadata?.title || ''}`,
           bronUrl: result.metadata?.bwb_id 
             ? `https://wetten.overheid.nl/${result.metadata.bwb_id}`
             : null
