@@ -8639,29 +8639,44 @@ Genereer een JSON response met:
         .trim();
       
       // Generate article number variants for searching
-      // Some indexes store "2.20" and some store "2.2" - we try both
+      // Articles can be stored in different formats: "2.20", "2.2", "220"
+      // We generate variants ONLY when the input contains a decimal point
+      // to avoid incorrectly converting plain numbers like "203" to "2.03"
       const getArticleVariants = (artNum: string): string[] => {
-        const variants: string[] = [artNum];
+        const variants: string[] = [artNum]; // Original always first
         
-        // Handle decimal formats - generate both with and without trailing zeros
+        // Only process decimal formats when a dot is actually present
         const decimalMatch = artNum.match(/^(\d+)\.(\d+)$/);
         if (decimalMatch) {
           const wholePart = decimalMatch[1];
           const decimalPart = decimalMatch[2];
           
+          // Add dotless variant: "2.20" → "220", "2.2" → "22"
+          const dotless = `${wholePart}${decimalPart}`;
+          variants.push(dotless);
+          
           // Add variant without trailing zeros: "2.20" → "2.2"
           const withoutTrailing = decimalPart.replace(/0+$/, '');
-          if (withoutTrailing && withoutTrailing !== decimalPart) {
+          if (withoutTrailing && withoutTrailing.length > 0 && withoutTrailing !== decimalPart) {
             variants.push(`${wholePart}.${withoutTrailing}`);
+            // Also add dotless version of shortened form: "2.20" -> "22" via "2.2"
+            variants.push(`${wholePart}${withoutTrailing}`);
           }
           
           // Add variant with trailing zero if not present: "2.2" → "2.20"
           if (!decimalPart.endsWith('0') && decimalPart.length === 1) {
-            variants.push(`${wholePart}.${decimalPart}0`);
+            const withTrailing = `${decimalPart}0`;
+            variants.push(`${wholePart}.${withTrailing}`);
+            // Also add dotless version: "2.2" -> "220" via "2.20"
+            variants.push(`${wholePart}${withTrailing}`);
           }
         }
         
-        return [...new Set(variants)]; // Remove duplicates
+        // Note: We do NOT convert plain numbers like "203" to dotted variants
+        // as this would cause incorrect matches (203 is not the same as 2.03)
+        // Plain article numbers are stored and searched exactly as-is
+        
+        return [...new Set(variants)]; // Remove duplicates, original always included
       };
       
       const articleVariants = getArticleVariants(articleBase);
