@@ -8909,8 +8909,8 @@ Genereer een JSON response met:
       }
 
       const DSO_API_KEY = process.env.DSO_API_KEY;
-      // Use v8 of the API (current version)
-      const DSO_BASE_URL = "https://service.omgevingswet.overheid.nl/publiek/omgevingsdocumenten/api/presenteren/v8";
+      // Try pre-production first (some API keys only work there)
+      const DSO_BASE_URL = process.env.DSO_BASE_URL || "https://service.pre.omgevingswet.overheid.nl/publiek/omgevingsdocumenten/api/presenteren/v8";
       
       if (!DSO_API_KEY) {
         return res.status(500).json({ error: 'DSO API key niet geconfigureerd' });
@@ -9004,7 +9004,7 @@ Genereer een JSON response met:
       }
 
       const DSO_API_KEY = process.env.DSO_API_KEY;
-      const DSO_BASE_URL = "https://service.omgevingswet.overheid.nl/publiek/omgevingsdocumenten/api/presenteren/v8";
+      const DSO_BASE_URL = process.env.DSO_BASE_URL || "https://service.pre.omgevingswet.overheid.nl/publiek/omgevingsdocumenten/api/presenteren/v8";
       
       if (!DSO_API_KEY) {
         return res.status(500).json({ error: 'DSO API key niet geconfigureerd' });
