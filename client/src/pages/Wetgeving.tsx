@@ -1229,12 +1229,33 @@ export default function Wetgeving() {
                     data-testid="select-gemeente"
                   >
                     <option value="">Selecteer een gemeente...</option>
-                    {gemeenten.map((gemeente) => (
-                      <option key={gemeente.code} value={gemeente.code}>
-                        {gemeente.naam}
-                      </option>
-                    ))}
+                    {(() => {
+                      const availableInTestEnv = ['Groningen', 'Stadskanaal', 'Almere', 'Zeewolde', 'Veendam', 'Achtkarspelen', 'Heerenveen', 'Leeuwarden', 'Harlingen', 'Ameland', 'Smallingerland', 'Opsterland', 'Ooststellingwerf', 'Schiermonnikoog', 'Terschelling'];
+                      const available = gemeenten.filter(g => availableInTestEnv.some(name => g.naam.toLowerCase() === name.toLowerCase()));
+                      const unavailable = gemeenten.filter(g => !availableInTestEnv.some(name => g.naam.toLowerCase() === name.toLowerCase()));
+                      return (
+                        <>
+                          <optgroup label="✓ Beschikbaar in test omgeving">
+                            {available.map((gemeente) => (
+                              <option key={gemeente.code} value={gemeente.code}>
+                                ★ {gemeente.naam}
+                              </option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="○ Overige gemeenten (niet in test data)">
+                            {unavailable.map((gemeente) => (
+                              <option key={gemeente.code} value={gemeente.code}>
+                                {gemeente.naam}
+                              </option>
+                            ))}
+                          </optgroup>
+                        </>
+                      );
+                    })()}
                   </select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    ★ = Beschikbaar in pre-productie test omgeving
+                  </p>
                 </div>
               </div>
 

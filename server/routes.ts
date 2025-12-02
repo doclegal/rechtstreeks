@@ -8946,9 +8946,20 @@ Genereer een JSON response met:
       
       console.log(`📊 Found ${regelingen.length} total regelingen`);
       
-      // Log available gemeente codes for debugging
+      // Log available gemeente codes and titles for debugging
       const availableCodes = [...new Set(regelingen.map((r: any) => r.bevoegdGezag?.code).filter(Boolean))];
-      console.log(`📊 Available bevoegdGezag codes: ${availableCodes.slice(0, 10).join(', ')}${availableCodes.length > 10 ? '...' : ''}`);
+      console.log(`📊 Available bevoegdGezag codes: ${availableCodes.slice(0, 10).join(', ') || '(none)'}${availableCodes.length > 10 ? '...' : ''}`);
+      
+      // Extract gemeente names from titles (e.g., "Omgevingsplan gemeente Groningen")
+      const gemeenteNamesInTitles = regelingen
+        .map((r: any) => {
+          const titel = r.officieleTitel || r.citeerTitel || '';
+          const match = titel.match(/gemeente\s+([A-Za-z\s\-']+)/i);
+          return match ? match[1].trim() : null;
+        })
+        .filter(Boolean);
+      const uniqueGemeenten = [...new Set(gemeenteNamesInTitles)];
+      console.log(`📊 Gemeenten in titels: ${uniqueGemeenten.join(', ') || '(none)'}`);
       
       // Filter by gemeente - use multiple matching strategies
       const gemeenteCodeLower = gemeenteCode.toLowerCase();
