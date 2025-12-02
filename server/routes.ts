@@ -8755,6 +8755,10 @@ Genereer een JSON response met:
       const formattedResults = finalResults.map((result: any, idx: number) => {
         const realArticleNumber = result.metadata?.article_number || (result.metadata as any)?.articleNumber;
         const displayNumber = bookNumber ? `${bookNumber}:${realArticleNumber}` : realArticleNumber;
+        
+        // DEBUG: Log each result's article number
+        console.log(`  📝 Result ${idx + 1}: article_number="${realArticleNumber}" (searched for "${articleBase}")`);
+        
         return {
           id: result.id,
           rank: idx + 1,
