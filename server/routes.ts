@@ -8834,6 +8834,157 @@ Genereer een JSON response met:
     }
   });
 
+  // Search local legislation (Omgevingswet) in laws-dso namespace
+  app.post('/api/wetgeving/search-local', async (req, res) => {
+    try {
+      const { query, topK = 20 } = req.body;
+      
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ error: 'Zoekopdracht is verplicht' });
+      }
+
+      console.log(`🏛️ LOCAL LEGISLATION SEARCH (laws-dso namespace)`);
+      console.log(`🔍 Query: "${query}"`);
+      
+      const results = await searchVectors({
+        text: query,
+        topK: topK,
+        scoreThreshold: 0.1,
+        namespace: 'laws-dso'
+      });
+      
+      console.log(`📊 Found ${results.length} results in laws-dso namespace`);
+      
+      // Format results with local legislation metadata
+      const formattedResults = results.map((result: any, idx: number) => ({
+        id: result.id,
+        rank: idx + 1,
+        score: result.score,
+        scorePercent: (result.score * 100).toFixed(1) + '%',
+        metadata: {
+          regeling_id: result.metadata?.regeling_id,
+          regeling_title: result.metadata?.regeling_title,
+          bevoegd_gezag: result.metadata?.bevoegd_gezag,
+          bevoegd_gezag_type: result.metadata?.bevoegd_gezag_type,
+          type: result.metadata?.type,
+          source_url: result.metadata?.source_url,
+          is_current_version: result.metadata?.is_current_version,
+          version_date: result.metadata?.version_date,
+          text: result.text || result.metadata?.text
+        }
+      }));
+
+      res.json({
+        query,
+        results: formattedResults,
+        totalResults: formattedResults.length,
+        namespace: 'laws-dso'
+      });
+
+    } catch (error: any) {
+      console.error('Error in local legislation search:', error);
+      res.status(500).json({ 
+        error: error.message || 'Fout bij zoeken in lokale wetgeving' 
+      });
+    }
+  });
+
+  // Generate AI query for local legislation based on case context
+  app.post('/api/wetgeving/generate-local-query', async (req, res) => {
+    try {
+      const { caseId } = req.body;
+      
+      if (!caseId) {
+        return res.status(400).json({ error: 'Case ID is verplicht' });
+      }
+
+      // Get case details and analysis
+      const caseData = await db
+        .select()
+        .from(cases)
+        .where(eq(cases.id, caseId))
+        .limit(1);
+
+      if (!caseData || caseData.length === 0) {
+        return res.status(404).json({ error: 'Zaak niet gevonden' });
+      }
+
+      const currentCase = caseData[0];
+
+      // Get latest analysis
+      const analysisRecords = await db
+        .select()
+        .from(analyses)
+        .where(eq(analyses.caseId, caseId))
+        .orderBy(desc(analyses.createdAt))
+        .limit(1);
+
+      const analysis = analysisRecords?.[0];
+      
+      // Build context from case and analysis
+      let context = `Zaak: ${currentCase.title || 'Onbekend'}\n`;
+      context += `Type: ${currentCase.category || 'Onbekend'}\n`;
+      
+      if (currentCase.description) {
+        context += `Samenvatting: ${currentCase.description}\n`;
+      }
+      
+      if (analysis) {
+        const rkos = (analysis as any).succesKansAnalysis;
+        if (rkos) {
+          if (typeof rkos === 'object' && rkos.advice) {
+            context += `\nJuridisch advies:\n${rkos.advice}`;
+          }
+        }
+      }
+
+      console.log(`🤖 Generating local legislation query for case ${caseId}`);
+      
+      // Use OpenAI to generate a search query
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `Je bent een Nederlandse juridisch expert. Genereer een korte, effectieve zoekopdracht voor het doorzoeken van lokale wetgeving (omgevingsplannen, gemeentelijke verordeningen).
+
+De zoekopdracht moet:
+- Nederlands zijn
+- Gericht zijn op relevante lokale regelgeving
+- Focussen op omgevingsrecht, bestemmingsplannen, bouwregels, milieuregels
+- Maximaal 5-10 woorden bevatten
+
+Geef ALLEEN de zoekopdracht terug, zonder uitleg of aanhalingstekens.`
+          },
+          {
+            role: 'user',
+            content: `Genereer een zoekopdracht voor lokale wetgeving op basis van deze zaak:\n\n${context}`
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 100
+      });
+
+      const generatedQuery = completion.choices[0]?.message?.content?.trim() || '';
+      
+      console.log(`📝 Generated query: "${generatedQuery}"`);
+
+      res.json({
+        query: generatedQuery,
+        context: context.substring(0, 200)
+      });
+
+    } catch (error: any) {
+      console.error('Error generating local query:', error);
+      res.status(500).json({ 
+        error: error.message || 'Fout bij genereren van zoekopdracht' 
+      });
+    }
+  });
+
   // Get saved wetgeving data for a case
   app.get('/api/wetgeving/:caseId', async (req, res) => {
     try {
