@@ -8698,17 +8698,23 @@ Genereer een JSON response met:
         console.log(`📊 Sample article numbers:`, JSON.stringify(sampleArticles));
       }
 
-      // Filter results to match regulation title
+      // Filter results to match regulation title STRICTLY
       // Note: Article number is already filtered by Pinecone metadata filter (exact match)
+      // Title filter must match ALL distinctive words from the user's search
       const regulationLower = regulation.toLowerCase();
-      const stopWords = ['de', 'het', 'van', 'inzake', 'en', 'over', 'wet', 'verdrag', 'boek'];
-      const regulationWords = regulationLower.split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w));
+      
+      // Extract distinctive words (longer than 3 chars, not stopwords)
+      const stopWords = ['de', 'het', 'van', 'inzake', 'en', 'over', 'artikel', 'artikelen', 'lid', 'sub'];
+      const regulationWords = regulationLower
+        .split(/\s+/)
+        .map(w => w.replace(/[^a-z0-9-]/gi, '')) // Remove special chars except hyphen
+        .filter(w => w.length > 3 && !stopWords.includes(w));
       
       console.log(`📊 Filtering ${results.length} results for regulation: "${regulation}"`);
-      console.log(`📊 Regulation words for matching: ${JSON.stringify(regulationWords)}`);
+      console.log(`📊 Required words for title match: ${JSON.stringify(regulationWords)}`);
       
       // All results already have exact article_number match from Pinecone filter
-      // Now filter STRICTLY for regulation title match - no fallbacks
+      // Now filter STRICTLY for regulation title match - ALL words must match
       const finalResults = results.filter((result: any) => {
         const resultTitle = String(result.metadata?.title || '').toLowerCase();
         const isCurrent = result.metadata?.is_current !== false;
@@ -8718,30 +8724,21 @@ Genereer een JSON response met:
         
         // If book number specified, title MUST contain "boek X"
         if (bookNumber && !resultTitle.includes(`boek ${bookNumber}`)) {
+          console.log(`  ❌ Rejected: "${resultTitle.substring(0, 60)}" - missing boek ${bookNumber}`);
           return false;
         }
         
-        // STRICT regulation matching - title must contain at least one significant word
-        // Get words longer than 5 chars (more distinctive)
-        const significantWords = regulationWords.filter(w => w.length > 5);
+        // STRICT: ALL distinctive words must be present in the title
+        // This ensures "Benelux-Verdrag inzake de Intellectuele Eigendom" only matches
+        // titles containing "benelux", "intellectuele", AND "eigendom"
+        const missingWords = regulationWords.filter(word => !resultTitle.includes(word));
         
-        if (significantWords.length > 0) {
-          // Must match at least one significant word
-          const matchesSignificant = significantWords.some(word => resultTitle.includes(word));
-          if (!matchesSignificant) {
-            console.log(`  ❌ Rejected: "${resultTitle.substring(0, 50)}" - no significant word match`);
-            return false;
-          }
-        } else {
-          // For short regulation names, require at least 2 word matches
-          const matchCount = regulationWords.filter(word => resultTitle.includes(word)).length;
-          if (matchCount < 2) {
-            console.log(`  ❌ Rejected: "${resultTitle.substring(0, 50)}" - only ${matchCount} word matches`);
-            return false;
-          }
+        if (missingWords.length > 0) {
+          console.log(`  ❌ Rejected: "${resultTitle.substring(0, 60)}" - missing: ${missingWords.join(', ')}`);
+          return false;
         }
         
-        console.log(`  ✅ Accepted: "${resultTitle.substring(0, 50)}"`);
+        console.log(`  ✅ Accepted: "${resultTitle.substring(0, 60)}"`);
         return true;
       });
 
