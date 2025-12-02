@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { ArrowLeft, Search, Trash2, Sparkles, BookOpen, Loader2, ChevronDown, ChevronUp, FileText, Plus, X, MessageSquare, BookText, Save, Check, AlertCircle } from "lucide-react";
+import { ArrowLeft, Search, Trash2, Sparkles, BookOpen, Loader2, ChevronDown, ChevronUp, FileText, Plus, X, MessageSquare, BookText, Save, Check, AlertCircle, Building, MapPin } from "lucide-react";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -168,6 +168,12 @@ export default function Wetgeving() {
   const [loadingCommentaryFor, setLoadingCommentaryFor] = useState<string | null>(null);
   const [savedArticleKeys, setSavedArticleKeys] = useState<Set<string>>(new Set());
   const initialCommentaryLoadedRef = useRef(false);
+
+  // Local legislation (Omgevingswet) search state
+  const [localLegislationQuery, setLocalLegislationQuery] = useState("");
+  const [localLegislationResults, setLocalLegislationResults] = useState<any[]>([]);
+  const [isSearchingLocal, setIsSearchingLocal] = useState(false);
+  const [isGeneratingLocalQuery, setIsGeneratingLocalQuery] = useState(false);
 
   const { data: savedData, isLoading: savedDataLoading } = useQuery({
     queryKey: ['/api/wetgeving', currentCase?.id],
@@ -533,6 +539,77 @@ export default function Wetgeving() {
       });
     }
   });
+
+  // Local legislation search functions
+  const searchLocalLegislation = async () => {
+    if (!localLegislationQuery.trim()) {
+      toast({
+        title: "Geen zoekopdracht",
+        description: "Vul een zoekopdracht in",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSearchingLocal(true);
+    try {
+      const response = await apiRequest('POST', '/api/wetgeving/search-local', {
+        query: localLegislationQuery.trim(),
+        topK: 20
+      });
+      
+      const data = await response.json();
+      setLocalLegislationResults(data.results || []);
+      
+      toast({
+        title: "Zoeken voltooid",
+        description: `${data.results?.length || 0} resultaten gevonden in lokale wetgeving`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Fout bij zoeken",
+        description: error.message || "Kon niet zoeken in lokale wetgeving",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSearchingLocal(false);
+    }
+  };
+
+  const generateLocalQuery = async () => {
+    if (!currentCase?.id) {
+      toast({
+        title: "Geen actieve zaak",
+        description: "Selecteer eerst een zaak",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGeneratingLocalQuery(true);
+    try {
+      const response = await apiRequest('POST', '/api/wetgeving/generate-local-query', {
+        caseId: currentCase.id
+      });
+      
+      const data = await response.json();
+      if (data.query) {
+        setLocalLegislationQuery(data.query);
+        toast({
+          title: "Zoekopdracht gegenereerd",
+          description: "AI heeft een zoekopdracht opgesteld op basis van de zaak",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Fout bij genereren",
+        description: error.message || "Kon geen zoekopdracht genereren",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingLocalQuery(false);
+    }
+  };
 
   const fetchCommentary = async (article: GroupedArticle) => {
     const key = article.articleKey;
@@ -1028,6 +1105,114 @@ export default function Wetgeving() {
               {aiExplanation && (
                 <div className="border-t pt-3">
                   <p className="text-xs text-muted-foreground">{aiExplanation}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Local legislation search panel */}
+          <Card data-testid="card-local-legislation-search">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building className="h-5 w-5" />
+                Zoeken in lokale wetgeving
+              </CardTitle>
+              <CardDescription>
+                Zoek in omgevingsplannen en lokale regelgeving
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Bijv. geluidsoverlast woning, bouwvergunning, bestemmingsplan..."
+                  value={localLegislationQuery}
+                  onChange={(e) => setLocalLegislationQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && searchLocalLegislation()}
+                  className="flex-1"
+                  data-testid="input-local-legislation-query"
+                />
+                <Button
+                  onClick={searchLocalLegislation}
+                  disabled={isSearchingLocal || !localLegislationQuery.trim()}
+                  data-testid="button-search-local"
+                >
+                  {isSearchingLocal ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+
+              <Button
+                variant="outline"
+                onClick={generateLocalQuery}
+                disabled={isGeneratingLocalQuery || !currentCase?.id}
+                className="w-full"
+                data-testid="button-ai-local-query"
+              >
+                {isGeneratingLocalQuery ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Query genereren...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    AI Zoeken
+                  </>
+                )}
+              </Button>
+
+              {localLegislationResults.length > 0 && (
+                <div className="space-y-3 border-t pt-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">{localLegislationResults.length} resultaten</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setLocalLegislationResults([])}
+                      data-testid="button-clear-local-results"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                    {localLegislationResults.map((result, index) => (
+                      <div 
+                        key={result.id || index}
+                        className="border rounded-lg p-3 bg-muted/30"
+                        data-testid={`local-result-${index}`}
+                      >
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <Badge variant="outline" className="text-xs">
+                            <MapPin className="h-3 w-3 mr-1" />
+                            {result.metadata?.bevoegd_gezag || 'Onbekend'}
+                          </Badge>
+                          <Badge variant="secondary" className="text-xs">
+                            {result.metadata?.type || 'Lokale wetgeving'}
+                          </Badge>
+                          {result.score && (
+                            <Badge variant="outline" className="text-xs">
+                              {Math.round(result.score * 100)}%
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm font-medium mb-1">{result.metadata?.regeling_title || 'Onbekende regeling'}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-3">{result.metadata?.text || ''}</p>
+                        {result.metadata?.source_url && (
+                          <a 
+                            href={result.metadata.source_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline mt-2 inline-block"
+                          >
+                            Bekijk op Omgevingswet.nl →
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </CardContent>
