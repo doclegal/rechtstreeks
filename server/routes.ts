@@ -8650,12 +8650,24 @@ Genereer een JSON response met:
       const searchText = `artikel ${articleBase} ${regulation}`;
       console.log(`🔍 Step 1: Finding bwb_id for regulation "${regulation}"`);
       
+      // Check if user specified a specific book number in the regulation name
+      // E.g., "Burgerlijk Wetboek Boek 7" -> requiredBookNumber = "7"
+      const regulationLower = regulation.toLowerCase();
+      const bookMatch = regulationLower.match(/boek\s+(\d+)/i);
+      const requiredBookNumber = bookMatch ? bookMatch[1] : null;
+      
+      if (requiredBookNumber) {
+        console.log(`📖 User specified Boek ${requiredBookNumber} - will only match this book`);
+      } else {
+        console.log(`📖 No specific book number specified - will match any book`);
+      }
+      
       let bwbId: string | null = null;
       
       // Search with just article_number filter first to find the bwb_id
       const discoveryResults = await searchVectors({
         text: searchText,
-        topK: 20,
+        topK: 50, // Higher topK to find specific book
         scoreThreshold: 0,
         namespace: 'laws-current',
         filter: {
@@ -8667,12 +8679,11 @@ Genereer een JSON response met:
       console.log(`📊 Discovery search returned ${discoveryResults.length} results`);
       
       // Find the bwb_id that matches the regulation name
-      const regulationLower = regulation.toLowerCase();
-      const stopWords = ['de', 'het', 'van', 'inzake', 'en', 'over', 'artikel', 'artikelen', 'wet', 'verdrag'];
+      const stopWords = ['de', 'het', 'van', 'inzake', 'en', 'over', 'artikel', 'artikelen', 'wet', 'verdrag', 'boek'];
       const regulationWords = regulationLower
         .split(/\s+/)
         .map(w => w.replace(/[^a-z0-9-]/gi, ''))
-        .filter(w => w.length > 3 && !stopWords.includes(w));
+        .filter(w => w.length > 2 && !stopWords.includes(w));
       
       console.log(`📊 Regulation keywords: ${JSON.stringify(regulationWords)}`);
       
@@ -8682,10 +8693,25 @@ Genereer een JSON response met:
         const resultBoekTitel = String(result.metadata?.boek_titel || '').toLowerCase();
         const combinedText = `${resultTitle} ${resultBoekTitel}`;
         
-        // Check if all regulation words are present
+        // Check if all regulation words are present (excluding book number)
         const matchesAll = regulationWords.every(word => combinedText.includes(word));
         
-        if (matchesAll && result.metadata?.bwb_id) {
+        if (!matchesAll) continue;
+        
+        // If user specified a book number, require EXACT match
+        if (requiredBookNumber) {
+          // Title must contain "boek X" where X is the exact book number
+          const titleBookMatch = combinedText.match(/boek\s+(\d+)/);
+          const titleBookNumber = titleBookMatch ? titleBookMatch[1] : null;
+          
+          if (titleBookNumber !== requiredBookNumber) {
+            console.log(`  ❌ Skipping "${resultTitle.substring(0, 40)}" - book ${titleBookNumber} != required ${requiredBookNumber}`);
+            continue;
+          }
+          console.log(`  ✅ Matched book ${requiredBookNumber}: "${resultTitle.substring(0, 40)}"`);
+        }
+        
+        if (result.metadata?.bwb_id) {
           bwbId = result.metadata.bwb_id;
           console.log(`✅ Found matching bwb_id: ${bwbId} from title: "${resultTitle.substring(0, 50)}"`);
           break;
