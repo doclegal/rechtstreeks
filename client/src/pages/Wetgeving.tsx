@@ -171,6 +171,7 @@ export default function Wetgeving() {
 
   // Local legislation (Omgevingswet) search state
   const [localLegislationQuery, setLocalLegislationQuery] = useState("");
+  const [localLegislationMunicipality, setLocalLegislationMunicipality] = useState("");
   const [localLegislationResults, setLocalLegislationResults] = useState<any[]>([]);
   const [isSearchingLocal, setIsSearchingLocal] = useState(false);
   const [isGeneratingLocalQuery, setIsGeneratingLocalQuery] = useState(false);
@@ -555,15 +556,20 @@ export default function Wetgeving() {
     try {
       const response = await apiRequest('POST', '/api/wetgeving/search-local', {
         query: localLegislationQuery.trim(),
+        municipality: localLegislationMunicipality.trim() || undefined,
         topK: 20
       });
       
       const data = await response.json();
       setLocalLegislationResults(data.results || []);
       
+      const municipalityInfo = localLegislationMunicipality.trim() 
+        ? ` voor gemeente ${localLegislationMunicipality}` 
+        : '';
+      
       toast({
         title: "Zoeken voltooid",
-        description: `${data.results?.length || 0} resultaten gevonden in lokale wetgeving`,
+        description: `${data.results?.length || 0} resultaten gevonden${municipalityInfo}`,
       });
     } catch (error: any) {
       toast({
@@ -595,11 +601,19 @@ export default function Wetgeving() {
       const data = await response.json();
       if (data.query) {
         setLocalLegislationQuery(data.query);
-        toast({
-          title: "Zoekopdracht gegenereerd",
-          description: "AI heeft een zoekopdracht opgesteld op basis van de zaak",
-        });
       }
+      if (data.municipality) {
+        setLocalLegislationMunicipality(data.municipality);
+      }
+      
+      const parts = [];
+      if (data.query) parts.push('zoekopdracht');
+      if (data.municipality) parts.push(`gemeente: ${data.municipality}`);
+      
+      toast({
+        title: "AI heeft gegevens ingevuld",
+        description: parts.length > 0 ? parts.join(', ') : "Geen specifieke gegevens gevonden",
+      });
     } catch (error: any) {
       toast({
         title: "Fout bij genereren",
@@ -1122,26 +1136,39 @@ export default function Wetgeving() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Bijv. geluidsoverlast woning, bouwvergunning, bestemmingsplan..."
-                  value={localLegislationQuery}
-                  onChange={(e) => setLocalLegislationQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && searchLocalLegislation()}
-                  className="flex-1"
-                  data-testid="input-local-legislation-query"
-                />
-                <Button
-                  onClick={searchLocalLegislation}
-                  disabled={isSearchingLocal || !localLegislationQuery.trim()}
-                  data-testid="button-search-local"
-                >
-                  {isSearchingLocal ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Search className="h-4 w-4" />
-                  )}
-                </Button>
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Bijv. geluidsoverlast woning, bouwvergunning, bestemmingsplan..."
+                    value={localLegislationQuery}
+                    onChange={(e) => setLocalLegislationQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && searchLocalLegislation()}
+                    className="flex-1"
+                    data-testid="input-local-legislation-query"
+                  />
+                  <Button
+                    onClick={searchLocalLegislation}
+                    disabled={isSearchingLocal || !localLegislationQuery.trim()}
+                    data-testid="button-search-local"
+                  >
+                    {isSearchingLocal ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Input
+                    placeholder="Gemeente (bijv. Amsterdam, Rotterdam, Nijmegen...)"
+                    value={localLegislationMunicipality}
+                    onChange={(e) => setLocalLegislationMunicipality(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && searchLocalLegislation()}
+                    className="flex-1"
+                    data-testid="input-local-legislation-municipality"
+                  />
+                </div>
               </div>
 
               <Button

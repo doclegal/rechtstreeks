@@ -8837,7 +8837,7 @@ Genereer een JSON response met:
   // Search local legislation (Omgevingswet) in laws-dso namespace
   app.post('/api/wetgeving/search-local', async (req, res) => {
     try {
-      const { query, topK = 20 } = req.body;
+      const { query, municipality, topK = 20 } = req.body;
       
       if (!query || typeof query !== 'string') {
         return res.status(400).json({ error: 'Zoekopdracht is verplicht' });
@@ -8845,18 +8845,37 @@ Genereer een JSON response met:
 
       console.log(`🏛️ LOCAL LEGISLATION SEARCH (laws-dso namespace)`);
       console.log(`🔍 Query: "${query}"`);
+      if (municipality) {
+        console.log(`🏛️ Municipality filter: "${municipality}"`);
+      }
       
       const results = await searchVectors({
         text: query,
-        topK: topK,
+        topK: municipality ? 100 : topK, // Get more results when filtering by municipality
         scoreThreshold: 0.1,
         namespace: 'laws-dso'
       });
       
       console.log(`📊 Found ${results.length} results in laws-dso namespace`);
       
+      // Filter by municipality if provided
+      let filteredResults = results;
+      if (municipality && typeof municipality === 'string' && municipality.trim()) {
+        const municipalityLower = municipality.trim().toLowerCase();
+        // Match "gemeente X" pattern in bevoegd_gezag field
+        filteredResults = results.filter((result: any) => {
+          const bevoegdGezag = (result.metadata?.bevoegd_gezag || '').toLowerCase();
+          return bevoegdGezag.includes(municipalityLower) || 
+                 bevoegdGezag.includes(`gemeente ${municipalityLower}`);
+        });
+        console.log(`📊 After municipality filter: ${filteredResults.length} results`);
+      }
+      
+      // Take only topK after filtering
+      filteredResults = filteredResults.slice(0, topK);
+      
       // Format results with local legislation metadata
-      const formattedResults = results.map((result: any, idx: number) => ({
+      const formattedResults = filteredResults.map((result: any, idx: number) => ({
         id: result.id,
         rank: idx + 1,
         score: result.score,
@@ -8876,6 +8895,7 @@ Genereer een JSON response met:
 
       res.json({
         query,
+        municipality: municipality || null,
         results: formattedResults,
         totalResults: formattedResults.length,
         namespace: 'laws-dso'
@@ -8940,7 +8960,7 @@ Genereer een JSON response met:
 
       console.log(`🤖 Generating local legislation query for case ${caseId}`);
       
-      // Use OpenAI to generate a search query
+      // Use OpenAI to generate a search query AND determine the municipality
       const OpenAI = (await import('openai')).default;
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       
@@ -8949,31 +8969,56 @@ Genereer een JSON response met:
         messages: [
           {
             role: 'system',
-            content: `Je bent een Nederlandse juridisch expert. Genereer een korte, effectieve zoekopdracht voor het doorzoeken van lokale wetgeving (omgevingsplannen, gemeentelijke verordeningen).
+            content: `Je bent een Nederlandse juridisch expert. Je analyseert juridische zaken om te bepalen:
+1. Welke gemeente relevant is voor lokale wetgeving (omgevingsplannen, verordeningen)
+2. Een effectieve zoekopdracht voor lokale regelgeving
 
-De zoekopdracht moet:
-- Nederlands zijn
-- Gericht zijn op relevante lokale regelgeving
-- Focussen op omgevingsrecht, bestemmingsplannen, bouwregels, milieuregels
-- Maximaal 5-10 woorden bevatten
+Bepaal de GEMEENTE (niet de plaats) waar het geschil zich afspeelt. Dit is de gemeente wiens lokale regels van toepassing zijn. Let op:
+- Een stad kan onderdeel zijn van een grotere gemeente
+- Kijk naar waar het object/de situatie zich bevindt, niet waar partijen wonen
+- Bij twijfel, noem geen gemeente
 
-Geef ALLEEN de zoekopdracht terug, zonder uitleg of aanhalingstekens.`
+Geef je antwoord in exact dit JSON formaat:
+{
+  "municipality": "naam van de gemeente of null indien onbekend",
+  "query": "korte zoekopdracht van 5-10 woorden"
+}
+
+Geef ALLEEN de JSON terug, geen uitleg.`
           },
           {
             role: 'user',
-            content: `Genereer een zoekopdracht voor lokale wetgeving op basis van deze zaak:\n\n${context}`
+            content: `Analyseer deze zaak en bepaal de relevante gemeente en zoekopdracht voor lokale wetgeving:\n\n${context}`
           }
         ],
         temperature: 0.3,
-        max_tokens: 100
+        max_tokens: 200
       });
 
-      const generatedQuery = completion.choices[0]?.message?.content?.trim() || '';
+      const responseText = completion.choices[0]?.message?.content?.trim() || '{}';
+      
+      let generatedQuery = '';
+      let municipality = '';
+      
+      try {
+        // Parse JSON response
+        const parsed = JSON.parse(responseText);
+        generatedQuery = parsed.query || '';
+        municipality = parsed.municipality || '';
+        if (municipality === 'null' || municipality === null) {
+          municipality = '';
+        }
+      } catch (e) {
+        // Fallback: use the text as query if JSON parsing fails
+        generatedQuery = responseText.replace(/[{}"]/g, '').trim();
+      }
       
       console.log(`📝 Generated query: "${generatedQuery}"`);
+      console.log(`🏛️ Determined municipality: "${municipality}"`);
 
       res.json({
         query: generatedQuery,
+        municipality: municipality,
         context: context.substring(0, 200)
       });
 
