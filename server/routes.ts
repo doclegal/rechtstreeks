@@ -8834,77 +8834,285 @@ Genereer een JSON response met:
     }
   });
 
-  // Search local legislation (Omgevingswet) in laws-dso namespace
+  // Gemeente codes for DSO API
+  const GEMEENTEN = [
+    { naam: "Amsterdam", code: "gm0363" },
+    { naam: "Rotterdam", code: "gm0599" },
+    { naam: "Den Haag", code: "gm0518" },
+    { naam: "Utrecht", code: "gm0344" },
+    { naam: "Eindhoven", code: "gm0772" },
+    { naam: "Groningen", code: "gm0014" },
+    { naam: "Tilburg", code: "gm0855" },
+    { naam: "Almere", code: "gm0034" },
+    { naam: "Breda", code: "gm0758" },
+    { naam: "Nijmegen", code: "gm0268" },
+    { naam: "Apeldoorn", code: "gm0200" },
+    { naam: "Arnhem", code: "gm0202" },
+    { naam: "Haarlem", code: "gm0392" },
+    { naam: "Enschede", code: "gm0153" },
+    { naam: "Haarlemmermeer", code: "gm0394" },
+    { naam: "Amersfoort", code: "gm0307" },
+    { naam: "Zaanstad", code: "gm0479" },
+    { naam: "'s-Hertogenbosch", code: "gm0796" },
+    { naam: "Zwolle", code: "gm0193" },
+    { naam: "Leiden", code: "gm0546" },
+    { naam: "Leeuwarden", code: "gm0080" },
+    { naam: "Maastricht", code: "gm0935" },
+    { naam: "Dordrecht", code: "gm0505" },
+    { naam: "Zoetermeer", code: "gm0637" },
+    { naam: "Deventer", code: "gm0150" },
+    { naam: "Delft", code: "gm0503" },
+    { naam: "Venlo", code: "gm0983" },
+    { naam: "Alkmaar", code: "gm0361" },
+    { naam: "Emmen", code: "gm0114" },
+    { naam: "Westland", code: "gm1783" },
+    { naam: "Sittard-Geleen", code: "gm1883" },
+    { naam: "Helmond", code: "gm0794" },
+    { naam: "Hilversum", code: "gm0402" },
+    { naam: "Heerlen", code: "gm0917" },
+    { naam: "Oss", code: "gm0828" },
+    { naam: "Amstelveen", code: "gm0362" },
+    { naam: "Roosendaal", code: "gm1674" },
+    { naam: "Purmerend", code: "gm0439" },
+    { naam: "Schiedam", code: "gm0606" },
+    { naam: "Spijkenisse", code: "gm0612" },
+    { naam: "Lelystad", code: "gm0995" },
+    { naam: "Alphen aan den Rijn", code: "gm0484" },
+    { naam: "Gouda", code: "gm0513" },
+    { naam: "Hoorn", code: "gm0405" },
+    { naam: "Almelo", code: "gm0141" },
+    { naam: "Vlaardingen", code: "gm0622" },
+    { naam: "Bergen op Zoom", code: "gm0748" },
+    { naam: "Assen", code: "gm0106" },
+    { naam: "Capelle aan den IJssel", code: "gm0502" },
+    { naam: "Nieuwegein", code: "gm0356" },
+  ];
+
+  // Get list of available gemeenten
+  app.get('/api/wetgeving/gemeenten', (req, res) => {
+    res.json(GEMEENTEN);
+  });
+
+  // Search local legislation via DSO API
   app.post('/api/wetgeving/search-local', async (req, res) => {
     try {
-      const { query, municipality, topK = 20 } = req.body;
+      const { query, gemeenteCode } = req.body;
       
       if (!query || typeof query !== 'string') {
         return res.status(400).json({ error: 'Zoekopdracht is verplicht' });
       }
-
-      console.log(`🏛️ LOCAL LEGISLATION SEARCH (laws-dso namespace)`);
-      console.log(`🔍 Query: "${query}"`);
-      if (municipality) {
-        console.log(`🏛️ Municipality filter: "${municipality}"`);
-      }
       
-      const results = await searchVectors({
-        text: query,
-        topK: municipality ? 100 : topK, // Get more results when filtering by municipality
-        scoreThreshold: 0.1,
-        namespace: 'laws-dso'
+      if (!gemeenteCode || typeof gemeenteCode !== 'string') {
+        return res.status(400).json({ error: 'Gemeente is verplicht' });
+      }
+
+      const DSO_API_KEY = process.env.DSO_API_KEY;
+      const DSO_BASE_URL = process.env.DSO_BASE_URL || "https://service.pre.omgevingswet.overheid.nl/publiek/omgevingsdocumenten/api/presenteren/v7";
+      
+      if (!DSO_API_KEY) {
+        return res.status(500).json({ error: 'DSO API key niet geconfigureerd' });
+      }
+
+      console.log(`🏛️ DSO API SEARCH`);
+      console.log(`🔍 Query: "${query}"`);
+      console.log(`🏛️ Gemeente code: "${gemeenteCode}"`);
+      
+      // Search for regelingen via DSO API
+      const searchUrl = `${DSO_BASE_URL}/regelingen?zoekterm=${encodeURIComponent(query)}&bevoegdGezag.code=${gemeenteCode}`;
+      console.log(`📡 Calling: ${searchUrl}`);
+      
+      const response = await fetch(searchUrl, {
+        headers: {
+          'Accept': 'application/hal+json',
+          'X-Api-Key': DSO_API_KEY
+        }
       });
       
-      console.log(`📊 Found ${results.length} results in laws-dso namespace`);
-      
-      // Filter by municipality if provided
-      let filteredResults = results;
-      if (municipality && typeof municipality === 'string' && municipality.trim()) {
-        const municipalityLower = municipality.trim().toLowerCase();
-        // Match "gemeente X" pattern in bevoegd_gezag field
-        filteredResults = results.filter((result: any) => {
-          const bevoegdGezag = (result.metadata?.bevoegd_gezag || '').toLowerCase();
-          return bevoegdGezag.includes(municipalityLower) || 
-                 bevoegdGezag.includes(`gemeente ${municipalityLower}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`DSO API error: ${response.status} - ${errorText}`);
+        return res.status(response.status).json({ 
+          error: `DSO API fout: ${response.status}`,
+          details: errorText
         });
-        console.log(`📊 After municipality filter: ${filteredResults.length} results`);
       }
       
-      // Take only topK after filtering
-      filteredResults = filteredResults.slice(0, topK);
+      const data = await response.json();
+      const regelingen = data._embedded?.regelingen || [];
       
-      // Format results with local legislation metadata
-      const formattedResults = filteredResults.map((result: any, idx: number) => ({
-        id: result.id,
+      console.log(`📊 Found ${regelingen.length} regelingen`);
+      
+      // Format results
+      const formattedResults = regelingen.map((regeling: any, idx: number) => ({
+        id: regeling.identificatie,
         rank: idx + 1,
-        score: result.score,
-        scorePercent: (result.score * 100).toFixed(1) + '%',
-        metadata: {
-          regeling_id: result.metadata?.regeling_id,
-          regeling_title: result.metadata?.regeling_title,
-          bevoegd_gezag: result.metadata?.bevoegd_gezag,
-          bevoegd_gezag_type: result.metadata?.bevoegd_gezag_type,
-          type: result.metadata?.type,
-          source_url: result.metadata?.source_url,
-          is_current_version: result.metadata?.is_current_version,
-          version_date: result.metadata?.version_date,
-          text: result.text || result.metadata?.text
-        }
+        titel: regeling.officieleTitel || regeling.citeerTitel || 'Onbekende regeling',
+        citeerTitel: regeling.citeerTitel,
+        type: regeling.type,
+        bevoegdGezag: regeling.bevoegdGezag?.naam,
+        bevoegdGezagCode: regeling.bevoegdGezag?.code,
+        publicatiedatum: regeling.publicatiedatum,
+        inwerkingtreding: regeling.datumInwerkingtreding,
+        links: regeling._links
       }));
 
       res.json({
         query,
-        municipality: municipality || null,
+        gemeenteCode,
         results: formattedResults,
-        totalResults: formattedResults.length,
-        namespace: 'laws-dso'
+        totalResults: formattedResults.length
       });
 
     } catch (error: any) {
-      console.error('Error in local legislation search:', error);
+      console.error('Error in DSO API search:', error);
       res.status(500).json({ 
-        error: error.message || 'Fout bij zoeken in lokale wetgeving' 
+        error: error.message || 'Fout bij zoeken via DSO API' 
+      });
+    }
+  });
+
+  // Get document text from DSO API
+  app.post('/api/wetgeving/document-text', async (req, res) => {
+    try {
+      const { identificatie } = req.body;
+      
+      if (!identificatie || typeof identificatie !== 'string') {
+        return res.status(400).json({ error: 'Document identificatie is verplicht' });
+      }
+
+      const DSO_API_KEY = process.env.DSO_API_KEY;
+      const DSO_BASE_URL = process.env.DSO_BASE_URL || "https://service.pre.omgevingswet.overheid.nl/publiek/omgevingsdocumenten/api/presenteren/v7";
+      
+      if (!DSO_API_KEY) {
+        return res.status(500).json({ error: 'DSO API key niet geconfigureerd' });
+      }
+
+      console.log(`📄 DSO API GET DOCUMENT TEXT`);
+      console.log(`🔍 Identificatie: "${identificatie}"`);
+      
+      // Convert identificatie to URL format (/ becomes _)
+      const urlId = identificatie.replace(/\//g, '_');
+      
+      // Get metadata first to get tekststructuur link
+      const metaUrl = `${DSO_BASE_URL}/regelingen/${urlId}`;
+      console.log(`📡 Getting metadata: ${metaUrl}`);
+      
+      const metaResponse = await fetch(metaUrl, {
+        headers: {
+          'Accept': 'application/hal+json',
+          'X-Api-Key': DSO_API_KEY
+        }
+      });
+      
+      if (!metaResponse.ok) {
+        const errorText = await metaResponse.text();
+        console.error(`DSO API metadata error: ${metaResponse.status} - ${errorText}`);
+        return res.status(metaResponse.status).json({ 
+          error: `DSO API fout bij ophalen metadata: ${metaResponse.status}`,
+          details: errorText
+        });
+      }
+      
+      const meta = await metaResponse.json();
+      
+      // Check if tekststructuur link exists
+      if (!meta._links?.tekststructuur?.href) {
+        return res.status(404).json({ 
+          error: 'Geen tekststructuur beschikbaar voor dit document'
+        });
+      }
+      
+      // Get full text via tekststructuur
+      const tekstUrl = meta._links.tekststructuur.href;
+      console.log(`📡 Getting text: ${tekstUrl}`);
+      
+      const tekstResponse = await fetch(tekstUrl, {
+        headers: {
+          'Accept': 'application/hal+json',
+          'X-Api-Key': DSO_API_KEY
+        }
+      });
+      
+      if (!tekstResponse.ok) {
+        const errorText = await tekstResponse.text();
+        console.error(`DSO API tekst error: ${tekstResponse.status} - ${errorText}`);
+        return res.status(tekstResponse.status).json({ 
+          error: `DSO API fout bij ophalen tekst: ${tekstResponse.status}`,
+          details: errorText
+        });
+      }
+      
+      const tekstData = await tekstResponse.json();
+      
+      // Parse text structure to readable format
+      function parseTextStructure(data: any): { markdown: string, sections: any[] } {
+        const parts: string[] = [];
+        const sections: any[] = [];
+        
+        function extractText(obj: any): string {
+          if (!obj) return '';
+          if (typeof obj === 'string') return obj;
+          if (obj.waarde) return obj.waarde;
+          return '';
+        }
+        
+        function processComponent(component: any, depth = 0) {
+          // Build header
+          const headerParts = [component.label, component.nummer, extractText(component.opschrift)]
+            .filter(Boolean);
+          const header = headerParts.join(' ');
+          
+          if (header) {
+            parts.push('#'.repeat(Math.min(depth + 1, 6)) + ' ' + header);
+            sections.push({
+              level: depth,
+              header,
+              label: component.label,
+              nummer: component.nummer
+            });
+          }
+          
+          // Extract content (contains XML, strip tags)
+          if (component.inhoud) {
+            const cleanText = component.inhoud
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+            if (cleanText) {
+              parts.push(cleanText);
+            }
+          }
+          
+          // Recursively process nested components
+          const children = component._embedded?.tekststructuurDocumentComponenten || [];
+          children.forEach((child: any) => processComponent(child, depth + 1));
+        }
+        
+        const topComponents = tekstData._embedded?.tekststructuurDocumentComponenten || [];
+        topComponents.forEach((c: any) => processComponent(c, 0));
+        
+        return {
+          markdown: parts.join('\n\n'),
+          sections
+        };
+      }
+      
+      const parsed = parseTextStructure(tekstData);
+      
+      res.json({
+        identificatie,
+        titel: meta.officieleTitel || meta.citeerTitel || 'Onbekend document',
+        citeerTitel: meta.citeerTitel,
+        bevoegdGezag: meta.bevoegdGezag?.naam,
+        publicatiedatum: meta.publicatiedatum,
+        markdown: parsed.markdown,
+        sections: parsed.sections
+      });
+
+    } catch (error: any) {
+      console.error('Error getting document text:', error);
+      res.status(500).json({ 
+        error: error.message || 'Fout bij ophalen document tekst' 
       });
     }
   });
@@ -9015,10 +9223,26 @@ Geef ALLEEN de JSON terug, geen uitleg.`
       
       console.log(`📝 Generated query: "${generatedQuery}"`);
       console.log(`🏛️ Determined municipality: "${municipality}"`);
+      
+      // Try to match municipality to gemeente code
+      let gemeenteCode = '';
+      if (municipality) {
+        const municipalityLower = municipality.toLowerCase().trim();
+        const matchedGemeente = GEMEENTEN.find(g => 
+          g.naam.toLowerCase() === municipalityLower ||
+          g.naam.toLowerCase().includes(municipalityLower) ||
+          municipalityLower.includes(g.naam.toLowerCase())
+        );
+        if (matchedGemeente) {
+          gemeenteCode = matchedGemeente.code;
+          console.log(`✅ Matched to gemeente code: ${gemeenteCode}`);
+        }
+      }
 
       res.json({
         query: generatedQuery,
         municipality: municipality,
+        gemeenteCode: gemeenteCode,
         context: context.substring(0, 200)
       });
 

@@ -1,0 +1,134 @@
+Omgevingswet Document Zoeker
+Bouw een eenvoudige web applicatie waarmee gebruikers omgevingsdocumenten kunnen zoeken en bekijken via de DSO API.
+
+Functionaliteit
+1. Zoekformulier met:
+
+Tekstveld voor zoekterm (bijv. "bouwhoogte", "geluid", "parkeren")
+Dropdown/selectie voor gemeente (bijv. "Amsterdam", "Rotterdam", "Utrecht")
+Zoekknop
+2. Resultaten weergave:
+
+Lijst met gevonden omgevingsdocumenten (titel + korte beschrijving)
+Klikbaar om volledige tekst te bekijken
+3. Document weergave:
+
+Volledige wettekst met hoofdstukken en artikelen
+Gestructureerd weergegeven (headings, paragrafen)
+Technische Implementatie
+API Configuratie:
+
+const DSO_API_KEY = process.env.DSO_API_KEY; // Staat al in Secrets
+const DSO_BASE_URL = "https://service.pre.omgevingswet.overheid.nl/publiek/omgevingsdocumenten/api/presenteren/v7";
+
+Stap 1: Zoeken naar documenten
+
+// Zoek omgevingsplannen voor een gemeente
+async function searchDocuments(gemeente: string, zoekterm: string) {
+  const response = await fetch(
+    `${DSO_BASE_URL}/regelingen?zoekterm=${encodeURIComponent(zoekterm)}&bevoegdGezag.code=${gemeente}`,
+    {
+      headers: {
+        'Accept': 'application/hal+json',
+        'X-Api-Key': DSO_API_KEY
+      }
+    }
+  );
+  const data = await response.json();
+  return data._embedded?.regelingen || [];
+}
+
+Stap 2: Document tekst ophalen
+
+// Haal volledige tekst op via tekststructuur endpoint
+async function getDocumentText(identificatie: string) {
+  // Converteer identificatie naar URL-formaat (/ wordt _)
+  const urlId = identificatie.replace(/\//g, '_');
+  
+  // Haal eerst de metadata op om de tekststructuur link te krijgen
+  const metaResponse = await fetch(
+    `${DSO_BASE_URL}/regelingen/${urlId}`,
+    {
+      headers: {
+        'Accept': 'application/hal+json',
+        'X-Api-Key': DSO_API_KEY
+      }
+    }
+  );
+  const meta = await metaResponse.json();
+  
+  // Haal de volledige tekst op via tekststructuur
+  const tekstResponse = await fetch(meta._links.tekststructuur.href, {
+    headers: {
+      'Accept': 'application/hal+json',
+      'X-Api-Key': DSO_API_KEY
+    }
+  });
+  const tekstData = await tekstResponse.json();
+  
+  return parseTextStructure(tekstData);
+}
+// Parse de geneste tekststructuur naar leesbare tekst
+function parseTextStructure(data: any): string {
+  const parts: string[] = [];
+  
+  function processComponent(component: any, depth = 0) {
+    // Header opbouwen
+    const header = [component.label, component.nummer, extractText(component.opschrift)]
+      .filter(Boolean).join(' ');
+    if (header) parts.push('#'.repeat(depth + 1) + ' ' + header);
+    
+    // Inhoud extracten (bevat XML, strip tags)
+    if (component.inhoud) {
+      parts.push(component.inhoud.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
+    }
+    
+    // Recursief nested componenten verwerken
+    component._embedded?.tekststructuurDocumentComponenten?.forEach(
+      (child: any) => processComponent(child, depth + 1)
+    );
+  }
+  
+  data._embedded?.tekststructuurDocumentComponenten?.forEach(
+    (c: any) => processComponent(c, 0)
+  );
+  
+  return parts.join('\n\n');
+}
+
+Stap 3: Gemeente codes
+
+// Veelvoorkomende gemeentecodes (gm + 4 cijfers)
+const GEMEENTEN = [
+  { naam: "Amsterdam", code: "gm0363" },
+  { naam: "Rotterdam", code: "gm0599" },
+  { naam: "Den Haag", code: "gm0518" },
+  { naam: "Utrecht", code: "gm0344" },
+  { naam: "Eindhoven", code: "gm0772" },
+  { naam: "Groningen", code: "gm0014" },
+  // Voeg meer toe naar behoefte
+];
+
+UI Suggestie
+┌─────────────────────────────────────────┐
+│  Omgevingsplan Zoeker                   │
+├─────────────────────────────────────────┤
+│  Zoekterm: [________________]           │
+│  Gemeente: [Amsterdam      ▼]           │
+│  [Zoeken]                               │
+├─────────────────────────────────────────┤
+│  Resultaten:                            │
+│  • Omgevingsplan gemeente Amsterdam     │
+│  • Omgevingsvisie Amsterdam 2050        │
+├─────────────────────────────────────────┤
+│  Document Inhoud:                       │
+│  # HOOFDSTUK 1 ALGEMENE BEPALINGEN      │
+│  ## Artikel 1.1 Begripsbepalingen       │
+│  Begripsbepalingen die op de dag...     │
+└─────────────────────────────────────────┘
+
+Belangrijk
+API Key: DSO_API_KEY in Secrets
+De API retourneert XML in inhoud velden - strip HTML/XML tags voor weergave
+Identificatie formaat: /akn/nl/act/gm0363/2024/omgevingsplan → _akn_nl_act_gm0363_2024_omgevingsplan in URLs
+Grote documenten: Overweeg lazy loading of paginatie voor de tekstweergave

@@ -95,6 +95,39 @@ interface ArticleSuggestion {
   reason: string;
 }
 
+interface Gemeente {
+  naam: string;
+  code: string;
+}
+
+interface DSORegeling {
+  id: string;
+  rank: number;
+  titel: string;
+  citeerTitel?: string;
+  type?: string;
+  bevoegdGezag?: string;
+  bevoegdGezagCode?: string;
+  publicatiedatum?: string;
+  inwerkingtreding?: string;
+  links?: any;
+}
+
+interface DSODocument {
+  identificatie: string;
+  titel: string;
+  citeerTitel?: string;
+  bevoegdGezag?: string;
+  publicatiedatum?: string;
+  markdown: string;
+  sections: Array<{
+    level: number;
+    header: string;
+    label?: string;
+    nummer?: string;
+  }>;
+}
+
 interface CommentaryResult {
   article: {
     id: string;
@@ -169,11 +202,13 @@ export default function Wetgeving() {
   const [savedArticleKeys, setSavedArticleKeys] = useState<Set<string>>(new Set());
   const initialCommentaryLoadedRef = useRef(false);
 
-  // Local legislation (Omgevingswet) search state
+  // Local legislation (Omgevingswet) search state - DSO API
   const [localLegislationQuery, setLocalLegislationQuery] = useState("");
-  const [localLegislationMunicipality, setLocalLegislationMunicipality] = useState("");
-  const [localLegislationResults, setLocalLegislationResults] = useState<any[]>([]);
+  const [selectedGemeenteCode, setSelectedGemeenteCode] = useState("");
+  const [dsoResults, setDsoResults] = useState<DSORegeling[]>([]);
+  const [selectedDocument, setSelectedDocument] = useState<DSODocument | null>(null);
   const [isSearchingLocal, setIsSearchingLocal] = useState(false);
+  const [isLoadingDocument, setIsLoadingDocument] = useState(false);
   const [isGeneratingLocalQuery, setIsGeneratingLocalQuery] = useState(false);
 
   const { data: savedData, isLoading: savedDataLoading } = useQuery({
@@ -190,6 +225,15 @@ export default function Wetgeving() {
     enabled: !!currentCase?.id,
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/wetgeving/${currentCase?.id}/saved`);
+      return response.json();
+    }
+  });
+
+  // Fetch gemeenten list for DSO API
+  const { data: gemeenten = [] } = useQuery<Gemeente[]>({
+    queryKey: ['/api/wetgeving/gemeenten'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/wetgeving/gemeenten');
       return response.json();
     }
   });
@@ -541,7 +585,7 @@ export default function Wetgeving() {
     }
   });
 
-  // Local legislation search functions
+  // Local legislation search functions - DSO API
   const searchLocalLegislation = async () => {
     if (!localLegislationQuery.trim()) {
       toast({
@@ -552,33 +596,65 @@ export default function Wetgeving() {
       return;
     }
 
+    if (!selectedGemeenteCode) {
+      toast({
+        title: "Geen gemeente",
+        description: "Selecteer eerst een gemeente",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSearchingLocal(true);
+    setSelectedDocument(null);
     try {
       const response = await apiRequest('POST', '/api/wetgeving/search-local', {
         query: localLegislationQuery.trim(),
-        municipality: localLegislationMunicipality.trim() || undefined,
-        topK: 20
+        gemeenteCode: selectedGemeenteCode
       });
       
       const data = await response.json();
-      setLocalLegislationResults(data.results || []);
+      setDsoResults(data.results || []);
       
-      const municipalityInfo = localLegislationMunicipality.trim() 
-        ? ` voor gemeente ${localLegislationMunicipality}` 
-        : '';
+      const gemeente = gemeenten.find(g => g.code === selectedGemeenteCode);
       
       toast({
         title: "Zoeken voltooid",
-        description: `${data.results?.length || 0} resultaten gevonden${municipalityInfo}`,
+        description: `${data.results?.length || 0} documenten gevonden voor ${gemeente?.naam || selectedGemeenteCode}`,
       });
     } catch (error: any) {
       toast({
         title: "Fout bij zoeken",
-        description: error.message || "Kon niet zoeken in lokale wetgeving",
+        description: error.message || "Kon niet zoeken in omgevingsdocumenten",
         variant: "destructive",
       });
     } finally {
       setIsSearchingLocal(false);
+    }
+  };
+
+  const loadDocumentText = async (identificatie: string) => {
+    setIsLoadingDocument(true);
+    try {
+      const response = await apiRequest('POST', '/api/wetgeving/document-text', {
+        identificatie
+      });
+      
+      const data = await response.json();
+      setSelectedDocument(data);
+      
+      toast({
+        title: "Document geladen",
+        description: data.titel || "Document tekst opgehaald",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Fout bij laden",
+        description: error.message || "Kon document tekst niet ophalen",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingDocument(false);
     }
   };
 
@@ -602,8 +678,8 @@ export default function Wetgeving() {
       if (data.query) {
         setLocalLegislationQuery(data.query);
       }
-      if (data.municipality) {
-        setLocalLegislationMunicipality(data.municipality);
+      if (data.gemeenteCode) {
+        setSelectedGemeenteCode(data.gemeenteCode);
       }
       
       const parts = [];
@@ -1124,121 +1200,174 @@ export default function Wetgeving() {
             </CardContent>
           </Card>
 
-          {/* Local legislation search panel */}
+          {/* Local legislation search panel - DSO API */}
           <Card data-testid="card-local-legislation-search">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Building className="h-5 w-5" />
-                Zoeken in lokale wetgeving
+                Omgevingsplan Zoeker
               </CardTitle>
               <CardDescription>
-                Zoek in omgevingsplannen en lokale regelgeving
+                Zoek in omgevingsplannen en lokale regelgeving via de Omgevingswet API
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex gap-2">
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Zoekterm</label>
                   <Input
-                    placeholder="Bijv. geluidsoverlast woning, bouwvergunning, bestemmingsplan..."
+                    placeholder="Bijv. bouwhoogte, geluid, parkeren..."
                     value={localLegislationQuery}
                     onChange={(e) => setLocalLegislationQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && searchLocalLegislation()}
-                    className="flex-1"
                     data-testid="input-local-legislation-query"
                   />
-                  <Button
-                    onClick={searchLocalLegislation}
-                    disabled={isSearchingLocal || !localLegislationQuery.trim()}
-                    data-testid="button-search-local"
-                  >
-                    {isSearchingLocal ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Search className="h-4 w-4" />
-                    )}
-                  </Button>
                 </div>
-                <div className="flex gap-2 items-center">
-                  <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <Input
-                    placeholder="Gemeente (bijv. Amsterdam, Rotterdam, Nijmegen...)"
-                    value={localLegislationMunicipality}
-                    onChange={(e) => setLocalLegislationMunicipality(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && searchLocalLegislation()}
-                    className="flex-1"
-                    data-testid="input-local-legislation-municipality"
-                  />
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Gemeente</label>
+                  <select
+                    value={selectedGemeenteCode}
+                    onChange={(e) => setSelectedGemeenteCode(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                    data-testid="select-gemeente"
+                  >
+                    <option value="">Selecteer een gemeente...</option>
+                    {gemeenten.map((gemeente) => (
+                      <option key={gemeente.code} value={gemeente.code}>
+                        {gemeente.naam}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              <Button
-                variant="outline"
-                onClick={generateLocalQuery}
-                disabled={isGeneratingLocalQuery || !currentCase?.id}
-                className="w-full"
-                data-testid="button-ai-local-query"
-              >
-                {isGeneratingLocalQuery ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Query genereren...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    AI Zoeken
-                  </>
-                )}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={searchLocalLegislation}
+                  disabled={isSearchingLocal || !localLegislationQuery.trim() || !selectedGemeenteCode}
+                  className="flex-1"
+                  data-testid="button-search-local"
+                >
+                  {isSearchingLocal ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Zoeken...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="h-4 w-4 mr-2" />
+                      Zoeken
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={generateLocalQuery}
+                  disabled={isGeneratingLocalQuery || !currentCase?.id}
+                  data-testid="button-ai-local-query"
+                >
+                  {isGeneratingLocalQuery ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
 
-              {localLegislationResults.length > 0 && (
+              {dsoResults.length > 0 && (
                 <div className="space-y-3 border-t pt-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium">{localLegislationResults.length} resultaten</p>
+                    <p className="text-sm font-medium">{dsoResults.length} documenten gevonden</p>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setLocalLegislationResults([])}
+                      onClick={() => {
+                        setDsoResults([]);
+                        setSelectedDocument(null);
+                      }}
                       data-testid="button-clear-local-results"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                    {localLegislationResults.map((result, index) => (
-                      <div 
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                    {dsoResults.map((result, index) => (
+                      <button 
                         key={result.id || index}
-                        className="border rounded-lg p-3 bg-muted/30"
+                        onClick={() => loadDocumentText(result.id)}
+                        disabled={isLoadingDocument}
+                        className={`w-full text-left border rounded-lg p-3 transition-colors hover:bg-muted/50 ${
+                          selectedDocument?.identificatie === result.id ? 'border-primary bg-primary/5' : 'bg-muted/30'
+                        }`}
                         data-testid={`local-result-${index}`}
                       >
                         <div className="flex flex-wrap items-center gap-2 mb-2">
                           <Badge variant="outline" className="text-xs">
                             <MapPin className="h-3 w-3 mr-1" />
-                            {result.metadata?.bevoegd_gezag || 'Onbekend'}
+                            {result.bevoegdGezag || 'Onbekend'}
                           </Badge>
-                          <Badge variant="secondary" className="text-xs">
-                            {result.metadata?.type || 'Lokale wetgeving'}
-                          </Badge>
-                          {result.score && (
-                            <Badge variant="outline" className="text-xs">
-                              {Math.round(result.score * 100)}%
+                          {result.type && (
+                            <Badge variant="secondary" className="text-xs">
+                              {result.type}
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm font-medium mb-1">{result.metadata?.regeling_title || 'Onbekende regeling'}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-3">{result.metadata?.text || ''}</p>
-                        {result.metadata?.source_url && (
-                          <a 
-                            href={result.metadata.source_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline mt-2 inline-block"
-                          >
-                            Bekijk op Omgevingswet.nl →
-                          </a>
+                        <p className="text-sm font-medium mb-1 line-clamp-2">{result.titel}</p>
+                        {result.publicatiedatum && (
+                          <p className="text-xs text-muted-foreground">
+                            Publicatie: {new Date(result.publicatiedatum).toLocaleDateString('nl-NL')}
+                          </p>
                         )}
-                      </div>
+                      </button>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {isLoadingDocument && (
+                <div className="flex items-center justify-center py-8 border-t">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-sm text-muted-foreground">Document laden...</span>
+                </div>
+              )}
+
+              {selectedDocument && !isLoadingDocument && (
+                <div className="space-y-3 border-t pt-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-sm">{selectedDocument.titel}</h4>
+                      {selectedDocument.bevoegdGezag && (
+                        <p className="text-xs text-muted-foreground">{selectedDocument.bevoegdGezag}</p>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedDocument(null)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="max-h-[400px] overflow-y-auto bg-muted/20 rounded-lg p-4">
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      {selectedDocument.markdown.split('\n\n').map((paragraph, idx) => {
+                        if (paragraph.startsWith('######')) {
+                          return <h6 key={idx} className="text-xs font-semibold mt-3 mb-1">{paragraph.replace(/^#+\s*/, '')}</h6>;
+                        } else if (paragraph.startsWith('#####')) {
+                          return <h5 key={idx} className="text-xs font-semibold mt-3 mb-1">{paragraph.replace(/^#+\s*/, '')}</h5>;
+                        } else if (paragraph.startsWith('####')) {
+                          return <h5 key={idx} className="text-sm font-semibold mt-4 mb-2">{paragraph.replace(/^#+\s*/, '')}</h5>;
+                        } else if (paragraph.startsWith('###')) {
+                          return <h4 key={idx} className="text-sm font-semibold mt-4 mb-2">{paragraph.replace(/^#+\s*/, '')}</h4>;
+                        } else if (paragraph.startsWith('##')) {
+                          return <h3 key={idx} className="text-base font-bold mt-5 mb-2">{paragraph.replace(/^#+\s*/, '')}</h3>;
+                        } else if (paragraph.startsWith('#')) {
+                          return <h2 key={idx} className="text-lg font-bold mt-6 mb-3 border-b pb-2">{paragraph.replace(/^#+\s*/, '')}</h2>;
+                        } else {
+                          return <p key={idx} className="text-sm mb-2 leading-relaxed">{paragraph}</p>;
+                        }
+                      })}
+                    </div>
                   </div>
                 </div>
               )}
