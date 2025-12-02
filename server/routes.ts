@@ -8894,6 +8894,8 @@ Genereer een JSON response met:
   });
 
   // Search local legislation via DSO API
+  // Note: The DSO Presenteren API v8 doesn't support text search (zoekterm)
+  // Instead, we fetch all regelingen and filter client-side, or use geo-search
   app.post('/api/wetgeving/search-local', async (req, res) => {
     try {
       const { query, gemeenteCode } = req.body;
@@ -8907,7 +8909,8 @@ Genereer een JSON response met:
       }
 
       const DSO_API_KEY = process.env.DSO_API_KEY;
-      const DSO_BASE_URL = process.env.DSO_BASE_URL || "https://service.pre.omgevingswet.overheid.nl/publiek/omgevingsdocumenten/api/presenteren/v7";
+      // Use v8 of the API (current version)
+      const DSO_BASE_URL = "https://service.omgevingswet.overheid.nl/publiek/omgevingsdocumenten/api/presenteren/v8";
       
       if (!DSO_API_KEY) {
         return res.status(500).json({ error: 'DSO API key niet geconfigureerd' });
@@ -8917,8 +8920,9 @@ Genereer een JSON response met:
       console.log(`🔍 Query: "${query}"`);
       console.log(`🏛️ Gemeente code: "${gemeenteCode}"`);
       
-      // Search for regelingen via DSO API
-      const searchUrl = `${DSO_BASE_URL}/regelingen?zoekterm=${encodeURIComponent(query)}&bevoegdGezag.code=${gemeenteCode}`;
+      // Fetch all regelingen (the API doesn't support text search)
+      // We'll filter results based on the query text afterward
+      const searchUrl = `${DSO_BASE_URL}/regelingen`;
       console.log(`📡 Calling: ${searchUrl}`);
       
       const response = await fetch(searchUrl, {
@@ -8938,9 +8942,28 @@ Genereer een JSON response met:
       }
       
       const data = await response.json();
-      const regelingen = data._embedded?.regelingen || [];
+      let regelingen = data._embedded?.regelingen || [];
       
-      console.log(`📊 Found ${regelingen.length} regelingen`);
+      console.log(`📊 Found ${regelingen.length} total regelingen`);
+      
+      // Filter by gemeente code (bevoegdGezag)
+      regelingen = regelingen.filter((r: any) => {
+        const bgCode = r.bevoegdGezag?.code || '';
+        return bgCode.toLowerCase() === gemeenteCode.toLowerCase();
+      });
+      
+      console.log(`📊 After gemeente filter: ${regelingen.length} regelingen`);
+      
+      // Filter by query text in title or type
+      if (query.trim()) {
+        const queryLower = query.toLowerCase();
+        regelingen = regelingen.filter((r: any) => {
+          const titel = (r.officieleTitel || r.citeerTitel || '').toLowerCase();
+          const type = (r.type || '').toLowerCase();
+          return titel.includes(queryLower) || type.includes(queryLower);
+        });
+        console.log(`📊 After query filter: ${regelingen.length} regelingen`);
+      }
       
       // Format results
       const formattedResults = regelingen.map((regeling: any, idx: number) => ({
@@ -8981,7 +9004,7 @@ Genereer een JSON response met:
       }
 
       const DSO_API_KEY = process.env.DSO_API_KEY;
-      const DSO_BASE_URL = process.env.DSO_BASE_URL || "https://service.pre.omgevingswet.overheid.nl/publiek/omgevingsdocumenten/api/presenteren/v7";
+      const DSO_BASE_URL = "https://service.omgevingswet.overheid.nl/publiek/omgevingsdocumenten/api/presenteren/v8";
       
       if (!DSO_API_KEY) {
         return res.status(500).json({ error: 'DSO API key niet geconfigureerd' });
