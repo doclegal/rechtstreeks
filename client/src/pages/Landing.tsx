@@ -370,7 +370,7 @@ export default function Landing() {
 
             {/* Feature 9: Oplossen (Online Mediation) - Temporarily hidden */}
 
-            {/* Feature 10: Dagvaarding maken */}
+            {/* Feature 9: Dagvaarding maken */}
             <Card className="overflow-hidden md:col-span-2 border-2 border-primary/20">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
@@ -379,7 +379,7 @@ export default function Landing() {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg text-foreground mb-2">
-                      10. Maak zelf een dagvaarding
+                      9. Maak zelf een dagvaarding
                     </h3>
                     <p className="text-muted-foreground mb-3">
                       Wij begeleiden je stap voor stap bij het maken van een dagvaarding voor de kantonrechter. 
