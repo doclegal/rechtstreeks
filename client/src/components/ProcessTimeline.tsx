@@ -50,6 +50,7 @@ export default function ProcessTimeline({ currentStep }: ProcessTimelineProps) {
         }
       ]
     },
+    /* Oplossen - Temporarily hidden
     {
       id: "resolve",
       title: "Oplossen",
@@ -68,6 +69,7 @@ export default function ProcessTimeline({ currentStep }: ProcessTimelineProps) {
         }
       ]
     },
+    */
     {
       id: "proceed",
       title: "Procederen",

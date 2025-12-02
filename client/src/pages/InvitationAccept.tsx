@@ -116,7 +116,7 @@ export default function InvitationAccept() {
         <CardHeader>
           <CardTitle className="text-2xl">Je bent uitgenodigd voor een zaak</CardTitle>
           <CardDescription>
-            Je bent uitgenodigd om deel te nemen aan mediation voor deze zaak
+            Je bent uitgenodigd om deel te nemen aan deze zaak
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -137,7 +137,7 @@ export default function InvitationAccept() {
 
           {/* Case Info */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-lg">Zaak informatie</h3>
+            <h3 className="font-semibold text-lg">Zaakinformatie</h3>
             
             <div className="space-y-3">
               <div>
@@ -215,10 +215,12 @@ export default function InvitationAccept() {
                 <span className="text-primary">3.</span>
                 <span>Je bouwt je eigen dossier met documenten (de andere partij kan deze niet zien)</span>
               </li>
+              {/* Mediation step - Temporarily hidden
               <li className="flex gap-2">
                 <span className="text-primary">4.</span>
                 <span>Zodra beide dossiers compleet zijn, kan de mediation starten in "Oplossen"</span>
               </li>
+              */}
             </ul>
           </div>
 

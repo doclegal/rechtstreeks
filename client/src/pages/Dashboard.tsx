@@ -108,12 +108,14 @@ export default function Dashboard() {
       completed: letters.length > 0,
       href: "/letters"
     },
+    /* Oplossen - Temporarily hidden
     {
       label: "Oplossen",
       date: null,
       completed: false,
       href: "/mediation"
     },
+    */
     {
       label: "Dagvaarding opgesteld",
       date: summonsDate,
@@ -361,7 +363,7 @@ export default function Dashboard() {
           </Card>
         </Link>
 
-        {/* Oplossen */}
+        {/* Oplossen - Temporarily hidden
         <Link href="/mediation" data-testid="tile-oplossen">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full relative">
             <RIcon size="sm" className="absolute top-4 right-4 opacity-10" />
@@ -384,6 +386,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </Link>
+        */}
 
         {/* Dagvaarding */}
         <Link href="/summons" data-testid="tile-dagvaarding">

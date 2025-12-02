@@ -507,7 +507,7 @@ export default function SummonsEditor() {
               "Download de complete dagvaarding als PDF",
               "Volledig volgens Nederlandse rechtspraak en procesrecht"
             ]}
-            importance="Een dagvaarding is het formele startdocument voor een rechtszaak. Dit is vaak de laatste stap nadat mediation en brieven niet tot een oplossing hebben geleid. Een goed opgestelde dagvaarding is cruciaal voor het slagen van uw rechtszaak bij de kantonrechter."
+            importance="Een dagvaarding is het formele startdocument voor een rechtszaak. Dit is vaak de laatste stap nadat brieven en onderhandelingen niet tot een oplossing hebben geleid. Een goed opgestelde dagvaarding is cruciaal voor het slagen van uw rechtszaak bij de kantonrechter."
           />
         </div>
 

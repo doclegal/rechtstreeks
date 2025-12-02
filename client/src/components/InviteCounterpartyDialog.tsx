@@ -73,9 +73,9 @@ export default function InviteCounterpartyDialog({ caseId, counterpartyEmail }: 
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Wederpartij uitnodigen voor mediation</DialogTitle>
+          <DialogTitle>Wederpartij uitnodigen</DialogTitle>
           <DialogDescription>
-            Nodig de andere partij uit om deel te nemen aan deze zaak via online mediation
+            Nodig de andere partij uit om deel te nemen aan deze zaak
           </DialogDescription>
         </DialogHeader>
 

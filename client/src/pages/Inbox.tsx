@@ -102,19 +102,9 @@ const welcomeMessageContent = `
         </div>
       </div>
       
-      <div style="margin-bottom: 16px;">
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-          <span style="background: #1a1a2e; color: white; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0;">7</span>
-          <div>
-            <strong style="color: #1a1a2e;">Mediation starten</strong>
-            <p style="margin: 4px 0 0 0; font-size: 14px; color: #666;">Als de brief niet het gewenste resultaat oplevert, kunt u mediation overwegen. Een onafhankelijke mediator helpt beide partijen om tot een oplossing te komen.</p>
-          </div>
-        </div>
-      </div>
-      
       <div>
         <div style="display: flex; align-items: flex-start; gap: 12px;">
-          <span style="background: #1a1a2e; color: white; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0;">8</span>
+          <span style="background: #1a1a2e; color: white; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0;">7</span>
           <div>
             <strong style="color: #1a1a2e;">Procedure starten</strong>
             <p style="margin: 4px 0 0 0; font-size: 14px; color: #666;">Indien alle andere opties niet werken, kunt u een gerechtelijke procedure starten. Het platform helpt u bij het opstellen en uitbrengen van een dagvaarding.</p>

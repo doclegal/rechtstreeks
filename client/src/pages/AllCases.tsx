@@ -144,7 +144,7 @@ export default function AllCases() {
                       </Badge>
                     )}
                     
-                    {/* Mediation Started Badge */}
+                    {/* Mediation Started Badge - Temporarily hidden
                     {(caseItem as any).currentStep && 
                      ['mediation', 'resolve', 'conversation', 'party-input', 'summary', 'solution'].some(
                        step => (caseItem as any).currentStep?.toLowerCase().includes(step)
@@ -158,6 +158,7 @@ export default function AllCases() {
                         Mediation gestart
                       </Badge>
                     )}
+                    */}
                     
                     {/* Procedure Started Badge */}
                     {['FILED', 'PROCEEDINGS_ONGOING', 'JUDGMENT'].includes(caseItem.status) && (

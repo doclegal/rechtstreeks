@@ -434,7 +434,7 @@ export default function Landing() {
             Begeleiding bij elke stap
           </p>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="text-center">
               <div className="w-16 h-16 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
                 1
@@ -471,7 +471,8 @@ export default function Landing() {
               </p>
             </div>
 
-            <div className="text-center">
+            {/* Step 4 Oplossen - Temporarily hidden */}
+            {/* <div className="text-center">
               <div className="w-16 h-16 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
                 4
               </div>
@@ -481,11 +482,11 @@ export default function Landing() {
               <p className="text-muted-foreground text-sm">
                 Probeer eerst online mediation voor een snelle oplossing
               </p>
-            </div>
+            </div> */}
 
             <div className="text-center">
               <div className="w-16 h-16 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
-                5
+                4
               </div>
               <h3 className="font-semibold text-lg text-foreground mb-2">
                 Maak een dagvaarding
@@ -572,7 +573,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Online Mediation Section */}
+      {/* Online Mediation Section - Temporarily hidden
       <section className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
@@ -714,6 +715,7 @@ export default function Landing() {
           </div>
         </div>
       </section>
+      */}
 
       {/* Kantonzaken Uitleg Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8">

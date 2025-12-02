@@ -48,7 +48,7 @@ const protectedRoutes = [
   { path: "/wetgeving", component: Wetgeving },
   { path: "/analysis/:id/full", component: FullAnalysis },
   { path: "/letters", component: Letters },
-  { path: "/resolve", component: ResolvePage },
+  // { path: "/resolve", component: ResolvePage }, // Temporarily hidden
   { path: "/summons", component: SummonsEditor },
   { path: "/dossier", component: Dossier },
   { path: "/chat", component: Chat },

@@ -245,8 +245,8 @@ export default function Help() {
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
                 <Mail className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="font-semibold text-foreground mb-1">Oplossen</h3>
-              <p className="text-sm text-muted-foreground">Brief en onderhandelen</p>
+              <h3 className="font-semibold text-foreground mb-1">Onderhandelen</h3>
+              <p className="text-sm text-muted-foreground">Brief en communicatie</p>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
