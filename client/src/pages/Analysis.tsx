@@ -363,7 +363,7 @@ export default function Analysis() {
               <div className="space-y-2 text-sm">
                 <div>
                   <span className="text-muted-foreground">Status:</span>{" "}
-                  <span className="font-medium">Nog niet beschikbaar</span>
+                  <span className="font-medium">Beschikbaar</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Bron:</span>{" "}
@@ -395,7 +395,7 @@ export default function Analysis() {
               <div className="space-y-2 text-sm">
                 <div>
                   <span className="text-muted-foreground">Status:</span>{" "}
-                  <span className="font-medium">Binnenkort beschikbaar</span>
+                  <span className="font-medium">Beschikbaar</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Inhoud:</span>{" "}
