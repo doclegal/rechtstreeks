@@ -8792,7 +8792,8 @@ Genereer een JSON response met:
       res.json({
         regulation,
         articleNumber,
-        parsedArticle: { bookNumber, articleOnly },
+        parsedArticle: { bookNumber, articleBase },
+        bwbId: bwbId,
         results: formattedResults,
         totalResults: formattedResults.length,
         searchType,
