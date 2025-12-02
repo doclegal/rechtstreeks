@@ -608,15 +608,15 @@ export default function Wetgeving() {
     setIsSearchingLocal(true);
     setSelectedDocument(null);
     try {
+      const gemeente = gemeenten.find(g => g.code === selectedGemeenteCode);
       const response = await apiRequest('POST', '/api/wetgeving/search-local', {
         query: localLegislationQuery.trim(),
-        gemeenteCode: selectedGemeenteCode
+        gemeenteCode: selectedGemeenteCode,
+        gemeenteNaam: gemeente?.naam || ''
       });
       
       const data = await response.json();
       setDsoResults(data.results || []);
-      
-      const gemeente = gemeenten.find(g => g.code === selectedGemeenteCode);
       
       toast({
         title: "Zoeken voltooid",

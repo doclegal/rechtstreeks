@@ -8898,7 +8898,7 @@ Genereer een JSON response met:
   // Instead, we fetch all regelingen and filter client-side, or use geo-search
   app.post('/api/wetgeving/search-local', async (req, res) => {
     try {
-      const { query, gemeenteCode } = req.body;
+      const { query, gemeenteCode, gemeenteNaam } = req.body;
       
       if (!query || typeof query !== 'string') {
         return res.status(400).json({ error: 'Zoekopdracht is verplicht' });
@@ -8918,7 +8918,7 @@ Genereer een JSON response met:
 
       console.log(`🏛️ DSO API SEARCH`);
       console.log(`🔍 Query: "${query}"`);
-      console.log(`🏛️ Gemeente code: "${gemeenteCode}"`);
+      console.log(`🏛️ Gemeente: "${gemeenteNaam}" (${gemeenteCode})`);
       
       // Fetch all regelingen (the API doesn't support text search)
       // We'll filter results based on the query text afterward
@@ -8950,21 +8950,29 @@ Genereer een JSON response met:
       const availableCodes = [...new Set(regelingen.map((r: any) => r.bevoegdGezag?.code).filter(Boolean))];
       console.log(`📊 Available bevoegdGezag codes: ${availableCodes.slice(0, 10).join(', ')}${availableCodes.length > 10 ? '...' : ''}`);
       
-      // Filter by gemeente code (bevoegdGezag) - skip if no matches (pre-production has test data)
+      // Filter by gemeente - use multiple matching strategies
+      const gemeenteCodeLower = gemeenteCode.toLowerCase();
+      const gemeenteNaamLower = (gemeenteNaam || '').toLowerCase();
+      
       const filteredByGemeente = regelingen.filter((r: any) => {
-        const bgCode = r.bevoegdGezag?.code || '';
-        return bgCode.toLowerCase() === gemeenteCode.toLowerCase();
+        const bgCode = (r.bevoegdGezag?.code || '').toLowerCase();
+        const bgNaam = (r.bevoegdGezag?.naam || r.bevoegdGezag?.waarde || '').toLowerCase();
+        const titel = (r.officieleTitel || r.citeerTitel || '').toLowerCase();
+        
+        // Match on:
+        // 1. bevoegdGezag code matches gemeente code
+        // 2. bevoegdGezag naam contains gemeente name
+        // 3. Title contains "gemeente [naam]" (e.g., "Omgevingsplan gemeente Heerlen")
+        return bgCode === gemeenteCodeLower || 
+               (gemeenteNaamLower && bgNaam.includes(gemeenteNaamLower)) ||
+               (gemeenteNaamLower && titel.includes(`gemeente ${gemeenteNaamLower}`)) ||
+               (gemeenteNaamLower && titel.includes(gemeenteNaamLower));
       });
       
-      console.log(`📊 After gemeente filter: ${filteredByGemeente.length} regelingen`);
+      console.log(`📊 After gemeente filter: ${filteredByGemeente.length} regelingen (looking for "${gemeenteNaamLower}")`);
       
-      // If no gemeente matches (pre-production), show all results but filter by query
-      if (filteredByGemeente.length === 0 && regelingen.length > 0) {
-        console.log(`⚠️ No results for gemeente ${gemeenteCode} - this may be a test environment with fictional data`);
-        // In test environment, just filter by query text
-      } else {
-        regelingen = filteredByGemeente;
-      }
+      // Always use gemeente-filtered results (strict filtering)
+      regelingen = filteredByGemeente;
       
       // Filter by query text in title or type
       if (query.trim()) {
