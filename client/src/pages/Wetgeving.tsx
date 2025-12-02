@@ -203,7 +203,7 @@ export default function Wetgeving() {
   const initialCommentaryLoadedRef = useRef(false);
 
   // Local legislation (Omgevingswet) search state - DSO API
-  const [localLegislationQuery, setLocalLegislationQuery] = useState("");
+  const [localLegislationQuery, setLocalLegislationQuery] = useState("Omgevingsplan");
   const [selectedGemeenteCode, setSelectedGemeenteCode] = useState("");
   const [dsoResults, setDsoResults] = useState<DSORegeling[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<DSODocument | null>(null);
@@ -1214,14 +1214,11 @@ export default function Wetgeving() {
             <CardContent className="space-y-4">
               <div className="space-y-3">
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">Zoekterm</label>
-                  <Input
-                    placeholder="Bijv. bouwhoogte, geluid, parkeren..."
-                    value={localLegislationQuery}
-                    onChange={(e) => setLocalLegislationQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && searchLocalLegislation()}
-                    data-testid="input-local-legislation-query"
-                  />
+                  <label className="text-sm font-medium mb-1.5 block">Document type</label>
+                  <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-muted/50 text-sm">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span>Omgevingsplan</span>
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">Gemeente</label>
@@ -1241,38 +1238,24 @@ export default function Wetgeving() {
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <Button
-                  onClick={searchLocalLegislation}
-                  disabled={isSearchingLocal || !localLegislationQuery.trim() || !selectedGemeenteCode}
-                  className="flex-1"
-                  data-testid="button-search-local"
-                >
-                  {isSearchingLocal ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Zoeken...
-                    </>
-                  ) : (
-                    <>
-                      <Search className="h-4 w-4 mr-2" />
-                      Zoeken
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={generateLocalQuery}
-                  disabled={isGeneratingLocalQuery || !currentCase?.id}
-                  data-testid="button-ai-local-query"
-                >
-                  {isGeneratingLocalQuery ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
+              <Button
+                onClick={searchLocalLegislation}
+                disabled={isSearchingLocal || !selectedGemeenteCode}
+                className="w-full"
+                data-testid="button-search-local"
+              >
+                {isSearchingLocal ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Zoeken...
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-4 w-4 mr-2" />
+                    Zoek Omgevingsplan
+                  </>
+                )}
+              </Button>
 
               {dsoResults.length > 0 && (
                 <div className="space-y-3 border-t pt-4">
