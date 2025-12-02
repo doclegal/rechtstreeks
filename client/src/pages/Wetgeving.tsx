@@ -105,7 +105,7 @@ interface DSORegeling {
   rank: number;
   titel: string;
   citeerTitel?: string;
-  type?: string;
+  type?: string | { code: string; waarde: string };
   bevoegdGezag?: string;
   bevoegdGezagCode?: string;
   publicatiedatum?: string;
@@ -1291,7 +1291,7 @@ export default function Wetgeving() {
                           </Badge>
                           {result.type && (
                             <Badge variant="secondary" className="text-xs">
-                              {result.type}
+                              {typeof result.type === 'string' ? result.type : result.type.waarde || result.type.code || ''}
                             </Badge>
                           )}
                         </div>
