@@ -8771,7 +8771,7 @@ Genereer een JSON response met:
       });
 
       // Determine if these are exact matches or related articles
-      const isExactMatch = filteredResults.length > 0;
+      const isExactMatch = finalResults.length > 0;
       const searchType = isExactMatch ? 'exact' : 'related';
       
       res.json({
