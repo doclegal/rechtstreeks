@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { ArrowLeft, Search, Trash2, Sparkles, BookOpen, Loader2, ChevronDown, ChevronUp, FileText, Plus, X, MessageSquare, BookText, Save, Check } from "lucide-react";
+import { ArrowLeft, Search, Trash2, Sparkles, BookOpen, Loader2, ChevronDown, ChevronUp, FileText, Plus, X, MessageSquare, BookText, Save, Check, AlertCircle } from "lucide-react";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -1179,8 +1179,22 @@ export default function Wetgeving() {
           )}
         </div>
 
-        {/* Right column: Tekst & Commentaar */}
+        {/* Right column: Relevant info and Commentary */}
         <div className="space-y-6">
+          <Card data-testid="card-relevant-dispute">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5" />
+                Relevant voor dit geschil
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Invulling komt later
+              </p>
+            </CardContent>
+          </Card>
+
           <Card data-testid="card-text-commentary">
             <CardHeader>
               <div className="flex items-center justify-between">
