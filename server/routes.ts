@@ -8638,30 +8638,10 @@ Genereer een JSON response met:
         .replace(/\s+onder\s+\w+/gi, '')
         .trim();
       
-      // EXACT matching first, with fallback for trailing zero normalization
-      // User searches "2.2" → only find "2.2" (no expansion to "2.20")
-      // User searches "2.20" → first try "2.20", if not found try "2.2" WITH WARNING
-      // User searches "2" → only find "2"
+      // STRICT EXACT matching only - no fallbacks, no normalization
+      // Search "2.2" → only find "2.2", Search "2.20" → only find "2.20"
+      // If no match, return empty results - data issues must be fixed in Pinecone
       console.log(`📖 Article base for EXACT match: "${articleBase}"`);
-      
-      // Helper: Check if article number has trailing zeros after decimal
-      // "2.20" → normalized to "2.2", "2.200" → "2.2", "2.2" → stays "2.2"
-      const normalizeTrailingZeros = (artNum: string): string | null => {
-        const decimalMatch = artNum.match(/^(\d+)\.(\d+)$/);
-        if (decimalMatch) {
-          const wholePart = decimalMatch[1];
-          const decimalPart = decimalMatch[2];
-          const normalized = decimalPart.replace(/0+$/, '');
-          if (normalized && normalized !== decimalPart) {
-            return `${wholePart}.${normalized}`;
-          }
-        }
-        return null; // No trailing zeros to remove
-      };
-      
-      const normalizedArticle = normalizeTrailingZeros(articleBase);
-      const hasTrailingZeros = normalizedArticle !== null;
-      console.log(`📖 Normalized article (trailing zeros removed): ${normalizedArticle || 'N/A'}`);
       
       // Check if format is "book:article" (e.g., "7:800", "6:74", "6:162", "2:20")
       const colonMatch = articleNumClean.match(/^(\d+):(\d+\w*)$/);
@@ -8685,8 +8665,6 @@ Genereer een JSON response met:
       console.log(`📋 STRATEGY 1: Metadata filter for EXACT article_number: "${articleBase}"`);
       
       let results: any[] = [];
-      let usedNormalizedFallback = false;
-      let actualSearchedArticle = articleBase;
       
       // Try article_number filter with EXACT value only
       try {
@@ -8703,31 +8681,6 @@ Genereer een JSON response met:
         console.log(`📊 Metadata filter search returned ${results.length} results`);
       } catch (filterError) {
         console.log(`⚠️ Metadata filter failed, falling back to semantic search`);
-      }
-      
-      // STRATEGY 1b: If no exact match and article has trailing zeros, try normalized version
-      if (results.length === 0 && hasTrailingZeros && normalizedArticle) {
-        console.log(`📋 STRATEGY 1b: Trying normalized article_number: "${normalizedArticle}" (original: "${articleBase}")`);
-        try {
-          const normalizedSearchText = `artikel ${normalizedArticle} ${regulation}`;
-          results = await searchVectors({
-            text: normalizedSearchText,
-            topK: topK,
-            scoreThreshold: 0,
-            namespace: 'laws-current',
-            filter: {
-              article_number: { $eq: normalizedArticle },
-              is_current: { $eq: true }
-            }
-          });
-          if (results.length > 0) {
-            usedNormalizedFallback = true;
-            actualSearchedArticle = normalizedArticle;
-            console.log(`✅ Found ${results.length} results with normalized article number "${normalizedArticle}"`);
-          }
-        } catch (filterError) {
-          console.log(`⚠️ Normalized metadata filter failed`);
-        }
       }
       
       // If no results with exact filter, try semantic search
@@ -8767,7 +8720,7 @@ Genereer een JSON response met:
         return resultClean === searchClean;
       };
       
-      console.log(`📊 Matching with articleBase: "${actualSearchedArticle}" (original search: "${articleBase}")`);
+      console.log(`📊 Matching with articleBase: "${articleBase}"`);
       console.log(`📊 Regulation words for matching: ${JSON.stringify(regulationWords)}`);
       
       const filteredResults = results.filter((result: any) => {
@@ -8778,8 +8731,8 @@ Genereer een JSON response met:
         // Must be current version
         if (!isCurrent) return false;
         
-        // Article number must match (use actualSearchedArticle which may be normalized)
-        const articleMatches = articleNumberMatches(resultArticle, actualSearchedArticle);
+        // Article number must match EXACTLY - no normalization
+        const articleMatches = articleNumberMatches(resultArticle, articleBase);
         
         // Regulation title must contain at least 2 key words from search, or a significant word
         // This helps match "Benelux-verdrag inzake de intellectuele eigendom" with truncated titles
@@ -8809,8 +8762,8 @@ Genereer een JSON response met:
           
           if (!isCurrent) return false;
           
-          // Check for exact article number match using actual searched article
-          if (!articleNumberMatches(resultArticle, actualSearchedArticle)) return false;
+          // Check for EXACT article number match
+          if (!articleNumberMatches(resultArticle, articleBase)) return false;
           
           // Check if title contains significant words from regulation
           const significantWords = regulationWords.filter(w => w.length > 5);
@@ -8870,11 +8823,7 @@ Genereer een JSON response met:
         return chunkA - chunkB;
       });
 
-      // Format results for legislation display
-      // Use the user's ORIGINAL search term for display, but real metadata value for grouping
-      // If we used normalized fallback, display the original search term but note the actual stored value
-      const userDisplayNumber = bookNumber ? `${bookNumber}:${articleBase}` : articleBase;
-      
+      // Format results for legislation display - use exact Pinecone metadata values
       const formattedResults = finalResults.map((result: any, idx: number) => {
         const realArticleNumber = result.metadata?.article_number || (result.metadata as any)?.articleNumber;
         const displayNumber = bookNumber ? `${bookNumber}:${realArticleNumber}` : realArticleNumber;
@@ -8885,9 +8834,8 @@ Genereer een JSON response met:
           scorePercent: (result.score * 100).toFixed(1) + '%',
           bwbId: result.metadata?.bwb_id || (result.metadata as any)?.bwbId,
           title: result.metadata?.title,
-          articleNumber: realArticleNumber, // Real metadata value for grouping
-          displayArticleNumber: usedNormalizedFallback ? articleBase : realArticleNumber, // Show user's search term if normalized fallback used
-          storedArticleNumber: realArticleNumber, // What's actually in the database
+          articleNumber: realArticleNumber,
+          displayArticleNumber: realArticleNumber,
           paragraphNumber: result.metadata?.paragraph_number || (result.metadata as any)?.paragraphNumber,
           sectionTitle: result.metadata?.section_title || (result.metadata as any)?.sectionTitle,
           validFrom: result.metadata?.valid_from || (result.metadata as any)?.validFrom,
@@ -8895,7 +8843,7 @@ Genereer een JSON response met:
           isCurrent: result.metadata?.is_current ?? (result.metadata as any)?.isCurrent ?? true,
           text: result.text || (result.metadata as any)?.text,
           chunkIndex: result.metadata?.chunk_index,
-          citatie: `art. ${usedNormalizedFallback ? userDisplayNumber : displayNumber} ${result.metadata?.title || ''}`,
+          citatie: `art. ${displayNumber} ${result.metadata?.title || ''}`,
           bronUrl: result.metadata?.bwb_id 
             ? `https://wetten.overheid.nl/${result.metadata.bwb_id}`
             : null
@@ -8904,17 +8852,7 @@ Genereer een JSON response met:
 
       // Determine if these are exact matches or related articles
       const isExactMatch = filteredResults.length > 0;
-      const searchType = isExactMatch ? 'exact' : (usedNormalizedFallback ? 'normalized' : 'related');
-      
-      // Build message based on search result type
-      let responseMessage: string | null = null;
-      if (usedNormalizedFallback) {
-        responseMessage = `Let op: Artikel ${articleBase} is in de database opgeslagen als "${normalizedArticle}". De getoonde resultaten zijn voor dit artikel.`;
-      } else if (!isExactMatch) {
-        responseMessage = formattedResults.length > 0 
-          ? `Artikel ${articleOnly} niet direct gevonden. Getoond worden artikelen die naar dit artikel verwijzen.`
-          : `Artikel ${articleOnly} niet gevonden in de database.`;
-      }
+      const searchType = isExactMatch ? 'exact' : 'related';
       
       res.json({
         regulation,
@@ -8922,11 +8860,7 @@ Genereer een JSON response met:
         parsedArticle: { bookNumber, articleOnly },
         results: formattedResults,
         totalResults: formattedResults.length,
-        searchType, // 'exact', 'normalized' (trailing zeros removed), or 'related'
-        usedNormalizedFallback, // true if we had to remove trailing zeros to find results
-        originalSearchedArticle: articleBase, // What user searched for
-        actualStoredArticle: usedNormalizedFallback ? normalizedArticle : articleBase, // What's in database
-        message: responseMessage,
+        searchType,
         namespace: 'laws-current'
       });
 
