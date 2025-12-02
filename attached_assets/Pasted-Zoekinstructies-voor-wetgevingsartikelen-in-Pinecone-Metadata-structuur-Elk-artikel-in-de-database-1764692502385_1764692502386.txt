@@ -1,0 +1,50 @@
+Zoekinstructies voor wetgevingsartikelen in Pinecone
+Metadata structuur
+Elk artikel in de database heeft de volgende relevante metadata velden:
+
+Veld	Beschrijving	Voorbeeld
+bwb_id	Identificatie van de wet/verdrag	BWBV0001716
+article_number	Artikelnummer	2.2
+section_title	Titel van het artikel	Verkrijging van het recht
+boek_nummer	Onderdeel van het document	verdragtekst1, verdragtekst3
+boek_titel	Naam van het onderdeel	Benelux-verdrag..., Uitvoeringsreglement...
+structure_path	Hiërarchisch pad	boek:verdragtekst1|titel:1
+Zoekstrategie voor artikelen met hetzelfde nummer
+Probleem: Sommige documenten (zoals het Benelux-verdrag) bevatten meerdere onderdelen (Verdrag, Uitvoeringsreglement, Protocol) die elk hun eigen artikel 2.2 kunnen hebben.
+
+Oplossing: Gebruik een hogere topK waarde en GEEN filter op article_number als je alle varianten wilt vinden. Filter daarna in de resultaten.
+
+Query voorbeelden:
+// CORRECT: Vind ALLE artikel 2.2 varianten
+const result = await index.query({
+  vector: queryEmbedding,
+  topK: 20,  // Hoog genoeg om alle varianten te vinden
+  includeMetadata: true,
+  filter: {
+    bwb_id: { $eq: 'BWBV0001716' },
+    article_number: { $eq: '2.2' }
+  }
+});
+// Toon alle gevonden varianten aan de gebruiker
+result.matches.forEach(match => {
+  console.log(`Artikel ${match.metadata.article_number}: ${match.metadata.section_title}`);
+  console.log(`Onderdeel: ${match.metadata.boek_titel}`);
+});
+
+Prompt instructies voor AI-assistent:
+Wanneer je zoekt naar een specifiek artikel in een wet of verdrag:
+1. Zoek ALTIJD met een hogere topK (minimaal 10-20) om alle mogelijke varianten te vinden
+2. Als er meerdere resultaten zijn met hetzelfde artikelnummer, toon ze ALLEMAAL aan de gebruiker met duidelijke onderscheiding:
+   - Vermeld het onderdeel (boek_titel): "Verdrag", "Uitvoeringsreglement", "Protocol"
+   - Vermeld de sectie/titel waar het artikel onder valt
+   
+3. Bij verdragen (BWBV-nummers) kunnen er meerdere onderdelen zijn:
+   - verdragtekst1 = Hoofdverdrag
+   - verdragtekst2 = Protocol
+   - verdragtekst3 = Uitvoeringsreglement
+   - etc.
+4. Vraag de gebruiker om verduidelijking als er meerdere artikelen met hetzelfde nummer zijn:
+   "Ik vond meerdere artikelen met nummer 2.2:
+    - Artikel 2.2 'Verkrijging van het recht' (Verdrag)
+    - Artikel 2.2 'Meervoudig depot' (Uitvoeringsreglement)
+    Welke bedoelt u?"

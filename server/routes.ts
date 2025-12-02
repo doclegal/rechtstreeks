@@ -8605,9 +8605,11 @@ Genereer een JSON response met:
   });
 
   // Search for specific legislation articles by regulation and article number
+  // Uses bwb_id + article_number for EXACT metadata filtering
+  // Returns all variants (Verdrag, Uitvoeringsreglement, Protocol) with boek_titel distinction
   app.post('/api/wetgeving/search-article', async (req, res) => {
     try {
-      const { regulation, articleNumber, topK = 200 } = req.body;
+      const { regulation, articleNumber, topK = 50 } = req.body;
       
       if (!regulation || typeof regulation !== 'string') {
         return res.status(400).json({ error: 'Regelingnaam is verplicht' });
@@ -8617,165 +8619,166 @@ Genereer een JSON response met:
         return res.status(400).json({ error: 'Artikelnummer is verplicht' });
       }
 
-      console.log(`📜 SPECIFIC ARTICLE SEARCH`);
+      console.log(`📜 SPECIFIC ARTICLE SEARCH (bwb_id + article_number strategy)`);
       console.log(`📚 Regulation: "${regulation}"`);
       console.log(`📖 Article: "${articleNumber}"`);
       
       // Parse article number - handle formats like "art. 7:800", "7:201", "91", "2.20 lid 2 sub b", etc.
-      // For BW articles: "7:800" means Book 7, Article 800
-      // For other laws: "6" or "91" is just the article number
       let articleNumClean = articleNumber.replace(/^art\.?\s*/i, '').trim();
       let bookNumber: string | null = null;
-      let articleOnly: string = articleNumClean;
-      let articleBase: string = articleNumClean; // Base article without lid/sub (for matching)
+      let articleBase: string = articleNumClean;
       
       // Remove "lid X", "sub Y", "onder X" parts for base matching
-      // Keep original for display but create base version for matching
-      // Note: We preserve legitimate suffixes like "bis", "ter", "quater" which are legal article variants
       articleBase = articleNumClean
         .replace(/\s+lid\s+\d+(\s+sub\s+\w+)?/gi, '')
         .replace(/\s+sub\s+\w+/gi, '')
         .replace(/\s+onder\s+\w+/gi, '')
         .trim();
       
-      // STRICT EXACT matching only - no fallbacks, no normalization
-      // Search "2.2" → only find "2.2", Search "2.20" → only find "2.20"
-      // If no match, return empty results - data issues must be fixed in Pinecone
-      console.log(`📖 Article base for EXACT match: "${articleBase}"`);
-      
-      // Check if format is "book:article" (e.g., "7:800", "6:74", "6:162", "2:20")
+      // Check if format is "book:article" (e.g., "7:800" for BW)
       const colonMatch = articleNumClean.match(/^(\d+):(\d+\w*)$/);
       if (colonMatch) {
         bookNumber = colonMatch[1];
-        articleOnly = colonMatch[2];
-        // Don't normalize - keep original for book-style references
-        articleBase = articleOnly;
-        console.log(`📖 Parsed as Book ${bookNumber}, Article ${articleOnly}`);
+        articleBase = colonMatch[2];
+        console.log(`📖 Parsed as Book ${bookNumber}, Article ${articleBase}`);
       }
       
-      // Build search text for semantic search (used as fallback)
-      const regulationLowerCase = regulation.toLowerCase();
-      const fullArticleRef = bookNumber ? `${bookNumber}:${articleOnly}` : articleBase;
+      console.log(`📖 Article base for EXACT match: "${articleBase}"`);
+      
+      // STEP 1: First, find the bwb_id for this regulation
+      // Do a semantic search to find matching documents and extract their bwb_id
       const searchText = `artikel ${articleBase} ${regulation}`;
+      console.log(`🔍 Step 1: Finding bwb_id for regulation "${regulation}"`);
       
-      console.log(`🔍 Search text: "${searchText}"`);
-      console.log(`🔍 Article base for filter: "${articleBase}"`);
+      let bwbId: string | null = null;
       
-      // Use metadata filter on article_number for EXACT match only
-      // NO semantic fallback - if exact article not found, return empty results
-      console.log(`📋 Searching with EXACT metadata filter: article_number="${articleBase}"`);
+      // Search with just article_number filter first to find the bwb_id
+      const discoveryResults = await searchVectors({
+        text: searchText,
+        topK: 20,
+        scoreThreshold: 0,
+        namespace: 'laws-current',
+        filter: {
+          article_number: { $eq: articleBase },
+          is_current: { $eq: true }
+        }
+      });
       
-      let results: any[] = [];
+      console.log(`📊 Discovery search returned ${discoveryResults.length} results`);
       
-      // ALWAYS use article_number filter for exact match
-      try {
-        results = await searchVectors({
-          text: searchText,
-          topK: topK,
-          scoreThreshold: 0,
-          namespace: 'laws-current',
-          filter: {
-            article_number: { $eq: articleBase },
-            is_current: { $eq: true }
-          }
-        });
-        console.log(`📊 Exact metadata filter returned ${results.length} results for article "${articleBase}"`);
-      } catch (filterError) {
-        console.log(`⚠️ Metadata filter failed:`, filterError);
-        // Do NOT fall back to semantic search - that would mix up similar article numbers
+      // Find the bwb_id that matches the regulation name
+      const regulationLower = regulation.toLowerCase();
+      const stopWords = ['de', 'het', 'van', 'inzake', 'en', 'over', 'artikel', 'artikelen', 'wet', 'verdrag'];
+      const regulationWords = regulationLower
+        .split(/\s+/)
+        .map(w => w.replace(/[^a-z0-9-]/gi, ''))
+        .filter(w => w.length > 3 && !stopWords.includes(w));
+      
+      console.log(`📊 Regulation keywords: ${JSON.stringify(regulationWords)}`);
+      
+      // Find bwb_id from results that match the regulation name
+      for (const result of discoveryResults) {
+        const resultTitle = String(result.metadata?.title || '').toLowerCase();
+        const resultBoekTitel = String(result.metadata?.boek_titel || '').toLowerCase();
+        const combinedText = `${resultTitle} ${resultBoekTitel}`;
+        
+        // Check if all regulation words are present
+        const matchesAll = regulationWords.every(word => combinedText.includes(word));
+        
+        if (matchesAll && result.metadata?.bwb_id) {
+          bwbId = result.metadata.bwb_id;
+          console.log(`✅ Found matching bwb_id: ${bwbId} from title: "${resultTitle.substring(0, 50)}"`);
+          break;
+        }
       }
       
-      // NO FALLBACK - if exact article not found, we return empty results
-      // This is correct behavior - the data in Pinecone is assumed to be correct
+      if (!bwbId) {
+        console.log(`⚠️ Could not find bwb_id for regulation "${regulation}"`);
+        // Return empty results - no matching regulation found
+        return res.json({
+          regulation,
+          articleNumber,
+          parsedArticle: { bookNumber, articleBase },
+          results: [],
+          totalResults: 0,
+          searchType: 'exact',
+          namespace: 'laws-current',
+          message: `Geen wet/verdrag gevonden met naam "${regulation}"`
+        });
+      }
       
-      // Debug: Log first few article numbers to see format
+      // STEP 2: Now search with EXACT bwb_id + article_number filter
+      console.log(`🔍 Step 2: Searching with bwb_id="${bwbId}" + article_number="${articleBase}"`);
+      
+      const results = await searchVectors({
+        text: searchText,
+        topK: topK,
+        scoreThreshold: 0,
+        namespace: 'laws-current',
+        filter: {
+          bwb_id: { $eq: bwbId },
+          article_number: { $eq: articleBase },
+          is_current: { $eq: true }
+        }
+      });
+      
+      console.log(`📊 Exact bwb_id + article_number filter returned ${results.length} results`);
+      
+      // Debug: Log sample results with boek_titel
       if (results.length > 0) {
         const sampleArticles = results.slice(0, 5).map((r: any) => ({
           article: r.metadata?.article_number,
-          title: r.metadata?.title?.substring(0, 40),
-          isCurrent: r.metadata?.is_current
+          bwbId: r.metadata?.bwb_id,
+          boekTitel: r.metadata?.boek_titel?.substring(0, 30),
+          sectionTitle: r.metadata?.section_title?.substring(0, 30)
         }));
-        console.log(`📊 Sample article numbers:`, JSON.stringify(sampleArticles));
+        console.log(`📊 Sample results:`, JSON.stringify(sampleArticles, null, 2));
       }
-
-      // Filter results to match regulation title STRICTLY
-      // Note: Article number is already filtered by Pinecone metadata filter (exact match)
-      // Title filter must match ALL distinctive words from the user's search
-      const regulationLower = regulation.toLowerCase();
       
-      // Extract distinctive words (longer than 3 chars, not stopwords)
-      const stopWords = ['de', 'het', 'van', 'inzake', 'en', 'over', 'artikel', 'artikelen', 'lid', 'sub'];
-      const regulationWords = regulationLower
-        .split(/\s+/)
-        .map(w => w.replace(/[^a-z0-9-]/gi, '')) // Remove special chars except hyphen
-        .filter(w => w.length > 3 && !stopWords.includes(w));
-      
-      console.log(`📊 Filtering ${results.length} results for regulation: "${regulation}"`);
-      console.log(`📊 Required words for title match: ${JSON.stringify(regulationWords)}`);
-      
-      // All results already have exact article_number match from Pinecone filter
-      // Now filter STRICTLY for regulation title match - ALL words must match
-      const finalResults = results.filter((result: any) => {
-        const resultTitle = String(result.metadata?.title || '').toLowerCase();
-        const isCurrent = result.metadata?.is_current !== false;
+      // Sort by boek_nummer then chunk_index to group variants together
+      results.sort((a: any, b: any) => {
+        const boekA = a.metadata?.boek_nummer || '';
+        const boekB = b.metadata?.boek_nummer || '';
+        if (boekA !== boekB) return boekA.localeCompare(boekB);
         
-        // Must be current version
-        if (!isCurrent) return false;
-        
-        // If book number specified, title MUST contain "boek X"
-        if (bookNumber && !resultTitle.includes(`boek ${bookNumber}`)) {
-          console.log(`  ❌ Rejected: "${resultTitle.substring(0, 60)}" - missing boek ${bookNumber}`);
-          return false;
-        }
-        
-        // STRICT: ALL distinctive words must be present in the title
-        // This ensures "Benelux-Verdrag inzake de Intellectuele Eigendom" only matches
-        // titles containing "benelux", "intellectuele", AND "eigendom"
-        const missingWords = regulationWords.filter(word => !resultTitle.includes(word));
-        
-        if (missingWords.length > 0) {
-          console.log(`  ❌ Rejected: "${resultTitle.substring(0, 60)}" - missing: ${missingWords.join(', ')}`);
-          return false;
-        }
-        
-        console.log(`  ✅ Accepted: "${resultTitle.substring(0, 60)}"`);
-        return true;
-      });
-
-      console.log(`📊 Filtered to ${finalResults.length} matching articles for regulation`);
-
-      // Sort by chunk_index to get article leden in order
-      finalResults.sort((a: any, b: any) => {
         const chunkA = a.metadata?.chunk_index || 0;
         const chunkB = b.metadata?.chunk_index || 0;
         return chunkA - chunkB;
       });
 
-      // Format results for legislation display - use exact Pinecone metadata values
-      const formattedResults = finalResults.map((result: any, idx: number) => {
-        const realArticleNumber = result.metadata?.article_number || (result.metadata as any)?.articleNumber;
+      // Format results with boek_titel and section_title for variant display
+      const formattedResults = results.map((result: any, idx: number) => {
+        const realArticleNumber = result.metadata?.article_number;
         const displayNumber = bookNumber ? `${bookNumber}:${realArticleNumber}` : realArticleNumber;
         
-        // DEBUG: Log each result's article number
-        console.log(`  📝 Result ${idx + 1}: article_number="${realArticleNumber}" (searched for "${articleBase}")`);
+        // boek_titel tells us which part: Verdrag, Uitvoeringsreglement, Protocol
+        const boekTitel = result.metadata?.boek_titel || result.metadata?.title || '';
+        const boekNummer = result.metadata?.boek_nummer || '';
+        const sectionTitle = result.metadata?.section_title || '';
+        
+        console.log(`  📝 Result ${idx + 1}: art. ${realArticleNumber} | ${boekTitel.substring(0, 40)} | ${sectionTitle.substring(0, 30)}`);
         
         return {
           id: result.id,
           rank: idx + 1,
           score: result.score,
           scorePercent: (result.score * 100).toFixed(1) + '%',
-          bwbId: result.metadata?.bwb_id || (result.metadata as any)?.bwbId,
+          bwbId: result.metadata?.bwb_id,
           title: result.metadata?.title,
           articleNumber: realArticleNumber,
           displayArticleNumber: realArticleNumber,
-          paragraphNumber: result.metadata?.paragraph_number || (result.metadata as any)?.paragraphNumber,
-          sectionTitle: result.metadata?.section_title || (result.metadata as any)?.sectionTitle,
-          validFrom: result.metadata?.valid_from || (result.metadata as any)?.validFrom,
-          validTo: result.metadata?.valid_to || (result.metadata as any)?.validTo,
-          isCurrent: result.metadata?.is_current ?? (result.metadata as any)?.isCurrent ?? true,
-          text: result.text || (result.metadata as any)?.text,
+          // New fields for variant display
+          boekTitel: boekTitel,
+          boekNummer: boekNummer,
+          sectionTitle: sectionTitle,
+          structurePath: result.metadata?.structure_path,
+          paragraphNumber: result.metadata?.paragraph_number,
+          validFrom: result.metadata?.valid_from,
+          validTo: result.metadata?.valid_to,
+          isCurrent: result.metadata?.is_current ?? true,
+          text: result.text || result.metadata?.text,
           chunkIndex: result.metadata?.chunk_index,
-          citatie: `art. ${displayNumber} ${result.metadata?.title || ''}`,
+          citatie: `art. ${displayNumber} ${boekTitel || result.metadata?.title || ''}`,
           bronUrl: result.metadata?.bwb_id 
             ? `https://wetten.overheid.nl/${result.metadata.bwb_id}`
             : null
@@ -8783,7 +8786,7 @@ Genereer een JSON response met:
       });
 
       // Determine if these are exact matches or related articles
-      const isExactMatch = finalResults.length > 0;
+      const isExactMatch = formattedResults.length > 0;
       const searchType = isExactMatch ? 'exact' : 'related';
       
       res.json({
