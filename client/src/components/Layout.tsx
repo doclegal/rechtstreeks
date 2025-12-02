@@ -117,7 +117,7 @@ export default function Layout({ children }: LayoutProps) {
                   }`}
                   data-testid="link-my-case"
                 >
-                  Mijn Zaak
+                  Mijn zaak
                 </Link>
                 <Link 
                   href="/analysis" 
@@ -204,7 +204,7 @@ export default function Layout({ children }: LayoutProps) {
                   <DropdownMenuItem asChild>
                     <Link href="/my-case" data-testid="link-my-case-mobile">
                       <Scale className="mr-2 h-4 w-4" />
-                      Mijn Zaak
+                      Mijn zaak
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
@@ -247,7 +247,7 @@ export default function Layout({ children }: LayoutProps) {
                   <DropdownMenuItem asChild>
                     <Link href="/profile" data-testid="link-profile-mobile">
                       <User className="mr-2 h-4 w-4" />
-                      Mijn Profiel
+                      Mijn profiel
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
