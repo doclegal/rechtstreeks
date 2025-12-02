@@ -8946,13 +8946,25 @@ Genereer een JSON response met:
       
       console.log(`📊 Found ${regelingen.length} total regelingen`);
       
-      // Filter by gemeente code (bevoegdGezag)
-      regelingen = regelingen.filter((r: any) => {
+      // Log available gemeente codes for debugging
+      const availableCodes = [...new Set(regelingen.map((r: any) => r.bevoegdGezag?.code).filter(Boolean))];
+      console.log(`📊 Available bevoegdGezag codes: ${availableCodes.slice(0, 10).join(', ')}${availableCodes.length > 10 ? '...' : ''}`);
+      
+      // Filter by gemeente code (bevoegdGezag) - skip if no matches (pre-production has test data)
+      const filteredByGemeente = regelingen.filter((r: any) => {
         const bgCode = r.bevoegdGezag?.code || '';
         return bgCode.toLowerCase() === gemeenteCode.toLowerCase();
       });
       
-      console.log(`📊 After gemeente filter: ${regelingen.length} regelingen`);
+      console.log(`📊 After gemeente filter: ${filteredByGemeente.length} regelingen`);
+      
+      // If no gemeente matches (pre-production), show all results but filter by query
+      if (filteredByGemeente.length === 0 && regelingen.length > 0) {
+        console.log(`⚠️ No results for gemeente ${gemeenteCode} - this may be a test environment with fictional data`);
+        // In test environment, just filter by query text
+      } else {
+        regelingen = filteredByGemeente;
+      }
       
       // Filter by query text in title or type
       if (query.trim()) {
