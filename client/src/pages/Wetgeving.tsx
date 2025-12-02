@@ -404,6 +404,8 @@ export default function Wetgeving() {
     const allResults: LegislationResult[] = [];
 
     try {
+      const warnings: string[] = [];
+      
       for (const entry of validEntries) {
         const response = await apiRequest('POST', '/api/wetgeving/search-article', {
           regulation: entry.regulation.trim(),
@@ -417,16 +419,31 @@ export default function Wetgeving() {
           sourceQuery: `${entry.regulation} art. ${entry.articleNumber}`
         }));
         allResults.push(...resultsWithSource);
+        
+        // Collect warnings about normalized fallback
+        if (data.usedNormalizedFallback && data.message) {
+          warnings.push(data.message);
+        }
       }
 
       setArticleResults(allResults);
       
       await saveSearchResults(allResults, validEntries);
       
-      toast({
-        title: "Zoeken voltooid",
-        description: `${allResults.length} artikelleden gevonden voor ${validEntries.length} artikel(en)`,
-      });
+      // Show warnings if any
+      if (warnings.length > 0) {
+        toast({
+          title: "Zoeken voltooid met opmerkingen",
+          description: warnings.join('\n'),
+          variant: "default",
+          duration: 8000,
+        });
+      } else {
+        toast({
+          title: "Zoeken voltooid",
+          description: `${allResults.length} artikelleden gevonden voor ${validEntries.length} artikel(en)`,
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Fout bij zoeken",
@@ -477,6 +494,7 @@ export default function Wetgeving() {
 
       setIsSearchingAll(true);
       const allResults: LegislationResult[] = [];
+      const aiWarnings: string[] = [];
 
       try {
         for (const entry of newEntries) {
@@ -492,16 +510,31 @@ export default function Wetgeving() {
             sourceQuery: `${entry.regulation} art. ${entry.articleNumber}`
           }));
           allResults.push(...resultsWithSource);
+          
+          // Collect warnings about normalized fallback
+          if (searchData.usedNormalizedFallback && searchData.message) {
+            aiWarnings.push(searchData.message);
+          }
         }
 
         setArticleResults(allResults);
         
         await saveSearchResults(allResults, newEntries);
         
-        toast({
-          title: "Artikelen geïdentificeerd en gezocht",
-          description: `${articles.length} artikelen gevonden, ${allResults.length} resultaten totaal`,
-        });
+        // Show warnings if any
+        if (aiWarnings.length > 0) {
+          toast({
+            title: "Artikelen geïdentificeerd met opmerkingen",
+            description: aiWarnings.join('\n'),
+            variant: "default",
+            duration: 8000,
+          });
+        } else {
+          toast({
+            title: "Artikelen geïdentificeerd en gezocht",
+            description: `${articles.length} artikelen gevonden, ${allResults.length} resultaten totaal`,
+          });
+        }
       } catch (error) {
         console.error('Error searching articles:', error);
         toast({
