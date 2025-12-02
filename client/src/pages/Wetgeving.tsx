@@ -67,6 +67,8 @@ interface GroupedArticle {
   displayArticleNumber: string; // User's searched value (preserves precision like "2.20")
   title: string;
   bwbId: string;
+  boekNummer?: string; // verdragtekst1, verdragtekst2, etc.
+  boekTitel?: string; // "Benelux-verdrag...", "Uitvoeringsreglement...", "Protocol..."
   bronUrl: string | null;
   bestScore: number;
   bestScorePercent: string;
@@ -280,9 +282,13 @@ export default function Wetgeving() {
     
     for (const result of results) {
       const articleNum = result.articleNumber || result.article_number || 'unknown';
-      const displayNum = result.displayArticleNumber || articleNum; // Use display number if available
+      const displayNum = result.displayArticleNumber || articleNum;
       const bwbId = result.bwbId || result.bwb_id || 'unknown';
-      const key = `${bwbId}:${articleNum}`;
+      // Include boekNummer in the key to separate variants (Verdrag, Uitvoeringsreglement, Protocol)
+      const boekNummer = (result as any).boekNummer || (result as any).boek_nummer || '';
+      const boekTitel = (result as any).boekTitel || (result as any).boek_titel || '';
+      // Key now includes boekNummer so different document parts are separate groups
+      const key = boekNummer ? `${bwbId}:${boekNummer}:${articleNum}` : `${bwbId}:${articleNum}`;
       
       const lidNumber = result.lid || result.paragraphNumber || result.paragraph_number || '1';
       const sectionTitle = result.sectionTitle || result.section_title || result.structure_path;
@@ -292,9 +298,11 @@ export default function Wetgeving() {
         grouped.set(key, {
           articleKey: key,
           articleNumber: articleNum,
-          displayArticleNumber: displayNum, // Preserve user's searched value
+          displayArticleNumber: displayNum,
           title: result.title || '',
           bwbId: bwbId,
+          boekNummer: boekNummer || undefined,
+          boekTitel: boekTitel || undefined,
           bronUrl: bronUrl || null,
           bestScore: result.score,
           bestScorePercent: result.scorePercent,
@@ -315,6 +323,11 @@ export default function Wetgeving() {
       
       if (!article.sectionTitle && sectionTitle) {
         article.sectionTitle = sectionTitle;
+      }
+      
+      // Update boekTitel if not set and we have one
+      if (!article.boekTitel && boekTitel) {
+        article.boekTitel = boekTitel;
       }
       
       const existingLid = article.leden.find(l => l.lid === lidNumber);
@@ -762,7 +775,14 @@ export default function Wetgeving() {
               Opgeslagen
             </Badge>
           )}
-          {article.title && (
+          {article.boekTitel && (
+            <Badge variant="outline" className="text-xs border-blue-400 text-blue-600 dark:border-blue-500 dark:text-blue-400">
+              {article.boekTitel.length > 50 
+                ? article.boekTitel.substring(0, 47) + '...' 
+                : article.boekTitel}
+            </Badge>
+          )}
+          {article.title && !article.boekTitel && (
             article.bronUrl ? (
               <a href={article.bronUrl} target="_blank" rel="noopener noreferrer">
                 <Badge variant="secondary" className="text-xs hover:bg-primary/20 cursor-pointer">
