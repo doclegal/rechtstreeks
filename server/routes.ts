@@ -8661,12 +8661,13 @@ Genereer een JSON response met:
       console.log(`🔍 Search text: "${searchText}"`);
       console.log(`🔍 Article base for filter: "${articleBase}"`);
       
-      // STRATEGY 1: Use metadata filter on article_number for EXACT match only
-      console.log(`📋 STRATEGY 1: Metadata filter for EXACT article_number: "${articleBase}"`);
+      // Use metadata filter on article_number for EXACT match only
+      // NO semantic fallback - if exact article not found, return empty results
+      console.log(`📋 Searching with EXACT metadata filter: article_number="${articleBase}"`);
       
       let results: any[] = [];
       
-      // Try article_number filter with EXACT value only
+      // ALWAYS use article_number filter for exact match
       try {
         results = await searchVectors({
           text: searchText,
@@ -8678,22 +8679,14 @@ Genereer een JSON response met:
             is_current: { $eq: true }
           }
         });
-        console.log(`📊 Metadata filter search returned ${results.length} results`);
+        console.log(`📊 Exact metadata filter returned ${results.length} results for article "${articleBase}"`);
       } catch (filterError) {
-        console.log(`⚠️ Metadata filter failed, falling back to semantic search`);
+        console.log(`⚠️ Metadata filter failed:`, filterError);
+        // Do NOT fall back to semantic search - that would mix up similar article numbers
       }
       
-      // If no results with exact filter, try semantic search
-      if (results.length === 0) {
-        console.log(`📋 STRATEGY 2: Semantic search (no exact article found)`);
-        results = await searchVectors({
-          text: searchText,
-          topK: topK,
-          scoreThreshold: 0,
-          namespace: 'laws-current'
-        });
-        console.log(`📊 Semantic search returned ${results.length} results`);
-      }
+      // NO FALLBACK - if exact article not found, we return empty results
+      // This is correct behavior - the data in Pinecone is assumed to be correct
       
       // Debug: Log first few article numbers to see format
       if (results.length > 0) {
@@ -8706,36 +8699,24 @@ Genereer een JSON response met:
       }
 
       // Filter results to match regulation title
+      // Note: Article number is already filtered by Pinecone metadata filter (exact match)
       const regulationLower = regulation.toLowerCase();
       const stopWords = ['de', 'het', 'van', 'inzake', 'en', 'over'];
       const regulationWords = regulationLower.split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w));
       
-      // Helper function to check if article numbers match EXACTLY
-      const articleNumberMatches = (resultArticle: string, searchArticle: string): boolean => {
-        if (!resultArticle || !searchArticle) return false;
-        const resultClean = resultArticle.trim().toLowerCase();
-        const searchClean = searchArticle.trim().toLowerCase();
-        
-        // EXACT match only - no variants
-        return resultClean === searchClean;
-      };
-      
-      console.log(`📊 Matching with articleBase: "${articleBase}"`);
+      console.log(`📊 Filtering ${results.length} results for regulation: "${regulation}"`);
       console.log(`📊 Regulation words for matching: ${JSON.stringify(regulationWords)}`);
       
-      const filteredResults = results.filter((result: any) => {
-        const resultArticle = String(result.metadata?.article_number || '');
+      // All results already have exact article_number match from Pinecone filter
+      // Just filter for regulation title match
+      const finalResults = results.filter((result: any) => {
         const resultTitle = String(result.metadata?.title || '').toLowerCase();
         const isCurrent = result.metadata?.is_current !== false;
         
         // Must be current version
         if (!isCurrent) return false;
         
-        // Article number must match EXACTLY - no normalization
-        const articleMatches = articleNumberMatches(resultArticle, articleBase);
-        
-        // Regulation title must contain at least 2 key words from search, or a significant word
-        // This helps match "Benelux-verdrag inzake de intellectuele eigendom" with truncated titles
+        // Regulation title must contain at least one significant word from search
         const significantWords = regulationWords.filter(w => w.length > 5);
         const titleMatches = significantWords.length > 0 
           ? significantWords.some(word => resultTitle.includes(word))
@@ -8744,77 +8725,16 @@ Genereer een JSON response met:
         // If book number specified, title should contain "boek X"
         const bookMatches = !bookNumber || resultTitle.includes(`boek ${bookNumber}`);
         
-        return articleMatches && titleMatches && bookMatches;
+        // Common law abbreviations as fallback
+        const isBW = resultTitle.includes('burgerlijk wetboek');
+        const isBenelux = resultTitle.includes('benelux');
+        const isIntellectueel = resultTitle.includes('intellectuele') || resultTitle.includes('eigendom');
+        const commonLawMatch = isBW || (isBenelux && isIntellectueel);
+        
+        return (titleMatches || commonLawMatch) && bookMatches;
       });
 
-      console.log(`📊 Filtered to ${filteredResults.length} matching articles (exact match)`);
-
-      // If no exact matches, try more flexible matching strategies
-      let finalResults = filteredResults;
-      if (filteredResults.length === 0) {
-        console.log('⚠️ No exact matches found for article ' + articleBase);
-        
-        // Strategy 1: Look for exact article match with any regulation containing key words
-        const anyExactMatch = results.filter((result: any) => {
-          const resultArticle = String(result.metadata?.article_number || '');
-          const resultTitle = String(result.metadata?.title || '').toLowerCase();
-          const isCurrent = result.metadata?.is_current !== false;
-          
-          if (!isCurrent) return false;
-          
-          // Check for EXACT article number match
-          if (!articleNumberMatches(resultArticle, articleBase)) return false;
-          
-          // Check if title contains significant words from regulation
-          const significantWords = regulationWords.filter(w => w.length > 5);
-          const hasSignificantMatch = significantWords.some(word => resultTitle.includes(word));
-          
-          // Also check for common law abbreviations
-          const isBW = resultTitle.includes('burgerlijk wetboek');
-          const isBenelux = resultTitle.includes('benelux');
-          const isIntellectueel = resultTitle.includes('intellectuele') || resultTitle.includes('eigendom');
-          
-          return hasSignificantMatch || isBW || (isBenelux && isIntellectueel);
-        });
-        
-        if (anyExactMatch.length > 0) {
-          console.log(`📊 Found ${anyExactMatch.length} flexible article matches`);
-          finalResults = anyExactMatch;
-        } else {
-          // Strategy 2: Try matching by text content containing the article reference
-          finalResults = results.filter((result: any) => {
-            const resultTitle = String(result.metadata?.title || '').toLowerCase();
-            const resultText = String(result.text || result.metadata?.text || '').toLowerCase();
-            const isCurrent = result.metadata?.is_current !== false;
-            
-            if (!isCurrent) return false;
-            
-            // Book number must match in title
-            if (bookNumber && !resultTitle.includes(`boek ${bookNumber}`)) return false;
-            
-            // At least one significant regulation word matches
-            const significantWords = regulationWords.filter(w => w.length > 5);
-            const titleMatches = significantWords.some(word => resultTitle.includes(word));
-            if (!titleMatches) return false;
-            
-            // Check if the text mentions the specific article number (with word boundaries)
-            const articlePatterns = [
-              `artikel ${articleBase} `,
-              `artikel ${articleBase},`,
-              `artikel ${articleBase}.`,
-              `art. ${articleBase} `,
-              `art. ${articleBase},`,
-              `${bookNumber}:${articleBase} `,
-              `${bookNumber}:${articleBase},`
-            ];
-            const textMentionsArticle = articlePatterns.some(p => resultText.includes(p));
-            
-            return textMentionsArticle;
-          });
-          
-          console.log(`📊 Text search found ${finalResults.length} results mentioning article ${articleBase}`);
-        }
-      }
+      console.log(`📊 Filtered to ${finalResults.length} matching articles for regulation`);
 
       // Sort by chunk_index to get article leden in order
       finalResults.sort((a: any, b: any) => {
