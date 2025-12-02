@@ -8638,45 +8638,31 @@ Genereer een JSON response met:
         .replace(/\s+onder\s+\w+/gi, '')
         .trim();
       
-      // Generate article number variants for searching
-      // Articles can be stored in different formats: "2.20", "2.2", "220"
-      // We generate variants ONLY when the input contains a decimal point
-      // to avoid incorrectly converting plain numbers like "203" to "2.03"
+      // Generate article number variants for Pinecone metadata filter
+      // This is necessary because Pinecone may store "2.20" as "2.2" (without trailing zero)
+      // We generate variants for SEARCHING, but display uses the original searched value
       const getArticleVariants = (artNum: string): string[] => {
         const variants: string[] = [artNum]; // Original always first
         
-        // Only process decimal formats when a dot is actually present
+        // Only process decimal formats when a dot is present in input
         const decimalMatch = artNum.match(/^(\d+)\.(\d+)$/);
         if (decimalMatch) {
           const wholePart = decimalMatch[1];
           const decimalPart = decimalMatch[2];
           
-          // Add dotless variant: "2.20" → "220", "2.2" → "22"
-          const dotless = `${wholePart}${decimalPart}`;
-          variants.push(dotless);
-          
           // Add variant without trailing zeros: "2.20" → "2.2"
           const withoutTrailing = decimalPart.replace(/0+$/, '');
           if (withoutTrailing && withoutTrailing.length > 0 && withoutTrailing !== decimalPart) {
             variants.push(`${wholePart}.${withoutTrailing}`);
-            // Also add dotless version of shortened form: "2.20" -> "22" via "2.2"
-            variants.push(`${wholePart}${withoutTrailing}`);
           }
           
           // Add variant with trailing zero if not present: "2.2" → "2.20"
           if (!decimalPart.endsWith('0') && decimalPart.length === 1) {
-            const withTrailing = `${decimalPart}0`;
-            variants.push(`${wholePart}.${withTrailing}`);
-            // Also add dotless version: "2.2" -> "220" via "2.20"
-            variants.push(`${wholePart}${withTrailing}`);
+            variants.push(`${wholePart}.${decimalPart}0`);
           }
         }
         
-        // Note: We do NOT convert plain numbers like "203" to dotted variants
-        // as this would cause incorrect matches (203 is not the same as 2.03)
-        // Plain article numbers are stored and searched exactly as-is
-        
-        return [...new Set(variants)]; // Remove duplicates, original always included
+        return [...new Set(variants)]; // Remove duplicates
       };
       
       const articleVariants = getArticleVariants(articleBase);
@@ -8869,28 +8855,34 @@ Genereer een JSON response met:
       });
 
       // Format results for legislation display
-      const formattedResults = finalResults.map((result: any, idx: number) => ({
-        id: result.id,
-        rank: idx + 1,
-        score: result.score,
-        scorePercent: (result.score * 100).toFixed(1) + '%',
-        bwbId: result.metadata?.bwb_id || (result.metadata as any)?.bwbId,
-        title: result.metadata?.title,
-        articleNumber: result.metadata?.article_number || (result.metadata as any)?.articleNumber,
-        paragraphNumber: result.metadata?.paragraph_number || (result.metadata as any)?.paragraphNumber,
-        sectionTitle: result.metadata?.section_title || (result.metadata as any)?.sectionTitle,
-        validFrom: result.metadata?.valid_from || (result.metadata as any)?.validFrom,
-        validTo: result.metadata?.valid_to || (result.metadata as any)?.validTo,
-        isCurrent: result.metadata?.is_current ?? (result.metadata as any)?.isCurrent ?? true,
-        text: result.text || (result.metadata as any)?.text,
-        chunkIndex: result.metadata?.chunk_index,
-        citatie: result.metadata?.article_number 
-          ? `art. ${result.metadata.article_number} ${result.metadata?.title || ''}`
-          : result.metadata?.title || 'Onbekend artikel',
-        bronUrl: result.metadata?.bwb_id 
-          ? `https://wetten.overheid.nl/${result.metadata.bwb_id}`
-          : null
-      }));
+      // Keep real articleNumber from Pinecone for grouping logic
+      // Add displayArticleNumber for UI display (uses searched value to preserve precision like "2.20")
+      const searchedDisplayNumber = bookNumber ? `${bookNumber}:${articleOnly}` : articleBase;
+      
+      const formattedResults = finalResults.map((result: any, idx: number) => {
+        const realArticleNumber = result.metadata?.article_number || (result.metadata as any)?.articleNumber;
+        return {
+          id: result.id,
+          rank: idx + 1,
+          score: result.score,
+          scorePercent: (result.score * 100).toFixed(1) + '%',
+          bwbId: result.metadata?.bwb_id || (result.metadata as any)?.bwbId,
+          title: result.metadata?.title,
+          articleNumber: realArticleNumber, // Keep real metadata value for grouping
+          displayArticleNumber: searchedDisplayNumber, // Use searched value for UI display
+          paragraphNumber: result.metadata?.paragraph_number || (result.metadata as any)?.paragraphNumber,
+          sectionTitle: result.metadata?.section_title || (result.metadata as any)?.sectionTitle,
+          validFrom: result.metadata?.valid_from || (result.metadata as any)?.validFrom,
+          validTo: result.metadata?.valid_to || (result.metadata as any)?.validTo,
+          isCurrent: result.metadata?.is_current ?? (result.metadata as any)?.isCurrent ?? true,
+          text: result.text || (result.metadata as any)?.text,
+          chunkIndex: result.metadata?.chunk_index,
+          citatie: `art. ${searchedDisplayNumber} ${result.metadata?.title || ''}`,
+          bronUrl: result.metadata?.bwb_id 
+            ? `https://wetten.overheid.nl/${result.metadata.bwb_id}`
+            : null
+        };
+      });
 
       // Determine if these are exact matches or related articles
       const isExactMatch = filteredResults.length > 0;

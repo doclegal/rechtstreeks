@@ -42,6 +42,7 @@ interface LegislationResult {
   title?: string;
   articleNumber?: string;
   article_number?: string;
+  displayArticleNumber?: string; // User's searched article number (preserves precision like "2.20")
   paragraphNumber?: string;
   paragraph_number?: string;
   lid?: string;
@@ -63,6 +64,7 @@ interface LegislationResult {
 interface GroupedArticle {
   articleKey: string;
   articleNumber: string;
+  displayArticleNumber: string; // User's searched value (preserves precision like "2.20")
   title: string;
   bwbId: string;
   bronUrl: string | null;
@@ -278,6 +280,7 @@ export default function Wetgeving() {
     
     for (const result of results) {
       const articleNum = result.articleNumber || result.article_number || 'unknown';
+      const displayNum = result.displayArticleNumber || articleNum; // Use display number if available
       const bwbId = result.bwbId || result.bwb_id || 'unknown';
       const key = `${bwbId}:${articleNum}`;
       
@@ -289,6 +292,7 @@ export default function Wetgeving() {
         grouped.set(key, {
           articleKey: key,
           articleNumber: articleNum,
+          displayArticleNumber: displayNum, // Preserve user's searched value
           title: result.title || '',
           bwbId: bwbId,
           bronUrl: bronUrl || null,
@@ -546,7 +550,7 @@ export default function Wetgeving() {
       
       toast({
         title: "Commentaar geladen en opgeslagen",
-        description: `Tekst & Commentaar voor Art. ${article.articleNumber} is beschikbaar en bewaard`,
+        description: `Tekst & Commentaar voor Art. ${article.displayArticleNumber} is beschikbaar en bewaard`,
       });
     } catch (error: any) {
       toast({
@@ -750,7 +754,7 @@ export default function Wetgeving() {
       >
         <div className="flex flex-wrap items-center gap-2">
           <Badge className="bg-green-600 hover:bg-green-700 text-white font-mono text-xs">
-            Art. {article.articleNumber}
+            Art. {article.displayArticleNumber}
           </Badge>
           {isSaved && (
             <Badge variant="outline" className="text-xs border-green-500 text-green-600">
@@ -832,7 +836,7 @@ export default function Wetgeving() {
         )}
 
         <p className="text-sm font-semibold">
-          Artikel {article.articleNumber.replace(/^7:/, '')}
+          Artikel {article.displayArticleNumber.replace(/^7:/, '')}
         </p>
 
         {expanded && (
@@ -1109,6 +1113,7 @@ export default function Wetgeving() {
                               const groupedArticle: GroupedArticle = {
                                 articleKey: item.articleKey,
                                 articleNumber: item.articleNumber,
+                                displayArticleNumber: item.articleNumber, // Use stored value for saved items
                                 title: item.lawTitle || '',
                                 bwbId: item.bwbId,
                                 bronUrl: item.wettenLink,
