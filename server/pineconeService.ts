@@ -1,7 +1,7 @@
 import { Pinecone } from "@pinecone-database/pinecone";
 
 const INDEX_NAME = "rechtstreeks";
-const INDEX_HOST = "rechtstreeks.svc.aped-4627-b74a.pinecone.io";
+// Host will be auto-discovered by Pinecone client
 const NAMESPACE = "ECLI_NL";
 const EMBEDDING_MODEL = "multilingual-e5-large";
 
@@ -125,7 +125,7 @@ function generateSparseVector(text: string): { indices: number[]; values: number
 export async function searchVectors(query: SearchQuery): Promise<SearchResult[]> {
   try {
     const pc = getPineconeClient();
-    const index = pc.index(INDEX_NAME, INDEX_HOST);
+    const index = pc.index(INDEX_NAME);
     const namespace = query.namespace || NAMESPACE;
     
     console.log(`🔎 Using Pinecone semantic search (dense only)`);
@@ -256,7 +256,6 @@ export async function checkIndexExists(): Promise<boolean> {
     
     if (exists) {
       console.log(`✅ Pinecone index '${INDEX_NAME}' found`);
-      console.log(`📍 Host: ${INDEX_HOST}`);
       console.log(`📦 Namespace: ${NAMESPACE}`);
       console.log(`🤖 Model: ${EMBEDDING_MODEL}`);
     }
