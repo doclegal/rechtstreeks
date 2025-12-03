@@ -8636,11 +8636,21 @@ Genereer een JSON response met:
         .trim();
       
       // Check if format is "book:article" (e.g., "7:800" for BW)
+      // ONLY apply book parsing for Burgerlijk Wetboek - other laws like AWB use X:Y as the full article number
+      const regulationLowerForBookCheck = regulation.toLowerCase();
+      const isBurgerlijkWetboek = regulationLowerForBookCheck.includes('burgerlijk wetboek') || 
+                                   regulationLowerForBookCheck.includes('bw boek') ||
+                                   regulationLowerForBookCheck.match(/\bbw\s*\d/);
+      
       const colonMatch = articleNumClean.match(/^(\d+):(\d+\w*)$/);
-      if (colonMatch) {
+      if (colonMatch && isBurgerlijkWetboek) {
+        // For Burgerlijk Wetboek: "7:800" means Book 7, Article 800
         bookNumber = colonMatch[1];
         articleBase = colonMatch[2];
-        console.log(`📖 Parsed as Book ${bookNumber}, Article ${articleBase}`);
+        console.log(`📖 Parsed as Book ${bookNumber}, Article ${articleBase} (Burgerlijk Wetboek format)`);
+      } else if (colonMatch) {
+        // For other laws like AWB: "3:4" is the full article number, not book:article
+        console.log(`📖 Article "${articleBase}" contains colon but NOT Burgerlijk Wetboek - keeping full article number`);
       }
       
       console.log(`📖 Article base for EXACT match: "${articleBase}"`);
