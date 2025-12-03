@@ -1,7 +1,7 @@
 import { Pinecone } from "@pinecone-database/pinecone";
 
-const INDEX_NAME = "rechtstreeks-dmacda9";
-const INDEX_HOST = "rechtstreeks-dmacda9.svc.aped-4627-b74a.pinecone.io";
+const INDEX_NAME = "rechtstreeks";
+const INDEX_HOST = "rechtstreeks.svc.aped-4627-b74a.pinecone.io";
 const NAMESPACE = "ECLI_NL";
 const EMBEDDING_MODEL = "multilingual-e5-large";
 
