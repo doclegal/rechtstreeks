@@ -1,10 +1,11 @@
 import { Router, type Request, type Response } from "express";
 import { supabase } from "../supabaseClient";
+import { randomUUID } from "crypto";
 
 const router = Router();
 
 interface SupabaseCase {
-  id?: string;
+  id: string;
   user_id: string;
   title: string;
   description: string;
@@ -49,6 +50,7 @@ router.post("/", async (req: Request, res: Response) => {
 
     const now = new Date().toISOString();
     const caseData: SupabaseCase = {
+      id: randomUUID(),
       user_id: userId,
       title: req.body.title,
       description: req.body.description,
