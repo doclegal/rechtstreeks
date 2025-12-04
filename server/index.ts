@@ -2,10 +2,14 @@ import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { testAuthMiddleware } from "./middleware/testAuth";
+import supabaseCasesRouter from "./routes/supabaseCases";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+app.use("/api/supabase/cases", testAuthMiddleware, supabaseCasesRouter);
 
 // Enable CORS for all routes (allow AI bots, crawlers, etc.)
 app.use((req, res, next) => {
