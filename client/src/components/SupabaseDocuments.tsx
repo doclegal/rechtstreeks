@@ -56,8 +56,6 @@ interface SupabaseDocumentsProps {
 
 export default function SupabaseDocuments({ caseId }: SupabaseDocumentsProps) {
   const [showUpload, setShowUpload] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -95,8 +93,7 @@ export default function SupabaseDocuments({ caseId }: SupabaseDocumentsProps) {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'documents'] });
-      setUploadProgress({});
-      setUploadedFiles([]);
+      setShowUpload(false);
       
       const hasAnalysis = data.analysis !== null;
       const hasError = data.analysis_error !== null;
@@ -120,8 +117,6 @@ export default function SupabaseDocuments({ caseId }: SupabaseDocumentsProps) {
       }
     },
     onError: (error: Error) => {
-      setUploadProgress({});
-      setUploadedFiles([]);
       toast({
         title: "Upload mislukt",
         description: error.message || "Er is een fout opgetreden bij het uploaden",
@@ -175,19 +170,6 @@ export default function SupabaseDocuments({ caseId }: SupabaseDocumentsProps) {
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (!file) return;
-
-    const fileName = file.name;
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 20;
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(interval);
-        setUploadedFiles(prev => [...prev, fileName]);
-      }
-      setUploadProgress(prev => ({ ...prev, [fileName]: progress }));
-    }, 200);
-
     uploadMutation.mutate(file);
   }, [uploadMutation]);
 
@@ -205,8 +187,6 @@ export default function SupabaseDocuments({ caseId }: SupabaseDocumentsProps) {
   });
 
   const handleCloseUpload = () => {
-    setUploadProgress({});
-    setUploadedFiles([]);
     setShowUpload(false);
   };
 
@@ -372,52 +352,44 @@ export default function SupabaseDocuments({ caseId }: SupabaseDocumentsProps) {
           </DialogHeader>
 
           <div className="space-y-6">
-            <div
-              {...getRootProps()}
-              className={cn(
-                "border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer",
-                isDragActive 
-                  ? "border-primary/50 bg-primary/5" 
-                  : "border-border hover:border-primary/50"
-              )}
-              data-testid="dropzone-supabase-upload"
-            >
-              <input {...getInputProps()} />
-              <CloudUpload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-foreground font-medium mb-1">
-                Sleep een bestand hierheen
-              </p>
-              <p className="text-sm text-muted-foreground">
-                PDF, DOCX, JPG, PNG, TXT (max 10 MB)
-              </p>
-            </div>
-
-            {Object.keys(uploadProgress).length > 0 && (
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium">Upload voortgang</h4>
-                {Object.entries(uploadProgress).map(([fileName, progress]) => (
-                  <div key={fileName} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        {uploadedFiles.includes(fileName) ? (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                        )}
-                        <span className="text-sm">{fileName}</span>
-                      </div>
-                      <span className="text-sm text-muted-foreground">
-                        {uploadedFiles.includes(fileName) ? "Voltooid" : `${Math.round(progress)}%`}
-                      </span>
-                    </div>
-                    <Progress value={progress} className="h-2" />
-                  </div>
-                ))}
+            {uploadMutation.isPending ? (
+              <div className="py-8 text-center" data-testid="upload-loading">
+                <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
+                <p className="text-foreground font-medium mb-1">
+                  Document wordt verwerkt...
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Uploaden en analyseren, even geduld
+                </p>
+              </div>
+            ) : (
+              <div
+                {...getRootProps()}
+                className={cn(
+                  "border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer",
+                  isDragActive 
+                    ? "border-primary/50 bg-primary/5" 
+                    : "border-border hover:border-primary/50"
+                )}
+                data-testid="dropzone-supabase-upload"
+              >
+                <input {...getInputProps()} />
+                <CloudUpload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-foreground font-medium mb-1">
+                  Sleep een bestand hierheen
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  PDF, DOCX, JPG, PNG, TXT (max 10 MB)
+                </p>
               </div>
             )}
 
             <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={handleCloseUpload}>
+              <Button 
+                variant="outline" 
+                onClick={handleCloseUpload}
+                disabled={uploadMutation.isPending}
+              >
                 Sluiten
               </Button>
             </div>
