@@ -20,11 +20,30 @@ import { z } from "zod";
 import { SEARCH_CONFIG } from "@shared/searchConfig";
 import { scoreAndSortResults } from "./scoringService";
 import { rerankResults } from "./rerankerService";
+import { createHash } from "crypto";
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB aligned with route validation
 });
+
+// Helper function to convert Replit IDs to UUID format
+function replitIdToUuid(replitId: string): string {
+  const hash = createHash('sha256').update(`replit-user-${replitId}`).digest('hex');
+  return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-a${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
+}
+
+function isValidUuid(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
+function ensureUuid(userId: string): string {
+  if (isValidUuid(userId)) {
+    return userId;
+  }
+  return replitIdToUuid(userId);
+}
 
 // Helper function to generate unique invitation code
 function generateInvitationCode(): string {
@@ -43,7 +62,8 @@ function generateInvitationCode(): string {
 
 // Helper function to check if user can access case
 function canAccessCase(userId: string, caseData: any): boolean {
-  return caseData.ownerUserId === userId || caseData.counterpartyUserId === userId;
+  const userUuid = ensureUuid(userId);
+  return caseData.ownerUserId === userUuid || caseData.counterpartyUserId === userUuid;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
