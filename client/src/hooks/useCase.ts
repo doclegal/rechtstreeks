@@ -578,6 +578,43 @@ export function useUpdateCase(caseId: string) {
   });
 }
 
+export function useDeleteCase(caseId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("DELETE", `/api/cases/${caseId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+      toast({
+        title: "Zaak verwijderd",
+        description: "Uw zaak is succesvol verwijderd",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Fout bij verwijderen zaak",
+        description: "Er is een fout opgetreden bij het verwijderen van de zaak",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 export function useDossierCheck(caseId: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();

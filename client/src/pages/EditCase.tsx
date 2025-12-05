@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useCase, useUpdateCase } from "@/hooks/useCase";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useCase, useUpdateCase, useDeleteCase } from "@/hooks/useCase";
 import { useLocation, useRoute } from "wouter";
-import { ArrowLeft, Edit } from "lucide-react";
+import { ArrowLeft, Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const editCaseSchema = z.object({
@@ -40,6 +41,16 @@ export default function EditCase() {
   
   const { data: caseData, isLoading } = useCase(caseId);
   const updateCaseMutation = useUpdateCase(caseId);
+  const deleteCaseMutation = useDeleteCase(caseId);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  
+  const handleDelete = () => {
+    deleteCaseMutation.mutate(undefined, {
+      onSuccess: () => {
+        setLocation("/");
+      }
+    });
+  };
   
   const form = useForm<EditCaseFormData>({
     resolver: zodResolver(editCaseSchema),
@@ -391,22 +402,57 @@ export default function EditCase() {
         </Card>
 
         {/* Submit Button */}
-        <div className="flex justify-end space-x-4">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={() => setLocation("/my-case")}
-            data-testid="button-cancel"
-          >
-            Annuleren
-          </Button>
-          <Button 
-            type="submit" 
-            disabled={updateCaseMutation.isPending}
-            data-testid="button-save"
-          >
-            {updateCaseMutation.isPending ? "Opslaan..." : "Wijzigingen opslaan"}
-          </Button>
+        <div className="flex justify-between">
+          <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <AlertDialogTrigger asChild>
+              <Button 
+                type="button" 
+                variant="destructive"
+                data-testid="button-delete"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Zaak verwijderen
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Zaak verwijderen?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Weet u zeker dat u deze zaak wilt verwijderen? Dit kan niet ongedaan worden gemaakt. 
+                  Alle documenten, analyses en gegenereerde brieven worden permanent verwijderd.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={handleDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={deleteCaseMutation.isPending}
+                  data-testid="button-confirm-delete"
+                >
+                  {deleteCaseMutation.isPending ? "Verwijderen..." : "Verwijderen"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          
+          <div className="flex space-x-4">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setLocation("/my-case")}
+              data-testid="button-cancel"
+            >
+              Annuleren
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={updateCaseMutation.isPending}
+              data-testid="button-save"
+            >
+              {updateCaseMutation.isPending ? "Opslaan..." : "Wijzigingen opslaan"}
+            </Button>
+          </div>
         </div>
       </form>
     </div>

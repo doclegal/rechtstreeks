@@ -406,6 +406,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete case
+  app.delete('/api/cases/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userUuid = ensureUuid(userId);
+      const caseData = await caseService.getCaseById(req.params.id);
+      
+      if (!caseData || caseData.ownerUserId !== userUuid) {
+        return res.status(404).json({ message: "Zaak niet gevonden" });
+      }
+      
+      await caseService.deleteCase(req.params.id);
+      
+      try {
+        await storage.createEvent({
+          caseId: req.params.id,
+          actorUserId: userId,
+          type: "case_deleted",
+          payloadJson: { title: caseData.title },
+        });
+      } catch (eventError) {
+        console.log("Event creation skipped (case in Supabase only)");
+      }
+      
+      res.json({ success: true, message: "Zaak succesvol verwijderd" });
+    } catch (error) {
+      console.error("Error deleting case:", error);
+      res.status(500).json({ message: "Fout bij het verwijderen van de zaak" });
+    }
+  });
+
   // Clear unseen missing items notification
   app.patch('/api/cases/:id/clear-unseen-missing', isAuthenticated, async (req: any, res) => {
     try {
