@@ -297,7 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const casesWithDetails = await Promise.all(
         userCases.map(async (caseData) => {
           // Owner sees all documents, counterparty only sees their own
-          const documents = caseData.ownerUserId === userId
+          const documents = caseData.ownerUserId === ensureUuid(userId)
             ? await storage.getDocumentsByCase(caseData.id)
             : await storage.getDocumentsByCaseForUser(caseData.id, userId);
           const analysis = await storage.getLatestAnalysis(caseData.id);
@@ -345,7 +345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Include related data - owner sees all documents, counterparty only sees their own
-      const documents = caseData.ownerUserId === userId
+      const documents = caseData.ownerUserId === ensureUuid(userId)
         ? await storage.getDocumentsByCase(caseData.id)
         : await storage.getDocumentsByCaseForUser(caseData.id, userId);
       const analysis = await storage.getLatestAnalysis(caseData.id);
@@ -378,9 +378,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/cases/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const userUuid = ensureUuid(userId);
       const caseData = await caseService.getCaseById(req.params.id);
       
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== userUuid) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -407,7 +408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const caseData = await caseService.getCaseById(req.params.id);
       
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -433,7 +434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Only owner can send invitations
-      if (caseData.ownerUserId !== userId) {
+      if (caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(403).json({ message: "Alleen de eigenaar kan uitnodigingen versturen" });
       }
       
@@ -1011,7 +1012,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -1096,7 +1097,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Owner sees all documents, counterparty only sees their own
-      const documents = caseData.ownerUserId === userId
+      const documents = caseData.ownerUserId === ensureUuid(userId)
         ? await storage.getDocumentsByCase(req.params.id)
         : await storage.getDocumentsByCaseForUser(req.params.id, userId);
       res.json(documents);
@@ -1120,7 +1121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify user owns the case
       const caseData = await caseService.getCaseById(document.caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -1161,7 +1162,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify case ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -1447,7 +1448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
 
@@ -1598,7 +1599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get case data and verify ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
 
@@ -1755,7 +1756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get case data and verify ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
 
@@ -1997,7 +1998,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get case data and verify ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
 
@@ -2219,7 +2220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get case data and verify ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
 
@@ -2334,7 +2335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get case data and verify ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -2505,7 +2506,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get case data and verify ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
 
@@ -2646,7 +2647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify case ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -2716,7 +2717,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify case ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -2901,7 +2902,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify case ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -2922,7 +2923,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify case ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -2950,7 +2951,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify case ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -2996,7 +2997,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify case ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -3017,7 +3018,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify case ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -3061,7 +3062,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify case ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -3116,7 +3117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verify case ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -3355,7 +3356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -3616,7 +3617,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const caseData = await caseService.getCaseById(letter.caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(403).json({ message: "Unauthorized access" });
       }
       
@@ -3639,7 +3640,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const caseData = await caseService.getCaseById(letter.caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(403).json({ message: "Unauthorized access" });
       }
       
@@ -3671,7 +3672,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { court } = req.body; // Optional court selection
       
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -3796,7 +3797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const caseData = await caseService.getCaseById(req.params.id);
       
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -3819,7 +3820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const caseData = await caseService.getCaseById(summons.caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(403).json({ message: "Unauthorized access" });
       }
       
@@ -3843,7 +3844,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const caseData = await caseService.getCaseById(summons.caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(403).json({ message: "Unauthorized access" });
       }
       
@@ -3875,7 +3876,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const caseId = req.params.id;
       
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -3895,7 +3896,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { userFields, aiFields } = req.body;
       
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -3971,7 +3972,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { userFields, templateId } = req.body;
       
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -4410,7 +4411,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       const { caseId, summonsId } = req.params;
       
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -4435,7 +4436,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       const { userFields, previousSections, userFeedback } = req.body;
       
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -4941,7 +4942,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       const { caseId, summonsId, sectionKey } = req.params;
       
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -4976,7 +4977,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       const { feedback } = req.body;
       
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -5012,7 +5013,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       const { userFields } = req.body;
       
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -5098,7 +5099,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       
       // Verify case ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -5237,7 +5238,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       const { caseId } = req.body;
       
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -5303,7 +5304,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       const { caseId } = req.body;
       
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -5339,7 +5340,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       const caseId = req.params.id;
       
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -5373,7 +5374,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       const caseId = req.params.caseId;
       
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -5837,7 +5838,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       const caseId = req.params.id;
       
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -5956,7 +5957,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       const caseId = req.params.id;
       
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -6064,7 +6065,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       const caseId = req.params.id;
       
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -6084,7 +6085,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       
       // Verify case ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -6126,7 +6127,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       
       // Verify case ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -6174,7 +6175,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       
       // Verify case ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -6491,7 +6492,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       
       // Verify case ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -6826,7 +6827,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       
       // Verify case ownership
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -7058,7 +7059,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       
       // Get case data
       const caseData = await caseService.getCaseById(caseId);
-      if (!caseData || caseData.ownerUserId !== userId) {
+      if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
@@ -9493,7 +9494,7 @@ Geef ALLEEN de JSON terug, geen uitleg.`
         return res.status(404).json({ error: 'Case not found' });
       }
       
-      if (caseRecord[0].ownerUserId !== userId) {
+      if (caseRecord[0].ownerUserId !== ensureUuid(userId)) {
         return res.status(403).json({ error: 'Access denied' });
       }
 
@@ -9538,7 +9539,7 @@ Geef ALLEEN de JSON terug, geen uitleg.`
         return res.status(404).json({ error: 'Case not found' });
       }
       
-      if (caseRecord[0].ownerUserId !== userId) {
+      if (caseRecord[0].ownerUserId !== ensureUuid(userId)) {
         return res.status(403).json({ error: 'Access denied' });
       }
 
@@ -9646,7 +9647,7 @@ Geef ALLEEN de JSON terug, geen uitleg.`
         return res.status(404).json({ error: 'Case not found' });
       }
       
-      if (caseRecord[0].ownerUserId !== userId) {
+      if (caseRecord[0].ownerUserId !== ensureUuid(userId)) {
         return res.status(403).json({ error: 'Access denied' });
       }
 
@@ -9698,7 +9699,7 @@ Geef ALLEEN de JSON terug, geen uitleg.`
         return res.status(404).json({ error: 'Case not found' });
       }
       
-      if (caseRecord[0].ownerUserId !== userId) {
+      if (caseRecord[0].ownerUserId !== ensureUuid(userId)) {
         return res.status(403).json({ error: 'Access denied' });
       }
 
