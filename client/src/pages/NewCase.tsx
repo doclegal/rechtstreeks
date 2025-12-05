@@ -16,20 +16,20 @@ import { useCaseContext } from "@/contexts/CaseContext";
 const newCaseSchema = z.object({
   title: z.string().min(1, "Titel is verplicht"),
   description: z.string().min(10, "Beschrijving moet minimaal 10 karakters bevatten"),
-  category: z.string().min(1, "Selecteer een categorie"),
+  category: z.string().optional(),
   claimAmount: z.string().optional(),
   claimantName: z.string().optional(),
   claimantAddress: z.string().optional(),
-  claimantCity: z.string().min(1, "Woonplaats is verplicht voor het bepalen van bevoegdheid"),
+  claimantCity: z.string().min(1, "Woonplaats is verplicht"),
   userRole: z.enum(["EISER", "GEDAAGDE"], {
     required_error: "Selecteer uw rol in deze zaak",
   }),
-  counterpartyType: z.enum(["individual", "company"]),
-  counterpartyName: z.string().min(1, "Naam wederpartij is verplicht"),
+  counterpartyType: z.enum(["individual", "company"]).optional(),
+  counterpartyName: z.string().optional(),
   counterpartyEmail: z.string().email("Ongeldig emailadres").optional().or(z.literal("")),
   counterpartyPhone: z.string().optional(),
   counterpartyAddress: z.string().optional(),
-  counterpartyCity: z.string().min(1, "Woonplaats/vestigingsplaats is verplicht voor het bepalen van bevoegdheid"),
+  counterpartyCity: z.string().optional(),
 });
 
 type NewCaseFormData = z.infer<typeof newCaseSchema>;
@@ -141,7 +141,7 @@ export default function NewCase() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="category">Categorie *</Label>
+                <Label htmlFor="category">Categorie</Label>
                 <Select 
                   value={form.watch("category")} 
                   onValueChange={(value) => form.setValue("category", value)}
@@ -291,7 +291,7 @@ export default function NewCase() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label>Type wederpartij *</Label>
+              <Label>Type wederpartij</Label>
               <Select 
                 value={form.watch("counterpartyType")} 
                 onValueChange={(value) => form.setValue("counterpartyType", value as "individual" | "company")}
@@ -364,7 +364,7 @@ export default function NewCase() {
 
             <div>
               <Label htmlFor="counterpartyCity">
-                {form.watch("counterpartyType") === "company" ? "Vestigingsplaats *" : "Woonplaats *"}
+                {form.watch("counterpartyType") === "company" ? "Vestigingsplaats" : "Woonplaats"}
               </Label>
               <Input
                 id="counterpartyCity"
@@ -391,11 +391,8 @@ export default function NewCase() {
               <ul className="mt-2 text-sm text-destructive list-disc list-inside">
                 {form.formState.errors.title && <li>Titel is verplicht</li>}
                 {form.formState.errors.description && <li>Beschrijving is verplicht (min. 10 karakters)</li>}
-                {form.formState.errors.category && <li>Categorie moet worden geselecteerd</li>}
                 {form.formState.errors.claimantCity && <li>Woonplaats is verplicht</li>}
                 {form.formState.errors.userRole && <li>Selecteer uw rol in deze zaak</li>}
-                {form.formState.errors.counterpartyName && <li>Naam wederpartij is verplicht</li>}
-                {form.formState.errors.counterpartyCity && <li>Woonplaats/vestigingsplaats wederpartij is verplicht</li>}
               </ul>
             </div>
           )}
