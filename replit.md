@@ -32,8 +32,16 @@ Preferred communication style: Simple, everyday language.
 
 ### File Storage
 - **Storage Backend**: Replit Object Storage via Google Cloud Storage client.
+- **Supabase Storage**: Alternative document storage with integrated analysis pipeline.
 - **Security**: Time-bound signed URLs (1-hour expiry) for document access.
 - **ACL Management**: Owner-based access control.
+
+### Supabase Document Analysis
+- **Integration**: Automatic MindStudio analysis on document upload via Dossier_check.flow.
+- **Supabase Table**: `document_analyses` stores analysis results with fields: document_id, user_id, document_name, document_type, is_readable, belongs_to_case, summary, tags (jsonb array), note.
+- **Service Layer**: `documentAnalysisService.ts` provides insert/fetch helpers for analysis CRUD.
+- **Error Handling**: MindStudio failures gracefully degrade without blocking document uploads.
+- **UI Display**: SupabaseDocuments component shows analysis (summary, tags, notes) or "Geen analyse beschikbaar" for documents without analysis.
 
 ### Process Flow & AI Integration
 - **Status Progression**: Automated transitions through 9 legal process steps.
