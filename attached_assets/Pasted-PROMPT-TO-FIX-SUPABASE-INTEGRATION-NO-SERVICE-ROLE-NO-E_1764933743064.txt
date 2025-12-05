@@ -1,0 +1,89 @@
+PROMPT TO FIX SUPABASE INTEGRATION (NO SERVICE ROLE, NO EXTRA FIELDS)
+
+You must undo parts of the last refactor and align the code with my actual Supabase schema and security model.
+Do NOT propose any SQL migrations and do NOT require schema changes. The code must adapt to the existing database, not the other way around.
+
+1. Supabase client – stop using service role
+
+Revert supabaseClient.ts so that:
+
+It only uses SUPABASE_URL + SUPABASE_ANON_KEY.
+
+It does NOT use SUPABASE_SERVICE_ROLE_KEY anywhere.
+
+The service role key must not appear in any file.
+
+All read/write operations must go through the anon client and respect RLS. I have already configured permissive RLS policies for development.
+
+2. Cases schema – use ONLY the real columns
+
+The cases table in Supabase has exactly these columns:
+
+id, user_id, title, description,
+client_role, category, claim_amount_eur,
+client_name, client_address, client_city,
+opponent_type, opponent_company, opponent_email,
+opponent_phone, opponent_address, opponent_city,
+status, created_at, updated_at
+
+You must remove all references to the following NON-EXISTENT columns from all code:
+
+opponent_user_id
+
+current_step
+
+next_action_label
+
+has_unseen_missing_items
+
+needs_reanalysis
+
+counterparty_description_approved
+
+These fields must NOT be used in:
+
+caseService.ts
+
+route handlers
+
+DTOs / types / interfaces
+
+validation logic
+
+mapping functions
+
+The service layer must map only the real columns listed above, in both directions (Supabase → app, app → Supabase).
+
+Do NOT ask me to run ALTER TABLE or add these fields. They are legacy workflow fields that should stay in the application layer only, not in the Supabase schema.
+
+3. Behavior of the service layer
+
+caseService.ts must:
+
+Use the anon Supabase client.
+
+Read and write only the valid fields of the cases table.
+
+Never rely on service-role behavior or bypass RLS.
+
+If the frontend still uses internal workflow fields (like current_step etc.), keep them in the in-memory/JSON side of the app only, without trying to persist them to Supabase.
+
+4. Output
+
+Show me the updated versions of:
+
+supabaseClient.ts
+
+caseService.ts
+
+Any route files that changed
+
+Confirm explicitly that:
+
+The service role key is no longer used anywhere.
+
+No extra columns are required in the cases table.
+
+All Supabase queries only touch the existing columns.
+
+Now apply these changes and return the final cleaned code.
