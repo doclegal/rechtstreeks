@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import DocumentList from "@/components/DocumentList";
 import MissingInfo from "@/components/MissingInfo";
+import SupabaseDocuments from "@/components/SupabaseDocuments";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, FileText, AlertCircle, Sparkles, AlertTriangle } from "lucide-react";
 import { RIcon } from "@/components/RIcon";
@@ -150,6 +151,11 @@ export default function Dossier() {
               documents={currentCase.documents || []} 
               caseId={currentCase.id}
             />
+
+            {/* Supabase Storage Documents Section */}
+            <div className="mt-6 pt-6 border-t">
+              <SupabaseDocuments caseId={currentCase.id} />
+            </div>
           </CardContent>
         </Card>
 

@@ -1296,10 +1296,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userUuid = ensureUuid(userId);
       const documentId = req.params.documentId;
       
-      // Fetch document from Supabase
+      // Fetch document from Supabase with case_id for authorization
       const { data: document, error } = await supabase
         .from('case_documents')
-        .select('storage_path, user_id')
+        .select('storage_path, user_id, case_id')
         .eq('id', documentId)
         .single();
       
@@ -1307,8 +1307,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Document not found" });
       }
       
-      // Verify ownership
-      if (document.user_id !== userUuid) {
+      // Verify user can access the case (owner or counterparty)
+      const caseData = await caseService.getCaseById(document.case_id);
+      if (!caseData || !canAccessCase(userId, caseData)) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -1329,10 +1330,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userUuid = ensureUuid(userId);
       const documentId = req.params.documentId;
       
-      // Fetch document from Supabase
+      // Fetch document from Supabase with case_id for authorization
       const { data: document, error: fetchError } = await supabase
         .from('case_documents')
-        .select('storage_path, user_id')
+        .select('storage_path, user_id, case_id')
         .eq('id', documentId)
         .single();
       
@@ -1340,9 +1341,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Document not found" });
       }
       
-      // Verify ownership
-      if (document.user_id !== userUuid) {
+      // Verify user can access the case (owner or counterparty)
+      const caseData = await caseService.getCaseById(document.case_id);
+      if (!caseData || !canAccessCase(userId, caseData)) {
         return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Only owner can delete (not counterparty)
+      if (caseData.ownerUserId !== userUuid) {
+        return res.status(403).json({ message: "Only case owner can delete documents" });
       }
       
       // Delete from storage
