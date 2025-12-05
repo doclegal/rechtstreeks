@@ -388,12 +388,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updates = insertCaseSchema.partial().parse(req.body);
       const updatedCase = await caseService.updateCase(req.params.id, updates);
       
-      await storage.createEvent({
-        caseId: updatedCase.id,
-        actorUserId: userId,
-        type: "case_updated",
-        payloadJson: updates,
-      });
+      try {
+        await storage.createEvent({
+          caseId: updatedCase.id,
+          actorUserId: userId,
+          type: "case_updated",
+          payloadJson: updates,
+        });
+      } catch (eventError) {
+        console.log("Event creation skipped (case in Supabase only)");
+      }
       
       res.json(updatedCase);
     } catch (error) {
