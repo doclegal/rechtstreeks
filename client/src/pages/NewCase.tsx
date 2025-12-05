@@ -382,22 +382,40 @@ export default function NewCase() {
         </Card>
 
         {/* Submit */}
-        <div className="flex items-center justify-between">
-          <Button 
-            type="button" 
-            variant="ghost" 
-            onClick={() => setLocation("/")}
-            data-testid="button-cancel"
-          >
-            Annuleren
-          </Button>
-          <Button 
-            type="submit" 
-            disabled={createCaseMutation.isPending}
-            data-testid="button-create-case"
-          >
-            {createCaseMutation.isPending ? "Aanmaken..." : "Zaak aanmaken"}
-          </Button>
+        <div className="space-y-4">
+          {Object.keys(form.formState.errors).length > 0 && (
+            <div className="bg-destructive/10 border border-destructive rounded-md p-4">
+              <p className="text-sm font-medium text-destructive">
+                Niet alle verplichte velden zijn ingevuld. Controleer de velden hierboven.
+              </p>
+              <ul className="mt-2 text-sm text-destructive list-disc list-inside">
+                {form.formState.errors.title && <li>Titel is verplicht</li>}
+                {form.formState.errors.description && <li>Beschrijving is verplicht (min. 10 karakters)</li>}
+                {form.formState.errors.category && <li>Categorie moet worden geselecteerd</li>}
+                {form.formState.errors.claimantCity && <li>Woonplaats is verplicht</li>}
+                {form.formState.errors.userRole && <li>Selecteer uw rol in deze zaak</li>}
+                {form.formState.errors.counterpartyName && <li>Naam wederpartij is verplicht</li>}
+                {form.formState.errors.counterpartyCity && <li>Woonplaats/vestigingsplaats wederpartij is verplicht</li>}
+              </ul>
+            </div>
+          )}
+          <div className="flex items-center justify-between">
+            <Button 
+              type="button" 
+              variant="ghost" 
+              onClick={() => setLocation("/")}
+              data-testid="button-cancel"
+            >
+              Annuleren
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={createCaseMutation.isPending}
+              data-testid="button-create-case"
+            >
+              {createCaseMutation.isPending ? "Aanmaken..." : "Zaak aanmaken"}
+            </Button>
+          </div>
         </div>
       </form>
     </div>
