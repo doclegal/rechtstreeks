@@ -1,6 +1,23 @@
 import { supabase } from "../supabaseClient";
-import { randomUUID } from "crypto";
+import { randomUUID, createHash } from "crypto";
 import type { Case, InsertCase, CaseStatus } from "@shared/schema";
+
+function replitIdToUuid(replitId: string): string {
+  const hash = createHash('sha256').update(`replit-user-${replitId}`).digest('hex');
+  return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-a${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
+}
+
+function isValidUuid(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
+function ensureUuid(userId: string): string {
+  if (isValidUuid(userId)) {
+    return userId;
+  }
+  return replitIdToUuid(userId);
+}
 
 interface SupabaseCaseRow {
   id: string;
@@ -58,7 +75,7 @@ function mapInternalToSupabase(caseData: Partial<InsertCase> & { id?: string }):
   const mapped: Partial<SupabaseCaseRow> = {};
   
   if (caseData.id !== undefined) mapped.id = caseData.id;
-  if (caseData.ownerUserId !== undefined) mapped.user_id = caseData.ownerUserId;
+  if (caseData.ownerUserId !== undefined) mapped.user_id = ensureUuid(caseData.ownerUserId);
   if (caseData.title !== undefined) mapped.title = caseData.title;
   if (caseData.description !== undefined) mapped.description = caseData.description;
   if (caseData.category !== undefined) mapped.category = caseData.category;
@@ -113,10 +130,11 @@ export const caseService = {
   },
 
   async getCasesForUser(userId: string): Promise<Case[]> {
+    const uuid = ensureUuid(userId);
     const { data, error } = await supabase
       .from("cases")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", uuid)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -146,11 +164,12 @@ export const caseService = {
   },
 
   async getCaseByIdForUser(id: string, userId: string): Promise<Case | undefined> {
+    const uuid = ensureUuid(userId);
     const { data, error } = await supabase
       .from("cases")
       .select("*")
       .eq("id", id)
-      .eq("user_id", userId)
+      .eq("user_id", uuid)
       .single();
 
     if (error) {
