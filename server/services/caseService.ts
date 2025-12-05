@@ -19,7 +19,13 @@ interface SupabaseCaseRow {
   opponent_phone: string | null;
   opponent_address: string | null;
   opponent_city: string | null;
+  opponent_user_id: string | null;
   status: string | null;
+  current_step: string | null;
+  next_action_label: string | null;
+  has_unseen_missing_items: boolean | null;
+  needs_reanalysis: boolean | null;
+  counterparty_description_approved: boolean | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -41,14 +47,14 @@ function mapSupabaseToInternal(row: SupabaseCaseRow): Case {
     counterpartyPhone: row.opponent_phone,
     counterpartyAddress: row.opponent_address,
     counterpartyCity: row.opponent_city,
-    counterpartyUserId: null,
+    counterpartyUserId: row.opponent_user_id,
     userRole: (row.client_role as "EISER" | "GEDAAGDE") || "EISER",
-    counterpartyDescriptionApproved: false,
+    counterpartyDescriptionApproved: row.counterparty_description_approved ?? false,
     status: (row.status as CaseStatus) || "NEW_INTAKE",
-    currentStep: null,
-    nextActionLabel: null,
-    hasUnseenMissingItems: false,
-    needsReanalysis: false,
+    currentStep: row.current_step,
+    nextActionLabel: row.next_action_label,
+    hasUnseenMissingItems: row.has_unseen_missing_items ?? false,
+    needsReanalysis: row.needs_reanalysis ?? false,
     createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
   };
@@ -74,8 +80,14 @@ function mapInternalToSupabase(caseData: Partial<InsertCase> & { id?: string }):
   if (caseData.counterpartyPhone !== undefined) mapped.opponent_phone = caseData.counterpartyPhone;
   if (caseData.counterpartyAddress !== undefined) mapped.opponent_address = caseData.counterpartyAddress;
   if (caseData.counterpartyCity !== undefined) mapped.opponent_city = caseData.counterpartyCity;
+  if (caseData.counterpartyUserId !== undefined) mapped.opponent_user_id = caseData.counterpartyUserId;
   if (caseData.userRole !== undefined) mapped.client_role = caseData.userRole;
   if (caseData.status !== undefined) mapped.status = caseData.status;
+  if (caseData.currentStep !== undefined) mapped.current_step = caseData.currentStep;
+  if (caseData.nextActionLabel !== undefined) mapped.next_action_label = caseData.nextActionLabel;
+  if (caseData.hasUnseenMissingItems !== undefined) mapped.has_unseen_missing_items = caseData.hasUnseenMissingItems;
+  if (caseData.needsReanalysis !== undefined) mapped.needs_reanalysis = caseData.needsReanalysis;
+  if (caseData.counterpartyDescriptionApproved !== undefined) mapped.counterparty_description_approved = caseData.counterpartyDescriptionApproved;
   
   return mapped;
 }
@@ -191,6 +203,8 @@ export const caseService = {
   async updateCaseStatus(id: string, status: CaseStatus, currentStep?: string, nextActionLabel?: string): Promise<Case> {
     const supabaseUpdates: Partial<SupabaseCaseRow> = {
       status,
+      current_step: currentStep || null,
+      next_action_label: nextActionLabel || null,
       updated_at: new Date().toISOString(),
     };
 
@@ -209,10 +223,7 @@ export const caseService = {
       throw new CaseServiceError(500, `Failed to update case status: ${error.message}`);
     }
 
-    const result = mapSupabaseToInternal(data);
-    result.currentStep = currentStep || null;
-    result.nextActionLabel = nextActionLabel || null;
-    return result;
+    return mapSupabaseToInternal(data);
   },
 
   async deleteCase(id: string): Promise<void> {
