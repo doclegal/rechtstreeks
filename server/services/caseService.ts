@@ -188,7 +188,7 @@ export const caseService = {
     return mapSupabaseToInternal(data);
   },
 
-  async updateCaseStatus(id: string, status: CaseStatus): Promise<Case> {
+  async updateCaseStatus(id: string, status: CaseStatus, _currentStep?: string, _nextActionLabel?: string): Promise<Case> {
     const supabaseUpdates: Partial<SupabaseCaseRow> = {
       status,
       updated_at: new Date().toISOString(),
