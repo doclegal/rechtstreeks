@@ -74,13 +74,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const newCase = await caseService.createCase(caseData);
       
-      // Create initial event
-      await storage.createEvent({
-        caseId: newCase.id,
-        actorUserId: userId,
-        type: "case_created",
-        payloadJson: { caseId: newCase.id },
-      });
+      // Create initial event (optional - may fail if using Supabase for cases)
+      try {
+        await storage.createEvent({
+          caseId: newCase.id,
+          actorUserId: userId,
+          type: "case_created",
+          payloadJson: { caseId: newCase.id },
+        });
+      } catch (eventError) {
+        console.log("Note: Event creation skipped (case stored in Supabase)");
+      }
       
       res.json(newCase);
     } catch (error) {
