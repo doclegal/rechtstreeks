@@ -9,6 +9,7 @@ import { fileService } from "./services/fileService";
 import { pdfService } from "./services/pdfService";
 import { supabaseStorageService } from "./services/supabaseStorageService";
 import { supabase } from "./supabaseClient";
+import { documentAnalysisService, type MindStudioAnalysis } from "./services/documentAnalysisService";
 import { mockIntegrations } from "./services/mockIntegrations";
 import { db, handleDatabaseError } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -1236,6 +1237,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error(`Failed to create document record: ${error.message}`);
       }
       
+      // Call MindStudio for document analysis
+      let analysis: MindStudioAnalysis | null = null;
+      let analysisError: string | null = null;
+      
+      try {
+        // Check if MindStudio is configured
+        if (process.env.MINDSTUDIO_API_KEY && process.env.MS_AGENT_APP_ID) {
+          console.log(`🔍 Starting MindStudio analysis for Supabase document ${document.id}`);
+          
+          // Generate signed URL for MindStudio access
+          const { url: downloadUrl } = await supabaseStorageService.getSignedUrl(storagePath, 3600);
+          
+          // Prepare input for MindStudio
+          const inputJsonData: any = {
+            file_url: downloadUrl,
+            file_name: file.originalname
+          };
+          
+          // Add case details for context
+          const parties: Array<{ name: string; role: string }> = [];
+          if (caseData.claimantName) {
+            parties.push({ name: caseData.claimantName, role: 'EISER' });
+          }
+          if (caseData.counterpartyName) {
+            parties.push({ name: caseData.counterpartyName, role: 'GEDAAGDE' });
+          }
+          
+          inputJsonData.case_details = {
+            title: caseData.title || 'Onbekende zaak',
+            description: caseData.description || '',
+            parties: parties,
+            claim_amount: caseData.claimAmount || null
+          };
+          
+          console.log('📤 Calling MindStudio Dossier_check.flow for Supabase document');
+          
+          const requestBody = {
+            appId: process.env.MS_AGENT_APP_ID,
+            workflow: 'Dossier_check.flow',
+            variables: {
+              input_json: JSON.stringify(inputJsonData)
+            },
+            includeBillingCost: true
+          };
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3 * 60 * 1000);
+          
+          const response = await fetch('https://v1.mindstudio-api.com/developer/v2/agents/run', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.MINDSTUDIO_API_KEY}`,
+            },
+            body: JSON.stringify(requestBody),
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log('✅ MindStudio analysis result received');
+            
+            // Extract analysis from result
+            if (result.result && result.result.result) {
+              const docAnalysis = result.result.result;
+              
+              if (docAnalysis.document_name || docAnalysis.summary) {
+                const summaryText = docAnalysis.summary 
+                  || docAnalysis.relevance_reasoning 
+                  || 'Geen samenvatting beschikbaar';
+                
+                analysis = {
+                  document_name: docAnalysis.document_name || file.originalname,
+                  document_type: docAnalysis.document_type || 'unknown',
+                  is_readable: docAnalysis.is_readable ?? true,
+                  belongs_to_case: docAnalysis.belongs_to_case ?? true,
+                  summary: summaryText,
+                  tags: Array.isArray(docAnalysis.tags) ? docAnalysis.tags : [],
+                  note: docAnalysis.note || null,
+                };
+                
+                console.log(`✅ Extracted MindStudio analysis for ${file.originalname}`);
+              }
+            }
+          } else {
+            const errorText = await response.text();
+            console.error("❌ MindStudio API error:", errorText);
+            analysisError = "MindStudio analysis failed";
+          }
+        } else {
+          console.warn('⚠️ MindStudio not configured, skipping document analysis');
+          analysisError = "MindStudio not configured";
+        }
+      } catch (mindStudioError: any) {
+        console.error("❌ Error calling MindStudio:", mindStudioError);
+        analysisError = mindStudioError.message || "MindStudio analysis error";
+      }
+      
+      // Persist analysis to document_analyses table if we have one
+      let persistedAnalysis = null;
+      if (analysis) {
+        try {
+          persistedAnalysis = await documentAnalysisService.insertAnalysis(
+            document.id,
+            userUuid,
+            analysis
+          );
+          
+          if (persistedAnalysis) {
+            console.log(`✅ Analysis persisted to document_analyses for document ${document.id}`);
+          } else {
+            console.error(`❌ Failed to persist analysis for document ${document.id}`);
+          }
+        } catch (persistError: any) {
+          console.error("❌ Error persisting analysis to Supabase:", persistError);
+        }
+      }
+      
       res.status(201).json({
         success: true,
         document: {
@@ -1245,7 +1366,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           mime_type: document.mime_type,
           size_bytes: document.size_bytes,
           created_at: document.created_at,
-        }
+        },
+        analysis: persistedAnalysis ? {
+          document_name: persistedAnalysis.document_name,
+          document_type: persistedAnalysis.document_type,
+          is_readable: persistedAnalysis.is_readable,
+          belongs_to_case: persistedAnalysis.belongs_to_case,
+          summary: persistedAnalysis.summary,
+          tags: persistedAnalysis.tags,
+          note: persistedAnalysis.note,
+          created_at: persistedAnalysis.created_at,
+        } : null,
+        analysis_error: analysisError,
       });
     } catch (error: any) {
       console.error("Error uploading document to Supabase:", error);
@@ -1282,7 +1414,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw new Error(`Failed to fetch documents: ${error.message}`);
       }
       
-      res.json(documents || []);
+      if (!documents || documents.length === 0) {
+        return res.json([]);
+      }
+      
+      // Fetch analyses for all documents in a single query
+      const documentIds = documents.map(doc => doc.id);
+      const analysesMap = await documentAnalysisService.getAnalysesByDocumentIds(documentIds, userUuid);
+      
+      // Combine documents with their analyses
+      const documentsWithAnalysis = documents.map(doc => {
+        const analysis = analysesMap.get(doc.id);
+        return {
+          ...doc,
+          analysis: analysis ? {
+            document_name: analysis.document_name,
+            document_type: analysis.document_type,
+            is_readable: analysis.is_readable,
+            belongs_to_case: analysis.belongs_to_case,
+            summary: analysis.summary,
+            tags: analysis.tags,
+            note: analysis.note,
+            created_at: analysis.created_at,
+          } : null,
+        };
+      });
+      
+      res.json(documentsWithAnalysis);
     } catch (error: any) {
       console.error("Error fetching documents from Supabase:", error);
       res.status(500).json({ message: error.message || "Failed to fetch documents" });

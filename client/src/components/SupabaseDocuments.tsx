@@ -3,6 +3,7 @@ import { useDropzone } from "react-dropzone";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -15,7 +16,9 @@ import {
   Trash2,
   Loader2,
   X,
-  CheckCircle
+  CheckCircle,
+  AlertCircle,
+  Tag
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -27,12 +30,24 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+interface DocumentAnalysis {
+  document_name: string;
+  document_type: string | null;
+  is_readable: boolean;
+  belongs_to_case: boolean;
+  summary: string;
+  tags: string[];
+  note: string | null;
+  created_at: string;
+}
+
 interface SupabaseDocument {
   id: string;
   file_name: string;
   mime_type: string | null;
   size_bytes: number | null;
   created_at: string;
+  analysis?: DocumentAnalysis | null;
 }
 
 interface SupabaseDocumentsProps {
@@ -78,14 +93,31 @@ export default function SupabaseDocuments({ caseId }: SupabaseDocumentsProps) {
 
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/cases', caseId, 'documents'] });
       setUploadProgress({});
       setUploadedFiles([]);
-      toast({
-        title: "Upload voltooid",
-        description: "Document is succesvol geüpload naar Supabase Storage",
-      });
+      
+      const hasAnalysis = data.analysis !== null;
+      const hasError = data.analysis_error !== null;
+      
+      if (hasAnalysis) {
+        toast({
+          title: "Upload voltooid",
+          description: "Document is succesvol geüpload en geanalyseerd",
+        });
+      } else if (hasError) {
+        toast({
+          title: "Upload voltooid",
+          description: "Document is geüpload, maar analyse is niet beschikbaar",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Upload voltooid",
+          description: "Document is succesvol geüpload",
+        });
+      }
     },
     onError: (error: Error) => {
       setUploadProgress({});
@@ -235,38 +267,87 @@ export default function SupabaseDocuments({ caseId }: SupabaseDocumentsProps) {
               {documents.map((doc) => (
                 <div 
                   key={doc.id} 
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                  className="border rounded-lg overflow-hidden"
                   data-testid={`supabase-doc-${doc.id}`}
                 >
-                  <div className="flex items-center space-x-3">
-                    {getFileIcon(doc.mime_type)}
-                    <div>
-                      <p className="font-medium text-sm">{doc.file_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatFileSize(doc.size_bytes)} • {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true, locale: nl })}
-                      </p>
+                  <div className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center space-x-3">
+                      {getFileIcon(doc.mime_type)}
+                      <div>
+                        <p className="font-medium text-sm">{doc.file_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatFileSize(doc.size_bytes)} • {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true, locale: nl })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDownload(doc)}
+                        data-testid={`button-download-supabase-${doc.id}`}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteMutation.mutate(doc.id)}
+                        disabled={deleteMutation.isPending}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        data-testid={`button-delete-supabase-${doc.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDownload(doc)}
-                      data-testid={`button-download-supabase-${doc.id}`}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteMutation.mutate(doc.id)}
-                      disabled={deleteMutation.isPending}
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      data-testid={`button-delete-supabase-${doc.id}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+
+                  {doc.analysis ? (
+                    <div className="px-4 pb-4 pt-2 border-t border-border bg-green-50 dark:bg-green-950/20" data-testid={`analysis-${doc.id}`}>
+                      <div className="mb-3">
+                        <div className="flex items-start space-x-2">
+                          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <p className="text-sm text-green-900 dark:text-green-100 leading-relaxed">
+                              {doc.analysis.summary}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {doc.analysis.tags && doc.analysis.tags.length > 0 && (
+                        <div className="flex items-center flex-wrap gap-2 mb-3">
+                          <Tag className="h-3 w-3 text-muted-foreground" />
+                          {doc.analysis.tags.map((tag, index) => (
+                            <Badge 
+                              key={index} 
+                              variant="secondary" 
+                              className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-0"
+                              data-testid={`tag-${doc.id}-${index}`}
+                            >
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+
+                      {doc.analysis.note && (
+                        <div className="flex items-start space-x-2 p-2 bg-amber-100 dark:bg-amber-950/30 rounded-md">
+                          <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                          <p className="text-sm text-amber-900 dark:text-amber-100" data-testid={`note-${doc.id}`}>
+                            {doc.analysis.note}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="px-4 pb-3 pt-2 border-t border-border bg-muted/30" data-testid={`no-analysis-${doc.id}`}>
+                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <File className="h-4 w-4" />
+                        <span>Geen analyse beschikbaar</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

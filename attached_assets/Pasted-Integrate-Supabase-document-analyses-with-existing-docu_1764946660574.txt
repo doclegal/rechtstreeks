@@ -1,0 +1,210 @@
+Integrate Supabase document_analyses with existing document upload & MindStudio flow
+
+I have manually created a new table in Supabase and enabled dev RLS.
+You must now update the backend so that the existing document upload + MindStudio analysis flow persists its output into this table and returns it to the frontend together with the document metadata.
+
+1. Current environment (do NOT change this)
+
+Supabase client:
+
+Uses SUPABASE_URL + SUPABASE_ANON_KEY only.
+
+No service role key, no Supabase Auth.
+
+Auth in the app:
+
+Custom Express middleware sets req.user.id to the current user id.
+
+Supabase RLS:
+
+Enabled for cases, case_documents and document_analyses, but in dev mode with permissive policies (using (true) / with check (true)).
+
+File handling:
+
+Files are uploaded to Supabase Storage bucket case-files at path:
+{user_id}/{case_id}/{originalFileName}
+
+A row is inserted into case_documents for each uploaded file.
+
+The file is then sent to a MindStudio flow which returns:
+
+document_name
+
+document_type
+
+is_readable
+
+belongs_to_case
+
+summary
+
+tags (array of strings)
+
+note (optional)
+
+The frontend currently shows the MindStudio summary and tags, but they are not persisted in Supabase yet.
+
+Do not modify the Supabase schema or RLS policies. They already exist and must be treated as fixed.
+
+2. New Supabase table: public.document_analyses
+
+This table already exists with the following columns:
+
+id uuid, primary key, default gen_random_uuid()
+
+document_id uuid, not null, FK → public.case_documents(id) with ON DELETE CASCADE
+
+user_id uuid, not null
+
+document_name text, not null
+
+document_type text, nullable
+
+is_readable boolean, not null, default true
+
+belongs_to_case boolean, not null, default true
+
+summary text, not null
+
+tags jsonb, not null, default '[]'::jsonb
+
+note text, nullable
+
+created_at timestamptz, not null, default now()
+
+There is also an index:
+
+idx_document_analyses_document on (document_id)
+
+You must not change this schema. Instead, adapt the backend code to use it.
+
+3. Required backend changes
+3.1. Create a small service layer for document_analyses
+
+Add a service module (similar style to the existing caseService and document service) that provides at least:
+
+A function to insert a new analysis for a document.
+
+A function to fetch the latest analysis for a given document_id (or null if none exists).
+
+This service must:
+
+Use the existing Supabase client.
+
+Never touch any other tables.
+
+Map MindStudio output to the Supabase schema:
+
+document_id ← the case_documents.id value from the upload flow
+
+user_id ← req.user.id
+
+document_name ← MindStudio’s document_name
+
+document_type ← MindStudio’s document_type
+
+is_readable ← MindStudio’s is_readable
+
+belongs_to_case ← MindStudio’s belongs_to_case
+
+summary ← MindStudio’s summary
+
+tags ← MindStudio’s tags (array of strings) stored as jsonb
+
+note ← MindStudio’s note (optional)
+
+Return a typed object representing the inserted row.
+
+3.2. Extend the upload flow to persist the analysis
+
+In the existing upload endpoint (e.g. POST /api/cases/:caseId/documents):
+
+Upload the file to Supabase Storage and insert the row into case_documents as it already does.
+
+Call the MindStudio flow with the file (this is already implemented).
+
+After receiving the analysis JSON from MindStudio, call the new document_analyses service to:
+
+insert a row in document_analyses with the mapping described above.
+
+Update the response payload of the upload endpoint so that it includes:
+
+the stored document record from case_documents, and
+
+the stored analysis record from document_analyses (summary, tags, etc.), nested under a field like analysis.
+
+Add robust error handling:
+
+If MindStudio fails, the document itself must still be stored in case_documents and Storage.
+
+In that case, the response should include the document but analysis should be null and an error flag should indicate that analysis failed.
+
+Supabase errors for the document_analyses insert must be logged and returned as part of the response, but must not crash the whole request.
+
+3.3. Extend the “list documents for a case” endpoint
+
+The current GET /api/cases/:caseId/documents only returns metadata from case_documents.
+
+Update this endpoint so that:
+
+For each document, it also fetches the latest analysis from document_analyses by document_id.
+
+The JSON response per document includes a nested analysis object with:
+
+document_name
+
+document_type
+
+is_readable
+
+belongs_to_case
+
+summary
+
+tags
+
+note
+
+created_at
+
+If no analysis exists for a document yet, analysis should be null.
+
+Make sure the lookups use the document_id index efficiently and do not perform unnecessary queries.
+
+3.4. Keep user scoping consistent
+
+For all document_analyses operations:
+
+Always use req.user.id as user_id.
+
+When listing documents for a case, only match analyses where:
+
+document_analyses.user_id === req.user.id
+
+This is for logical consistency; RLS is permissive in dev, but the backend must still behave as if each user only sees their own analyses.
+
+4. Frontend expectations
+
+The Dossier / document list component should now:
+
+Receive each document together with an optional analysis field from the backend.
+
+Display the MindStudio summary and tags from the analysis object instead of relying on any temporary/in-memory state.
+
+After uploading a new document, immediately show the stored analysis from the API response.
+
+Do not change the visual design; just adapt the data flow to use the persisted document_analyses records returned by the updated endpoints.
+
+5. Deliverables
+
+Updated backend modules:
+
+New document_analyses service file.
+
+Updated upload endpoint.
+
+Updated “list documents for a case” endpoint.
+
+Updated frontend Dossier/document list integration to consume the new analysis field.
+
+A short summary of what changed and which files were modified.
