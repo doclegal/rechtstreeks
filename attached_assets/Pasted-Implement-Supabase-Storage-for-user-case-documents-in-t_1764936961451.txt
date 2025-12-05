@@ -1,0 +1,195 @@
+Implement Supabase Storage for user case documents in the existing Replit backend.
+
+Important context
+
+The app already:
+
+Connects to Supabase using the anon key.
+
+Has a custom Express auth middleware that sets req.user.id to the current user id (no Supabase Auth yet).
+
+Can create and load rows from the cases table.
+
+Supabase RLS for cases is currently permissive for development (policies like true), and access control is enforced in the backend.
+
+New database table: case_documents
+(assume this table already exists in Supabase with columns:)
+
+id (uuid, primary key, default gen_random_uuid())
+
+case_id (uuid, not null, FK to public.cases.id with ON DELETE CASCADE)
+
+user_id (uuid, not null)
+
+file_name (text, not null)
+
+storage_path (text, not null)
+
+mime_type (text, nullable)
+
+size_bytes (bigint, nullable)
+
+created_at (timestamptz, not null, default now())
+
+Supabase Storage
+
+Bucket name: case-files
+
+For now, assume Storage policies are permissive for development (access only through the backend, no direct browser → Supabase calls).
+
+All file paths must follow this structure:
+{user_id}/{case_id}/{originalFileName}
+
+user_id must always be taken from req.user.id in the backend.
+
+Goal
+Add full document handling for each case:
+
+Upload a document for a given case.
+
+List all documents for a given case.
+
+Generate a short-lived signed URL to download a specific document.
+
+(Optional) Delete a document belonging to the current user.
+
+1. Backend: upload endpoint
+
+Implement:
+
+POST /api/cases/:caseId/documents
+
+Behaviour:
+
+Require the user to be authenticated via the existing middleware (req.user must be present).
+
+Use req.user.id as the current user id.
+
+Validate that:
+
+a case with caseId exists in cases, and
+
+cases.user_id === req.user.id.
+If not, return 404 or 403.
+
+Accept a multipart/form-data request with a single file.
+
+Build the storage path as:
+\${req.user.id}/${caseId}/${originalFileName}``
+
+Upload the file to the Supabase Storage bucket case-files at that path using the existing Supabase client.
+
+After successful upload, insert a row into case_documents with:
+
+case_id = caseId
+
+user_id = req.user.id
+
+file_name = original filename
+
+storage_path = the path used
+
+mime_type = MIME type if available
+
+size_bytes = file size in bytes if available
+
+Return JSON with the created document record and a success flag.
+
+Add proper error handling for:
+
+missing/invalid file
+
+unauthenticated user
+
+case not found or not owned by the user
+
+Supabase errors (upload or insert).
+
+2. Backend: list documents endpoint
+
+Implement:
+
+GET /api/cases/:caseId/documents
+
+Behaviour:
+
+Require authentication (req.user must exist).
+
+Validate that the case with caseId exists and belongs to req.user.id.
+
+Query case_documents where:
+
+case_id = caseId
+
+user_id = req.user.id
+
+Return a JSON array of documents with:
+
+id, file_name, created_at, mime_type, size_bytes.
+
+3. Backend: signed URL endpoint
+
+Implement:
+
+GET /api/documents/:documentId/url
+
+Behaviour:
+
+Require authentication.
+
+Fetch the row from case_documents where:
+
+id = documentId
+
+user_id = req.user.id
+If not found, return 404.
+
+Use storage_path and bucket case-files to request a signed URL from Supabase Storage (e.g. expiry 300 seconds).
+
+Return JSON:
+
+url = signed URL
+
+expires_in = number of seconds it is valid.
+
+4. (Optional) Backend: delete document endpoint
+
+Implement:
+
+DELETE /api/documents/:documentId
+
+Behaviour:
+
+Require authentication.
+
+Fetch case_documents where id = documentId and user_id = req.user.id.
+
+If not found, return 404.
+
+Delete the file from case-files using storage_path.
+
+Delete the database row.
+
+Return { success: true }.
+
+5. Frontend integration
+
+On the case detail screen:
+
+Allow the user to upload one or more files using POST /api/cases/:caseId/documents.
+
+On load, call GET /api/cases/:caseId/documents and render the list.
+
+Add a “Download” button that calls GET /api/documents/:documentId/url and then navigates to the returned URL.
+
+(Optional) Add a “Delete” button that calls DELETE /api/documents/:documentId and refreshes the list.
+
+6. Constraints
+
+Use the existing Supabase client (supabaseClient.ts) and existing auth middleware (req.user).
+
+Do not introduce Supabase Auth or service role logic here.
+
+Follow the existing project structure and coding style.
+
+Output the complete implementation of these endpoints and the necessary frontend adjustments, ready to run in my existing Replit project.

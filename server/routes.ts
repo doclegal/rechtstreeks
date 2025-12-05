@@ -7,6 +7,8 @@ import { insertCaseSchema, insertDocumentSchema, insertInvitationSchema, type Ca
 import { aiService, AIService } from "./services/aiService";
 import { fileService } from "./services/fileService";
 import { pdfService } from "./services/pdfService";
+import { supabaseStorageService } from "./services/supabaseStorageService";
+import { supabase } from "./supabaseClient";
 import { mockIntegrations } from "./services/mockIntegrations";
 import { db, handleDatabaseError } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -1186,6 +1188,181 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting document:", error);
       res.status(500).json({ message: "Failed to delete document" });
+    }
+  });
+
+  // === SUPABASE STORAGE DOCUMENT ENDPOINTS ===
+  
+  // Upload document to Supabase Storage
+  app.post('/api/cases/:caseId/documents', isAuthenticated, upload.single('file'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userUuid = ensureUuid(userId);
+      const caseId = req.params.caseId;
+      const file = req.file as Express.Multer.File;
+      
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      // Verify case exists and belongs to user
+      const caseData = await caseService.getCaseById(caseId);
+      if (!caseData) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      if (caseData.ownerUserId !== userUuid) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Upload to Supabase Storage
+      const { storagePath } = await supabaseStorageService.uploadFile(userUuid, caseId, file);
+      
+      // Insert record into Supabase case_documents table
+      const { data: document, error } = await supabase
+        .from('case_documents')
+        .insert({
+          case_id: caseId,
+          user_id: userUuid,
+          file_name: file.originalname,
+          storage_path: storagePath,
+          mime_type: file.mimetype || null,
+          size_bytes: file.size || null,
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error("Supabase insert error:", error);
+        throw new Error(`Failed to create document record: ${error.message}`);
+      }
+      
+      res.status(201).json({
+        success: true,
+        document: {
+          id: document.id,
+          file_name: document.file_name,
+          storage_path: document.storage_path,
+          mime_type: document.mime_type,
+          size_bytes: document.size_bytes,
+          created_at: document.created_at,
+        }
+      });
+    } catch (error: any) {
+      console.error("Error uploading document to Supabase:", error);
+      res.status(500).json({ message: error.message || "Failed to upload document" });
+    }
+  });
+
+  // List documents from Supabase
+  app.get('/api/cases/:caseId/documents', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userUuid = ensureUuid(userId);
+      const caseId = req.params.caseId;
+      
+      // Verify case exists and user has access
+      const caseData = await caseService.getCaseById(caseId);
+      if (!caseData) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      if (caseData.ownerUserId !== userUuid && caseData.counterpartyUserId !== userUuid) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Query documents from Supabase
+      const { data: documents, error } = await supabase
+        .from('case_documents')
+        .select('id, file_name, created_at, mime_type, size_bytes')
+        .eq('case_id', caseId)
+        .eq('user_id', userUuid)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error("Supabase query error:", error);
+        throw new Error(`Failed to fetch documents: ${error.message}`);
+      }
+      
+      res.json(documents || []);
+    } catch (error: any) {
+      console.error("Error fetching documents from Supabase:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch documents" });
+    }
+  });
+
+  // Get signed URL for document download
+  app.get('/api/documents/:documentId/url', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userUuid = ensureUuid(userId);
+      const documentId = req.params.documentId;
+      
+      // Fetch document from Supabase
+      const { data: document, error } = await supabase
+        .from('case_documents')
+        .select('storage_path, user_id')
+        .eq('id', documentId)
+        .single();
+      
+      if (error || !document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      // Verify ownership
+      if (document.user_id !== userUuid) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Get signed URL
+      const { url, expiresIn } = await supabaseStorageService.getSignedUrl(document.storage_path, 300);
+      
+      res.json({ url, expires_in: expiresIn });
+    } catch (error: any) {
+      console.error("Error generating signed URL:", error);
+      res.status(500).json({ message: error.message || "Failed to generate download URL" });
+    }
+  });
+
+  // Delete document from Supabase Storage
+  app.delete('/api/documents/:documentId/supabase', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userUuid = ensureUuid(userId);
+      const documentId = req.params.documentId;
+      
+      // Fetch document from Supabase
+      const { data: document, error: fetchError } = await supabase
+        .from('case_documents')
+        .select('storage_path, user_id')
+        .eq('id', documentId)
+        .single();
+      
+      if (fetchError || !document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      
+      // Verify ownership
+      if (document.user_id !== userUuid) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Delete from storage
+      await supabaseStorageService.deleteFile(document.storage_path);
+      
+      // Delete database record
+      const { error: deleteError } = await supabase
+        .from('case_documents')
+        .delete()
+        .eq('id', documentId);
+      
+      if (deleteError) {
+        console.error("Supabase delete error:", deleteError);
+        throw new Error(`Failed to delete document record: ${deleteError.message}`);
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting document from Supabase:", error);
+      res.status(500).json({ message: error.message || "Failed to delete document" });
     }
   });
 
