@@ -103,107 +103,111 @@ function mapRowToRecord(row: SupabaseRkosRow): RkosAnalysisRecord {
   };
 }
 
+export class RkosServiceError extends Error {
+  constructor(message: string, public readonly originalError?: any) {
+    super(message);
+    this.name = "RkosServiceError";
+  }
+}
+
 export const rkosAnalysisService = {
   async createPendingAnalysis(
     input: RkosAnalysisInput
-  ): Promise<RkosAnalysisRecord | null> {
-    try {
-      const { data, error } = await supabase
-        .from("rkos_analyses")
-        .insert({
-          case_id: input.case_id,
-          analysis_id: input.analysis_id || null,
-          user_id: input.user_id,
-          mindstudio_run_id: input.mindstudio_run_id || null,
-          flow_version: input.flow_version || "RKOS.flow",
-          status: "pending",
-          started_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
+  ): Promise<RkosAnalysisRecord> {
+    const { data, error } = await supabase
+      .from("rkos_analyses")
+      .insert({
+        case_id: input.case_id,
+        analysis_id: input.analysis_id || null,
+        user_id: input.user_id,
+        mindstudio_run_id: input.mindstudio_run_id || null,
+        flow_version: input.flow_version || "RKOS.flow",
+        status: "pending",
+        started_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
 
-      if (error) {
-        console.error("Supabase createPendingAnalysis error:", error);
-        return null;
-      }
-
-      console.log(`✅ Created pending RKOS analysis: ${data?.id}`);
-      return data ? mapRowToRecord(data) : null;
-    } catch (error) {
-      console.error("Error creating pending RKOS analysis:", error);
-      return null;
+    if (error) {
+      console.error("Supabase createPendingAnalysis error:", error);
+      throw new RkosServiceError("Failed to create pending RKOS analysis", error);
     }
+
+    if (!data) {
+      throw new RkosServiceError("No data returned from createPendingAnalysis");
+    }
+
+    console.log(`✅ Created pending RKOS analysis: ${data.id}`);
+    return mapRowToRecord(data);
   },
 
   async markCompleted(
     id: string,
     result: RkosAnalysisResult,
     rawPayload: any
-  ): Promise<RkosAnalysisRecord | null> {
-    try {
-      const { data, error } = await supabase
-        .from("rkos_analyses")
-        .update({
-          status: "completed",
-          completed_at: new Date().toISOString(),
-          chance_of_success: result.chance_of_success ?? null,
-          confidence_level: result.confidence_level || null,
-          summary_verdict: result.summary_verdict || null,
-          assessment: result.assessment || null,
-          facts: result.facts || null,
-          strengths: result.strengths || null,
-          weaknesses: result.weaknesses || null,
-          risks: result.risks || null,
-          legal_analysis: result.legal_analysis || null,
-          recommended_claims: result.recommended_claims || null,
-          applicable_laws: result.applicable_laws || null,
-          missing_elements: result.missing_elements || null,
-          raw_payload: rawPayload || null,
-        })
-        .eq("id", id)
-        .select()
-        .single();
+  ): Promise<RkosAnalysisRecord> {
+    const { data, error } = await supabase
+      .from("rkos_analyses")
+      .update({
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        chance_of_success: result.chance_of_success ?? null,
+        confidence_level: result.confidence_level || null,
+        summary_verdict: result.summary_verdict || null,
+        assessment: result.assessment || null,
+        facts: result.facts || null,
+        strengths: result.strengths || null,
+        weaknesses: result.weaknesses || null,
+        risks: result.risks || null,
+        legal_analysis: result.legal_analysis || null,
+        recommended_claims: result.recommended_claims || null,
+        applicable_laws: result.applicable_laws || null,
+        missing_elements: result.missing_elements || null,
+        raw_payload: rawPayload || null,
+      })
+      .eq("id", id)
+      .select()
+      .single();
 
-      if (error) {
-        console.error("Supabase markCompleted error:", error);
-        return null;
-      }
-
-      console.log(`✅ RKOS analysis marked completed: ${id}`);
-      return data ? mapRowToRecord(data) : null;
-    } catch (error) {
-      console.error("Error marking RKOS analysis completed:", error);
-      return null;
+    if (error) {
+      console.error("Supabase markCompleted error:", error);
+      throw new RkosServiceError(`Failed to mark RKOS analysis ${id} as completed`, error);
     }
+
+    if (!data) {
+      throw new RkosServiceError(`No data returned from markCompleted for ${id}`);
+    }
+
+    console.log(`✅ RKOS analysis marked completed: ${id}`);
+    return mapRowToRecord(data);
   },
 
   async markFailed(
     id: string,
     errorInfo: any
-  ): Promise<RkosAnalysisRecord | null> {
-    try {
-      const { data, error } = await supabase
-        .from("rkos_analyses")
-        .update({
-          status: "failed",
-          completed_at: new Date().toISOString(),
-          raw_payload: { error: errorInfo },
-        })
-        .eq("id", id)
-        .select()
-        .single();
+  ): Promise<RkosAnalysisRecord> {
+    const { data, error } = await supabase
+      .from("rkos_analyses")
+      .update({
+        status: "failed",
+        completed_at: new Date().toISOString(),
+        raw_payload: { error: errorInfo },
+      })
+      .eq("id", id)
+      .select()
+      .single();
 
-      if (error) {
-        console.error("Supabase markFailed error:", error);
-        return null;
-      }
-
-      console.log(`❌ RKOS analysis marked failed: ${id}`);
-      return data ? mapRowToRecord(data) : null;
-    } catch (error) {
-      console.error("Error marking RKOS analysis failed:", error);
-      return null;
+    if (error) {
+      console.error("Supabase markFailed error:", error);
+      throw new RkosServiceError(`Failed to mark RKOS analysis ${id} as failed`, error);
     }
+
+    if (!data) {
+      throw new RkosServiceError(`No data returned from markFailed for ${id}`);
+    }
+
+    console.log(`❌ RKOS analysis marked failed: ${id}`);
+    return mapRowToRecord(data);
   },
 
   async getAnalysesByCaseId(
