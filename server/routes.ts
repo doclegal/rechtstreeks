@@ -2009,9 +2009,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         console.log(`📊 Running RKOS analysis (full-analyze endpoint) for case ${caseId}`);
         
-        // Fetch documents directly from database (includes documentAnalysis)
-        const documents = await db.select().from(caseDocuments).where(eq(caseDocuments.caseId, caseId));
-        console.log(`📄 Found ${documents.length} documents from database`);
+        // Fetch documents from Supabase case_documents table (where they are actually stored)
+        const { data: supabaseDocuments, error: docsError } = await supabase
+          .from('case_documents')
+          .select('id, file_name, storage_path, mime_type, size_bytes, created_at')
+          .eq('case_id', caseId)
+          .order('created_at', { ascending: false });
+        
+        if (docsError) {
+          console.warn('⚠️ Failed to fetch Supabase documents:', docsError);
+        }
+        
+        const documents = supabaseDocuments || [];
+        console.log(`📄 Found ${documents.length} documents from Supabase`);
+        
+        // Fetch document analyses for all documents
+        let documentAnalyses: any[] = [];
+        if (documents.length > 0) {
+          const documentIds = documents.map((d: any) => d.id);
+          const { data: analysesData, error: analysesError } = await supabase
+            .from('document_analyses')
+            .select('*')
+            .in('document_id', documentIds);
+          
+          if (analysesError) {
+            console.warn('⚠️ Failed to fetch document analyses:', analysesError);
+          } else {
+            documentAnalyses = analysesData || [];
+          }
+        }
+        console.log(`📄 Found ${documentAnalyses.length} document analyses`);
         
         // Fetch latest analysis record (for context)
         const analysisRecords = await db
@@ -2063,26 +2090,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           recommendations: parsedAnalysis?.recommended_claims || [],
           applicable_rules: parsedAnalysis?.applicable_rules || [],
           
-          // Dossier (documents with full analysis)
+          // Dossier (documents from Supabase with analyses)
           dossier: {
             document_count: documents.length,
-            documents: documents.map(doc => ({
-              id: doc.id,
-              filename: doc.filename,
-              type: doc.mimetype,
-              size_bytes: doc.sizeBytes,
-              extracted_text: doc.extractedText?.substring(0, 5000) || '[Tekst niet beschikbaar]',
-              analysis: doc.documentAnalysis ? {
-                document_type: (doc.documentAnalysis as any).document_type || 'unknown',
-                summary: (doc.documentAnalysis as any).summary || '',
-                tags: (doc.documentAnalysis as any).tags || [],
-                is_readable: (doc.documentAnalysis as any).is_readable ?? true,
-                belongs_to_case: (doc.documentAnalysis as any).belongs_to_case ?? true,
-                note: (doc.documentAnalysis as any).note || null,
-                evidential_value: (doc.documentAnalysis as any).evidential_value || null,
-              } : null,
-              analysis_status: doc.analysisStatus || 'pending',
-            })),
+            documents: documents.map((doc: any) => {
+              // Find matching analysis for this document
+              const docAnalysis = documentAnalyses.find((a: any) => a.document_id === doc.id);
+              return {
+                id: doc.id,
+                filename: doc.file_name,
+                type: doc.mime_type || 'application/octet-stream',
+                size_bytes: doc.size_bytes || 0,
+                storage_path: doc.storage_path,
+                analysis: docAnalysis ? {
+                  document_type: docAnalysis.document_type || 'unknown',
+                  summary: docAnalysis.summary || '',
+                  tags: docAnalysis.tags || [],
+                  is_readable: docAnalysis.is_readable ?? true,
+                  belongs_to_case: docAnalysis.belongs_to_case ?? true,
+                  note: docAnalysis.note || null,
+                } : null,
+                has_analysis: !!docAnalysis,
+              };
+            }),
             extracted_texts: latestAnalysis?.extractedTexts || [],
             all_files: latestAnalysis?.allFiles || [],
           },
@@ -2110,7 +2140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('📤 Sending to RKOS.flow with comprehensive context:', {
           case_id: contextPayload.case_id,
           document_count: contextPayload.dossier.document_count,
-          docs_with_analysis: documents.filter(d => d.documentAnalysis).length,
+          docs_with_analysis: documentAnalyses.length,
           has_summary: !!contextPayload.summary,
           has_legal_advice: !!contextPayload.legal_advice,
           has_previous_rkos: !!previousRkos,
@@ -2159,11 +2189,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           confidence_level: rkosResult.confidence_level
         });
 
-        // Save completed RKOS analysis to Supabase (without user_id to avoid FK constraint)
+        // Save completed RKOS analysis to Supabase
         let completedRkos;
         try {
           completedRkos = await rkosAnalysisService.createCompletedAnalysis(
-            { case_id: caseId, flow_version: "RKOS.flow" },
+            { case_id: caseId, user_id: ensureUuid(userId), flow_version: "RKOS.flow" },
             {
               chance_of_success: rkosResult.chance_of_success,
               confidence_level: rkosResult.confidence_level,
@@ -2248,9 +2278,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         console.log(`📊 Running success chance assessment for case ${caseId}`);
         
-        // Fetch documents directly from database (includes documentAnalysis)
-        const documents = await db.select().from(caseDocuments).where(eq(caseDocuments.caseId, caseId));
-        console.log(`📄 Found ${documents.length} documents from database for success chance`);
+        // Fetch documents from Supabase case_documents table
+        const { data: supabaseDocuments, error: docsError } = await supabase
+          .from('case_documents')
+          .select('id, file_name, storage_path, mime_type, size_bytes, created_at')
+          .eq('case_id', caseId)
+          .order('created_at', { ascending: false });
+        
+        if (docsError) {
+          console.warn('⚠️ Failed to fetch Supabase documents:', docsError);
+        }
+        
+        const documents = supabaseDocuments || [];
+        console.log(`📄 Found ${documents.length} documents from Supabase for success chance`);
+        
+        // Fetch document analyses for all documents
+        let documentAnalyses: any[] = [];
+        if (documents.length > 0) {
+          const documentIds = documents.map((d: any) => d.id);
+          const { data: analysesData, error: analysesError } = await supabase
+            .from('document_analyses')
+            .select('*')
+            .in('document_id', documentIds);
+          
+          if (analysesError) {
+            console.warn('⚠️ Failed to fetch document analyses:', analysesError);
+          } else {
+            documentAnalyses = analysesData || [];
+          }
+        }
+        console.log(`📄 Found ${documentAnalyses.length} document analyses`);
         
         // Fetch latest analysis record (for context)
         const analysisRecords = await db
@@ -2290,26 +2347,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
             category: caseData.category || '',
           },
           
-          // Dossier (documents with full analysis)
+          // Dossier (documents from Supabase with analyses)
           dossier: {
             document_count: documents.length,
-            documents: documents.map(doc => ({
-              id: doc.id,
-              filename: doc.filename,
-              type: doc.mimetype,
-              size_bytes: doc.sizeBytes,
-              extracted_text: doc.extractedText?.substring(0, 5000) || '[Tekst niet beschikbaar]',
-              analysis: doc.documentAnalysis ? {
-                document_type: (doc.documentAnalysis as any).document_type || 'unknown',
-                summary: (doc.documentAnalysis as any).summary || '',
-                tags: (doc.documentAnalysis as any).tags || [],
-                is_readable: (doc.documentAnalysis as any).is_readable ?? true,
-                belongs_to_case: (doc.documentAnalysis as any).belongs_to_case ?? true,
-                note: (doc.documentAnalysis as any).note || null,
-                evidential_value: (doc.documentAnalysis as any).evidential_value || null,
-              } : null,
-              analysis_status: doc.analysisStatus || 'pending',
-            }))
+            documents: documents.map((doc: any) => {
+              const docAnalysis = documentAnalyses.find((a: any) => a.document_id === doc.id);
+              return {
+                id: doc.id,
+                filename: doc.file_name,
+                type: doc.mime_type || 'application/octet-stream',
+                size_bytes: doc.size_bytes || 0,
+                storage_path: doc.storage_path,
+                analysis: docAnalysis ? {
+                  document_type: docAnalysis.document_type || 'unknown',
+                  summary: docAnalysis.summary || '',
+                  tags: docAnalysis.tags || [],
+                  is_readable: docAnalysis.is_readable ?? true,
+                  belongs_to_case: docAnalysis.belongs_to_case ?? true,
+                  note: docAnalysis.note || null,
+                } : null,
+                has_analysis: !!docAnalysis,
+              };
+            })
           },
           
           // Previous analysis context (if available)
@@ -2333,7 +2392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('📤 Sending context to RKOS.flow:', {
           case_id: contextPayload.case_id,
           document_count: contextPayload.dossier.document_count,
-          docs_with_analysis: documents.filter(d => d.documentAnalysis).length,
+          docs_with_analysis: documentAnalyses.length,
           has_previous_analysis: !!latestAnalysis,
           has_previous_rkos: !!previousRkos,
         });
@@ -2344,7 +2403,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           pendingRkos = await rkosAnalysisService.createPendingAnalysis({
             case_id: caseId,
-            analysis_id: fullAnalysisRecord?.id,
             user_id: userUuid,
             flow_version: "RKOS.flow"
           });
