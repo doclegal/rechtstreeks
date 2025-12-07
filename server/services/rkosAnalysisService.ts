@@ -3,7 +3,7 @@ import { supabase } from "../supabaseClient";
 export interface RkosAnalysisInput {
   case_id: string;
   analysis_id?: string;
-  user_id: string;
+  user_id?: string; // Optional - Supabase users table may not have this user
   mindstudio_run_id?: string;
   flow_version?: string;
 }
@@ -119,7 +119,7 @@ export const rkosAnalysisService = {
       .insert({
         case_id: input.case_id,
         analysis_id: input.analysis_id || null,
-        user_id: input.user_id,
+        user_id: input.user_id || null, // Set to null to avoid foreign key constraint with Supabase users table
         mindstudio_run_id: input.mindstudio_run_id || null,
         flow_version: input.flow_version || "RKOS.flow",
         status: "pending",
