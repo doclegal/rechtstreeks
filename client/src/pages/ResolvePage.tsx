@@ -244,7 +244,7 @@ export default function ResolvePage() {
     enabled: !!selectedCaseId,
   });
 
-  // Extract mediation tips from analysis (check both latestAnalysis and fullAnalysis)
+  // Extract mediation tips from analysis (check rkosAnalysis from Supabase, then fullAnalysis, then latestAnalysis)
   const mediationTips = useMemo(() => {
     if (!selectedCase) {
       console.log('❌ ResolvePage: No selectedCase');
@@ -252,24 +252,28 @@ export default function ResolvePage() {
     }
     
     console.log('📊 ResolvePage: selectedCase:', {
+      hasRkosAnalysis: !!selectedCase.rkosAnalysis,
       hasLatestAnalysis: !!selectedCase.latestAnalysis,
-      hasFullAnalysis: !!selectedCase.fullAnalysis,
-      latestAnalysisKeys: selectedCase.latestAnalysis ? Object.keys(selectedCase.latestAnalysis) : [],
-      fullAnalysisKeys: selectedCase.fullAnalysis ? Object.keys(selectedCase.fullAnalysis) : []
+      hasFullAnalysis: !!selectedCase.fullAnalysis
     });
     
-    // Try fullAnalysis first (contains RKOS data), then latestAnalysis
-    const analysis = selectedCase.fullAnalysis || selectedCase.latestAnalysis;
+    // Build analysis object - prefer rkosAnalysis from Supabase
+    let analysis: any = selectedCase.fullAnalysis || selectedCase.latestAnalysis || {};
     
-    if (!analysis) {
+    // Inject rkosAnalysis from Supabase if available
+    if (selectedCase.rkosAnalysis) {
+      analysis = { ...analysis, succesKansAnalysis: selectedCase.rkosAnalysis };
+    }
+    
+    if (!analysis || (!analysis.succesKansAnalysis && !analysis.legalAdviceJson)) {
       console.log('❌ ResolvePage: No analysis found');
       return ["Start eerst met een juridische analyse van uw zaak voordat u de mediation begint."];
     }
     
     console.log('✅ ResolvePage: Using analysis:', {
-      source: selectedCase.fullAnalysis ? 'fullAnalysis' : 'latestAnalysis',
-      hasSuccesKans: !!(analysis as any).succesKansAnalysis,
-      hasLegalAdvice: !!(analysis as any).legalAdviceJson
+      source: selectedCase.rkosAnalysis ? 'rkosAnalysis (Supabase)' : selectedCase.fullAnalysis ? 'fullAnalysis' : 'latestAnalysis',
+      hasSuccesKans: !!analysis.succesKansAnalysis,
+      hasLegalAdvice: !!analysis.legalAdviceJson
     });
     
     return buildMediationTipsFromAnalysis(analysis);

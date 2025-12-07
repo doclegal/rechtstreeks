@@ -54,9 +54,14 @@ export default function VolledigeAnalyseDetails() {
     }
   }, [user, authLoading, toast]);
 
+  // Use rkosAnalysis from Supabase (preferred) or fallback to legacy succesKansAnalysis
   let succesKansAnalysis = null;
   
-  if ((currentCase?.fullAnalysis as any)?.succesKansAnalysis) {
+  if ((currentCase as any)?.rkosAnalysis) {
+    // New Supabase storage - directly use the rkosAnalysis object
+    succesKansAnalysis = (currentCase as any).rkosAnalysis;
+  } else if ((currentCase?.fullAnalysis as any)?.succesKansAnalysis) {
+    // Legacy fallback
     succesKansAnalysis = (currentCase.fullAnalysis as any).succesKansAnalysis;
   }
 

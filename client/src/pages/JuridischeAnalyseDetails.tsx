@@ -85,12 +85,12 @@ export default function JuridischeAnalyseDetails() {
       }
     }
     
-    // Extract missing_elements from RKOS.flow (Volledige analyse) - AUTHORITATIVE SOURCE
-    if (currentCase?.fullAnalysis?.succesKansAnalysis) {
-      const succesKans = currentCase.fullAnalysis.succesKansAnalysis as any;
-      if (succesKans.missing_elements && Array.isArray(succesKans.missing_elements)) {
-        missingElementsFromRKOS = succesKans.missing_elements;
-        console.log('📋 Using missing_elements from RKOS.flow (authoritative):', missingElementsFromRKOS.length);
+    // Extract missing_elements from RKOS - prefer Supabase rkosAnalysis
+    const rkosSource = (currentCase as any)?.rkosAnalysis || (currentCase?.fullAnalysis as any)?.succesKansAnalysis;
+    if (rkosSource) {
+      if (rkosSource.missing_elements && Array.isArray(rkosSource.missing_elements)) {
+        missingElementsFromRKOS = rkosSource.missing_elements;
+        console.log('📋 Using missing_elements from RKOS (authoritative):', missingElementsFromRKOS.length);
       }
     }
   } catch (error) {
@@ -101,8 +101,8 @@ export default function JuridischeAnalyseDetails() {
   const hasAdvice = legalAdviceJson || legalAdviceFull;
   
   // Check if full analysis exists (required for generating advice)
-  // RKOS: Either analysisJson OR succesKansAnalysis counts as "full analysis"
-  const hasFullAnalysis = currentCase?.fullAnalysis?.analysisJson || currentCase?.fullAnalysis?.succesKansAnalysis;
+  // RKOS: Either rkosAnalysis (Supabase), analysisJson OR succesKansAnalysis counts as "full analysis"
+  const hasFullAnalysis = (currentCase as any)?.rkosAnalysis || currentCase?.fullAnalysis?.analysisJson || (currentCase?.fullAnalysis as any)?.succesKansAnalysis;
 
   if (!hasAdvice) {
     return (

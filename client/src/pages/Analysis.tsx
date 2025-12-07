@@ -93,8 +93,10 @@ export default function Analysis() {
   let allFiles = null;
   let succesKansAnalysis = null;
   
-  // ALWAYS check for succesKansAnalysis first, even if there's no parsedAnalysis
-  if ((currentCase?.fullAnalysis as any)?.succesKansAnalysis) {
+  // Use rkosAnalysis from Supabase (preferred) or fallback to legacy succesKansAnalysis
+  if ((currentCase as any)?.rkosAnalysis) {
+    succesKansAnalysis = (currentCase as any).rkosAnalysis;
+  } else if ((currentCase?.fullAnalysis as any)?.succesKansAnalysis) {
     succesKansAnalysis = (currentCase.fullAnalysis as any).succesKansAnalysis;
   }
   

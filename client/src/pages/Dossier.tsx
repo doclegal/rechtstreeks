@@ -38,14 +38,16 @@ export default function Dossier() {
     clearNotification();
   }, [currentCase?.id, currentCase?.hasUnseenMissingItems]);
 
-  // Extract missing_elements from RKOS.flow (Volledige analyse) - AUTHORITATIVE SOURCE
+  // Extract missing_elements from RKOS - prefer Supabase rkosAnalysis
   const missingRequirements = useMemo(() => {
-    if (!currentCase?.fullAnalysis?.succesKansAnalysis) {
+    // Prefer rkosAnalysis from Supabase, fallback to legacy succesKansAnalysis
+    const rkosSource = (currentCase as any)?.rkosAnalysis || (currentCase?.fullAnalysis as any)?.succesKansAnalysis;
+    
+    if (!rkosSource) {
       return [];
     }
 
-    const succesKans = currentCase.fullAnalysis.succesKansAnalysis as any;
-    const missing_elements = succesKans.missing_elements || [];
+    const missing_elements = rkosSource.missing_elements || [];
 
     if (!Array.isArray(missing_elements) || missing_elements.length === 0) {
       return [];
@@ -66,7 +68,7 @@ export default function Dossier() {
         inputKind: 'text' as const, // Default to text, but can upload documents too
       };
     });
-  }, [currentCase?.fullAnalysis?.succesKansAnalysis, currentCase?.id]);
+  }, [(currentCase as any)?.rkosAnalysis, (currentCase?.fullAnalysis as any)?.succesKansAnalysis, currentCase?.id]);
 
   if (authLoading) {
     return (
