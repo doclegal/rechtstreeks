@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { caseService } from "./services/caseService";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertCaseSchema, insertDocumentSchema, insertInvitationSchema, type CaseStatus, cases, analyses, savedLegislation } from "@shared/schema";
+import { insertCaseSchema, insertDocumentSchema, insertInvitationSchema, type CaseStatus, cases, analyses, savedLegislation, caseDocuments } from "@shared/schema";
 import { aiService, AIService } from "./services/aiService";
 import { fileService } from "./services/fileService";
 import { pdfService } from "./services/pdfService";
@@ -2009,11 +2009,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         console.log(`📊 Running RKOS analysis (full-analyze endpoint) for case ${caseId}`);
         
-        // Get all documents for the case
-        const documents = await storage.getDocumentsByCase(caseId);
-        console.log(`📄 Found ${documents.length} documents`);
+        // Fetch documents directly from database (includes documentAnalysis)
+        const documents = await db.select().from(caseDocuments).where(eq(caseDocuments.caseId, caseId));
+        console.log(`📄 Found ${documents.length} documents from database`);
+        
+        // Fetch latest analysis record (for context)
+        const analysisRecords = await db
+          .select()
+          .from(analyses)
+          .where(eq(analyses.caseId, caseId))
+          .orderBy(desc(analyses.createdAt))
+          .limit(1);
+        const latestAnalysis = analysisRecords[0] || null;
+        
+        // Fetch previous RKOS analysis from Supabase (for context)
+        let previousRkos = null;
+        try {
+          previousRkos = await rkosAnalysisService.getLatestCompletedAnalysis(caseId);
+        } catch (e) {
+          console.log('No previous RKOS analysis found');
+        }
 
-        // Build context for RKOS assessment
+        // Extract parsed analysis from latest analysis record
+        const parsedAnalysis = latestAnalysis?.analysisJson as any || null;
+        
+        // Build comprehensive context for RKOS.flow (matching expected structure)
         const contextPayload = {
           case_id: caseId,
           
@@ -2023,25 +2043,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
             description: caseData.description || '',
             claim_amount: Number(caseData.claimAmount) || 0,
             status: caseData.status,
+            user_role: caseData.userRole || 'EISER',
             claimant_name: caseData.claimantName || '',
+            claimant_address: caseData.claimantAddress || '',
+            claimant_city: caseData.claimantCity || '',
             counterparty_name: caseData.counterpartyName || '',
             counterparty_type: caseData.counterpartyType || '',
             counterparty_address: caseData.counterpartyAddress || '',
+            counterparty_city: caseData.counterpartyCity || '',
+            category: caseData.category || '',
           },
           
-          // Dossier (documents)
+          // Full analysis sections (from previous analysis if available)
+          summary: parsedAnalysis?.summary || caseData.description || '',
+          parties: parsedAnalysis?.case_overview?.parties || [],
+          facts: parsedAnalysis?.facts || { known: [], disputed: [], unclear: [] },
+          legal_analysis: parsedAnalysis?.legal_analysis || {},
+          risk_assessment: parsedAnalysis?.risk_assessment || { strengths: [], weaknesses: [], risks: [] },
+          recommendations: parsedAnalysis?.recommended_claims || [],
+          applicable_rules: parsedAnalysis?.applicable_rules || [],
+          
+          // Dossier (documents with full analysis)
           dossier: {
             document_count: documents.length,
             documents: documents.map(doc => ({
+              id: doc.id,
               filename: doc.filename,
               type: doc.mimetype,
-              extracted_text: doc.extractedText || '[Tekst niet beschikbaar]',
-              size_bytes: doc.sizeBytes
-            }))
-          }
+              size_bytes: doc.sizeBytes,
+              extracted_text: doc.extractedText?.substring(0, 5000) || '[Tekst niet beschikbaar]',
+              analysis: doc.documentAnalysis ? {
+                document_type: (doc.documentAnalysis as any).document_type || 'unknown',
+                summary: (doc.documentAnalysis as any).summary || '',
+                tags: (doc.documentAnalysis as any).tags || [],
+                is_readable: (doc.documentAnalysis as any).is_readable ?? true,
+                belongs_to_case: (doc.documentAnalysis as any).belongs_to_case ?? true,
+                note: (doc.documentAnalysis as any).note || null,
+                evidential_value: (doc.documentAnalysis as any).evidential_value || null,
+              } : null,
+              analysis_status: doc.analysisStatus || 'pending',
+            })),
+            extracted_texts: latestAnalysis?.extractedTexts || [],
+            all_files: latestAnalysis?.allFiles || [],
+          },
+          
+          // Legal advice (if available)
+          legal_advice: latestAnalysis?.legalAdviceJson || null,
+          
+          // Missing information (if available)
+          missing_information: latestAnalysis?.missingInformation || [],
+          
+          // Jurisprudence references (if available)
+          jurisprudence_references: latestAnalysis?.jurisprudenceReferences || [],
+          
+          // Previous RKOS context (if available)
+          previous_rkos: previousRkos ? {
+            chance_of_success: previousRkos.chance_of_success,
+            confidence_level: previousRkos.confidence_level,
+            assessment: previousRkos.assessment,
+            strengths: previousRkos.strengths || [],
+            weaknesses: previousRkos.weaknesses || [],
+            missing_elements: previousRkos.missing_elements || [],
+          } : null,
         };
 
-        console.log('📤 Sending to RKOS.flow');
+        console.log('📤 Sending to RKOS.flow with comprehensive context:', {
+          case_id: contextPayload.case_id,
+          document_count: contextPayload.dossier.document_count,
+          docs_with_analysis: documents.filter(d => d.documentAnalysis).length,
+          has_summary: !!contextPayload.summary,
+          has_legal_advice: !!contextPayload.legal_advice,
+          has_previous_rkos: !!previousRkos,
+        });
 
         // Call MindStudio RKOS.flow FIRST (before any Supabase operations)
         const flowResult = await aiService.runRKOS(contextPayload);
@@ -2175,98 +2248,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         console.log(`📊 Running success chance assessment for case ${caseId}`);
         
-        // Try to get full analysis (optional - MindStudio will handle missing data)
-        let fullAnalysisRecord = await storage.getAnalysisByType(caseId, 'mindstudio-full-analysis');
-        let parsedAnalysis = null;
-        let extractedTexts = null;
-        let allFiles = null;
+        // Fetch documents directly from database (includes documentAnalysis)
+        const documents = await db.select().from(caseDocuments).where(eq(caseDocuments.caseId, caseId));
+        console.log(`📄 Found ${documents.length} documents from database for success chance`);
         
-        if (fullAnalysisRecord) {
-          const fullAnalysisData = enrichFullAnalysis(fullAnalysisRecord);
-          parsedAnalysis = fullAnalysisData?.parsedAnalysis;
-          extractedTexts = fullAnalysisData?.extractedTexts;
-          allFiles = fullAnalysisData?.allFiles;
+        // Fetch latest analysis record (for context)
+        const analysisRecords = await db
+          .select()
+          .from(analyses)
+          .where(eq(analyses.caseId, caseId))
+          .orderBy(desc(analyses.createdAt))
+          .limit(1);
+        const latestAnalysis = analysisRecords[0] || null;
+        
+        // Fetch previous RKOS analysis from Supabase (for context)
+        let previousRkos = null;
+        try {
+          previousRkos = await rkosAnalysisService.getLatestCompletedAnalysis(caseId);
+        } catch (e) {
+          console.log('No previous RKOS analysis found');
         }
 
-        // Get all documents for the case (dossier)
-        const documents = await storage.getDocumentsByCase(caseId);
-        console.log(`📄 Found ${documents.length} documents for success chance assessment`);
-        console.log(`📋 Full analysis available: ${parsedAnalysis ? 'YES' : 'NO'}`);
-
-        // Get Kanton check result
-        let kantonCheckResult = null;
-        const kantonAnalysis = await storage.getAnalysisByType(caseId, 'kanton-check');
-        if (kantonAnalysis?.rawText) {
-          try {
-            const parsed = JSON.parse(kantonAnalysis.rawText);
-            if (parsed.ok !== undefined) {
-              kantonCheckResult = parsed;
-            } else if (parsed.thread?.posts) {
-              for (const post of parsed.thread.posts) {
-                if (post.debugLog?.newState?.variables?.app_response?.value) {
-                  const responseValue = post.debugLog.newState.variables.app_response.value;
-                  kantonCheckResult = typeof responseValue === 'string' ? JSON.parse(responseValue) : responseValue;
-                  break;
-                }
-              }
-            }
-          } catch (error) {
-            console.log('Could not parse kanton check from rawText:', error);
-          }
-        }
-
-        // Build context for RKOS assessment with ALL case data
+        // Build comprehensive context for RKOS.flow (same as full-analyze)
         const contextPayload = {
           case_id: caseId,
           
-          // COMPLETE CASE DATA (including counterparty)
+          // Complete case data
           case_data: {
             title: caseData.title || 'Zonder titel',
             description: caseData.description || '',
             claim_amount: Number(caseData.claimAmount) || 0,
             status: caseData.status,
+            user_role: caseData.userRole || 'EISER',
             claimant_name: caseData.claimantName || '',
+            claimant_address: caseData.claimantAddress || '',
+            claimant_city: caseData.claimantCity || '',
             counterparty_name: caseData.counterpartyName || '',
             counterparty_type: caseData.counterpartyType || '',
             counterparty_address: caseData.counterpartyAddress || '',
-            created_at: caseData.createdAt,
-            next_action_label: caseData.nextActionLabel
+            counterparty_city: caseData.counterpartyCity || '',
+            category: caseData.category || '',
           },
           
-          // KANTON CHECK RESULT (complete)
-          kanton_check: kantonCheckResult,
-          
-          // Full analysis sections (may be empty/null - MindStudio handles this)
-          summary: parsedAnalysis?.summary || '',
-          parties: parsedAnalysis?.case_overview?.parties || [],
-          facts: parsedAnalysis?.facts || {},
-          legal_analysis: parsedAnalysis?.legal_analysis || {},
-          risk_assessment: parsedAnalysis?.risk_assessment || {},
-          recommendations: parsedAnalysis?.recommended_claims || [],
-          applicable_rules: parsedAnalysis?.applicable_rules || [],
-          
-          // DOSSIER FROM MINDSTUDIO (extractedTexts and allFiles)
+          // Dossier (documents with full analysis)
           dossier: {
             document_count: documents.length,
             documents: documents.map(doc => ({
+              id: doc.id,
               filename: doc.filename,
               type: doc.mimetype,
-              extracted_text: doc.extractedText || '[Tekst niet beschikbaar]',
               size_bytes: doc.sizeBytes,
-              document_analysis: doc.documentAnalysis || null
-            })),
-            // Complete result from MindStudio dossier check
-            extracted_texts: extractedTexts,
-            all_files: allFiles
-          }
+              extracted_text: doc.extractedText?.substring(0, 5000) || '[Tekst niet beschikbaar]',
+              analysis: doc.documentAnalysis ? {
+                document_type: (doc.documentAnalysis as any).document_type || 'unknown',
+                summary: (doc.documentAnalysis as any).summary || '',
+                tags: (doc.documentAnalysis as any).tags || [],
+                is_readable: (doc.documentAnalysis as any).is_readable ?? true,
+                belongs_to_case: (doc.documentAnalysis as any).belongs_to_case ?? true,
+                note: (doc.documentAnalysis as any).note || null,
+                evidential_value: (doc.documentAnalysis as any).evidential_value || null,
+              } : null,
+              analysis_status: doc.analysisStatus || 'pending',
+            }))
+          },
+          
+          // Previous analysis context (if available)
+          previous_analysis: latestAnalysis ? {
+            legal_advice: latestAnalysis.legalAdviceJson || null,
+            missing_information: latestAnalysis.missingInformation || null,
+            jurisprudence_references: latestAnalysis.jurisprudenceReferences || null,
+          } : null,
+          
+          // Previous RKOS context (if available)
+          previous_rkos: previousRkos ? {
+            chance_of_success: previousRkos.chance_of_success,
+            confidence_level: previousRkos.confidence_level,
+            assessment: previousRkos.assessment,
+            strengths: previousRkos.strengths,
+            weaknesses: previousRkos.weaknesses,
+            missing_elements: previousRkos.missing_elements,
+          } : null,
         };
 
         console.log('📤 Sending context to RKOS.flow:', {
           case_id: contextPayload.case_id,
-          has_summary: !!contextPayload.summary,
-          has_parties: contextPayload.parties?.length > 0,
-          facts_count: (parsedAnalysis?.facts?.known?.length || 0) + (parsedAnalysis?.facts?.disputed?.length || 0) + (parsedAnalysis?.facts?.unclear?.length || 0),
-          docs_count: contextPayload.dossier.document_count
+          document_count: contextPayload.dossier.document_count,
+          docs_with_analysis: documents.filter(d => d.documentAnalysis).length,
+          has_previous_analysis: !!latestAnalysis,
+          has_previous_rkos: !!previousRkos,
         });
 
         // Create pending RKOS analysis in Supabase
