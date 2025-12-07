@@ -10,6 +10,7 @@ import { pdfService } from "./services/pdfService";
 import { supabaseStorageService } from "./services/supabaseStorageService";
 import { supabase } from "./supabaseClient";
 import { documentAnalysisService, type MindStudioAnalysis } from "./services/documentAnalysisService";
+import { rkosAnalysisService } from "./services/rkosAnalysisService";
 import { mockIntegrations } from "./services/mockIntegrations";
 import { db, handleDatabaseError } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -2024,11 +2025,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log('📤 Sending to RKOS.flow');
 
+        // Create pending RKOS analysis in Supabase
+        const userUuid = ensureUuid(userId);
+        const pendingRkos = await rkosAnalysisService.createPendingAnalysis({
+          case_id: caseId,
+          user_id: userUuid,
+          flow_version: "RKOS.flow"
+        });
+
+        if (!pendingRkos) {
+          console.error('❌ Failed to create pending RKOS analysis');
+          return res.status(500).json({ 
+            message: "Kon RKOS analyse niet starten. Probeer het opnieuw."
+          });
+        }
+
+        console.log(`✅ Created pending RKOS analysis: ${pendingRkos.id}`);
+
         // Call MindStudio RKOS.flow
         const flowResult = await aiService.runRKOS(contextPayload);
 
         if (flowResult.error) {
           console.error('❌ RKOS failed:', flowResult.error);
+          // Mark RKOS as failed in Supabase
+          await rkosAnalysisService.markFailed(pendingRkos.id, flowResult.error);
           return res.status(500).json({ 
             message: "RKOS analyse mislukt. Probeer het opnieuw.",
             error: flowResult.error
@@ -2057,6 +2077,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (!rkosResult) {
           console.error('❌ No RKOS result');
+          // Mark RKOS as failed in Supabase
+          await rkosAnalysisService.markFailed(pendingRkos.id, "No RKOS result in response");
           return res.status(500).json({ 
             message: "RKOS analyse heeft geen resultaat opgeleverd." 
           });
@@ -2067,25 +2089,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           confidence_level: rkosResult.confidence_level
         });
 
-        // Create/update full analysis record with RKOS data
-        let fullAnalysisRecord = await storage.getAnalysisByType(caseId, 'mindstudio-full-analysis');
-        
-        if (fullAnalysisRecord) {
-          // Update existing
-          await storage.updateAnalysis(fullAnalysisRecord.id, {
-            succesKansAnalysis: rkosResult
-          });
-          console.log('✅ Updated existing fullAnalysis with RKOS data');
-        } else {
-          // Create new
-          fullAnalysisRecord = await storage.createAnalysis({
-            caseId,
-            model: 'mindstudio-full-analysis',
-            rawText: JSON.stringify({ success: true, rkos: rkosResult }, null, 2),
-            succesKansAnalysis: rkosResult
-          });
-          console.log('✅ Created new fullAnalysis with RKOS data');
-        }
+        // Mark RKOS as completed in Supabase with all structured fields
+        const completedRkos = await rkosAnalysisService.markCompleted(pendingRkos.id, {
+          chance_of_success: rkosResult.chance_of_success,
+          confidence_level: rkosResult.confidence_level,
+          summary_verdict: rkosResult.summary_verdict,
+          assessment: rkosResult.assessment,
+          facts: rkosResult.facts,
+          strengths: rkosResult.strengths,
+          weaknesses: rkosResult.weaknesses,
+          risks: rkosResult.risks,
+          legal_analysis: rkosResult.legal_analysis,
+          recommended_claims: rkosResult.recommended_claims,
+          applicable_laws: rkosResult.applicable_laws,
+          missing_elements: rkosResult.missing_elements,
+        }, flowResult);
+
+        console.log(`✅ RKOS analysis completed in Supabase: ${pendingRkos.id}`);
 
         // Update case status
         await caseService.updateCase(caseId, { 
@@ -2099,7 +2119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         analysisRateLimit.set(rateLimitKey, now);
         
         return res.json({ 
-          analysis: fullAnalysisRecord,
+          analysis: completedRkos,
           successChance: rkosResult,
           status: 'completed',
           message: 'Volledige analyse (RKOS) succesvol voltooid'
@@ -2241,11 +2261,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           docs_count: contextPayload.dossier.document_count
         });
 
+        // Create pending RKOS analysis in Supabase
+        const userUuid = ensureUuid(userId);
+        const pendingRkos = await rkosAnalysisService.createPendingAnalysis({
+          case_id: caseId,
+          analysis_id: fullAnalysisRecord?.id,
+          user_id: userUuid,
+          flow_version: "RKOS.flow"
+        });
+
+        if (!pendingRkos) {
+          console.error('❌ Failed to create pending RKOS analysis');
+          return res.status(500).json({ 
+            message: "Kon RKOS analyse niet starten. Probeer het opnieuw."
+          });
+        }
+
+        console.log(`✅ Created pending RKOS analysis: ${pendingRkos.id}`);
+
         // Call MindStudio RKOS.flow
         const flowResult = await aiService.runRKOS(contextPayload);
 
         if (flowResult.error) {
           console.error('❌ RKOS call failed:', flowResult.error);
+          await rkosAnalysisService.markFailed(pendingRkos.id, flowResult.error);
           return res.status(500).json({ 
             message: "RKOS analyse mislukt. Probeer het opnieuw.",
             error: flowResult.error
@@ -2289,6 +2328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             result_keys: flowResult.result ? Object.keys(flowResult.result) : [],
             thread_keys: flowResult.thread ? Object.keys(flowResult.thread) : []
           });
+          await rkosAnalysisService.markFailed(pendingRkos.id, "No RKOS result in response");
           return res.status(500).json({ 
             message: "RKOS analyse heeft geen resultaat opgeleverd." 
           });
@@ -2299,27 +2339,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           confidence_level: rkosResult.confidence_level
         });
 
-        // Save or update the success chance data
-        if (fullAnalysisRecord) {
-          // Update existing full analysis record with success chance data
-          console.log('🔄 Updating fullAnalysis ID:', fullAnalysisRecord.id);
-          console.log('🔄 With succesKansAnalysis:', JSON.stringify(rkosResult));
-          const updatedRecord = await storage.updateAnalysis(fullAnalysisRecord.id, {
-            succesKansAnalysis: rkosResult
-          });
-          console.log('✅ Success chance analysis saved to existing fullAnalysis record');
-          console.log('✅ Updated record succesKansAnalysis:', updatedRecord.succesKansAnalysis);
-        } else {
-          // Create a standalone RKOS analysis record if no full analysis exists
-          console.log('📝 Creating standalone RKOS analysis record');
-          const rkosAnalysis = await storage.createAnalysis({
-            caseId: caseId,
-            model: 'rkos-standalone',
-            succesKansAnalysis: rkosResult,
-            version: 1
-          });
-          console.log('✅ RKOS analysis saved to new standalone record:', rkosAnalysis.id);
-        }
+        // Mark RKOS as completed in Supabase with all structured fields
+        const completedRkos = await rkosAnalysisService.markCompleted(pendingRkos.id, {
+          chance_of_success: rkosResult.chance_of_success,
+          confidence_level: rkosResult.confidence_level,
+          summary_verdict: rkosResult.summary_verdict,
+          assessment: rkosResult.assessment,
+          facts: rkosResult.facts,
+          strengths: rkosResult.strengths,
+          weaknesses: rkosResult.weaknesses,
+          risks: rkosResult.risks,
+          legal_analysis: rkosResult.legal_analysis,
+          recommended_claims: rkosResult.recommended_claims,
+          applicable_laws: rkosResult.applicable_laws,
+          missing_elements: rkosResult.missing_elements,
+        }, flowResult);
+
+        console.log(`✅ RKOS analysis completed in Supabase: ${pendingRkos.id}`);
 
         // Check if there are missing elements and set flag
         const hasMissingElements = rkosResult.missing_elements && 
@@ -2343,7 +2379,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.json({ 
           success: true,
-          successChance: rkosResult
+          successChance: rkosResult,
+          rkosAnalysisId: completedRkos?.id
         });
 
       } catch (error) {
@@ -2364,6 +2401,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error running success chance assessment:", error);
       res.status(500).json({ message: "Kans op succes beoordeling mislukt. Probeer het opnieuw." });
+    }
+  });
+
+  // GET RKOS analyses for a case from Supabase
+  app.get('/api/cases/:id/rkos-analyses', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      // Verify case access
+      const caseData = await caseService.getCaseById(caseId);
+      if (!caseData) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      if (!canAccessCase(userId, caseData)) {
+        return res.status(403).json({ message: "Unauthorized access to case" });
+      }
+      
+      // Fetch all RKOS analyses for this case from Supabase
+      const rkosAnalyses = await rkosAnalysisService.getAnalysesByCaseId(caseId);
+      
+      res.json({
+        success: true,
+        analyses: rkosAnalyses
+      });
+    } catch (error) {
+      console.error("Error fetching RKOS analyses:", error);
+      res.status(500).json({ message: "Fout bij ophalen RKOS analyses" });
+    }
+  });
+
+  // GET latest completed RKOS analysis for a case
+  app.get('/api/cases/:id/rkos-analysis/latest', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const caseId = req.params.id;
+      
+      // Verify case access
+      const caseData = await caseService.getCaseById(caseId);
+      if (!caseData) {
+        return res.status(404).json({ message: "Case not found" });
+      }
+      
+      if (!canAccessCase(userId, caseData)) {
+        return res.status(403).json({ message: "Unauthorized access to case" });
+      }
+      
+      // Fetch latest completed RKOS analysis from Supabase
+      const latestRkos = await rkosAnalysisService.getLatestCompletedAnalysis(caseId);
+      
+      if (!latestRkos) {
+        return res.status(404).json({ message: "Geen RKOS analyse gevonden" });
+      }
+      
+      res.json({
+        success: true,
+        analysis: latestRkos
+      });
+    } catch (error) {
+      console.error("Error fetching latest RKOS analysis:", error);
+      res.status(500).json({ message: "Fout bij ophalen RKOS analyse" });
     }
   });
 
