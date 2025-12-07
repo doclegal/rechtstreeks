@@ -111,20 +111,79 @@ export class RkosServiceError extends Error {
 }
 
 export const rkosAnalysisService = {
+  // Create a completed RKOS analysis directly (without pending step)
+  async createCompletedAnalysis(
+    input: RkosAnalysisInput,
+    result: RkosAnalysisResult,
+    rawPayload: any
+  ): Promise<RkosAnalysisRecord> {
+    const insertData: any = {
+      case_id: input.case_id,
+      analysis_id: input.analysis_id || null,
+      mindstudio_run_id: input.mindstudio_run_id || null,
+      flow_version: input.flow_version || "RKOS.flow",
+      status: "completed",
+      started_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+      chance_of_success: result.chance_of_success ?? null,
+      confidence_level: result.confidence_level || null,
+      summary_verdict: result.summary_verdict || null,
+      assessment: result.assessment || null,
+      facts: result.facts || null,
+      strengths: result.strengths || null,
+      weaknesses: result.weaknesses || null,
+      risks: result.risks || null,
+      legal_analysis: result.legal_analysis || null,
+      recommended_claims: result.recommended_claims || null,
+      applicable_laws: result.applicable_laws || null,
+      missing_elements: result.missing_elements || null,
+      raw_payload: rawPayload || null,
+    };
+    
+    // Only include user_id if provided (avoid foreign key constraint issues)
+    if (input.user_id) {
+      insertData.user_id = input.user_id;
+    }
+
+    const { data, error } = await supabase
+      .from("rkos_analyses")
+      .insert(insertData)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Supabase createCompletedAnalysis error:", error);
+      throw new RkosServiceError("Failed to create completed RKOS analysis", error);
+    }
+
+    if (!data) {
+      throw new RkosServiceError("No data returned from createCompletedAnalysis");
+    }
+
+    console.log(`✅ Created completed RKOS analysis: ${data.id}`);
+    return mapRowToRecord(data);
+  },
+
   async createPendingAnalysis(
     input: RkosAnalysisInput
   ): Promise<RkosAnalysisRecord> {
+    const insertData: any = {
+      case_id: input.case_id,
+      analysis_id: input.analysis_id || null,
+      mindstudio_run_id: input.mindstudio_run_id || null,
+      flow_version: input.flow_version || "RKOS.flow",
+      status: "pending",
+      started_at: new Date().toISOString(),
+    };
+    
+    // Only include user_id if provided
+    if (input.user_id) {
+      insertData.user_id = input.user_id;
+    }
+
     const { data, error } = await supabase
       .from("rkos_analyses")
-      .insert({
-        case_id: input.case_id,
-        analysis_id: input.analysis_id || null,
-        user_id: input.user_id || null, // Set to null to avoid foreign key constraint with Supabase users table
-        mindstudio_run_id: input.mindstudio_run_id || null,
-        flow_version: input.flow_version || "RKOS.flow",
-        status: "pending",
-        started_at: new Date().toISOString(),
-      })
+      .insert(insertData)
       .select()
       .single();
 

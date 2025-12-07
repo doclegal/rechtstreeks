@@ -2043,35 +2043,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log('📤 Sending to RKOS.flow');
 
-        // Create pending RKOS analysis in Supabase
-        const userUuid = ensureUuid(userId);
-        let pendingRkos;
-        try {
-          pendingRkos = await rkosAnalysisService.createPendingAnalysis({
-            case_id: caseId,
-            user_id: userUuid,
-            flow_version: "RKOS.flow"
-          });
-        } catch (rkosError) {
-          console.error('❌ Failed to create pending RKOS analysis:', rkosError);
-          return res.status(500).json({ 
-            message: "Kon RKOS analyse niet starten. Probeer het opnieuw."
-          });
-        }
-
-        console.log(`✅ Created pending RKOS analysis: ${pendingRkos.id}`);
-
-        // Call MindStudio RKOS.flow
+        // Call MindStudio RKOS.flow FIRST (before any Supabase operations)
         const flowResult = await aiService.runRKOS(contextPayload);
 
         if (flowResult.error) {
           console.error('❌ RKOS failed:', flowResult.error);
-          // Mark RKOS as failed in Supabase (best effort)
-          try {
-            await rkosAnalysisService.markFailed(pendingRkos.id, flowResult.error);
-          } catch (markError) {
-            console.error('Failed to mark RKOS as failed:', markError);
-          }
           return res.status(500).json({ 
             message: "RKOS analyse mislukt. Probeer het opnieuw.",
             error: flowResult.error
@@ -2100,12 +2076,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (!rkosResult) {
           console.error('❌ No RKOS result');
-          // Mark RKOS as failed in Supabase (best effort)
-          try {
-            await rkosAnalysisService.markFailed(pendingRkos.id, "No RKOS result in response");
-          } catch (markError) {
-            console.error('Failed to mark RKOS as failed:', markError);
-          }
           return res.status(500).json({ 
             message: "RKOS analyse heeft geen resultaat opgeleverd." 
           });
@@ -2116,31 +2086,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
           confidence_level: rkosResult.confidence_level
         });
 
-        // Mark RKOS as completed in Supabase with all structured fields
+        // Save completed RKOS analysis to Supabase (without user_id to avoid FK constraint)
         let completedRkos;
         try {
-          completedRkos = await rkosAnalysisService.markCompleted(pendingRkos.id, {
-            chance_of_success: rkosResult.chance_of_success,
-            confidence_level: rkosResult.confidence_level,
-            summary_verdict: rkosResult.summary_verdict,
-            assessment: rkosResult.assessment,
-            facts: rkosResult.facts,
-            strengths: rkosResult.strengths,
-            weaknesses: rkosResult.weaknesses,
-            risks: rkosResult.risks,
-            legal_analysis: rkosResult.legal_analysis,
-            recommended_claims: rkosResult.recommended_claims,
-            applicable_laws: rkosResult.applicable_laws,
-            missing_elements: rkosResult.missing_elements,
-          }, flowResult);
-        } catch (markError) {
-          console.error('❌ Failed to save RKOS analysis to Supabase:', markError);
-          return res.status(500).json({ 
-            message: "RKOS analyse is voltooid maar kon niet worden opgeslagen. Probeer het opnieuw."
-          });
+          completedRkos = await rkosAnalysisService.createCompletedAnalysis(
+            { case_id: caseId, flow_version: "RKOS.flow" },
+            {
+              chance_of_success: rkosResult.chance_of_success,
+              confidence_level: rkosResult.confidence_level,
+              summary_verdict: rkosResult.summary_verdict,
+              assessment: rkosResult.assessment,
+              facts: rkosResult.facts,
+              strengths: rkosResult.strengths,
+              weaknesses: rkosResult.weaknesses,
+              risks: rkosResult.risks,
+              legal_analysis: rkosResult.legal_analysis,
+              recommended_claims: rkosResult.recommended_claims,
+              applicable_laws: rkosResult.applicable_laws,
+              missing_elements: rkosResult.missing_elements,
+            },
+            flowResult
+          );
+        } catch (saveError) {
+          console.error('❌ Failed to save RKOS analysis to Supabase:', saveError);
+          // Continue anyway - return the result even if Supabase save fails
+          console.log('⚠️ Continuing without Supabase save');
         }
 
-        console.log(`✅ RKOS analysis completed in Supabase: ${pendingRkos.id}`);
+        console.log(`✅ RKOS analysis completed${completedRkos ? ` in Supabase: ${completedRkos.id}` : ''}`);
 
         // Update case status
         await caseService.updateCase(caseId, { 
