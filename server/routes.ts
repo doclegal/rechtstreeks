@@ -4083,10 +4083,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Case not found" });
       }
       
-      const analysis = await storage.getLatestAnalysis(caseId);
-      if (!analysis) {
+      // First check for RKOS analysis from Supabase (primary source)
+      let rkosAnalysis = null;
+      try {
+        rkosAnalysis = await rkosAnalysisService.getLatestCompletedAnalysis(caseId);
+      } catch (rkosError) {
+        console.warn("Failed to fetch RKOS from Supabase:", rkosError);
+      }
+      
+      // Also get legal advice from Supabase
+      let supabaseLegalAdvice = null;
+      try {
+        supabaseLegalAdvice = await legalAdviceService.getLatestCompletedAdvice(caseId);
+      } catch (adviceError) {
+        console.warn("Failed to fetch legal advice from Supabase:", adviceError);
+      }
+      
+      // Fall back to local database only if Supabase has no analysis
+      const localAnalysis = await storage.getLatestAnalysis(caseId);
+      
+      // Require at least one analysis source
+      if (!rkosAnalysis && !supabaseLegalAdvice && !localAnalysis) {
         return res.status(400).json({ message: "Case must be analyzed first" });
       }
+      
+      console.log("📊 Analysis sources - RKOS:", !!rkosAnalysis, "Legal Advice:", !!supabaseLegalAdvice, "Local:", !!localAnalysis);
 
       // Get all documents with their analyses for the dossier
       const documents = await storage.getDocumentsByCase(caseId);
@@ -4124,15 +4145,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Brief type:", briefType);
       console.log("Tone:", tone);
 
-      // Fetch jurisprudence references from ALL analyses (not just latest)
-      // The latest analysis might be RKOS, but jurisprudence is stored in Advies analysis
-      let jurisprudenceReferences: Array<{ecli: string; court: string; explanation: string}> | undefined = 
-        analysis.jurisprudenceReferences as Array<{ecli: string; court: string; explanation: string}> | undefined;
+      // Build analysis_json from Supabase data (primary) or fall back to local
+      let analysisJson: any = {};
       
-      // If latest analysis has no references, check all analyses
+      if (rkosAnalysis) {
+        // Build from Supabase RKOS analysis
+        analysisJson = {
+          chance_of_success: rkosAnalysis.chance_of_success,
+          confidence_level: rkosAnalysis.confidence_level,
+          summary_verdict: rkosAnalysis.summary_verdict,
+          assessment: rkosAnalysis.assessment,
+          facts: rkosAnalysis.facts || [],
+          strengths: rkosAnalysis.strengths || [],
+          weaknesses: rkosAnalysis.weaknesses || [],
+          risks: rkosAnalysis.risks || [],
+          legal_analysis: rkosAnalysis.legal_analysis,
+          recommended_claims: rkosAnalysis.recommended_claims,
+          applicable_laws: rkosAnalysis.applicable_laws,
+          missing_elements: rkosAnalysis.missing_elements,
+        };
+        console.log("📊 Using RKOS analysis from Supabase");
+      }
+      
+      // Add legal advice data if available
+      if (supabaseLegalAdvice) {
+        const rawPayload = supabaseLegalAdvice.raw_payload || {};
+        analysisJson = {
+          ...analysisJson,
+          legal_advice: {
+            de_feiten: rawPayload.de_feiten,
+            het_geschil: rawPayload.het_geschil,
+            juridische_duiding: rawPayload.juridische_duiding,
+            vervolgstappen: rawPayload.vervolgstappen,
+            betwiste_punten: rawPayload.betwiste_punten,
+            beschikbaar_bewijs: rawPayload.beschikbaar_bewijs,
+            ontbrekend_bewijs: rawPayload.ontbrekend_bewijs,
+          }
+        };
+        console.log("📋 Added legal advice from Supabase");
+      }
+      
+      // Fall back to local analysis if no Supabase data
+      if (Object.keys(analysisJson).length === 0 && localAnalysis) {
+        analysisJson = localAnalysis.factsJson || {};
+        console.log("📊 Using local analysis (fallback)");
+      }
+
+      // Fetch jurisprudence references - check local analysis first, then search all
+      let jurisprudenceReferences: Array<{ecli: string; court: string; explanation: string}> | undefined = 
+        localAnalysis?.jurisprudenceReferences as Array<{ecli: string; court: string; explanation: string}> | undefined;
+      
+      // If no references found, check all local analyses
       if (!jurisprudenceReferences || jurisprudenceReferences.length === 0) {
         const allAnalyses = await storage.getAnalysesByCase(caseId);
-        console.log(`🔍 Latest analysis has no jurisprudence references, checking all ${allAnalyses.length} analyses...`);
+        console.log(`🔍 Checking all ${allAnalyses.length} local analyses for jurisprudence references...`);
         
         for (const analysisItem of allAnalyses) {
           const refs = analysisItem.jurisprudenceReferences as Array<{ecli: string; court: string; explanation: string}> | undefined;
@@ -4154,7 +4220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const letterResult = await aiService.runDraftFirstLetter({
         case_id: caseId,
         case_text: caseData.description || "",
-        analysis_json: analysis.factsJson || {},
+        analysis_json: analysisJson,
         brief_type: briefType,
         sender,
         recipient,
