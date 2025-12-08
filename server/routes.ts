@@ -4378,26 +4378,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         letterResult.rawPayload
       );
       
-      // Update case status
-      await caseService.updateCaseStatus(
-        caseId,
-        "LETTER_DRAFTED",
-        "Deurwaarder inschakelen",
-        "Inschakelen deurwaarder"
-      );
+      // Update case status (gracefully handle if case is in Supabase only)
+      try {
+        await caseService.updateCaseStatus(
+          caseId,
+          "LETTER_DRAFTED",
+          "Deurwaarder inschakelen",
+          "Inschakelen deurwaarder"
+        );
+      } catch (statusError) {
+        console.log("Case status update skipped (case may be in Supabase only)");
+      }
       
-      // Create event with letter details
-      await storage.createEvent({
-        caseId,
-        actorUserId: userId,
-        type: "letter_drafted",
-        payloadJson: { 
-          letterId: letter.id,
-          briefType,
-          tone,
-          letterStructure: letterResult.brief
-        },
-      });
+      // Create event with letter details (gracefully handle if case is in Supabase only)
+      try {
+        await storage.createEvent({
+          caseId,
+          actorUserId: userId,
+          type: "letter_drafted",
+          payloadJson: { 
+            letterId: letter.id,
+            briefType,
+            tone,
+            letterStructure: letterResult.brief
+          },
+        });
+      } catch (eventError) {
+        console.log("Event creation skipped (case may be in Supabase only)");
+      }
       
       res.json({
         ...letter,
