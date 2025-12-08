@@ -75,6 +75,21 @@ interface SupabaseRkosRow {
   created_at: string;
 }
 
+// Helper to parse array items that might be stringified JSON objects
+function parseArrayItems(arr: any[] | null): any[] | null {
+  if (!Array.isArray(arr)) return null;
+  return arr.map(item => {
+    if (typeof item === 'string' && item.startsWith('{')) {
+      try {
+        return JSON.parse(item);
+      } catch {
+        return item;
+      }
+    }
+    return item;
+  });
+}
+
 function mapRowToRecord(row: SupabaseRkosRow): RkosAnalysisRecord {
   return {
     id: row.id,
@@ -90,10 +105,10 @@ function mapRowToRecord(row: SupabaseRkosRow): RkosAnalysisRecord {
     confidence_level: row.confidence_level,
     summary_verdict: row.summary_verdict,
     assessment: row.assessment,
-    facts: Array.isArray(row.facts) ? row.facts : null,
-    strengths: Array.isArray(row.strengths) ? row.strengths : null,
-    weaknesses: Array.isArray(row.weaknesses) ? row.weaknesses : null,
-    risks: Array.isArray(row.risks) ? row.risks : null,
+    facts: parseArrayItems(row.facts),
+    strengths: parseArrayItems(row.strengths),
+    weaknesses: parseArrayItems(row.weaknesses),
+    risks: parseArrayItems(row.risks),
     legal_analysis: row.legal_analysis,
     recommended_claims: row.recommended_claims,
     applicable_laws: row.applicable_laws,
