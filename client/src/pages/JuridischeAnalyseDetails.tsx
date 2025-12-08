@@ -57,6 +57,20 @@ export default function JuridischeAnalyseDetails() {
       legalAdviceJson = currentCase.fullAnalysis.legalAdviceJson;
     }
     
+    // NEW: Check Supabase legal advice (supabaseLegalAdvice) if no local legalAdviceJson
+    if (!legalAdviceJson && (currentCase as any)?.supabaseLegalAdvice) {
+      const supabaseAdvice = (currentCase as any).supabaseLegalAdvice;
+      legalAdviceJson = {
+        het_geschil: supabaseAdvice.het_geschil,
+        de_feiten: supabaseAdvice.de_feiten,
+        juridische_duiding: supabaseAdvice.juridische_duiding,
+        vervolgstappen: supabaseAdvice.vervolgstappen,
+        samenvatting_advies: supabaseAdvice.samenvatting_advies,
+        ontbrekend_bewijs: supabaseAdvice.ontbrekend_bewijs,
+      };
+      console.log('📋 Using legal advice from Supabase');
+    }
+    
     // Check rawText for both new and old formats
     if (currentCase?.fullAnalysis?.rawText) {
       const rawData = JSON.parse(currentCase.fullAnalysis.rawText);
