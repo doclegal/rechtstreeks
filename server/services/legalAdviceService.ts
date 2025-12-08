@@ -98,9 +98,11 @@ export const legalAdviceService = {
       started_at: new Date().toISOString(),
       completed_at: new Date().toISOString(),
       het_geschil: result.het_geschil || null,
-      de_feiten: Array.isArray(result.de_feiten) ? result.de_feiten : [],
+      de_feiten: result.de_feiten || null, // Can be string or array from MindStudio
+      betwiste_punten: result.betwiste_punten || null,
+      beschikbaar_bewijs: result.beschikbaar_bewijs || null,
       juridische_duiding: result.juridische_duiding || null,
-      vervolgstappen: Array.isArray(result.vervolgstappen) ? result.vervolgstappen : [],
+      vervolgstappen: result.vervolgstappen || null, // Can be string or array from MindStudio
       samenvatting_advies: result.samenvatting_advies || null,
       ontbrekend_bewijs: Array.isArray(result.ontbrekend_bewijs) ? result.ontbrekend_bewijs : [],
       raw_payload: rawPayload || null,
