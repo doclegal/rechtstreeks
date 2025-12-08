@@ -62,17 +62,21 @@ export default function JuridischeAnalyseDetails() {
       const supabaseAdvice = (currentCase as any).supabaseLegalAdvice;
       // Also try raw_payload for fields not stored separately
       const rawPayload = supabaseAdvice.raw_payload?.result?.legal_advice_json || {};
+      
+      // Helper to check if value has content (not empty array/null/undefined)
+      const hasContent = (val: any) => val && (typeof val === 'string' ? val.length > 0 : (Array.isArray(val) ? val.length > 0 : true));
+      
       legalAdviceJson = {
-        het_geschil: supabaseAdvice.het_geschil || rawPayload.het_geschil,
-        de_feiten: supabaseAdvice.de_feiten || rawPayload.de_feiten,
+        het_geschil: hasContent(supabaseAdvice.het_geschil) ? supabaseAdvice.het_geschil : rawPayload.het_geschil,
+        de_feiten: hasContent(supabaseAdvice.de_feiten) ? supabaseAdvice.de_feiten : rawPayload.de_feiten,
         betwiste_punten: rawPayload.betwiste_punten, // From raw_payload
         beschikbaar_bewijs: rawPayload.beschikbaar_bewijs, // From raw_payload
-        juridische_duiding: supabaseAdvice.juridische_duiding || rawPayload.juridische_duiding,
-        vervolgstappen: supabaseAdvice.vervolgstappen || rawPayload.vervolgstappen,
-        samenvatting_advies: supabaseAdvice.samenvatting_advies || rawPayload.samenvatting_advies,
-        ontbrekend_bewijs: supabaseAdvice.ontbrekend_bewijs || rawPayload.ontbrekend_bewijs,
+        juridische_duiding: hasContent(supabaseAdvice.juridische_duiding) ? supabaseAdvice.juridische_duiding : rawPayload.juridische_duiding,
+        vervolgstappen: hasContent(supabaseAdvice.vervolgstappen) ? supabaseAdvice.vervolgstappen : rawPayload.vervolgstappen,
+        samenvatting_advies: hasContent(supabaseAdvice.samenvatting_advies) ? supabaseAdvice.samenvatting_advies : rawPayload.samenvatting_advies,
+        ontbrekend_bewijs: hasContent(supabaseAdvice.ontbrekend_bewijs) ? supabaseAdvice.ontbrekend_bewijs : rawPayload.ontbrekend_bewijs,
       };
-      console.log('📋 Using legal advice from Supabase');
+      console.log('📋 Using legal advice from Supabase, raw_payload keys:', Object.keys(rawPayload));
     }
     
     // Check rawText for both new and old formats
