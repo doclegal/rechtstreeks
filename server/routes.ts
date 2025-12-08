@@ -2193,7 +2193,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let completedRkos;
         try {
           completedRkos = await rkosAnalysisService.createCompletedAnalysis(
-            { case_id: caseId, flow_version: "RKOS.flow" },
+            { case_id: caseId, user_id: ensureUuid(userId), flow_version: "RKOS.flow" },
             {
               chance_of_success: rkosResult.chance_of_success,
               confidence_level: rkosResult.confidence_level,
@@ -2398,10 +2398,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         // Create pending RKOS analysis in Supabase
+        const userUuid = ensureUuid(userId);
         let pendingRkos;
         try {
           pendingRkos = await rkosAnalysisService.createPendingAnalysis({
             case_id: caseId,
+            user_id: userUuid,
             flow_version: "RKOS.flow"
           });
         } catch (rkosError) {
