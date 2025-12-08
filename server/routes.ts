@@ -2894,9 +2894,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
             {
               het_geschil: legalAdviceJson.het_geschil || null,
-              de_feiten: legalAdviceJson.de_feiten || [],
+              de_feiten: legalAdviceJson.de_feiten || null,
+              betwiste_punten: legalAdviceJson.betwiste_punten || null,
+              beschikbaar_bewijs: legalAdviceJson.beschikbaar_bewijs || null,
               juridische_duiding: legalAdviceJson.juridische_duiding || null,
-              vervolgstappen: legalAdviceJson.vervolgstappen || [],
+              vervolgstappen: legalAdviceJson.vervolgstappen || null,
               samenvatting_advies: legalAdviceJson.samenvatting_advies || null,
               ontbrekend_bewijs: legalAdviceJson.ontbrekend_bewijs || [],
             },

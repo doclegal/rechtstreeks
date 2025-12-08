@@ -60,13 +60,17 @@ export default function JuridischeAnalyseDetails() {
     // NEW: Check Supabase legal advice (supabaseLegalAdvice) if no local legalAdviceJson
     if (!legalAdviceJson && (currentCase as any)?.supabaseLegalAdvice) {
       const supabaseAdvice = (currentCase as any).supabaseLegalAdvice;
+      // Also try raw_payload for fields not stored separately
+      const rawPayload = supabaseAdvice.raw_payload?.result?.legal_advice_json || {};
       legalAdviceJson = {
-        het_geschil: supabaseAdvice.het_geschil,
-        de_feiten: supabaseAdvice.de_feiten,
-        juridische_duiding: supabaseAdvice.juridische_duiding,
-        vervolgstappen: supabaseAdvice.vervolgstappen,
-        samenvatting_advies: supabaseAdvice.samenvatting_advies,
-        ontbrekend_bewijs: supabaseAdvice.ontbrekend_bewijs,
+        het_geschil: supabaseAdvice.het_geschil || rawPayload.het_geschil,
+        de_feiten: supabaseAdvice.de_feiten || rawPayload.de_feiten,
+        betwiste_punten: rawPayload.betwiste_punten, // From raw_payload
+        beschikbaar_bewijs: rawPayload.beschikbaar_bewijs, // From raw_payload
+        juridische_duiding: supabaseAdvice.juridische_duiding || rawPayload.juridische_duiding,
+        vervolgstappen: supabaseAdvice.vervolgstappen || rawPayload.vervolgstappen,
+        samenvatting_advies: supabaseAdvice.samenvatting_advies || rawPayload.samenvatting_advies,
+        ontbrekend_bewijs: supabaseAdvice.ontbrekend_bewijs || rawPayload.ontbrekend_bewijs,
       };
       console.log('📋 Using legal advice from Supabase');
     }

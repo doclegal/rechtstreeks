@@ -9,9 +9,11 @@ export interface LegalAdviceInput {
 
 export interface LegalAdviceResult {
   het_geschil?: string;
-  de_feiten?: any[];
+  de_feiten?: any;
+  betwiste_punten?: string; // Added - MindStudio returns this
+  beschikbaar_bewijs?: string; // Added - MindStudio returns this
   juridische_duiding?: any;
-  vervolgstappen?: any[];
+  vervolgstappen?: any;
   samenvatting_advies?: string;
   ontbrekend_bewijs?: any[];
 }

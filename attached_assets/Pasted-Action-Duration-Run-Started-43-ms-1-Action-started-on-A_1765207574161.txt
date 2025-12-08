@@ -1,0 +1,176 @@
+Action
+Duration
+Run Started
+43 ms
+1
+Action started on AgentDispatcher
+Instance ID: t6c5z
+ at Dec 8, 2025 4:21:43.769 PM GMT+1
+2
+ New run with ID "f77a6380-13f5-4892-a16d-983a48d08931"
+3
+ Preparing launch variables
+4
+ Running workflow Create_advice.flow
+5
+ Initializing {{currentDate}} with value "Dec 8, 2025 3:21:43 PM"
+6
+ Initializing {{global.userId}} with value "cea0889c-9c7e-46fb-ba63-0a5f3bfc9de2"
+7
+ Initializing {{global.threadId}} with value "f77a6380-13f5-4892-a16d-983a48d08931"
+8
+ Initializing {{global.username}} with value "Pieter D."
+9
+ Initializing {{global.userEmail}} with value "pdelaat@gmail.com"
+10
+ Initializing {{global.companyName}} with value "Notforlawyers"
+11
+ Initializing {{$launchVariables->input_json}} with value JSON
+{
+facts: {
+}
+case_id: "24b1a51d-35e5-4efa-9d77-4132ba7c8040"
+dossier: {
+documents: []
+document_count: 0
+}
+parties: [
+]
+summary: "Deze zaak betreft een vordering wegens verborgen gebreken (daklekkage, leemkachel, houtworm) na de koop van een woning. De kans op succes wordt als laag ingeschat. De bewijslast ligt volledig bij de eiser, terwijl het dossier momenteel geen enkel bewijsstuk bevat om de vordering te onderbouwen."
+user_role: "claimant"
+case_title: "Verborgen gebrek Esp 3"
+claim_amount: 0
+legal_analysis: {
+}
+recommendations: [
+]
+risk_assessment: {
+strengths: []
+weaknesses: []
+}
+applicable_rules: [
+]
+case_description: "De woning die ik heb gekocht heeft een lekkage in het dak, een leemkachel (als verwarming) bleek geen verginning te hebben en er is houtworm aanwezig."
+missing_information: [
+0: {}
+1: {}
+2: {}
+]
+}
+12
+ Dispatching run request to Agent Runner
+13
+ Action completed
+Generate Text - Background Message
+40,02 s
+1
+Action started on CloudRunner
+Instance ID: 8p28w
+ at Dec 8, 2025 4:21:43.955 PM GMT+1
+2
+ Sending message: "
+🧠 Prompt — Modular Legal Advice Generator (Dutch Civil Law, Kanton Cases)
+
+Return ONLY valid JSON. No prose before or after...."
+3
+ Loading message history
+4
+ Preparing to query 
+Gemini 2.5 Pro at 0.3° with a maximum response size of 16,384 tokens
+5
+ Resolving variables
+6
+ Sending resolved message: "🧠 Prompt — Modular Legal Advice Generator (Dutch Civil Law, Kanton Cases)
+
+Return ONLY valid JSON. No prose before or after.
+All keys and strings must be double-quoted...."
+7
+ Waiting for model response...
+8
+ Received first response token
+9
+ Received full result: 3,970 tokens (2,326 sent, 1,644 received) at 41.242 tokens/second
+10
+ Reasoning: "**Structuring the Output**
+
+I've decided on the object structure. The keys are now clearly defined, focusing on the Dutch terms requested, ready to populate with relevant data. I'm focusing on the best way to extract the needed information for each key from the source material...."
+11
+ Received result: JSON
+{
+het_geschil: "U heeft een geschil met de verkoper van uw woning. U bent in deze zaak de eisende partij. De kern van het conflict is dat u na de aankoop van de woning drie serieuze problemen heeft ontdekt: een lekkage in het dak, een leemkachel waarvoor geen vergunning is, en de aanwezigheid van houtworm. U vindt dat dit 'verborgen gebreken' zijn en dat de verkoper verantwoordelijk is voor de kosten van het herstel. De verkoper is het hier niet mee eens en wijst de aansprakelijkheid af. Het conflict gaat dus over de vraag wie de schade moet betalen."
+de_feiten: "Op basis van de door u verstrekte informatie zijn de feiten op dit moment als volgt. U heeft een woning gekocht. Na de overdracht van de woning heeft u een aantal gebreken geconstateerd. Het gaat om een lekkend dak, een leemkachel die als verwarming dient maar niet over de juiste vergunning beschikt, en de aanwezigheid van houtworm. De verkoper van de woning heeft schriftelijk laten weten dat hij of zij niet aansprakelijk is voor deze problemen. Verdere details, zoals de aankoopdatum, de datum waarop de gebreken zijn ontdekt, en de inhoud van de communicatie, zijn op dit moment niet bekend."
+betwiste_punten: "De verkoper zal waarschijnlijk een aantal zaken betwisten. Ten eerste, of de gebreken al bestonden op het moment van de overdracht. De verkoper kan stellen dat de lekkage of de houtworm pas na de verkoop is ontstaan. Ten tweede, of de gebreken echt 'verborgen' waren. De verkoper kan aanvoeren dat u de problemen zelf had kunnen ontdekken tijdens een bezichtiging of een bouwkundige keuring. Dit heet uw 'onderzoeksplicht'. Ten derde is de vraag of deze gebreken het 'normaal gebruik' van de woning in de weg staan. Een lekkend dak doet dat meestal wel, maar voor de kachel en de houtworm kan dat ter discussie staan. Tot slot is het onbekend of de verkoper wist van de gebreken. Als de verkoper het wist, had hij dit moeten melden (zijn 'mededelingsplicht'). Deze punten zijn juridisch van groot belang om te bepalen of de verkoper aansprakelijk is."
+beschikbaar_bewijs: "Op basis van de door u aangeleverde informatie bevat uw dossier op dit moment geen documenten die uw vordering ondersteunen. De analyse vermeldt wel een brief van de verkoper waarin deze de aansprakelijkheid afwijst. Dit document is echter bewijs voor de tegenpartij en versterkt uw positie niet. Om een kans van slagen te hebben, is het cruciaal dat u bewijsstukken verzamelt die uw kant van het verhaal onderbouwen. Zonder bewijs kan een rechter uw vordering niet toewijzen, omdat de bewijslast volledig bij u als eiser ligt."
+ontbrekend_bewijs: [
+0: {
+item: "Koopovereenkomst van de woning"
+uitleg: "Dit document is essentieel. Hierin staan de afspraken die u met de verkoper heeft gemaakt. Het is belangrijk om te controleren of er speciale clausules in staan, zoals een 'ouderdomsclausule'. Zo'n clausule kan de aansprakelijkheid van de verkoper voor gebreken bij een oudere woning beperken. Zonder dit contract is uw juridische positie niet vast te stellen."
+}
+1: {
+item: "Deskundigenrapport(en) per gebrek"
+uitleg: "Een rechter heeft objectief bewijs nodig van een onafhankelijke expert. U heeft rapporten nodig die de aard en omvang van de lekkage, de problemen met de kachel en de houtworm vaststellen. De expert moet ook de vermoedelijke oorzaak en de geschatte herstelkosten specificeren. Zonder deze rapporten is uw claim slechts een bewering en kunt u de hoogte van de schade niet bewijzen."
+}
+2: {
+item: "Schriftelijke ingebrekestelling"
+uitleg: "Dit is een formele brief waarin u de verkoper de kans geeft om de gebreken zelf binnen een redelijke termijn te herstellen. Juridisch gezien is dit een verplichte stap om de verkoper 'in verzuim' te laten zijn. Zonder bewijs van een correcte ingebrekestelling kan een vordering tot schadevergoeding door een rechter worden afgewezen."
+}
+]
+juridische_duiding: "De kern van uw zaak draait om artikel 7:17 van het Burgerlijk Wetboek (BW). Dit artikel stelt dat een gekochte zaak – in dit geval de woning – aan de overeenkomst moet beantwoorden. De woning doet dit niet als zij niet de eigenschappen bezit die u als koper mocht verwachten, met name voor 'normaal gebruik' als woning. Een lekkend dak belemmert dit normale gebruik vrijwel zeker. Voor de kachel en de houtworm hangt dit af van de ernst en de omstandigheden. De wet legt de bewijslast hiervoor bij u als koper (art. 150 Wetboek van Burgerlijke Rechtsvordering). U moet bewijzen dat de gebreken al bestonden bij de overdracht en dat ze het normaal gebruik verhinderen. Uw rechtspositie wordt op dit moment als 'zwak' ingeschat. Dit komt doordat u momenteel geen enkel bewijsstuk heeft om uw vordering te onderbouwen, terwijl de verkoper al een gemotiveerd verweer heeft gevoerd. Zonder de koopovereenkomst, deskundigenrapporten en een ingebrekestelling is uw claim feitelijk leeg en heeft deze in een ..."
+vervolgstappen: "Om uw zaak een kans van slagen te geven, is het noodzakelijk dat u direct actie onderneemt om bewijs te verzamelen. De eerste stap is het compleet maken van uw dossier. Zoek de koopovereenkomst en analyseer deze op relevante bepalingen, zoals garanties of uitsluitingen van aansprakelijkheid. Laat vervolgens per gebrek een deskundigenrapport opstellen door een erkend bedrijf. Dit levert objectief bewijs van de problemen en de herstelkosten. Maak ook duidelijke foto's en video's van de schade. De tweede stap, als u dit nog niet heeft gedaan, is het versturen van een formele ingebrekestelling per aangetekende post. Geef de verkoper hierin een duidelijke en redelijke termijn (bijvoorbeeld vier weken) om de gebreken op zijn kosten te laten herstellen. Kondig aan dat u anders zelf tot herstel overgaat en de kosten op hem zult verhalen. Pas nadat u dit bewijs heeft verzameld en de reactie van de verkoper heeft afgewacht, kan uw rechtspositie goed worden beoordeeld. Mocht u na het verzamelen v..."
+}
+12
+ Saving result to variable {{advice_raw}}
+13
+ Action completed
+Billing Events
+gemini-2.5-pro-llm_inference-prompt
+(2.326 units at $0,000002500 per unit)
+$0,005815000
+gemini-2.5-pro-llm_inference-response
+(1.644 units at $0,000015000 per unit)
+$0,024660000
+Action Total
+$0,030475000
+Sending Output
+91 ms
+1
+Action started on CloudRunner
+Instance ID: 8p28w
+ at Dec 8, 2025 4:22:24.040 PM GMT+1
+2
+ Sending JSON: JSON
+{
+legal_advice_json: "{{advice_raw}}"
+}
+3
+ Resolving variables
+4
+ Sending message: JSON
+{
+legal_advice_json: {
+het_geschil: "U heeft een geschil met de verkoper van uw woning. U bent in deze zaak de eisende partij. De kern van het conflict is dat u na de aankoop van de woning drie serieuze problemen heeft ontdekt: een lekkage in het dak, een leemkachel waarvoor geen vergunning is, en de aanwezigheid van houtworm. U vindt dat dit 'verborgen gebreken' zijn en dat de verkoper verantwoordelijk is voor de kosten van het herstel. De verkoper is het hier niet mee eens en wijst de aansprakelijkheid af. Het conflict gaat dus over de vraag wie de schade moet betalen."
+de_feiten: "Op basis van de door u verstrekte informatie zijn de feiten op dit moment als volgt. U heeft een woning gekocht. Na de overdracht van de woning heeft u een aantal gebreken geconstateerd. Het gaat om een lekkend dak, een leemkachel die als verwarming dient maar niet over de juiste vergunning beschikt, en de aanwezigheid van houtworm. De verkoper van de woning heeft schriftelijk laten weten dat hij of zij niet aansprakelijk is voor deze problemen. Verdere details, zoals de aankoopdatum, de datum waarop de gebreken zijn ontdekt, en de inhoud van de communicatie, zijn op dit moment niet bekend."
+betwiste_punten: "De verkoper zal waarschijnlijk een aantal zaken betwisten. Ten eerste, of de gebreken al bestonden op het moment van de overdracht. De verkoper kan stellen dat de lekkage of de houtworm pas na de verkoop is ontstaan. Ten tweede, of de gebreken echt 'verborgen' waren. De verkoper kan aanvoeren dat u de problemen zelf had kunnen ontdekken tijdens een bezichtiging of een bouwkundige keuring. Dit heet uw 'onderzoeksplicht'. Ten derde is de vraag of deze gebreken het 'normaal gebruik' van de woning in de weg staan. Een lekkend dak doet dat meestal wel, maar voor de kachel en de houtworm kan dat ter discussie staan. Tot slot is het onbekend of de verkoper wist van de gebreken. Als de verkoper het wist, had hij dit moeten melden (zijn 'mededelingsplicht'). Deze punten zijn juridisch van groot belang om te bepalen of de verkoper aansprakelijk is."
+beschikbaar_bewijs: "Op basis van de door u aangeleverde informatie bevat uw dossier op dit moment geen documenten die uw vordering ondersteunen. De analyse vermeldt wel een brief van de verkoper waarin deze de aansprakelijkheid afwijst. Dit document is echter bewijs voor de tegenpartij en versterkt uw positie niet. Om een kans van slagen te hebben, is het cruciaal dat u bewijsstukken verzamelt die uw kant van het verhaal onderbouwen. Zonder bewijs kan een rechter uw vordering niet toewijzen, omdat de bewijslast volledig bij u als eiser ligt."
+ontbrekend_bewijs: [
+0: {
+item: "Koopovereenkomst van de woning"
+uitleg: "Dit document is essentieel. Hierin staan de afspraken die u met de verkoper heeft gemaakt. Het is belangrijk om te controleren of er speciale clausules in staan, zoals een 'ouderdomsclausule'. Zo'n clausule kan de aansprakelijkheid van de verkoper voor gebreken bij een oudere woning beperken. Zonder dit contract is uw juridische positie niet vast te stellen."
+}
+1: {
+item: "Deskundigenrapport(en) per gebrek"
+uitleg: "Een rechter heeft objectief bewijs nodig van een onafhankelijke expert. U heeft rapporten nodig die de aard en omvang van de lekkage, de problemen met de kachel en de houtworm vaststellen. De expert moet ook de vermoedelijke oorzaak en de geschatte herstelkosten specificeren. Zonder deze rapporten is uw claim slechts een bewering en kunt u de hoogte van de schade niet bewijzen."
+}
+2: {
+item: "Schriftelijke ingebrekestelling"
+uitleg: "Dit is een formele brief waarin u de verkoper de kans geeft om de gebreken zelf binnen een redelijke termijn te herstellen. Juridisch gezien is dit een verplichte stap om de verkoper 'in verzuim' te laten zijn. Zonder bewijs van een correcte ingebrekestelling kan een vordering tot schadevergoeding door een rechter worden afgewezen."
+}
+]
+juridische_duiding: "De kern van uw zaak draait om artikel 7:17 van het Burgerlijk Wetboek (BW). Dit artikel stelt dat een gekochte zaak – in dit geval de woning – aan de overeenkomst moet beantwoorden. De woning doet dit niet als zij niet de eigenschappen bezit die u als koper mocht verwachten, met name voor 'normaal gebruik' als woning. Een lekkend dak belemmert dit normale gebruik vrijwel zeker. Voor de kachel en de houtworm hangt dit af van de ernst en de omstandigheden. De wet legt de bewijslast hiervoor bij u als koper (art. 150 Wetboek van Burgerlijke Rechtsvordering). U moet bewijzen dat de gebreken al bestonden bij de overdracht en dat ze het normaal gebruik verhinderen. Uw rechtspositie wordt op dit moment als 'zwak' ingeschat. Dit komt doordat u momenteel geen enkel bewijsstuk heeft om uw vordering te onderbouwen, terwijl de verkoper al een gemotiveerd verweer heeft gevoerd. Zonder de koopovereenkomst, deskundigenrapporten en een ingebrekestelling is uw claim feitelijk leeg en heeft deze in een ..."
+vervolgstappen: "Om uw zaak een kans van slagen te geven, is het noodzakelijk dat u direct actie onderneemt om bewijs te verzamelen. De eerste stap is het compleet maken van uw dossier. Zoek de koopovereenkomst en analyseer deze op relevante bepalingen, zoals garanties of uitsluitingen van aansprakelijkheid. Laat vervolgens per gebrek een deskundigenrapport opstellen door een erkend bedrijf. Dit levert objectief bewijs van de problemen en de herstelkosten. Maak ook duidelijke foto's en video's van de schade. De tweede stap, als u dit nog niet heeft gedaan, is het versturen van een formele ingebrekestelling per aangetekende post. Geef de verkoper hierin een duidelijke en redelijke termijn (bijvoorbeeld vier weken) om de gebreken op zijn kosten te laten herstellen. Kondig aan dat u anders zelf tot herstel overgaat en de kosten op hem zult verhalen. Pas nadat u dit bewijs heeft verzameld en de reactie van de verkoper heeft afgewacht, kan uw rechtspositie goed worden beoordeeld. Mocht u na het verzamelen v..."
+}
+}
+5
+ Action completed
+Run Completed
+40,158 s
