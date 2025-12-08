@@ -2884,9 +2884,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Also save to Supabase legal_advice table
         try {
+          const userUuid = ensureUuid(userId);
           await legalAdviceService.createCompletedAdvice(
             {
               case_id: caseId,
+              user_id: userUuid, // Required by Supabase RLS policy
               mindstudio_run_id: flowResult.threadId || null,
               flow_version: "Create_advice.flow",
             },

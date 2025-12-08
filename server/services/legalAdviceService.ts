@@ -2,6 +2,7 @@ import { supabase } from "../supabaseClient";
 
 export interface LegalAdviceInput {
   case_id: string;
+  user_id?: string; // Required by Supabase RLS policy
   mindstudio_run_id?: string;
   flow_version?: string;
 }
@@ -102,6 +103,11 @@ export const legalAdviceService = {
       ontbrekend_bewijs: Array.isArray(result.ontbrekend_bewijs) ? result.ontbrekend_bewijs : [],
       raw_payload: rawPayload || null,
     };
+    
+    // Include user_id if provided (required by Supabase RLS policy)
+    if (input.user_id) {
+      insertData.user_id = input.user_id;
+    }
 
     const { data, error } = await supabase
       .from("legal_advice")
