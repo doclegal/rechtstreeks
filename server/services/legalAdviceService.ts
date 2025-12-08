@@ -10,6 +10,8 @@ export interface LegalAdviceInput {
 export interface LegalAdviceResult {
   het_geschil?: string;
   de_feiten?: any;
+  betwiste_punten?: string;
+  beschikbaar_bewijs?: string;
   juridische_duiding?: any;
   vervolgstappen?: any;
   samenvatting_advies?: string;
@@ -97,6 +99,8 @@ export const legalAdviceService = {
       completed_at: new Date().toISOString(),
       het_geschil: result.het_geschil || null,
       de_feiten: result.de_feiten || null,
+      betwiste_punten: result.betwiste_punten || null,
+      beschikbaar_bewijs: result.beschikbaar_bewijs || null,
       juridische_duiding: result.juridische_duiding || null,
       vervolgstappen: result.vervolgstappen || null,
       samenvatting_advies: result.samenvatting_advies || null,

@@ -69,8 +69,8 @@ export default function JuridischeAnalyseDetails() {
       legalAdviceJson = {
         het_geschil: hasContent(supabaseAdvice.het_geschil) ? supabaseAdvice.het_geschil : rawPayload.het_geschil,
         de_feiten: hasContent(supabaseAdvice.de_feiten) ? supabaseAdvice.de_feiten : rawPayload.de_feiten,
-        betwiste_punten: rawPayload.betwiste_punten, // From raw_payload
-        beschikbaar_bewijs: rawPayload.beschikbaar_bewijs, // From raw_payload
+        betwiste_punten: hasContent(supabaseAdvice.betwiste_punten) ? supabaseAdvice.betwiste_punten : rawPayload.betwiste_punten,
+        beschikbaar_bewijs: hasContent(supabaseAdvice.beschikbaar_bewijs) ? supabaseAdvice.beschikbaar_bewijs : rawPayload.beschikbaar_bewijs,
         juridische_duiding: hasContent(supabaseAdvice.juridische_duiding) ? supabaseAdvice.juridische_duiding : rawPayload.juridische_duiding,
         vervolgstappen: hasContent(supabaseAdvice.vervolgstappen) ? supabaseAdvice.vervolgstappen : rawPayload.vervolgstappen,
         samenvatting_advies: hasContent(supabaseAdvice.samenvatting_advies) ? supabaseAdvice.samenvatting_advies : rawPayload.samenvatting_advies,
