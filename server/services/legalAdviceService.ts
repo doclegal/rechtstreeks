@@ -10,8 +10,6 @@ export interface LegalAdviceInput {
 export interface LegalAdviceResult {
   het_geschil?: string;
   de_feiten?: any;
-  betwiste_punten?: string; // Added - MindStudio returns this
-  beschikbaar_bewijs?: string; // Added - MindStudio returns this
   juridische_duiding?: any;
   vervolgstappen?: any;
   samenvatting_advies?: string;
@@ -98,11 +96,9 @@ export const legalAdviceService = {
       started_at: new Date().toISOString(),
       completed_at: new Date().toISOString(),
       het_geschil: result.het_geschil || null,
-      de_feiten: result.de_feiten || null, // Can be string or array from MindStudio
-      betwiste_punten: result.betwiste_punten || null,
-      beschikbaar_bewijs: result.beschikbaar_bewijs || null,
+      de_feiten: result.de_feiten || null,
       juridische_duiding: result.juridische_duiding || null,
-      vervolgstappen: result.vervolgstappen || null, // Can be string or array from MindStudio
+      vervolgstappen: result.vervolgstappen || null,
       samenvatting_advies: result.samenvatting_advies || null,
       ontbrekend_bewijs: Array.isArray(result.ontbrekend_bewijs) ? result.ontbrekend_bewijs : [],
       raw_payload: rawPayload || null,

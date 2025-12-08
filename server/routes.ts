@@ -2875,14 +2875,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log('📄 Legal advice sections:', Object.keys(legalAdviceJson));
 
-        // Update the fullAnalysis record with legal advice
-        console.log('🔄 Updating fullAnalysis ID:', fullAnalysisRecord.id);
-        const updatedRecord = await storage.updateAnalysis(fullAnalysisRecord.id, {
-          legalAdviceJson: legalAdviceJson
-        });
-        console.log('✅ Legal advice saved to fullAnalysis record');
-
-        // Also save to Supabase legal_advice table
+        // Save to Supabase legal_advice table (ONLY Supabase, not local PostgreSQL)
         try {
           const userUuid = ensureUuid(userId);
           await legalAdviceService.createCompletedAdvice(
@@ -2895,8 +2888,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             {
               het_geschil: legalAdviceJson.het_geschil || null,
               de_feiten: legalAdviceJson.de_feiten || null,
-              betwiste_punten: legalAdviceJson.betwiste_punten || null,
-              beschikbaar_bewijs: legalAdviceJson.beschikbaar_bewijs || null,
               juridische_duiding: legalAdviceJson.juridische_duiding || null,
               vervolgstappen: legalAdviceJson.vervolgstappen || null,
               samenvatting_advies: legalAdviceJson.samenvatting_advies || null,
@@ -2906,7 +2897,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
           console.log('✅ Legal advice saved to Supabase legal_advice table');
         } catch (supabaseError) {
-          console.warn('⚠️ Failed to save legal advice to Supabase:', supabaseError);
+          console.error('❌ Failed to save legal advice to Supabase:', supabaseError);
+          return res.status(500).json({ 
+            message: "Juridisch advies kon niet worden opgeslagen. Probeer het opnieuw." 
+          });
         }
 
         res.json({ 
