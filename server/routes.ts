@@ -11,6 +11,7 @@ import { supabaseStorageService } from "./services/supabaseStorageService";
 import { supabase } from "./supabaseClient";
 import { documentAnalysisService, type MindStudioAnalysis } from "./services/documentAnalysisService";
 import { rkosAnalysisService } from "./services/rkosAnalysisService";
+import { legalAdviceService } from "./services/legalAdviceService";
 import { mockIntegrations } from "./services/mockIntegrations";
 import { db, handleDatabaseError } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -319,6 +320,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.warn(`Failed to fetch RKOS for case ${caseData.id}:`, rkosError);
           }
           
+          // Fetch legal advice from Supabase (gracefully handle errors)
+          let supabaseLegalAdvice = null;
+          try {
+            supabaseLegalAdvice = await legalAdviceService.getLatestCompletedAdvice(caseData.id);
+          } catch (adviceError) {
+            console.warn(`Failed to fetch legal advice for case ${caseData.id}:`, adviceError);
+          }
+          
           const letters = await storage.getLettersByCase(caseData.id);
           const summons = await storage.getSummonsByCase(caseData.id);
           const progress = storage.computeProgress(caseData);
@@ -330,6 +339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             kantonAnalysis,
             fullAnalysis,
             rkosAnalysis,
+            supabaseLegalAdvice,
             letters,
             summons,
             progress,
@@ -376,6 +386,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn(`Failed to fetch RKOS for case ${caseData.id}:`, rkosError);
       }
       
+      // Fetch legal advice from Supabase (gracefully handle errors)
+      let supabaseLegalAdvice = null;
+      try {
+        supabaseLegalAdvice = await legalAdviceService.getLatestCompletedAdvice(caseData.id);
+      } catch (adviceError) {
+        console.warn(`Failed to fetch legal advice for case ${caseData.id}:`, adviceError);
+      }
+      
       const letters = await storage.getLettersByCase(caseData.id);
       const summons = await storage.getSummonsByCase(caseData.id);
       const progress = storage.computeProgress(caseData);
@@ -387,6 +405,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         kantonAnalysis,
         fullAnalysis,
         rkosAnalysis,
+        supabaseLegalAdvice,
         letters,
         summons,
         progress,
@@ -2815,6 +2834,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           legalAdviceJson: legalAdviceJson
         });
         console.log('✅ Legal advice saved to fullAnalysis record');
+
+        // Also save to Supabase legal_advice table
+        try {
+          await legalAdviceService.createCompletedAdvice(
+            {
+              case_id: caseId,
+              mindstudio_run_id: flowResult.threadId || null,
+              flow_version: "Create_advice.flow",
+            },
+            {
+              het_geschil: legalAdviceJson.het_geschil || null,
+              de_feiten: legalAdviceJson.de_feiten || [],
+              juridische_duiding: legalAdviceJson.juridische_duiding || null,
+              vervolgstappen: legalAdviceJson.vervolgstappen || [],
+              samenvatting_advies: legalAdviceJson.samenvatting_advies || null,
+              ontbrekend_bewijs: legalAdviceJson.ontbrekend_bewijs || [],
+            },
+            flowResult
+          );
+          console.log('✅ Legal advice saved to Supabase legal_advice table');
+        } catch (supabaseError) {
+          console.warn('⚠️ Failed to save legal advice to Supabase:', supabaseError);
+        }
 
         res.json({ 
           success: true,
