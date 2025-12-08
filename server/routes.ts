@@ -2694,6 +2694,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
             };
           }
         }
+        
+        // NEW: Also check Supabase for RKOS analysis if local checks failed
+        if (!parsedAnalysis || !fullAnalysisRecord) {
+          console.log('📊 Checking Supabase for RKOS analysis...');
+          const supabaseRkos = await rkosAnalysisService.getLatestCompletedAnalysis(caseId);
+          if (supabaseRkos) {
+            console.log('📊 Using Supabase RKOS analysis as basis for legal advice');
+            // Create a synthetic fullAnalysisRecord from Supabase RKOS
+            fullAnalysisRecord = {
+              id: 0,
+              caseId: caseId,
+              type: 'supabase-rkos',
+              rawText: JSON.stringify(supabaseRkos.raw_payload || {}),
+              analysisJson: null,
+              factsJson: null,
+              missingInformation: supabaseRkos.missing_elements || [],
+              succesKansAnalysis: {
+                chance: supabaseRkos.chance,
+                confidence: supabaseRkos.confidence,
+                assessment: supabaseRkos.assessment,
+                summary_verdict: supabaseRkos.summary_verdict,
+                strengths: supabaseRkos.strengths || [],
+                weaknesses: supabaseRkos.weaknesses || [],
+                missing_elements: supabaseRkos.missing_elements || [],
+                recommendation: supabaseRkos.recommendation
+              },
+              legalAdviceJson: null,
+              createdAt: new Date(supabaseRkos.created_at)
+            } as any;
+            
+            // Build parsedAnalysis from Supabase RKOS
+            parsedAnalysis = {
+              summary: supabaseRkos.summary_verdict || supabaseRkos.assessment || '',
+              case_overview: {
+                parties: []
+              },
+              facts: {},
+              legal_analysis: {},
+              risk_assessment: {
+                strengths: supabaseRkos.strengths || [],
+                weaknesses: supabaseRkos.weaknesses || []
+              },
+              recommended_claims: [],
+              applicable_rules: []
+            };
+          }
+        }
 
         if (!parsedAnalysis || !fullAnalysisRecord) {
           return res.status(400).json({ 
