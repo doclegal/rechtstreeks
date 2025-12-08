@@ -50,6 +50,32 @@ export interface LetterRecord {
   updated_at: string;
 }
 
+export interface LetterRecordCamelCase {
+  id: string;
+  caseId: string;
+  userId: string;
+  templateId: string | null;
+  briefType: string | null;
+  tone: string | null;
+  html: string | null;
+  markdown: string | null;
+  pdfStorageKey: string | null;
+  senderName: string | null;
+  senderAddress: string | null;
+  senderPostcode: string | null;
+  senderCity: string | null;
+  recipientName: string | null;
+  recipientAddress: string | null;
+  recipientPostcode: string | null;
+  recipientCity: string | null;
+  letterStructure: any | null;
+  status: string;
+  mindstudioRunId: string | null;
+  rawPayload: any | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export class LetterServiceError extends Error {
   constructor(message: string, public readonly originalError?: any) {
     super(message);
@@ -57,12 +83,40 @@ export class LetterServiceError extends Error {
   }
 }
 
+function toCamelCase(record: LetterRecord): LetterRecordCamelCase {
+  return {
+    id: record.id,
+    caseId: record.case_id,
+    userId: record.user_id,
+    templateId: record.template_id,
+    briefType: record.brief_type,
+    tone: record.tone,
+    html: record.html,
+    markdown: record.markdown,
+    pdfStorageKey: record.pdf_storage_key,
+    senderName: record.sender_name,
+    senderAddress: record.sender_address,
+    senderPostcode: record.sender_postcode,
+    senderCity: record.sender_city,
+    recipientName: record.recipient_name,
+    recipientAddress: record.recipient_address,
+    recipientPostcode: record.recipient_postcode,
+    recipientCity: record.recipient_city,
+    letterStructure: record.letter_structure,
+    status: record.status,
+    mindstudioRunId: record.mindstudio_run_id,
+    rawPayload: record.raw_payload,
+    createdAt: record.created_at,
+    updatedAt: record.updated_at,
+  };
+}
+
 export const letterService = {
   async createLetter(
     input: LetterInput,
     content: LetterContent,
     rawPayload?: any
-  ): Promise<LetterRecord> {
+  ): Promise<LetterRecordCamelCase> {
     const insertData: any = {
       case_id: input.case_id,
       user_id: input.user_id,
@@ -102,10 +156,10 @@ export const letterService = {
     }
 
     console.log(`✅ Created letter in Supabase: ${data.id}`);
-    return data as LetterRecord;
+    return toCamelCase(data as LetterRecord);
   },
 
-  async getLettersByCaseId(caseId: string): Promise<LetterRecord[]> {
+  async getLettersByCaseId(caseId: string): Promise<LetterRecordCamelCase[]> {
     try {
       const { data, error } = await supabase
         .from("letters")
@@ -118,14 +172,14 @@ export const letterService = {
         return [];
       }
 
-      return (data || []) as LetterRecord[];
+      return (data || []).map((record: any) => toCamelCase(record as LetterRecord));
     } catch (error) {
       console.error("Error fetching letters:", error);
       return [];
     }
   },
 
-  async getLetterById(id: string): Promise<LetterRecord | null> {
+  async getLetterById(id: string): Promise<LetterRecordCamelCase | null> {
     try {
       const { data, error } = await supabase
         .from("letters")
@@ -141,14 +195,14 @@ export const letterService = {
         return null;
       }
 
-      return data as LetterRecord;
+      return toCamelCase(data as LetterRecord);
     } catch (error) {
       console.error("Error fetching letter by id:", error);
       return null;
     }
   },
 
-  async updateLetter(id: string, updates: Partial<LetterContent & { status?: string }>): Promise<LetterRecord | null> {
+  async updateLetter(id: string, updates: Partial<LetterContent & { status?: string }>): Promise<LetterRecordCamelCase | null> {
     try {
       const { data, error } = await supabase
         .from("letters")
@@ -162,7 +216,7 @@ export const letterService = {
         return null;
       }
 
-      return data as LetterRecord;
+      return toCamelCase(data as LetterRecord);
     } catch (error) {
       console.error("Error updating letter:", error);
       return null;
@@ -189,7 +243,7 @@ export const letterService = {
     }
   },
 
-  async getLettersByUserId(userId: string): Promise<LetterRecord[]> {
+  async getLettersByUserId(userId: string): Promise<LetterRecordCamelCase[]> {
     try {
       const { data, error } = await supabase
         .from("letters")
@@ -202,7 +256,7 @@ export const letterService = {
         return [];
       }
 
-      return (data || []) as LetterRecord[];
+      return (data || []).map((record: any) => toCamelCase(record as LetterRecord));
     } catch (error) {
       console.error("Error fetching letters by user:", error);
       return [];
