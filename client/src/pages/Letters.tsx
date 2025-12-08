@@ -217,7 +217,8 @@ export default function Letters() {
   }
 
   const letters = (currentCase as any).letters || [];
-  const hasAnalysis = !!(currentCase as any).analysis || !!(currentCase as any).fullAnalysis;
+  // Check for analysis in Supabase (rkosAnalysis) first, then fall back to old local DB fields
+  const hasAnalysis = !!(currentCase as any).rkosAnalysis || !!(currentCase as any).analysis || !!(currentCase as any).fullAnalysis;
 
   // Group letters by type
   const lettersByType: Record<string, any[]> = {};

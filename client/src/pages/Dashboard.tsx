@@ -77,7 +77,8 @@ export default function Dashboard() {
   // Extract data for status bar
   const caseData = currentCase as any;
   const createdAt = caseData.createdAt;
-  const analysis = caseData.analysis || caseData.fullAnalysis;
+  // Check for analysis in Supabase (rkosAnalysis) first, then fall back to old local DB fields
+  const analysis = caseData.rkosAnalysis || caseData.analysis || caseData.fullAnalysis;
   const analysisDate = analysis?.createdAt;
   const letters = caseData.letters || [];
   const lastLetter = letters.length > 0 ? letters[letters.length - 1] : null;
