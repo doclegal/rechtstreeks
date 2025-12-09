@@ -10570,19 +10570,11 @@ Geef ALLEEN de JSON terug, geen uitleg.`
         return res.status(400).json({ error: 'Case ID is required' });
       }
       
-      // Verify case ownership
-      const caseRecord = await db
-        .select()
-        .from(cases)
-        .where(eq(cases.id, caseId))
-        .limit(1);
+      // Verify case ownership via Supabase
+      const caseRecord = await caseService.getCaseByIdForUser(caseId, userId);
       
-      if (caseRecord.length === 0) {
+      if (!caseRecord) {
         return res.status(404).json({ error: 'Case not found' });
-      }
-      
-      if (caseRecord[0].ownerUserId !== ensureUuid(userId)) {
-        return res.status(403).json({ error: 'Access denied' });
       }
 
       const savedItems = await db
@@ -10615,19 +10607,11 @@ Geef ALLEEN de JSON terug, geen uitleg.`
         return res.status(400).json({ error: 'Case ID and article are required' });
       }
 
-      // Verify case ownership
-      const caseRecord = await db
-        .select()
-        .from(cases)
-        .where(eq(cases.id, caseId))
-        .limit(1);
+      // Verify case ownership via Supabase
+      const caseRecord = await caseService.getCaseByIdForUser(caseId, userId);
       
-      if (caseRecord.length === 0) {
+      if (!caseRecord) {
         return res.status(404).json({ error: 'Case not found' });
-      }
-      
-      if (caseRecord[0].ownerUserId !== ensureUuid(userId)) {
-        return res.status(403).json({ error: 'Access denied' });
       }
 
       const articleKey = `${article.bwbId}:${article.articleNumber}`;
@@ -10723,19 +10707,11 @@ Geef ALLEEN de JSON terug, geen uitleg.`
         return res.status(400).json({ error: 'Case ID and Article Key are required' });
       }
       
-      // Verify case ownership
-      const caseRecord = await db
-        .select()
-        .from(cases)
-        .where(eq(cases.id, caseId))
-        .limit(1);
+      // Verify case ownership via Supabase
+      const caseRecord = await caseService.getCaseByIdForUser(caseId, userId);
       
-      if (caseRecord.length === 0) {
+      if (!caseRecord) {
         return res.status(404).json({ error: 'Case not found' });
-      }
-      
-      if (caseRecord[0].ownerUserId !== ensureUuid(userId)) {
-        return res.status(403).json({ error: 'Access denied' });
       }
 
       // Decode the articleKey (it's URL encoded)
@@ -10775,19 +10751,11 @@ Geef ALLEEN de JSON terug, geen uitleg.`
         return res.status(400).json({ error: 'Case ID is required' });
       }
       
-      // Verify case ownership
-      const caseRecord = await db
-        .select()
-        .from(cases)
-        .where(eq(cases.id, caseId))
-        .limit(1);
+      // Verify case ownership via Supabase
+      const caseRecord = await caseService.getCaseByIdForUser(caseId, userId);
       
-      if (caseRecord.length === 0) {
+      if (!caseRecord) {
         return res.status(404).json({ error: 'Case not found' });
-      }
-      
-      if (caseRecord[0].ownerUserId !== ensureUuid(userId)) {
-        return res.status(403).json({ error: 'Access denied' });
       }
 
       const result = await db
