@@ -73,6 +73,9 @@ export default function Jurisprudentie() {
   
   // Track which results are expanded (by result id or ecli)
   const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set());
+  
+  // Track which specific ECLI is currently being saved
+  const [savingEcli, setSavingEcli] = useState<string | null>(null);
 
   // Query to load saved jurisprudence from Supabase
   const { data: savedJurisprudenceData, isLoading: savedJurisprudenceLoading } = useQuery({
@@ -227,6 +230,8 @@ export default function Jurisprudentie() {
         throw new Error('Geen actieve zaak geselecteerd');
       }
 
+      setSavingEcli(result.ecli);
+
       const response = await apiRequest('POST', '/api/saved-jurisprudence', {
         caseId: currentCase.id,
         ecli: result.ecli,
@@ -249,6 +254,7 @@ export default function Jurisprudentie() {
       return response.json();
     },
     onSuccess: () => {
+      setSavingEcli(null);
       queryClient.invalidateQueries({ 
         queryKey: ['/api/saved-jurisprudence', currentCase?.id] 
       });
@@ -259,6 +265,7 @@ export default function Jurisprudentie() {
       });
     },
     onError: (error: any) => {
+      setSavingEcli(null);
       toast({
         title: "Fout bij opslaan",
         description: error.message || "Kon uitspraak niet opslaan",
@@ -486,6 +493,7 @@ export default function Jurisprudentie() {
     namespace: 'ecli_nl' | 'web_ecli' 
   }) => {
     const isSaved = savedEclis.has(result.ecli);
+    const isCurrentlySaving = savingEcli === result.ecli;
     
     return (
       <div 
@@ -514,15 +522,18 @@ export default function Jurisprudentie() {
             variant={isSaved ? "secondary" : "outline"}
             size="sm"
             onClick={() => {
-              if (!isSaved) {
+              if (!isSaved && !isCurrentlySaving) {
                 saveJurisprudenceMutation.mutate({ result, namespace });
               }
             }}
-            disabled={isSaved || saveJurisprudenceMutation.isPending}
+            disabled={isSaved || isCurrentlySaving}
             data-testid={`button-save-${namespace}-${index}`}
           >
-            {saveJurisprudenceMutation.isPending ? (
-              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            {isCurrentlySaving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                Opslaan...
+              </>
             ) : isSaved ? (
               <>
                 <BookmarkCheck className="h-4 w-4 mr-1" />
