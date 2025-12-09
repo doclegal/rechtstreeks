@@ -66,16 +66,25 @@ export default function Jurisprudentie() {
 
   const savedReferences: SavedReference[] = savedData?.references || [];
 
-  // Query to check if legal advice exists for current case
-  const { data: hasLegalAdvice = false } = useQuery({
+  // Check if legal advice exists - check Supabase data from case object first
+  const hasSupabaseLegalAdvice = !!(
+    currentCase?.supabaseLegalAdvice || 
+    currentCase?.rkosAnalysis
+  );
+
+  // Fallback to local database if no Supabase data
+  const { data: hasLocalLegalAdvice = false } = useQuery({
     queryKey: ['/api/cases', currentCase?.id, 'has-legal-advice'],
-    enabled: !!currentCase?.id,
+    enabled: !!currentCase?.id && !hasSupabaseLegalAdvice,
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/cases/${currentCase?.id}/analyses`);
       const analyses = await response.json();
       return analyses.some((a: any) => a.legalAdviceJson !== null && a.legalAdviceJson !== undefined);
     }
   });
+
+  // Use Supabase data if available, otherwise use local DB result
+  const hasLegalAdvice = hasSupabaseLegalAdvice || hasLocalLegalAdvice;
 
   const searchMutation = useMutation({
     mutationFn: async () => {

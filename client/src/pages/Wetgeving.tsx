@@ -405,9 +405,16 @@ export default function Wetgeving() {
 
   const groupedArticleResults = groupResultsByArticle(articleResults);
 
-  const { data: hasAnalysis = false } = useQuery({
+  // Check if analysis exists - check Supabase data from case object first
+  const hasSupabaseAnalysis = !!(
+    currentCase?.rkosAnalysis || 
+    currentCase?.supabaseLegalAdvice
+  );
+
+  // Fallback to local database if no Supabase data
+  const { data: hasLocalAnalysis = false } = useQuery({
     queryKey: ['/api/cases', currentCase?.id, 'has-analysis'],
-    enabled: !!currentCase?.id,
+    enabled: !!currentCase?.id && !hasSupabaseAnalysis,
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/cases/${currentCase?.id}/analyses`);
       const analyses = await response.json();
@@ -417,6 +424,9 @@ export default function Wetgeving() {
       );
     }
   });
+
+  // Use Supabase data if available, otherwise use local DB result
+  const hasAnalysis = hasSupabaseAnalysis || hasLocalAnalysis;
 
   const addArticleEntry = () => {
     const newId = Date.now().toString();
