@@ -8815,10 +8815,10 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
   // ============================================
 
   // Get saved jurisprudence for a case
-  app.get('/api/saved-jurisprudence/:caseId', isAuthenticated, async (req, res) => {
+  app.get('/api/saved-jurisprudence/:caseId', isAuthenticated, async (req: any, res) => {
     try {
       const { caseId } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?.claims?.sub;
 
       if (!userId) {
         return res.status(401).json({ error: 'Niet ingelogd' });
@@ -8844,9 +8844,9 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
   });
 
   // Save a jurisprudence item
-  app.post('/api/saved-jurisprudence', isAuthenticated, async (req, res) => {
+  app.post('/api/saved-jurisprudence', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.claims?.sub;
       
       if (!userId) {
         return res.status(401).json({ error: 'Niet ingelogd' });
@@ -8913,10 +8913,10 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
   });
 
   // Delete a saved jurisprudence item by ID
-  app.delete('/api/saved-jurisprudence/:id', isAuthenticated, async (req, res) => {
+  app.delete('/api/saved-jurisprudence/:id', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?.claims?.sub;
 
       if (!userId) {
         return res.status(401).json({ error: 'Niet ingelogd' });
@@ -8942,10 +8942,10 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
   });
 
   // Delete a saved jurisprudence item by case ID and ECLI
-  app.delete('/api/saved-jurisprudence/:caseId/ecli/:ecli', isAuthenticated, async (req, res) => {
+  app.delete('/api/saved-jurisprudence/:caseId/ecli/:ecli', isAuthenticated, async (req: any, res) => {
     try {
       const { caseId, ecli } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?.claims?.sub;
 
       if (!userId) {
         return res.status(401).json({ error: 'Niet ingelogd' });
