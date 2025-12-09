@@ -950,12 +950,6 @@ export default function Wetgeving() {
           <Badge className="bg-green-600 hover:bg-green-700 text-white font-mono text-xs">
             Art. {article.displayArticleNumber}
           </Badge>
-          {isSaved && (
-            <Badge variant="outline" className="text-xs border-green-500 text-green-600">
-              <Check className="h-3 w-3 mr-1" />
-              Opgeslagen
-            </Badge>
-          )}
           {article.boekTitel && (
             <Badge variant="outline" className="text-xs border-blue-400 text-blue-600 dark:border-blue-500 dark:text-blue-400">
               {article.boekTitel.length > 50 
@@ -995,37 +989,54 @@ export default function Wetgeving() {
             {isLoadingCommentary ? 'Laden...' : 'Commentaar ophalen'}
           </Button>
           
-          {!isSaved ? (
+          {isSaving ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 text-xs px-2"
+              disabled
+              data-testid={`button-save-${testIdPrefix}-${index}`}
+            >
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              Opslaan...
+            </Button>
+          ) : isSaved ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 text-xs px-2 border-green-500 text-green-600 bg-green-50 dark:bg-green-950/20 hover:bg-green-100 dark:hover:bg-green-950/40"
+                disabled
+                data-testid={`button-saved-${testIdPrefix}-${index}`}
+              >
+                <Check className="h-3 w-3 mr-1" />
+                Opgeslagen
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs px-2 text-muted-foreground hover:text-destructive"
+                onClick={onDelete}
+                disabled={isDeleting}
+                data-testid={`button-delete-${testIdPrefix}-${index}`}
+              >
+                {isDeleting ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3 w-3" />
+                )}
+              </Button>
+            </>
+          ) : (
             <Button
               variant="outline"
               size="sm"
               className="h-6 text-xs px-2"
               onClick={onSave}
-              disabled={isSaving}
               data-testid={`button-save-${testIdPrefix}-${index}`}
             >
-              {isSaving ? (
-                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-              ) : (
-                <Save className="h-3 w-3 mr-1" />
-              )}
-              {isSaving ? 'Opslaan...' : 'Opslaan'}
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-6 text-xs px-2 text-destructive hover:text-destructive"
-              onClick={onDelete}
-              disabled={isDeleting}
-              data-testid={`button-delete-${testIdPrefix}-${index}`}
-            >
-              {isDeleting ? (
-                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-              ) : (
-                <Trash2 className="h-3 w-3 mr-1" />
-              )}
-              {isDeleting ? 'Verwijderen...' : 'Verwijderen'}
+              <Save className="h-3 w-3 mr-1" />
+              Opslaan
             </Button>
           )}
         </div>
@@ -1255,109 +1266,6 @@ export default function Wetgeving() {
               )}
             </CardContent>
           </Card>
-
-          {/* Saved articles section */}
-          {savedLegislation.length > 0 && (
-            <Card data-testid="card-saved-articles">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Save className="h-5 w-5" />
-                  Opgeslagen Artikelen
-                  <Badge variant="secondary" className="ml-2">{savedLegislation.length}</Badge>
-                </CardTitle>
-                <CardDescription>
-                  {savedArticlesWithCommentary.length} met commentaar, {savedArticlesWithoutCommentary.length} zonder
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
-                  {savedLegislation.map((item, index) => (
-                    <div 
-                      key={item.id}
-                      className={`border rounded-lg p-3 ${item.commentary ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-800' : 'bg-muted/30'}`}
-                      data-testid={`saved-article-${index}`}
-                    >
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <Badge className="bg-green-600 hover:bg-green-700 text-white font-mono text-xs">
-                          Art. {item.articleNumber}
-                        </Badge>
-                        {item.lawTitle && (
-                          <Badge variant="secondary" className="text-xs truncate max-w-[200px]">
-                            {item.lawTitle}
-                          </Badge>
-                        )}
-                        {item.commentary && (
-                          <Badge variant="outline" className="text-xs border-green-500 text-green-600">
-                            <MessageSquare className="h-3 w-3 mr-1" />
-                            Commentaar
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        {item.commentary ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-6 text-xs px-2"
-                            onClick={() => loadSavedCommentary(item)}
-                            data-testid={`button-load-saved-commentary-${index}`}
-                          >
-                            <BookText className="h-3 w-3 mr-1" />
-                            Bekijk commentaar
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-6 text-xs px-2"
-                            onClick={() => {
-                              const groupedArticle: GroupedArticle = {
-                                articleKey: item.articleKey,
-                                articleNumber: item.articleNumber,
-                                displayArticleNumber: item.articleNumber,
-                                title: item.lawTitle || '',
-                                bwbId: item.bwbId,
-                                bronUrl: item.wettenLink,
-                                bestScore: 0,
-                                bestScorePercent: '0%',
-                                bestRank: 0,
-                                leden: item.leden || []
-                              };
-                              fetchCommentary(groupedArticle);
-                            }}
-                            disabled={loadingCommentaryFor === item.articleKey}
-                            data-testid={`button-fetch-commentary-saved-${index}`}
-                          >
-                            {loadingCommentaryFor === item.articleKey ? (
-                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                            ) : (
-                              <MessageSquare className="h-3 w-3 mr-1" />
-                            )}
-                            {loadingCommentaryFor === item.articleKey ? 'Laden...' : 'Commentaar ophalen'}
-                          </Button>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 text-xs px-2 text-destructive hover:text-destructive"
-                          onClick={() => deleteArticle(item.articleKey)}
-                          disabled={deleteLegislationMutation.isPending}
-                          data-testid={`button-delete-saved-${index}`}
-                        >
-                          {deleteLegislationMutation.isPending ? (
-                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3 w-3 mr-1" />
-                          )}
-                          Verwijderen
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Local legislation search panel - DSO API */}
           <Card data-testid="card-local-legislation-search">
