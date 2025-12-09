@@ -87,7 +87,9 @@ function mapSupabaseToInternal(row: SupabaseSavedLegislationRow): SavedLegislati
     caseId: row.case_id,
     bwbId: row.bwb_id,
     articleNumber: row.article_number,
-    articleKey: `${row.bwb_id}:${row.article_number}`,
+    articleKey: row.boek_nummer 
+      ? `${row.bwb_id}:${row.boek_nummer}:${row.article_number}`
+      : `${row.bwb_id}:${row.article_number}`,
     lawTitle: row.law_title,
     articleText: row.article_text,
     wettenLink: row.wetten_link,
