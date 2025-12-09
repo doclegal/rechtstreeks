@@ -14,6 +14,7 @@ import { rkosAnalysisService } from "./services/rkosAnalysisService";
 import { legalAdviceService } from "./services/legalAdviceService";
 import { letterService } from "./services/letterService";
 import { savedJurisprudenceService } from "./services/savedJurisprudenceService";
+import { savedLegislationService } from "./services/savedLegislationService";
 import { mockIntegrations } from "./services/mockIntegrations";
 import { db, handleDatabaseError } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -8943,6 +8944,166 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
     }
   });
 
+  // ============================================
+  // SAVED LEGISLATION (Supabase) ROUTES
+  // ============================================
+
+  // Get saved legislation for a case
+  app.get('/api/saved-legislation/:caseId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { caseId } = req.params;
+      const userId = req.user?.claims?.sub;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Niet ingelogd' });
+      }
+
+      if (!caseId) {
+        return res.status(400).json({ error: 'Case ID is vereist' });
+      }
+
+      console.log(`📚 Fetching saved legislation for case ${caseId}`);
+      
+      const savedItems = await savedLegislationService.getSavedForCase(caseId, userId);
+      
+      console.log(`✅ Found ${savedItems.length} saved legislation items`);
+      
+      res.json({ items: savedItems });
+    } catch (error: any) {
+      console.error('Error fetching saved legislation:', error);
+      res.status(error.statusCode || 500).json({ 
+        error: error.message || 'Kon opgeslagen artikelen niet ophalen' 
+      });
+    }
+  });
+
+  // Save a legislation item
+  app.post('/api/saved-legislation', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ error: 'Niet ingelogd' });
+      }
+
+      const { 
+        caseId, 
+        bwbId, 
+        articleNumber,
+        lawTitle,
+        boekNummer,
+        boekTitel,
+        titelNummer,
+        titelNaam,
+        articleText,
+        validFrom,
+        wettenLink,
+        commentaryShortIntro,
+        commentarySystematiek,
+        commentaryKernbegrippen,
+        commentaryReikwijdte,
+        jurisprudenceRefs,
+        onlineSources
+      } = req.body;
+
+      if (!caseId || !bwbId || !articleNumber) {
+        return res.status(400).json({ error: 'Case ID, BWB ID en artikel nummer zijn vereist' });
+      }
+
+      console.log(`💾 Saving legislation ${bwbId} art. ${articleNumber} for case ${caseId}`);
+
+      const saved = await savedLegislationService.saveLegislation({
+        userId,
+        caseId,
+        bwbId,
+        articleNumber,
+        lawTitle,
+        boekNummer,
+        boekTitel,
+        titelNummer,
+        titelNaam,
+        articleText,
+        validFrom,
+        wettenLink,
+        commentaryShortIntro,
+        commentarySystematiek,
+        commentaryKernbegrippen,
+        commentaryReikwijdte,
+        jurisprudenceRefs,
+        onlineSources
+      });
+
+      console.log(`✅ Saved legislation with id ${saved.id}`);
+
+      res.json({ success: true, item: saved });
+    } catch (error: any) {
+      console.error('Error saving legislation:', error);
+      res.status(error.statusCode || 500).json({ 
+        error: error.message || 'Kon artikel niet opslaan' 
+      });
+    }
+  });
+
+  // Delete a saved legislation item by ID
+  app.delete('/api/saved-legislation/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user?.claims?.sub;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Niet ingelogd' });
+      }
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID is vereist' });
+      }
+
+      console.log(`🗑️ Deleting saved legislation ${id}`);
+      
+      await savedLegislationService.deleteSavedLegislation(id, userId);
+      
+      console.log(`✅ Deleted saved legislation ${id}`);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting saved legislation:', error);
+      res.status(error.statusCode || 500).json({ 
+        error: error.message || 'Kon artikel niet verwijderen' 
+      });
+    }
+  });
+
+  // Delete a saved legislation item by case ID and article
+  app.delete('/api/saved-legislation/:caseId/article/:bwbId/:articleNumber', isAuthenticated, async (req: any, res) => {
+    try {
+      const { caseId, bwbId, articleNumber } = req.params;
+      const userId = req.user?.claims?.sub;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Niet ingelogd' });
+      }
+
+      if (!caseId || !bwbId || !articleNumber) {
+        return res.status(400).json({ error: 'Case ID, BWB ID en artikel nummer zijn vereist' });
+      }
+
+      const decodedBwbId = decodeURIComponent(bwbId);
+      const decodedArticleNumber = decodeURIComponent(articleNumber);
+      
+      console.log(`🗑️ Deleting saved legislation ${decodedBwbId} art. ${decodedArticleNumber} from case ${caseId}`);
+      
+      await savedLegislationService.deleteByArticle(caseId, decodedBwbId, decodedArticleNumber, userId);
+      
+      console.log(`✅ Deleted saved legislation ${decodedBwbId} art. ${decodedArticleNumber}`);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting saved legislation by article:', error);
+      res.status(error.statusCode || 500).json({ 
+        error: error.message || 'Kon artikel niet verwijderen' 
+      });
+    }
+  });
 
   // Check Pinecone connection
   app.get('/api/rechtspraak/pinecone-status', async (req, res) => {
