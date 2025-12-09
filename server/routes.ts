@@ -8033,38 +8033,44 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         return res.status(400).json({ error: 'Case ID is required' });
       }
 
-      // Fetch case data
-      const [caseData] = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
+      // Fetch case data from Supabase
+      const caseData = await caseService.getCaseById(caseId);
       if (!caseData) {
         return res.status(404).json({ error: 'Case not found' });
       }
 
-      // Fetch latest analysis with legal advice (must have legalAdviceJson populated)
-      const analysisRecords = await db
-        .select()
-        .from(analyses)
-        .where(eq(analyses.caseId, caseId))
-        .orderBy(desc(analyses.createdAt));
-
-      // Find the newest analysis that actually has legal advice
-      const latestAnalysis = analysisRecords.find(a => a.legalAdviceJson !== null && a.legalAdviceJson !== undefined);
+      // Fetch latest legal advice from Supabase
+      const latestAdvice = await legalAdviceService.getLatestCompletedAdvice(caseId);
       
-      if (!latestAnalysis || !latestAnalysis.legalAdviceJson) {
+      if (!latestAdvice) {
         return res.status(404).json({ error: 'No legal advice found for this case' });
       }
       
-      console.log(`📋 Found legal advice in analysis from ${latestAnalysis.createdAt}`);
-      console.log(`📊 Total analyses for case: ${analysisRecords.length}, with advice: ${analysisRecords.filter(a => a.legalAdviceJson).length}`);
+      console.log(`📋 Found legal advice from Supabase: ${latestAdvice.id}`);
 
-      const legalAdvice: any = latestAnalysis.legalAdviceJson;
-      
-      // Build comprehensive context for AI
+      // Helper to normalize Supabase fields (arrays/objects) to text
+      const normalizeField = (field: any): string => {
+        if (!field) return '';
+        if (typeof field === 'string') return field;
+        if (Array.isArray(field)) {
+          return field.map(item => typeof item === 'object' ? (item.text || item.beschrijving || JSON.stringify(item)) : String(item)).join('\n');
+        }
+        if (typeof field === 'object') {
+          // Extract common text fields from objects
+          if (field.text) return field.text;
+          if (field.beschrijving) return field.beschrijving;
+          return Object.values(field).filter(v => typeof v === 'string').join('\n') || JSON.stringify(field);
+        }
+        return String(field);
+      };
+
+      // Build comprehensive context for AI with normalized fields
       const adviceText = [
-        legalAdvice.het_geschil || '',
-        legalAdvice.de_feiten || '',
-        legalAdvice.juridische_duiding || '',
-        legalAdvice.vervolgstappen || '',
-        legalAdvice.samenvatting_advies || ''
+        latestAdvice.het_geschil || '',
+        normalizeField(latestAdvice.de_feiten),
+        normalizeField(latestAdvice.juridische_duiding),
+        normalizeField(latestAdvice.vervolgstappen),
+        latestAdvice.samenvatting_advies || ''
       ].filter(Boolean).join('\n\n');
 
       if (!adviceText.trim()) {
@@ -9117,55 +9123,43 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
         return res.status(400).json({ error: 'Case ID is required' });
       }
 
-      // Fetch case data
-      const [caseData] = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
+      // Fetch case data from Supabase
+      const caseData = await caseService.getCaseById(caseId);
       if (!caseData) {
         return res.status(404).json({ error: 'Case not found' });
       }
 
-      // Fetch latest analysis with legal advice
-      const analysisRecords = await db
-        .select()
-        .from(analyses)
-        .where(eq(analyses.caseId, caseId))
-        .orderBy(desc(analyses.createdAt));
-
-      // Find analysis with legal advice OR succesKansAnalysis
-      const latestAnalysis = analysisRecords.find(a => 
-        a.legalAdviceJson !== null || a.succesKansAnalysis !== null
-      );
+      // Fetch analysis data from Supabase
+      const latestRkos = await rkosAnalysisService.getLatestCompletedAnalysis(caseId);
+      const latestAdvice = await legalAdviceService.getLatestCompletedAdvice(caseId);
       
-      if (!latestAnalysis) {
+      if (!latestRkos && !latestAdvice) {
         return res.status(404).json({ error: 'Geen analyse gevonden voor deze zaak. Voer eerst een analyse uit.' });
       }
       
       console.log(`📋 Generating legislation search query for case ${caseId}`);
 
-      // Build context from available analysis data
+      // Build context from available Supabase analysis data
       let contextParts: string[] = [];
       
       // Add legal advice if available
-      if (latestAnalysis.legalAdviceJson) {
-        const legalAdvice: any = latestAnalysis.legalAdviceJson;
+      if (latestAdvice) {
         contextParts.push(
-          legalAdvice.het_geschil || '',
-          legalAdvice.de_feiten || '',
-          legalAdvice.juridische_duiding || '',
-          legalAdvice.samenvatting_advies || ''
+          latestAdvice.het_geschil || '',
+          Array.isArray(latestAdvice.de_feiten) ? latestAdvice.de_feiten.join('\n') : (latestAdvice.de_feiten || ''),
+          typeof latestAdvice.juridische_duiding === 'object' ? JSON.stringify(latestAdvice.juridische_duiding) : (latestAdvice.juridische_duiding || ''),
+          latestAdvice.samenvatting_advies || ''
         );
       }
       
-      // Add succesKansAnalysis if available
-      if (latestAnalysis.succesKansAnalysis) {
-        const rkos: any = latestAnalysis.succesKansAnalysis;
-        if (rkos.applicable_laws?.length > 0) {
-          contextParts.push(`Toepasselijke wetten: ${rkos.applicable_laws.join(', ')}`);
+      // Add RKOS analysis if available
+      if (latestRkos) {
+        if (latestRkos.applicable_laws && Array.isArray(latestRkos.applicable_laws) && latestRkos.applicable_laws.length > 0) {
+          contextParts.push(`Toepasselijke wetten: ${latestRkos.applicable_laws.join(', ')}`);
         }
-        if (rkos.legal_basis) {
-          contextParts.push(`Juridische grondslag: ${rkos.legal_basis}`);
-        }
-        if (rkos.strengths?.length > 0) {
-          contextParts.push(`Sterke punten: ${rkos.strengths.join('; ')}`);
+        if (latestRkos.strengths && latestRkos.strengths.length > 0) {
+          const strengthsStr = latestRkos.strengths.map((s: any) => typeof s === 'object' ? s.text || JSON.stringify(s) : s).join('; ');
+          contextParts.push(`Sterke punten: ${strengthsStr}`);
         }
       }
       
@@ -9287,55 +9281,43 @@ Genereer een JSON response met:
         return res.status(400).json({ error: 'Case ID is required' });
       }
 
-      // Fetch case data
-      const [caseData] = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
+      // Fetch case data from Supabase
+      const caseData = await caseService.getCaseById(caseId);
       if (!caseData) {
         return res.status(404).json({ error: 'Case not found' });
       }
 
-      // Fetch latest analysis with legal advice
-      const analysisRecords = await db
-        .select()
-        .from(analyses)
-        .where(eq(analyses.caseId, caseId))
-        .orderBy(desc(analyses.createdAt));
-
-      // Find analysis with legal advice OR succesKansAnalysis
-      const latestAnalysis = analysisRecords.find(a => 
-        a.legalAdviceJson !== null || a.succesKansAnalysis !== null
-      );
+      // Fetch analysis data from Supabase
+      const latestRkos = await rkosAnalysisService.getLatestCompletedAnalysis(caseId);
+      const latestAdvice = await legalAdviceService.getLatestCompletedAdvice(caseId);
       
-      if (!latestAnalysis) {
+      if (!latestRkos && !latestAdvice) {
         return res.status(404).json({ error: 'Geen analyse gevonden voor deze zaak. Voer eerst een analyse uit.' });
       }
       
       console.log(`📋 Generating specific article suggestions for case ${caseId}`);
 
-      // Build context from available analysis data
+      // Build context from available Supabase analysis data
       let contextParts: string[] = [];
       
       // Add legal advice if available
-      if (latestAnalysis.legalAdviceJson) {
-        const legalAdvice: any = latestAnalysis.legalAdviceJson;
+      if (latestAdvice) {
         contextParts.push(
-          legalAdvice.het_geschil || '',
-          legalAdvice.de_feiten || '',
-          legalAdvice.juridische_duiding || '',
-          legalAdvice.samenvatting_advies || ''
+          latestAdvice.het_geschil || '',
+          Array.isArray(latestAdvice.de_feiten) ? latestAdvice.de_feiten.join('\n') : (latestAdvice.de_feiten || ''),
+          typeof latestAdvice.juridische_duiding === 'object' ? JSON.stringify(latestAdvice.juridische_duiding) : (latestAdvice.juridische_duiding || ''),
+          latestAdvice.samenvatting_advies || ''
         );
       }
       
-      // Add succesKansAnalysis if available
-      if (latestAnalysis.succesKansAnalysis) {
-        const rkos: any = latestAnalysis.succesKansAnalysis;
-        if (rkos.applicable_laws?.length > 0) {
-          contextParts.push(`Toepasselijke wetten: ${rkos.applicable_laws.join(', ')}`);
+      // Add RKOS analysis if available
+      if (latestRkos) {
+        if (latestRkos.applicable_laws && Array.isArray(latestRkos.applicable_laws) && latestRkos.applicable_laws.length > 0) {
+          contextParts.push(`Toepasselijke wetten: ${latestRkos.applicable_laws.join(', ')}`);
         }
-        if (rkos.legal_basis) {
-          contextParts.push(`Juridische grondslag: ${rkos.legal_basis}`);
-        }
-        if (rkos.strengths?.length > 0) {
-          contextParts.push(`Sterke punten: ${rkos.strengths.join('; ')}`);
+        if (latestRkos.strengths && latestRkos.strengths.length > 0) {
+          const strengthsStr = latestRkos.strengths.map((s: any) => typeof s === 'object' ? s.text || JSON.stringify(s) : s).join('; ');
+          contextParts.push(`Sterke punten: ${strengthsStr}`);
         }
       }
       
