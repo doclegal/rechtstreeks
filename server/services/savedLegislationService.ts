@@ -1,5 +1,5 @@
 import { supabase } from "../supabaseClient";
-import { randomUUID, createHash } from "crypto";
+import { createHash } from "crypto";
 
 function replitIdToUuid(replitId: string): string {
   const hash = createHash('sha256').update(`replit-user-${replitId}`).digest('hex');
@@ -18,7 +18,7 @@ function ensureUuid(userId: string): string {
   return replitIdToUuid(userId);
 }
 
-export interface SavedLegislationRow {
+interface SupabaseSavedLegislationRow {
   id: string;
   user_id: string;
   case_id: string;
@@ -39,105 +39,68 @@ export interface SavedLegislationRow {
   jurisprudence_refs: any | null;
   online_sources: any | null;
   user_notes: string | null;
-  saved_at: string;
-  updated_at: string;
+  saved_at: string | null;
+  updated_at: string | null;
 }
 
-export interface SaveLegislationInput {
-  userId: string;
-  caseId: string;
-  bwbId: string;
-  articleNumber: string;
-  lawTitle?: string | null;
-  boekNummer?: string | null;
-  boekTitel?: string | null;
-  titelNummer?: string | null;
-  titelNaam?: string | null;
-  articleText?: string | null;
-  validFrom?: string | null;
-  wettenLink?: string | null;
-  commentaryShortIntro?: string | null;
-  commentarySystematiek?: string | null;
-  commentaryKernbegrippen?: any | null;
-  commentaryReikwijdte?: string | null;
-  jurisprudenceRefs?: any | null;
-  onlineSources?: any | null;
-  userNotes?: string | null;
-}
-
-export interface SavedLegislation {
+export interface SavedLegislationItem {
   id: string;
-  userId: string;
   caseId: string;
   bwbId: string;
   articleNumber: string;
+  articleKey: string;
   lawTitle: string | null;
+  articleText: string | null;
+  wettenLink: string | null;
   boekNummer: string | null;
   boekTitel: string | null;
-  titelNummer: string | null;
-  titelNaam: string | null;
-  articleText: string | null;
   validFrom: string | null;
-  wettenLink: string | null;
-  commentaryShortIntro: string | null;
-  commentarySystematiek: string | null;
-  commentaryKernbegrippen: any | null;
-  commentaryReikwijdte: string | null;
-  jurisprudenceRefs: any | null;
-  onlineSources: any | null;
-  userNotes: string | null;
-  savedAt: Date;
-  updatedAt: Date;
+  leden: any;
+  commentary: any;
+  commentarySources: any;
+  commentaryGeneratedAt: string | null;
+  searchScore: string | null;
+  searchRank: number | null;
+  createdAt: string;
 }
 
-function mapRowToSavedLegislation(row: SavedLegislationRow): SavedLegislation {
+function mapSupabaseToInternal(row: SupabaseSavedLegislationRow): SavedLegislationItem {
+  const commentary = row.commentary_short_intro || row.commentary_systematiek || row.commentary_kernbegrippen || row.commentary_reikwijdte
+    ? {
+        short_intro: row.commentary_short_intro,
+        systematiek: row.commentary_systematiek,
+        kernbegrippen: row.commentary_kernbegrippen,
+        reikwijdte_en_beperkingen: row.commentary_reikwijdte,
+      }
+    : null;
+
+  const sources = row.jurisprudence_refs || row.online_sources
+    ? {
+        jurisprudence: row.jurisprudence_refs || [],
+        onlineSources: row.online_sources || [],
+        wettenLink: row.wetten_link || '',
+      }
+    : null;
+
   return {
     id: row.id,
-    userId: row.user_id,
     caseId: row.case_id,
     bwbId: row.bwb_id,
     articleNumber: row.article_number,
+    articleKey: `${row.bwb_id}:${row.article_number}`,
     lawTitle: row.law_title,
+    articleText: row.article_text,
+    wettenLink: row.wetten_link,
     boekNummer: row.boek_nummer,
     boekTitel: row.boek_titel,
-    titelNummer: row.titel_nummer,
-    titelNaam: row.titel_naam,
-    articleText: row.article_text,
     validFrom: row.valid_from,
-    wettenLink: row.wetten_link,
-    commentaryShortIntro: row.commentary_short_intro,
-    commentarySystematiek: row.commentary_systematiek,
-    commentaryKernbegrippen: row.commentary_kernbegrippen,
-    commentaryReikwijdte: row.commentary_reikwijdte,
-    jurisprudenceRefs: row.jurisprudence_refs,
-    onlineSources: row.online_sources,
-    userNotes: row.user_notes,
-    savedAt: new Date(row.saved_at),
-    updatedAt: new Date(row.updated_at),
-  };
-}
-
-function mapInputToRow(input: SaveLegislationInput): Partial<SavedLegislationRow> {
-  return {
-    user_id: ensureUuid(input.userId),
-    case_id: input.caseId,
-    bwb_id: input.bwbId,
-    article_number: input.articleNumber,
-    law_title: input.lawTitle ?? null,
-    boek_nummer: input.boekNummer ?? null,
-    boek_titel: input.boekTitel ?? null,
-    titel_nummer: input.titelNummer ?? null,
-    titel_naam: input.titelNaam ?? null,
-    article_text: input.articleText ?? null,
-    valid_from: input.validFrom ?? null,
-    wetten_link: input.wettenLink ?? null,
-    commentary_short_intro: input.commentaryShortIntro ?? null,
-    commentary_systematiek: input.commentarySystematiek ?? null,
-    commentary_kernbegrippen: input.commentaryKernbegrippen ?? null,
-    commentary_reikwijdte: input.commentaryReikwijdte ?? null,
-    jurisprudence_refs: input.jurisprudenceRefs ?? null,
-    online_sources: input.onlineSources ?? null,
-    user_notes: input.userNotes ?? null,
+    leden: null,
+    commentary: commentary,
+    commentarySources: sources,
+    commentaryGeneratedAt: row.updated_at,
+    searchScore: null,
+    searchRank: null,
+    createdAt: row.saved_at || new Date().toISOString(),
   };
 }
 
@@ -149,121 +112,155 @@ class SavedLegislationServiceError extends Error {
 }
 
 export const savedLegislationService = {
-  async saveLegislation(input: SaveLegislationInput): Promise<SavedLegislation> {
-    const id = randomUUID();
-    const now = new Date().toISOString();
-
-    const rowData = {
-      id,
-      ...mapInputToRow(input),
-      saved_at: now,
-      updated_at: now,
-    };
-
-    const { data, error } = await supabase
-      .from("saved_legislation")
-      .insert(rowData)
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === "23505") {
-        throw new SavedLegislationServiceError(409, "Dit artikel is al opgeslagen voor deze zaak");
-      }
-      console.error("Supabase saveLegislation error:", error);
-      throw new SavedLegislationServiceError(500, "Kon artikel niet opslaan");
-    }
-
-    return mapRowToSavedLegislation(data);
-  },
-
-  async getSavedForCase(caseId: string, userId: string): Promise<SavedLegislation[]> {
-    const userUuid = ensureUuid(userId);
-
+  async getSavedForCase(caseId: string, userId: string): Promise<SavedLegislationItem[]> {
+    const uuid = ensureUuid(userId);
+    
     const { data, error } = await supabase
       .from("saved_legislation")
       .select("*")
       .eq("case_id", caseId)
-      .eq("user_id", userUuid)
+      .eq("user_id", uuid)
       .order("saved_at", { ascending: false });
 
     if (error) {
       console.error("Supabase getSavedForCase error:", error);
-      throw new SavedLegislationServiceError(500, "Kon opgeslagen artikelen niet ophalen");
+      throw new SavedLegislationServiceError(500, `Failed to get saved legislation: ${error.message}`);
     }
 
-    return (data || []).map(mapRowToSavedLegislation);
+    return (data || []).map(mapSupabaseToInternal);
   },
 
-  async deleteSavedLegislation(id: string, userId: string): Promise<void> {
-    const userUuid = ensureUuid(userId);
-
-    const { error } = await supabase
-      .from("saved_legislation")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", userUuid);
-
-    if (error) {
-      console.error("Supabase deleteSavedLegislation error:", error);
-      throw new SavedLegislationServiceError(500, "Kon artikel niet verwijderen");
+  async saveLegislation(
+    caseId: string,
+    userId: string,
+    article: {
+      bwbId: string;
+      articleNumber: string;
+      lawTitle?: string;
+      text?: string;
+      wettenLink?: string;
+      boekNummer?: string;
+      boekTitel?: string;
+      validFrom?: string;
+      bestScore?: number;
+      bestRank?: number;
+    },
+    commentary?: {
+      short_intro?: string;
+      systematiek?: string;
+      kernbegrippen?: any;
+      reikwijdte_en_beperkingen?: string;
+    },
+    sources?: {
+      jurisprudence?: any[];
+      onlineSources?: any[];
+      wettenLink?: string;
     }
-  },
+  ): Promise<{ id: string; articleKey: string; isUpdate: boolean }> {
+    const uuid = ensureUuid(userId);
+    const articleKey = `${article.bwbId}:${article.articleNumber}`;
+    const now = new Date().toISOString();
 
-  async deleteByArticle(caseId: string, bwbId: string, articleNumber: string, userId: string): Promise<void> {
-    const userUuid = ensureUuid(userId);
+    const insertData = {
+      user_id: uuid,
+      case_id: caseId,
+      bwb_id: article.bwbId,
+      article_number: article.articleNumber,
+      law_title: article.lawTitle || null,
+      article_text: article.text || null,
+      wetten_link: article.wettenLink || null,
+      boek_nummer: article.boekNummer || null,
+      boek_titel: article.boekTitel || null,
+      valid_from: article.validFrom || null,
+      commentary_short_intro: commentary?.short_intro || null,
+      commentary_systematiek: commentary?.systematiek || null,
+      commentary_kernbegrippen: commentary?.kernbegrippen || null,
+      commentary_reikwijdte: commentary?.reikwijdte_en_beperkingen || null,
+      jurisprudence_refs: sources?.jurisprudence || null,
+      online_sources: sources?.onlineSources || null,
+      updated_at: now,
+    };
 
-    const { error } = await supabase
-      .from("saved_legislation")
-      .delete()
-      .eq("case_id", caseId)
-      .eq("bwb_id", bwbId)
-      .eq("article_number", articleNumber)
-      .eq("user_id", userUuid);
-
-    if (error) {
-      console.error("Supabase deleteByArticle error:", error);
-      throw new SavedLegislationServiceError(500, "Kon artikel niet verwijderen");
-    }
-  },
-
-  async isArticleSaved(caseId: string, bwbId: string, articleNumber: string, userId: string): Promise<boolean> {
-    const userUuid = ensureUuid(userId);
-
-    const { data, error } = await supabase
+    const { data: existing } = await supabase
       .from("saved_legislation")
       .select("id")
       .eq("case_id", caseId)
-      .eq("bwb_id", bwbId)
-      .eq("article_number", articleNumber)
-      .eq("user_id", userUuid)
+      .eq("user_id", uuid)
+      .eq("bwb_id", article.bwbId)
+      .eq("article_number", article.articleNumber)
       .maybeSingle();
 
-    if (error) {
-      console.error("Supabase isArticleSaved error:", error);
-      return false;
-    }
+    if (existing) {
+      const { error } = await supabase
+        .from("saved_legislation")
+        .update(insertData)
+        .eq("id", existing.id);
 
-    return data !== null;
+      if (error) {
+        console.error("Supabase update saved legislation error:", error);
+        throw new SavedLegislationServiceError(500, `Failed to update saved legislation: ${error.message}`);
+      }
+
+      console.log(`📝 Updated saved legislation: ${articleKey} for case ${caseId}`);
+      return { id: existing.id, articleKey, isUpdate: true };
+    } else {
+      const { data, error } = await supabase
+        .from("saved_legislation")
+        .insert({ ...insertData, saved_at: now })
+        .select("id")
+        .single();
+
+      if (error) {
+        console.error("Supabase insert saved legislation error:", error);
+        throw new SavedLegislationServiceError(500, `Failed to save legislation: ${error.message}`);
+      }
+
+      console.log(`💾 Saved new legislation: ${articleKey} for case ${caseId}`);
+      return { id: data.id, articleKey, isUpdate: false };
+    }
   },
 
-  async updateNotes(id: string, userId: string, notes: string): Promise<SavedLegislation> {
-    const userUuid = ensureUuid(userId);
-    const now = new Date().toISOString();
+  async deleteSavedLegislation(caseId: string, articleKey: string, userId: string): Promise<void> {
+    const uuid = ensureUuid(userId);
+    const [bwbId, articleNumber] = articleKey.split(':');
+
+    if (!bwbId || !articleNumber) {
+      throw new SavedLegislationServiceError(400, "Invalid article key format");
+    }
+
+    const { error } = await supabase
+      .from("saved_legislation")
+      .delete()
+      .eq("case_id", caseId)
+      .eq("user_id", uuid)
+      .eq("bwb_id", bwbId)
+      .eq("article_number", articleNumber);
+
+    if (error) {
+      console.error("Supabase delete saved legislation error:", error);
+      throw new SavedLegislationServiceError(500, `Failed to delete saved legislation: ${error.message}`);
+    }
+
+    console.log(`🗑️ Deleted saved legislation ${articleKey} for case ${caseId}`);
+  },
+
+  async deleteAllForCase(caseId: string, userId: string): Promise<number> {
+    const uuid = ensureUuid(userId);
 
     const { data, error } = await supabase
       .from("saved_legislation")
-      .update({ user_notes: notes, updated_at: now })
-      .eq("id", id)
-      .eq("user_id", userUuid)
-      .select()
-      .single();
+      .delete()
+      .eq("case_id", caseId)
+      .eq("user_id", uuid)
+      .select("id");
 
     if (error) {
-      console.error("Supabase updateNotes error:", error);
-      throw new SavedLegislationServiceError(500, "Kon notities niet updaten");
+      console.error("Supabase delete all saved legislation error:", error);
+      throw new SavedLegislationServiceError(500, `Failed to delete saved legislation: ${error.message}`);
     }
 
-    return mapRowToSavedLegislation(data);
+    const count = data?.length || 0;
+    console.log(`🗑️ Deleted ${count} saved legislation items for case ${caseId}`);
+    return count;
   },
 };

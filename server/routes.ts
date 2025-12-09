@@ -10559,7 +10559,7 @@ Geef ALLEEN de JSON terug, geen uitleg.`
     }
   });
 
-  // Get saved legislation for a case
+  // Get saved legislation for a case (from Supabase)
   app.get('/api/wetgeving/:caseId/saved', isAuthenticated, async (req, res) => {
     try {
       const { caseId } = req.params;
@@ -10577,13 +10577,9 @@ Geef ALLEEN de JSON terug, geen uitleg.`
         return res.status(404).json({ error: 'Case not found' });
       }
 
-      const savedItems = await db
-        .select()
-        .from(savedLegislation)
-        .where(eq(savedLegislation.caseId, caseId))
-        .orderBy(savedLegislation.createdAt);
+      const savedItems = await savedLegislationService.getSavedForCase(caseId, userId);
 
-      console.log(`📖 Retrieved ${savedItems.length} saved legislation items for case ${caseId}`);
+      console.log(`📖 Retrieved ${savedItems.length} saved legislation items for case ${caseId} (Supabase)`);
       
       res.json(savedItems);
       
@@ -10595,7 +10591,7 @@ Geef ALLEEN de JSON terug, geen uitleg.`
     }
   });
 
-  // Save a legislation article (upsert)
+  // Save a legislation article (upsert) to Supabase
   app.post('/api/wetgeving/:caseId/saved', isAuthenticated, async (req, res) => {
     try {
       const { caseId } = req.params;
@@ -10614,79 +10610,21 @@ Geef ALLEEN de JSON terug, geen uitleg.`
         return res.status(404).json({ error: 'Case not found' });
       }
 
-      const articleKey = `${article.bwbId}:${article.articleNumber}`;
+      // Save to Supabase using the service
+      const result = await savedLegislationService.saveLegislation(
+        caseId,
+        userId,
+        article,
+        commentary,
+        sources
+      );
       
-      // Check if already exists
-      const existing = await db
-        .select()
-        .from(savedLegislation)
-        .where(and(
-          eq(savedLegislation.caseId, caseId),
-          eq(savedLegislation.articleKey, articleKey)
-        ))
-        .limit(1);
-
-      if (existing.length > 0) {
-        // Update existing
-        await db
-          .update(savedLegislation)
-          .set({
-            lawTitle: article.lawTitle,
-            articleText: article.text,
-            wettenLink: article.wettenLink,
-            boekNummer: article.boekNummer,
-            boekTitel: article.boekTitel,
-            validFrom: article.validFrom,
-            leden: article.leden,
-            commentary: commentary,
-            commentarySources: sources,
-            commentaryGeneratedAt: commentary ? new Date() : existing[0].commentaryGeneratedAt,
-            searchScore: article.bestScore?.toString(),
-            searchRank: article.bestRank
-          })
-          .where(eq(savedLegislation.id, existing[0].id));
-          
-        console.log(`📝 Updated saved legislation: ${articleKey} for case ${caseId}`);
-        
-        res.json({ 
-          success: true, 
-          id: existing[0].id,
-          articleKey: articleKey,
-          message: 'Artikel bijgewerkt' 
-        });
-      } else {
-        // Insert new
-        const [inserted] = await db
-          .insert(savedLegislation)
-          .values({
-            caseId,
-            bwbId: article.bwbId,
-            articleNumber: article.articleNumber,
-            articleKey,
-            lawTitle: article.lawTitle,
-            articleText: article.text,
-            wettenLink: article.wettenLink,
-            boekNummer: article.boekNummer,
-            boekTitel: article.boekTitel,
-            validFrom: article.validFrom,
-            leden: article.leden,
-            commentary: commentary,
-            commentarySources: sources,
-            commentaryGeneratedAt: commentary ? new Date() : null,
-            searchScore: article.bestScore?.toString(),
-            searchRank: article.bestRank
-          })
-          .returning();
-          
-        console.log(`💾 Saved new legislation: ${articleKey} for case ${caseId}`);
-        
-        res.json({ 
-          success: true, 
-          id: inserted.id,
-          articleKey: articleKey,
-          message: 'Artikel opgeslagen' 
-        });
-      }
+      res.json({ 
+        success: true, 
+        id: result.id,
+        articleKey: result.articleKey,
+        message: result.isUpdate ? 'Artikel bijgewerkt' : 'Artikel opgeslagen' 
+      });
       
     } catch (error: any) {
       console.error('Error saving legislation:', error);
@@ -10696,7 +10634,7 @@ Geef ALLEEN de JSON terug, geen uitleg.`
     }
   });
 
-  // Delete a saved legislation article by articleKey
+  // Delete a saved legislation article by articleKey (from Supabase)
   app.delete('/api/wetgeving/:caseId/saved/:articleKey', isAuthenticated, async (req, res) => {
     try {
       const { caseId, articleKey } = req.params;
@@ -10717,14 +10655,7 @@ Geef ALLEEN de JSON terug, geen uitleg.`
       // Decode the articleKey (it's URL encoded)
       const decodedKey = decodeURIComponent(articleKey);
 
-      await db
-        .delete(savedLegislation)
-        .where(and(
-          eq(savedLegislation.caseId, caseId),
-          eq(savedLegislation.articleKey, decodedKey)
-        ));
-
-      console.log(`🗑️ Deleted saved legislation ${decodedKey} for case ${caseId}`);
+      await savedLegislationService.deleteSavedLegislation(caseId, decodedKey, userId);
       
       res.json({ 
         success: true, 
@@ -10740,7 +10671,7 @@ Geef ALLEEN de JSON terug, geen uitleg.`
     }
   });
 
-  // Delete all saved legislation for a case
+  // Delete all saved legislation for a case (from Supabase)
   app.delete('/api/wetgeving/:caseId/saved', isAuthenticated, async (req, res) => {
     try {
       const { caseId } = req.params;
@@ -10758,14 +10689,11 @@ Geef ALLEEN de JSON terug, geen uitleg.`
         return res.status(404).json({ error: 'Case not found' });
       }
 
-      const result = await db
-        .delete(savedLegislation)
-        .where(eq(savedLegislation.caseId, caseId));
-
-      console.log(`🗑️ Deleted all saved legislation for case ${caseId}`);
+      const count = await savedLegislationService.deleteAllForCase(caseId, userId);
       
       res.json({ 
         success: true, 
+        deletedCount: count,
         message: 'Alle artikelen verwijderd' 
       });
       
