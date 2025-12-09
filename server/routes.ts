@@ -4457,17 +4457,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Delete the letter from Supabase
-      await letterService.deleteLetter(letterId);
+      const deleted = await letterService.deleteLetter(letterId);
       
-      // Create event for audit trail
-      await storage.createEvent({
-        caseId: letter.caseId,
-        actorUserId: userId,
-        type: "letter_deleted",
-        payloadJson: { 
-          letterId
-        },
-      });
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete letter" });
+      }
+      
+      // Try to create event for audit trail (non-blocking)
+      try {
+        await storage.createEvent({
+          caseId: letter.caseId,
+          actorUserId: userId,
+          type: "letter_deleted",
+          payloadJson: { 
+            letterId
+          },
+        });
+      } catch (eventError) {
+        console.warn("Could not create delete event (case may not exist in local db):", eventError);
+      }
       
       res.json({ message: "Letter successfully deleted" });
     } catch (error) {
