@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { ArrowLeft, Search, Trash2, Sparkles, FileText, ExternalLink, Calendar, Building2, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Search, Trash2, Sparkles, FileText, ExternalLink, Calendar, Building2, Loader2, ChevronDown, ChevronUp, Bookmark, BookmarkCheck } from "lucide-react";
 import { useActiveCase } from "@/contexts/CaseContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,14 +16,41 @@ interface VectorSearchResult {
   score: number;
   ecli: string;
   court?: string;
+  court_level?: string;
   decision_date?: string;
   legal_area?: string;
+  procedure_type?: string;
   text?: string;
   ai_inhoudsindicatie?: string;
   ai_feiten?: string;
   ai_geschil?: string;
   ai_beslissing?: string;
   ai_motivering?: string;
+}
+
+interface SavedJurisprudence {
+  id: string;
+  userId: string;
+  caseId: string;
+  ecli: string;
+  court: string | null;
+  courtLevel: string | null;
+  decisionDate: string | null;
+  legalArea: string | null;
+  procedureType: string | null;
+  title: string | null;
+  sourceUrl: string | null;
+  textFragment: string | null;
+  aiFeiten: string | null;
+  aiGeschil: string | null;
+  aiBeslissing: string | null;
+  aiMotivering: string | null;
+  aiInhoudsindicatie: string | null;
+  searchScore: number | null;
+  searchNamespace: string | null;
+  searchQuery: string | null;
+  userNotes: string | null;
+  savedAt: string;
 }
 
 interface SavedReference {
@@ -38,15 +65,31 @@ export default function Jurisprudentie() {
   const { toast } = useToast();
   
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSearchResults, setShowSearchResults] = useState(false);
   
-  // Persistent results per namespace
+  // Search results (temporary, not persisted)
   const [ecliNlResults, setEcliNlResults] = useState<VectorSearchResult[]>([]);
   const [webEcliResults, setWebEcliResults] = useState<VectorSearchResult[]>([]);
   
-  // Track which results are expanded (by result id)
+  // Track which results are expanded (by result id or ecli)
   const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set());
 
-  // Query to load saved jurisprudence data
+  // Query to load saved jurisprudence from Supabase
+  const { data: savedJurisprudenceData, isLoading: savedJurisprudenceLoading } = useQuery({
+    queryKey: ['/api/saved-jurisprudence', currentCase?.id],
+    enabled: !!currentCase?.id,
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/saved-jurisprudence/${currentCase?.id}`);
+      return response.json();
+    }
+  });
+
+  const savedJurisprudence: SavedJurisprudence[] = savedJurisprudenceData?.items || [];
+
+  // Set of ECLIs that are already saved (for quick lookup)
+  const savedEclis = new Set(savedJurisprudence.map(item => item.ecli));
+
+  // Query to load saved references (legacy data)
   const { data: savedData, isLoading: savedDataLoading } = useQuery({
     queryKey: ['/api/jurisprudentie', currentCase?.id],
     enabled: !!currentCase?.id,
@@ -55,14 +98,6 @@ export default function Jurisprudentie() {
       return response.json();
     }
   });
-
-  // Load saved data into state when it changes
-  useEffect(() => {
-    if (savedData?.searchResults) {
-      setEcliNlResults(savedData.searchResults.ecli_nl || []);
-      setWebEcliResults(savedData.searchResults.web_ecli || []);
-    }
-  }, [savedData]);
 
   const savedReferences: SavedReference[] = savedData?.references || [];
 
@@ -106,26 +141,10 @@ export default function Jurisprudentie() {
         totalResults: data.totalResults || 0,
       };
     },
-    onSuccess: async (data: any) => {
+    onSuccess: (data: any) => {
       setWebEcliResults(data.webSearchResults);
       setEcliNlResults(data.ecliNlResults);
-      
-      // Save to database
-      if (currentCase?.id) {
-        try {
-          await apiRequest('PATCH', `/api/jurisprudentie/${currentCase.id}/save-search`, {
-            ecliNlResults: data.ecliNlResults,
-            webEcliResults: data.webSearchResults
-          });
-          
-          // Invalidate cache to reload saved data
-          queryClient.invalidateQueries({ 
-            queryKey: ['/api/jurisprudentie', currentCase.id] 
-          });
-        } catch (error) {
-          console.error('Failed to save search results:', error);
-        }
-      }
+      setShowSearchResults(true);
       
       const webCount = data.webSearchResults.length;
       const ecliCount = data.ecliNlResults.length;
@@ -178,26 +197,10 @@ export default function Jurisprudentie() {
         totalResults: searchData.totalResults || 0,
       };
     },
-    onSuccess: async (data: any) => {
+    onSuccess: (data: any) => {
       setWebEcliResults(data.webSearchResults);
       setEcliNlResults(data.ecliNlResults);
-      
-      // Save to database
-      if (currentCase?.id) {
-        try {
-          await apiRequest('PATCH', `/api/jurisprudentie/${currentCase.id}/save-search`, {
-            ecliNlResults: data.ecliNlResults,
-            webEcliResults: data.webSearchResults
-          });
-          
-          // Invalidate cache to reload saved data
-          queryClient.invalidateQueries({ 
-            queryKey: ['/api/jurisprudentie', currentCase.id] 
-          });
-        } catch (error) {
-          console.error('Failed to save search results:', error);
-        }
-      }
+      setShowSearchResults(true);
       
       const webCount = data.webSearchResults.length;
       const ecliCount = data.ecliNlResults.length;
@@ -212,6 +215,78 @@ export default function Jurisprudentie() {
       toast({
         title: "Fout bij zoeken",
         description: error.message || "Kon geen zoekvraag genereren of zoeken",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Save jurisprudence mutation
+  const saveJurisprudenceMutation = useMutation({
+    mutationFn: async ({ result, namespace }: { result: VectorSearchResult, namespace: string }) => {
+      if (!currentCase?.id) {
+        throw new Error('Geen actieve zaak geselecteerd');
+      }
+
+      const response = await apiRequest('POST', '/api/saved-jurisprudence', {
+        caseId: currentCase.id,
+        ecli: result.ecli,
+        court: result.court || null,
+        courtLevel: result.court_level || null,
+        decisionDate: result.decision_date || null,
+        legalArea: result.legal_area || null,
+        procedureType: result.procedure_type || null,
+        textFragment: result.text || null,
+        aiFeiten: result.ai_feiten || null,
+        aiGeschil: result.ai_geschil || null,
+        aiBeslissing: result.ai_beslissing || null,
+        aiMotivering: result.ai_motivering || null,
+        aiInhoudsindicatie: result.ai_inhoudsindicatie || null,
+        searchScore: result.score || null,
+        searchNamespace: namespace,
+        searchQuery: searchQuery || null
+      });
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/saved-jurisprudence', currentCase?.id] 
+      });
+      
+      toast({
+        title: "Uitspraak opgeslagen",
+        description: "De uitspraak is toegevoegd aan uw opgeslagen jurisprudentie",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout bij opslaan",
+        description: error.message || "Kon uitspraak niet opslaan",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Delete saved jurisprudence mutation
+  const deleteSavedMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest('DELETE', `/api/saved-jurisprudence/${id}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/saved-jurisprudence', currentCase?.id] 
+      });
+      
+      toast({
+        title: "Uitspraak verwijderd",
+        description: "De uitspraak is verwijderd uit uw opgeslagen jurisprudentie",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fout bij verwijderen",
+        description: error.message || "Kon uitspraak niet verwijderen",
         variant: "destructive",
       });
     }
@@ -250,7 +325,6 @@ export default function Jurisprudentie() {
       return response.json();
     },
     onSuccess: (data: any) => {
-      // Invalidate cache to reload saved references
       queryClient.invalidateQueries({ 
         queryKey: ['/api/jurisprudentie', currentCase?.id] 
       });
@@ -276,46 +350,7 @@ export default function Jurisprudentie() {
     }
   });
 
-  const clearNamespaceResultsMutation = useMutation({
-    mutationFn: async ({ namespace }: { namespace: 'ecli_nl' | 'web_ecli' }) => {
-      if (!currentCase?.id) {
-        throw new Error('Geen actieve zaak geselecteerd');
-      }
-
-      const response = await apiRequest('PATCH', `/api/jurisprudentie/${currentCase.id}/clear-namespace`, {
-        namespace
-      });
-      
-      return { namespace, response: await response.json() };
-    },
-    onSuccess: (data: any) => {
-      if (data.namespace === 'ecli_nl') {
-        setEcliNlResults([]);
-      } else {
-        setWebEcliResults([]);
-      }
-      
-      // Invalidate cache to reload saved data
-      queryClient.invalidateQueries({ 
-        queryKey: ['/api/jurisprudentie', currentCase?.id] 
-      });
-      
-      toast({
-        title: "Resultaten gewist",
-        description: `Resultaten uit ${data.namespace} zijn verwijderd`,
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Fout bij verwijderen",
-        description: error.message || "Kon resultaten niet verwijderen",
-        variant: "destructive",
-      });
-    }
-  });
-
-
-  if (authLoading || savedDataLoading) {
+  if (authLoading || savedJurisprudenceLoading || savedDataLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -344,19 +379,205 @@ export default function Jurisprudentie() {
     );
   }
 
-  const toggleExpanded = (resultId: string) => {
+  const toggleExpanded = (id: string) => {
     setExpandedResults(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(resultId)) {
-        newSet.delete(resultId);
+      if (newSet.has(id)) {
+        newSet.delete(id);
       } else {
-        newSet.add(resultId);
+        newSet.add(id);
       }
       return newSet;
     });
   };
 
-  const NamespaceBlock = ({ 
+  // Render a saved jurisprudence item
+  const SavedJurisprudenceItem = ({ item, index }: { item: SavedJurisprudence, index: number }) => (
+    <div 
+      className="border rounded-lg p-4 bg-muted/30 space-y-3"
+      data-testid={`saved-jurisprudence-${index}`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="font-mono text-xs">
+            {item.ecli}
+          </Badge>
+          {item.court && (
+            <Badge variant="secondary" className="text-xs">
+              <Building2 className="h-3 w-3 mr-1" />
+              {item.court}
+            </Badge>
+          )}
+          {item.decisionDate && (
+            <Badge variant="outline" className="text-xs">
+              <Calendar className="h-3 w-3 mr-1" />
+              {item.decisionDate}
+            </Badge>
+          )}
+          {item.searchNamespace && (
+            <Badge variant="outline" className="text-xs bg-primary/10">
+              {item.searchNamespace}
+            </Badge>
+          )}
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => deleteSavedMutation.mutate(item.id)}
+          disabled={deleteSavedMutation.isPending}
+          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+          data-testid={`button-delete-saved-${index}`}
+        >
+          {deleteSavedMutation.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+
+      {item.textFragment && (
+        <div className="text-sm space-y-2">
+          <p className={`text-muted-foreground whitespace-pre-wrap ${!expandedResults.has(item.id) ? 'line-clamp-3' : ''}`}>
+            {item.textFragment}
+          </p>
+          
+          <button
+            onClick={() => toggleExpanded(item.id)}
+            className="inline-flex items-center text-sm text-primary hover:underline pt-1"
+            data-testid={`button-toggle-saved-${index}`}
+          >
+            {expandedResults.has(item.id) ? (
+              <>
+                <ChevronUp className="h-3 w-3 mr-1" />
+                Minder tonen
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-3 w-3 mr-1" />
+                Lees verder
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
+      <a
+        href={`https://uitspraken.rechtspraak.nl/details?id=${item.ecli}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center text-sm text-primary hover:underline"
+        data-testid={`button-view-saved-${index}`}
+      >
+        <ExternalLink className="h-3 w-3 mr-1" />
+        Bekijk volledige uitspraak
+      </a>
+    </div>
+  );
+
+  // Render a search result with save button
+  const SearchResultItem = ({ 
+    result, 
+    index, 
+    namespace 
+  }: { 
+    result: VectorSearchResult, 
+    index: number, 
+    namespace: 'ecli_nl' | 'web_ecli' 
+  }) => {
+    const isSaved = savedEclis.has(result.ecli);
+    
+    return (
+      <div 
+        className="border rounded-lg p-4 bg-muted/30 space-y-3"
+        data-testid={`result-${namespace}-${index}`}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="font-mono text-xs">
+              {result.ecli}
+            </Badge>
+            {result.court && (
+              <Badge variant="secondary" className="text-xs">
+                <Building2 className="h-3 w-3 mr-1" />
+                {result.court}
+              </Badge>
+            )}
+            {result.decision_date && (
+              <Badge variant="outline" className="text-xs">
+                <Calendar className="h-3 w-3 mr-1" />
+                {result.decision_date}
+              </Badge>
+            )}
+          </div>
+          <Button
+            variant={isSaved ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => {
+              if (!isSaved) {
+                saveJurisprudenceMutation.mutate({ result, namespace });
+              }
+            }}
+            disabled={isSaved || saveJurisprudenceMutation.isPending}
+            data-testid={`button-save-${namespace}-${index}`}
+          >
+            {saveJurisprudenceMutation.isPending ? (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            ) : isSaved ? (
+              <>
+                <BookmarkCheck className="h-4 w-4 mr-1" />
+                Opgeslagen
+              </>
+            ) : (
+              <>
+                <Bookmark className="h-4 w-4 mr-1" />
+                Opslaan
+              </>
+            )}
+          </Button>
+        </div>
+
+        {result.text && (
+          <div className="text-sm space-y-2">
+            <p className={`text-muted-foreground whitespace-pre-wrap ${!expandedResults.has(result.id) ? 'line-clamp-3' : ''}`}>
+              {result.text}
+            </p>
+            
+            <button
+              onClick={() => toggleExpanded(result.id)}
+              className="inline-flex items-center text-sm text-primary hover:underline pt-1"
+              data-testid={`button-toggle-${namespace}-${index}`}
+            >
+              {expandedResults.has(result.id) ? (
+                <>
+                  <ChevronUp className="h-3 w-3 mr-1" />
+                  Minder tonen
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-3 w-3 mr-1" />
+                  Lees verder
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        <a
+          href={`https://uitspraken.rechtspraak.nl/details?id=${result.ecli}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center text-sm text-primary hover:underline"
+          data-testid={`button-view-full-${namespace}-${index}`}
+        >
+          <ExternalLink className="h-3 w-3 mr-1" />
+          Bekijk volledige uitspraak
+        </a>
+      </div>
+    );
+  };
+
+  const SearchResultsBlock = ({ 
     namespace, 
     title, 
     results 
@@ -365,7 +586,7 @@ export default function Jurisprudentie() {
     title: string, 
     results: VectorSearchResult[] 
   }) => (
-    <Card data-testid={`card-namespace-${namespace}`}>
+    <Card data-testid={`card-search-${namespace}`}>
       <CardHeader>
         <CardTitle className="text-xl">{title}</CardTitle>
         <CardDescription>{results.length} uitspraken gevonden</CardDescription>
@@ -396,21 +617,23 @@ export default function Jurisprudentie() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => clearNamespaceResultsMutation.mutate({ namespace })}
-            disabled={clearNamespaceResultsMutation.isPending || results.length === 0}
-            data-testid={`button-delete-${namespace}`}
+            onClick={() => {
+              if (namespace === 'ecli_nl') {
+                setEcliNlResults([]);
+              } else {
+                setWebEcliResults([]);
+              }
+              // Hide search results if both are empty
+              if ((namespace === 'ecli_nl' && webEcliResults.length === 0) ||
+                  (namespace === 'web_ecli' && ecliNlResults.length === 0)) {
+                setShowSearchResults(false);
+              }
+            }}
+            disabled={results.length === 0}
+            data-testid={`button-clear-${namespace}`}
           >
-            {clearNamespaceResultsMutation.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Verwijderen...
-              </>
-            ) : (
-              <>
-                <Trash2 className="h-4 w-4 mr-2" />
-                Verwijder
-              </>
-            )}
+            <Trash2 className="h-4 w-4 mr-2" />
+            Wis resultaten
           </Button>
         </div>
 
@@ -423,73 +646,14 @@ export default function Jurisprudentie() {
           </div>
         ) : (
           <div className="space-y-3">
-            {results.map((result, index) => {
-              return (
-              <div 
+            {results.map((result, index) => (
+              <SearchResultItem 
                 key={result.id} 
-                className="border rounded-lg p-4 bg-muted/30 space-y-3"
-                data-testid={`result-${namespace}-${index}`}
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className="font-mono text-xs">
-                    {result.ecli}
-                  </Badge>
-                  {result.court && (
-                    <Badge variant="secondary" className="text-xs">
-                      <Building2 className="h-3 w-3 mr-1" />
-                      {result.court}
-                    </Badge>
-                  )}
-                  {result.decision_date && (
-                    <Badge variant="outline" className="text-xs">
-                      <Calendar className="h-3 w-3 mr-1" />
-                      {result.decision_date}
-                    </Badge>
-                  )}
-                </div>
-
-                {/* Samenvatting - gebruik text veld met expand/collapse */}
-                {result.text && (
-                  <div className="text-sm space-y-2">
-                    <div>
-                      <p className={`text-muted-foreground whitespace-pre-wrap ${!expandedResults.has(result.id) ? 'line-clamp-3' : ''}`}>
-                        {result.text}
-                      </p>
-                    </div>
-                    
-                    <button
-                      onClick={() => toggleExpanded(result.id)}
-                      className="inline-flex items-center text-sm text-primary hover:underline pt-1"
-                      data-testid={`button-toggle-${namespace}-${index}`}
-                    >
-                      {expandedResults.has(result.id) ? (
-                        <>
-                          <ChevronUp className="h-3 w-3 mr-1" />
-                          Minder tonen
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="h-3 w-3 mr-1" />
-                          Lees verder
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
-
-                <a
-                  href={`https://uitspraken.rechtspraak.nl/details?id=${result.ecli}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center text-sm text-primary hover:underline"
-                  data-testid={`button-view-full-${namespace}-${index}`}
-                >
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  Bekijk volledige uitspraak
-                </a>
-              </div>
-              );
-            })}
+                result={result} 
+                index={index} 
+                namespace={namespace} 
+              />
+            ))}
           </div>
         )}
       </CardContent>
@@ -512,13 +676,13 @@ export default function Jurisprudentie() {
         </p>
       </div>
 
-      {/* Saved References Section */}
+      {/* Saved References Section (Legacy AI-generated references) */}
       {savedReferences.length > 0 && (
         <Card className="mb-6" data-testid="card-saved-references">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5" />
-              Opgeslagen Verwijzingen
+              AI-gegenereerde Verwijzingen
             </CardTitle>
             <CardDescription>
               {savedReferences.length} AI-gegenereerde {savedReferences.length === 1 ? 'verwijzing' : 'verwijzingen'}
@@ -564,11 +728,39 @@ export default function Jurisprudentie() {
         </Card>
       )}
 
-      {/* Global Search */}
+      {/* Saved Jurisprudence Section (From Supabase) */}
+      <Card className="mb-6" data-testid="card-saved-jurisprudence">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BookmarkCheck className="h-5 w-5" />
+            Opgeslagen Uitspraken
+          </CardTitle>
+          <CardDescription>
+            {savedJurisprudence.length} {savedJurisprudence.length === 1 ? 'uitspraak' : 'uitspraken'} opgeslagen voor deze zaak
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {savedJurisprudence.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Bookmark className="h-12 w-12 mx-auto mb-2 opacity-20" />
+              <p>Nog geen uitspraken opgeslagen</p>
+              <p className="text-sm">Zoek hieronder naar jurisprudentie en sla relevante uitspraken op</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {savedJurisprudence.map((item, index) => (
+                <SavedJurisprudenceItem key={item.id} item={item} index={index} />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Search Section */}
       <Card className="mb-6" data-testid="card-global-search">
         <CardHeader>
-          <CardTitle>Zoeken in beide databases</CardTitle>
-          <CardDescription>Zoekt in zowel ecli_nl als web_ecli</CardDescription>
+          <CardTitle>Zoeken naar jurisprudentie</CardTitle>
+          <CardDescription>Zoekt in zowel ecli_nl als web_ecli databases</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-2">
@@ -631,22 +823,31 @@ export default function Jurisprudentie() {
         </CardContent>
       </Card>
 
-      {/* Two-column layout for namespace blocks on large screens */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* WEB_ECLI Namespace Block - Shown first */}
-        <NamespaceBlock 
-          namespace="web_ecli"
-          title="Geciteerde uitspraken"
-          results={webEcliResults}
-        />
+      {/* Search Results (Only shown after search) */}
+      {showSearchResults && (ecliNlResults.length > 0 || webEcliResults.length > 0) && (
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold">Zoekresultaten</h2>
+          <p className="text-sm text-muted-foreground">
+            Klik op "Opslaan" om een uitspraak toe te voegen aan uw opgeslagen jurisprudentie
+          </p>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* WEB_ECLI Namespace Block - Shown first */}
+            <SearchResultsBlock 
+              namespace="web_ecli"
+              title="Geciteerde uitspraken"
+              results={webEcliResults}
+            />
 
-        {/* ECLI_NL Namespace Block - Shown second */}
-        <NamespaceBlock 
-          namespace="ecli_nl"
-          title="Mogelijk relevante uitspraken"
-          results={ecliNlResults}
-        />
-      </div>
+            {/* ECLI_NL Namespace Block - Shown second */}
+            <SearchResultsBlock 
+              namespace="ecli_nl"
+              title="Mogelijk relevante uitspraken"
+              results={ecliNlResults}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

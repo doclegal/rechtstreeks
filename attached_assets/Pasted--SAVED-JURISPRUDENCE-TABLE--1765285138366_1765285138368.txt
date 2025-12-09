@@ -1,0 +1,80 @@
+-- ============================================
+-- SAVED JURISPRUDENCE TABLE
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS saved_jurisprudence (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- Koppeling aan gebruiker en zaak
+  user_id UUID NOT NULL,
+  case_id UUID NOT NULL,
+  
+  -- ECLI identificatie (uniek per rechtszaak)
+  ecli TEXT NOT NULL,
+  
+  -- Rechtbank informatie
+  court TEXT,
+  court_level TEXT,
+  
+  -- Datum en type
+  decision_date DATE,
+  legal_area TEXT,
+  procedure_type TEXT,
+  
+  -- Titel en bron
+  title TEXT,
+  source_url TEXT,
+  
+  -- Tekst en AI-samenvattingen
+  text_fragment TEXT,
+  ai_feiten TEXT,
+  ai_geschil TEXT,
+  ai_beslissing TEXT,
+  ai_motivering TEXT,
+  ai_inhoudsindicatie TEXT,
+  
+  -- Zoekresultaat metadata
+  search_score NUMERIC,
+  search_namespace TEXT,
+  search_query TEXT,
+  
+  -- Gebruiker notities
+  user_notes TEXT,
+  
+  -- Timestamps
+  saved_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  -- Uniek per zaak + uitspraak
+  UNIQUE(case_id, ecli)
+);
+
+-- INDEXES
+CREATE INDEX idx_saved_jurisprudence_user_id ON saved_jurisprudence(user_id);
+CREATE INDEX idx_saved_jurisprudence_case_id ON saved_jurisprudence(case_id);
+CREATE INDEX idx_saved_jurisprudence_ecli ON saved_jurisprudence(ecli);
+CREATE INDEX idx_saved_jurisprudence_user_case 
+  ON saved_jurisprudence(user_id, case_id);
+
+-- RLS
+ALTER TABLE saved_jurisprudence ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own saved jurisprudence"
+  ON saved_jurisprudence
+  FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own saved jurisprudence"
+  ON saved_jurisprudence
+  FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own saved jurisprudence"
+  ON saved_jurisprudence
+  FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own saved jurisprudence"
+  ON saved_jurisprudence
+  FOR DELETE
+  USING (auth.uid() = user_id);

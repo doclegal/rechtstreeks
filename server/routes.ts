@@ -13,6 +13,7 @@ import { documentAnalysisService, type MindStudioAnalysis } from "./services/doc
 import { rkosAnalysisService } from "./services/rkosAnalysisService";
 import { legalAdviceService } from "./services/legalAdviceService";
 import { letterService } from "./services/letterService";
+import { savedJurisprudenceService } from "./services/savedJurisprudenceService";
 import { mockIntegrations } from "./services/mockIntegrations";
 import { db, handleDatabaseError } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -8805,6 +8806,168 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
       console.error('Error clearing namespace results:', error);
       res.status(500).json({ 
         error: error.message || 'Fout bij wissen van namespace resultaten' 
+      });
+    }
+  });
+
+  // ============================================
+  // SAVED JURISPRUDENCE (Supabase) ROUTES
+  // ============================================
+
+  // Get saved jurisprudence for a case
+  app.get('/api/saved-jurisprudence/:caseId', isAuthenticated, async (req, res) => {
+    try {
+      const { caseId } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Niet ingelogd' });
+      }
+
+      if (!caseId) {
+        return res.status(400).json({ error: 'Case ID is vereist' });
+      }
+
+      console.log(`📚 Fetching saved jurisprudence for case ${caseId}`);
+      
+      const savedItems = await savedJurisprudenceService.getSavedForCase(caseId, userId);
+      
+      console.log(`✅ Found ${savedItems.length} saved jurisprudence items`);
+      
+      res.json({ items: savedItems });
+    } catch (error: any) {
+      console.error('Error fetching saved jurisprudence:', error);
+      res.status(error.statusCode || 500).json({ 
+        error: error.message || 'Kon opgeslagen uitspraken niet ophalen' 
+      });
+    }
+  });
+
+  // Save a jurisprudence item
+  app.post('/api/saved-jurisprudence', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ error: 'Niet ingelogd' });
+      }
+
+      const { 
+        caseId, 
+        ecli, 
+        court, 
+        courtLevel,
+        decisionDate, 
+        legalArea, 
+        procedureType,
+        title,
+        sourceUrl,
+        textFragment,
+        aiFeiten,
+        aiGeschil,
+        aiBeslissing,
+        aiMotivering,
+        aiInhoudsindicatie,
+        searchScore,
+        searchNamespace,
+        searchQuery
+      } = req.body;
+
+      if (!caseId || !ecli) {
+        return res.status(400).json({ error: 'Case ID en ECLI zijn vereist' });
+      }
+
+      console.log(`💾 Saving jurisprudence ${ecli} for case ${caseId}`);
+
+      const saved = await savedJurisprudenceService.saveJurisprudence({
+        userId,
+        caseId,
+        ecli,
+        court,
+        courtLevel,
+        decisionDate,
+        legalArea,
+        procedureType,
+        title,
+        sourceUrl,
+        textFragment,
+        aiFeiten,
+        aiGeschil,
+        aiBeslissing,
+        aiMotivering,
+        aiInhoudsindicatie,
+        searchScore,
+        searchNamespace,
+        searchQuery
+      });
+
+      console.log(`✅ Saved jurisprudence with id ${saved.id}`);
+
+      res.json({ success: true, item: saved });
+    } catch (error: any) {
+      console.error('Error saving jurisprudence:', error);
+      res.status(error.statusCode || 500).json({ 
+        error: error.message || 'Kon uitspraak niet opslaan' 
+      });
+    }
+  });
+
+  // Delete a saved jurisprudence item by ID
+  app.delete('/api/saved-jurisprudence/:id', isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Niet ingelogd' });
+      }
+
+      if (!id) {
+        return res.status(400).json({ error: 'ID is vereist' });
+      }
+
+      console.log(`🗑️ Deleting saved jurisprudence ${id}`);
+      
+      await savedJurisprudenceService.deleteSavedJurisprudence(id, userId);
+      
+      console.log(`✅ Deleted saved jurisprudence ${id}`);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting saved jurisprudence:', error);
+      res.status(error.statusCode || 500).json({ 
+        error: error.message || 'Kon uitspraak niet verwijderen' 
+      });
+    }
+  });
+
+  // Delete a saved jurisprudence item by case ID and ECLI
+  app.delete('/api/saved-jurisprudence/:caseId/ecli/:ecli', isAuthenticated, async (req, res) => {
+    try {
+      const { caseId, ecli } = req.params;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Niet ingelogd' });
+      }
+
+      if (!caseId || !ecli) {
+        return res.status(400).json({ error: 'Case ID en ECLI zijn vereist' });
+      }
+
+      const decodedEcli = decodeURIComponent(ecli);
+      
+      console.log(`🗑️ Deleting saved jurisprudence ${decodedEcli} from case ${caseId}`);
+      
+      await savedJurisprudenceService.deleteByEcli(caseId, decodedEcli, userId);
+      
+      console.log(`✅ Deleted saved jurisprudence ${decodedEcli}`);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting saved jurisprudence by ECLI:', error);
+      res.status(error.statusCode || 500).json({ 
+        error: error.message || 'Kon uitspraak niet verwijderen' 
       });
     }
   });
