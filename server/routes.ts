@@ -8371,57 +8371,40 @@ Remember:
 
       console.log(`📋 Generating references for case ${caseId} with ${topResults.length} judgments`);
 
-      // Fetch case data
-      const [caseData] = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
+      // Fetch case data from Supabase
+      const caseData = await caseService.getCaseById(caseId);
       if (!caseData) {
         return res.status(404).json({ error: 'Case not found' });
       }
 
-      // Fetch analyses for this case
-      const analysisRecords = await db
-        .select()
-        .from(analyses)
-        .where(eq(analyses.caseId, caseId))
-        .orderBy(desc(analyses.createdAt));
-
-      if (!analysisRecords || analysisRecords.length === 0) {
-        return res.status(404).json({ error: 'Geen analyses gevonden voor deze zaak' });
-      }
-
-      // Find analysis with legal advice (needed for AI prompt)
-      const analysisWithAdvice = analysisRecords.find(a => a.legalAdviceJson !== null);
+      // Fetch legal advice from Supabase
+      const legalAdviceRecord = await legalAdviceService.getLatestCompletedAdvice(caseId);
       
-      if (!analysisWithAdvice || !analysisWithAdvice.legalAdviceJson) {
+      if (!legalAdviceRecord) {
         return res.status(404).json({ error: 'Geen juridisch advies gevonden voor deze zaak' });
       }
 
-      // Use NEWEST analysis for storing references (same as save-search)
-      const targetAnalysis = analysisRecords[0];
-      console.log(`📌 Using analysis ${analysisWithAdvice.id} for legal advice, storing to ${targetAnalysis.id}`);
+      console.log(`📌 Using legal advice ${legalAdviceRecord.id} from Supabase`);
 
-      // Parse legalAdviceJson if it's a string (for legacy data)
-      let legalAdvice: any = analysisWithAdvice.legalAdviceJson;
-      if (typeof legalAdvice === 'string') {
-        try {
-          legalAdvice = JSON.parse(legalAdvice);
-        } catch (e) {
-          console.error('Failed to parse legalAdviceJson as string:', e);
-          return res.status(400).json({ error: 'Juridisch advies heeft geen geldig formaat' });
-        }
-      }
-      
-      // Build comprehensive legal advice text
+      // Build comprehensive legal advice text from Supabase record
+      const formatField = (field: any): string => {
+        if (!field) return '';
+        if (typeof field === 'string') return field;
+        if (Array.isArray(field)) return field.map(item => typeof item === 'string' ? item : JSON.stringify(item)).join('\n');
+        return JSON.stringify(field, null, 2);
+      };
+
       const adviceText = [
         'HET GESCHIL:',
-        legalAdvice.het_geschil || '',
+        legalAdviceRecord.het_geschil || '',
         '\nDE FEITEN:',
-        legalAdvice.de_feiten || '',
+        formatField(legalAdviceRecord.de_feiten),
         '\nJURIDISCHE DUIDING:',
-        legalAdvice.juridische_duiding || '',
+        formatField(legalAdviceRecord.juridische_duiding),
         '\nVERVOLGSTAPPEN:',
-        legalAdvice.vervolgstappen || '',
+        formatField(legalAdviceRecord.vervolgstappen),
         '\nSAMENVATTING ADVIES:',
-        legalAdvice.samenvatting_advies || ''
+        legalAdviceRecord.samenvatting_advies || ''
       ].filter(Boolean).join('\n\n');
 
       // Limit to top 5 judgments
@@ -8533,19 +8516,7 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
       const aiResponse = JSON.parse(response.choices[0].message.content || '{"references": []}');
       console.log(`✅ AI generated ${aiResponse.references?.length || 0} references`);
 
-      // ALWAYS save references to database (including empty array) to prevent stale data
-      const referencesToSave = aiResponse.references || [];
-      console.log(`💾 Saving ${referencesToSave.length} references to targetAnalysis ${targetAnalysis.id}...`);
-      
-      // Save ONLY the references (do NOT overwrite search results!)
-      await db
-        .update(analyses)
-        .set({ 
-          jurisprudenceReferences: referencesToSave
-        })
-        .where(eq(analyses.id, targetAnalysis.id));
-      console.log('✅ References saved to database (search results preserved)');
-
+      // References are returned to the frontend - user can save them via saved_jurisprudence if needed
       res.json(aiResponse);
 
     } catch (error: any) {
