@@ -201,6 +201,7 @@ export default function Wetgeving() {
   const [loadingCommentaryFor, setLoadingCommentaryFor] = useState<string | null>(null);
   const [savedArticleKeys, setSavedArticleKeys] = useState<Set<string>>(new Set());
   const [savingArticleKey, setSavingArticleKey] = useState<string | null>(null);
+  const [deletingArticleKey, setDeletingArticleKey] = useState<string | null>(null);
   const initialCommentaryLoadedRef = useRef(false);
 
   // Local legislation (Omgevingswet) search state - DSO API
@@ -312,11 +313,13 @@ export default function Wetgeving() {
 
   const deleteLegislationMutation = useMutation({
     mutationFn: async (articleKey: string) => {
+      setDeletingArticleKey(articleKey);
       const encodedKey = encodeURIComponent(articleKey);
       const response = await apiRequest('DELETE', `/api/wetgeving/${currentCase?.id}/saved/${encodedKey}`);
       return response.json();
     },
     onSuccess: (data) => {
+      setDeletingArticleKey(null);
       queryClient.invalidateQueries({ queryKey: ['/api/wetgeving', currentCase?.id, 'saved'] });
       toast({
         title: "Artikel verwijderd",
@@ -324,6 +327,7 @@ export default function Wetgeving() {
       });
     },
     onError: (error: any) => {
+      setDeletingArticleKey(null);
       toast({
         title: "Fout bij verwijderen",
         description: error.message || "Kon artikel niet verwijderen",
@@ -1259,7 +1263,7 @@ export default function Wetgeving() {
                       onSave={() => saveArticleWithoutCommentary(article)}
                       onDelete={() => deleteArticle(article.articleKey)}
                       isSaving={savingArticleKey === article.articleKey}
-                      isDeleting={deleteLegislationMutation.isPending}
+                      isDeleting={deletingArticleKey === article.articleKey}
                     />
                   ))}
                 </div>

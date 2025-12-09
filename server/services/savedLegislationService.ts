@@ -224,19 +224,39 @@ export const savedLegislationService = {
 
   async deleteSavedLegislation(caseId: string, articleKey: string, userId: string): Promise<void> {
     const uuid = ensureUuid(userId);
-    const [bwbId, articleNumber] = articleKey.split(':');
+    const parts = articleKey.split(':');
+    
+    let bwbId: string;
+    let boekNummer: string | null = null;
+    let articleNumber: string;
+    
+    if (parts.length === 3) {
+      [bwbId, boekNummer, articleNumber] = parts;
+    } else if (parts.length === 2) {
+      [bwbId, articleNumber] = parts;
+    } else {
+      throw new SavedLegislationServiceError(400, "Invalid article key format");
+    }
 
     if (!bwbId || !articleNumber) {
       throw new SavedLegislationServiceError(400, "Invalid article key format");
     }
 
-    const { error } = await supabase
+    let query = supabase
       .from("saved_legislation")
       .delete()
       .eq("case_id", caseId)
       .eq("user_id", uuid)
       .eq("bwb_id", bwbId)
       .eq("article_number", articleNumber);
+    
+    if (boekNummer) {
+      query = query.eq("boek_nummer", boekNummer);
+    } else {
+      query = query.is("boek_nummer", null);
+    }
+
+    const { error } = await query;
 
     if (error) {
       console.error("Supabase delete saved legislation error:", error);
