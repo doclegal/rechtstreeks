@@ -1229,6 +1229,81 @@ export default function Wetgeving() {
             </CardContent>
           </Card>
 
+          {/* Saved articles section */}
+          {savedLegislation.length > 0 && (
+            <Card data-testid="card-saved-articles">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Save className="h-5 w-5 text-green-600" />
+                  Opgeslagen Artikelen
+                </CardTitle>
+                <CardDescription>
+                  {savedLegislation.length} artikel{savedLegislation.length !== 1 ? 'en' : ''} opgeslagen voor deze zaak
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                  {savedLegislation.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-3 rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950"
+                      data-testid={`saved-article-${index}`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs">
+                            Art. {item.articleNumber}
+                          </Badge>
+                          {item.commentary && (
+                            <Badge variant="outline" className="text-xs">
+                              Met commentaar
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm font-medium truncate">
+                          {item.lawTitle || item.bwbId}
+                        </p>
+                        {item.boekTitel && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            {item.boekTitel}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 ml-2">
+                        {item.commentary && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => loadSavedCommentary(item)}
+                            className="text-xs"
+                            data-testid={`button-load-commentary-${index}`}
+                          >
+                            <MessageSquare className="h-3 w-3 mr-1" />
+                            Toon
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteArticle(item.articleKey)}
+                          disabled={deletingArticleKey === item.articleKey}
+                          className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          data-testid={`button-delete-saved-${index}`}
+                        >
+                          {deletingArticleKey === item.articleKey ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Article search results */}
           <Card data-testid="card-article-results">
             <CardHeader>
