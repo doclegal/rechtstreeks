@@ -200,6 +200,7 @@ export default function Wetgeving() {
   const [selectedCommentary, setSelectedCommentary] = useState<CommentaryResult | null>(null);
   const [loadingCommentaryFor, setLoadingCommentaryFor] = useState<string | null>(null);
   const [savedArticleKeys, setSavedArticleKeys] = useState<Set<string>>(new Set());
+  const [savingArticleKey, setSavingArticleKey] = useState<string | null>(null);
   const initialCommentaryLoadedRef = useRef(false);
 
   // Local legislation (Omgevingswet) search state - DSO API
@@ -283,6 +284,7 @@ export default function Wetgeving() {
 
   const saveLegislationMutation = useMutation({
     mutationFn: async ({ article, commentary, sources }: { article: any; commentary?: any; sources?: any }) => {
+      setSavingArticleKey(article.articleKey);
       const response = await apiRequest('POST', `/api/wetgeving/${currentCase?.id}/saved`, {
         article,
         commentary,
@@ -291,6 +293,7 @@ export default function Wetgeving() {
       return response.json();
     },
     onSuccess: (data) => {
+      setSavingArticleKey(null);
       queryClient.invalidateQueries({ queryKey: ['/api/wetgeving', currentCase?.id, 'saved'] });
       toast({
         title: "Artikel opgeslagen",
@@ -298,6 +301,7 @@ export default function Wetgeving() {
       });
     },
     onError: (error: any) => {
+      setSavingArticleKey(null);
       toast({
         title: "Fout bij opslaan",
         description: error.message || "Kon artikel niet opslaan",
@@ -1243,7 +1247,7 @@ export default function Wetgeving() {
                       isSaved={savedArticleKeys.has(article.articleKey)}
                       onSave={() => saveArticleWithoutCommentary(article)}
                       onDelete={() => deleteArticle(article.articleKey)}
-                      isSaving={saveLegislationMutation.isPending}
+                      isSaving={savingArticleKey === article.articleKey}
                       isDeleting={deleteLegislationMutation.isPending}
                     />
                   ))}
@@ -1592,15 +1596,20 @@ export default function Wetgeving() {
                             sources: selectedCommentary.sources
                           });
                         }}
-                        disabled={saveLegislationMutation.isPending}
+                        disabled={savingArticleKey === `${selectedCommentary.article.bwbId}:${selectedCommentary.article.articleNumber}`}
                         data-testid="button-save-commentary"
                       >
-                        {saveLegislationMutation.isPending ? (
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        {savingArticleKey === `${selectedCommentary.article.bwbId}:${selectedCommentary.article.articleNumber}` ? (
+                          <>
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            Opslaan...
+                          </>
                         ) : (
-                          <Save className="h-3 w-3 mr-1" />
+                          <>
+                            <Save className="h-3 w-3 mr-1" />
+                            Opslaan
+                          </>
                         )}
-                        Opslaan
                       </Button>
                     )}
                   </div>
