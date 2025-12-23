@@ -11231,6 +11231,25 @@ Geef ALLEEN de JSON terug, geen uitleg.`
     }
   });
 
+  // API 404 handler - catches any unmatched /api/* routes and returns JSON (not HTML)
+  // This must be registered AFTER all API routes but BEFORE Vite's catch-all
+  app.use('/api/*', (req, res) => {
+    res.status(404).json({ 
+      error: 'Not Found',
+      message: `API endpoint ${req.method} ${req.path} does not exist`,
+      path: req.path
+    });
+  });
+
+  // Also handle /pcc/* routes that don't exist
+  app.use('/pcc/*', (req, res) => {
+    res.status(404).json({ 
+      error: 'Not Found',
+      message: `PCC endpoint ${req.method} ${req.path} does not exist`,
+      path: req.path
+    });
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
