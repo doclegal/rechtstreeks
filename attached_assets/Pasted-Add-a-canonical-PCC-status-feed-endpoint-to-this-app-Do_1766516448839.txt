@@ -1,0 +1,121 @@
+Add a canonical PCC status feed endpoint to this app. Do NOT add example code; implement directly.
+
+Goal
+
+Expose a factual, structured status report so a central Project Command Center (PCC) can compare projects consistently.
+
+Authentication
+
+Create or update: GET /api/pcc/status
+
+Require Bearer token auth:
+
+Server env: PCC_FEED_TOKEN
+
+Request header: Authorization: Bearer <token>
+
+If missing/invalid: return 401 JSON.
+
+Response contract (MUST MATCH EXACTLY)
+
+Return JSON that conforms to PCC Status Schema v1:
+
+schema_version: exactly "pcc_status_v1"
+
+project: one of "rechtstreeks" | "solvare" | "garantiefix" (set appropriately for this app)
+
+environment:
+
+name: "dev" | "staging" | "production" (derive from env vars; default to "production" if deployed)
+
+base_url: public URL if known else null
+
+is_live: boolean
+
+build:
+
+version: from package metadata or env, else null
+
+last_deploy_at: from env if set, else null
+
+git_commit_sha: from env if set, else null
+
+maturity:
+
+product_stage: "prototype" | "beta" | "pilot" | "production"
+
+user_stage: "internal" | "friendly_testers" | "paying_customers"
+
+revenue_stage: "none" | "one_off" | "recurring"
+(These must be factual. If unknown, choose the most conservative stage.)
+
+capabilities:
+
+core_flows: array of capability items
+
+supporting_features: array of capability items
+
+admin_tools: array of capability items
+
+limitations: array of strings
+Each capability item MUST have:
+
+id (stable slug)
+
+name
+
+status: "NOT_STARTED" | "PARTIAL" | "DONE" | "DEPRECATED"
+
+user_accessible: boolean
+
+description: short factual description
+
+last_updated_at: ISO timestamp or null
+
+notes: string or null
+Populate these lists based on what is actually implemented in the codebase right now. Do not invent features.
+
+integrations:
+
+supabase: { used, auth_used, rls_used }
+
+ai: { provider, deployments: [{ name, model, purpose, status, last_error_at }] }
+
+If this app uses Azure OpenAI deployments, list them and set statuses based on lightweight health checks or recent errors.
+
+github: { repo, status }
+
+other: array
+
+health:
+
+api_ok: true if endpoint responds
+
+db_ok: true if a lightweight DB query succeeds (if DB is used)
+
+auth_ok: true if auth is configured (if used)
+
+ai_ok: boolean if AI is used, else null
+
+last_error_at: last known error time if tracked else null
+
+blockers: list current blockers if known; else empty array. Keep factual.
+
+last_major_change: { date, summary } (use best-known values; else null date)
+
+links: { app_home, admin_home, repo, docs }
+
+generated_at: current timestamp ISO string
+
+Implementation notes
+
+Keep response fast (<200ms ideally).
+
+Use conservative defaults when data is missing (nulls, empty arrays).
+
+Centralize the schema in a single “status builder” module so it’s easy to maintain.
+
+Add a short internal note describing which fields are real and which are placeholders.
+
+Deliverable:
+A working /api/pcc/status endpoint that returns the schema exactly, protected by Bearer token.
