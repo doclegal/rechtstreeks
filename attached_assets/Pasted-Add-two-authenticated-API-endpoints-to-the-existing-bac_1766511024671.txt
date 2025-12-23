@@ -1,0 +1,101 @@
+Add two authenticated API endpoints to the existing backend (Node/Express) of Rechtstreeks.ai to feed the Project Command Center (PCC).
+
+Requirements
+
+Create GET /api/pcc/status
+
+Protect with a Bearer token:
+
+Read token from server env: PCC_FEED_TOKEN
+
+Require header: Authorization: Bearer <token>
+
+If missing/invalid: return 401 JSON.
+
+Return JSON with this structure:
+
+project: "rechtstreeks"
+
+env: object with:
+
+name: "production" or "dev" (detect from env like NODE_ENV or a specific APP_ENV)
+
+base_url: current public base URL if known
+
+is_live: boolean
+
+build: object:
+
+version: app version (from package.json or env)
+
+last_deploy_at: timestamp (best available; use env set during deploy if present, else null)
+
+features: array of strings (short list of major shipped capabilities; keep static config for now)
+
+blockers: array of objects { title, severity (low/med/high), details, created_at }
+
+For MVP: derive from known runtime issues or store a small server-side list/config; do NOT invent.
+
+health: object { api_ok, db_ok, auth_ok, last_error_at }
+
+api_ok: true if endpoint can respond
+
+db_ok: true if Supabase query to a lightweight table succeeds
+
+auth_ok: true if auth provider is configured and reachable
+
+usage: object { active_users_7d, created_cases_7d } (if easy; else nulls)
+
+Create GET /api/pcc/metrics?range=7d|30d
+
+Same Bearer auth.
+
+Return JSON:
+
+project: "rechtstreeks"
+
+range: "7d" or "30d"
+
+kpis: object with numeric values (or null if not available yet):
+
+users_total
+
+active_users
+
+cases_total
+
+cases_created
+
+documents_uploaded
+
+ai_runs
+
+conversion_rate (if you track it; else null)
+
+errors: object:
+
+error_count
+
+error_rate (if available)
+
+last_error_at
+
+funnel: object (optional) with steps counts if available; else empty.
+
+Data sources
+
+Use the existing Supabase database of Rechtstreeks.ai.
+
+Prefer querying existing tables (cases, documents, logs) rather than adding new tables now.
+
+If you do not have an analytics/events table, return nulls for advanced fields but keep the JSON keys stable.
+
+Implementation notes
+
+Add a small helper that validates the Bearer token consistently.
+
+Ensure responses are fast (no heavy queries). Use range to filter by created_at where possible.
+
+Add these endpoints without breaking existing routes.
+
+Also document in README (or a short internal doc comment) what fields are currently real vs null placeholders.
