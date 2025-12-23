@@ -11105,13 +11105,13 @@ Geef ALLEEN de JSON terug, geen uitleg.`
   // PCC Pull Endpoints (lightweight, for PCC refresh mechanism)
   // These endpoints are at /pcc/* (no /api prefix) and return
   // simple response formats that PCC expects for its pull/refresh.
-  // Authentication via Bearer token (same as /api/pcc/* endpoints).
+  // NO AUTHENTICATION - PCC calls these without Bearer token.
   // ============================================================
 
-  // GET /pcc/status - Lightweight status for PCC pull
+  // GET /pcc/status - Lightweight status for PCC pull (unauthenticated)
   // Returns: {"status": "operational", "uptime": 99.9}
+  // Note: No authentication required - PCC calls this endpoint without Bearer token
   app.get('/pcc/status', async (req, res) => {
-    if (!validatePccToken(req, res)) return;
     
     try {
       let status = 'operational';
@@ -11149,10 +11149,10 @@ Geef ALLEEN de JSON terug, geen uitleg.`
     }
   });
 
-  // GET /pcc/metrics - Lightweight metrics for PCC pull
+  // GET /pcc/metrics - Lightweight metrics for PCC pull (unauthenticated)
   // Returns: {"avg_response_ms": 45, "error_rate": 0.1}
+  // Note: No authentication required - PCC calls this endpoint without Bearer token
   app.get('/pcc/metrics', async (req, res) => {
-    if (!validatePccToken(req, res)) return;
     
     try {
       // Measure a simple DB query to estimate response time
