@@ -1,0 +1,91 @@
+Security and Privacy Scanner
+Beta
+Run a scan to check for potential security risks and privacy leaks in your application. Scans are typically complete within minutes. Learn more
+
+Run scan
+
+Scan settings
+13 potential vulnerabilities found.
+Last ran on
+ 
+9:58 pm, Dec 23, 2025
+Security
+Outdated dependencies have known vulnerabilities
+
+There are dependencies that have vulnerabilities and may need to be updated.
+These dependencies can be updated automatically.
+glob@10.4.5
+jws@4.0.0
+mammoth@1.10.0
+tar-fs@3.1.0
+
+Hide
+
+Update automatically
+
+Fix with Agent
+Security
+Detection of dangerouslySetInnerHTML from non-constant definition. This can inadvertently expose users to cross-site scripting (XSS) attacks if this comes from user-provided input. If you have to use dangerouslySetInnerHTML, consider using a sanitization library such as DOMPurify to sanitize your HTML.
+
+
+Hide
+
+Fix with Agent
+Security
+A gitleaks Generic API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+
+
+Hide
+
+Fix with Agent
+Security
+A gitleaks Generic API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+
+
+Hide
+
+Fix with Agent
+Security
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+
+
+Hide
+
+Fix with Agent
+Security
+Detected user input used to manually construct a SQL string. This is usually bad practice because manual construction could accidentally result in a SQL injection. An attacker could use a SQL injection to steal or modify contents of the database. Instead, use a parameterized query which is available by default in most database engines. Alternatively, consider using an object-relational mapper (ORM) such as Sequelize which will protect your queries.
+
+
+Hide
+
+Fix with Agent
+Privacy
+Auth Token sent to Standard Output
+
+
+Hide
+
+Fix with Agent
+Privacy
+Auth Token sent to Standard Output
+
+
+Hide
+
+Fix with Agent
+Privacy
+Auth Token sent to Standard Output
+
+
+Hide
+
+Fix with Agent
+Privacy
+Signed URL sent to Standard Output
+
+
+Hide
+
+Fix with Agent
+Vulnerability scans are enabled by the following Replit partners:
+Security scans are powered by Semgrep Community Edition.

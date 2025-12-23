@@ -889,6 +889,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (signedUrl) {
           downloadUrl = signedUrl;
+          // Log success without exposing the actual URL (contains auth token)
           console.log('🔐 Generated time-bound signed URL for MindStudio (1 hour expiry)');
         } else {
           // Fallback to proxy endpoint (dev/testing only)
@@ -907,8 +908,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('📋 Using dev proxy URL (no storageKey)');
       }
       
-      console.log('🔗 MindStudio download URL:', downloadUrl);
-      console.log('📋 Document filename:', document.filename);
+      // Don't log the full URL as it may contain auth tokens
+      console.log('🔗 MindStudio download URL configured for document:', document.filename);
       
       // Prepare input JSON with document info, case details, and optional legal analysis
       const inputJsonData: any = {

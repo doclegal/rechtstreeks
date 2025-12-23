@@ -135,6 +135,7 @@ export class FileService {
       const objectStorageService = new ObjectStorageService();
       const signedUrl = await objectStorageService.generateSignedUrl(storageKey, expiresInHours);
       
+      // Log success without exposing the actual URL (contains auth token)
       console.log(`✅ Generated signed URL for ${storageKey} (valid for ${expiresInHours}h)`);
       return signedUrl;
     } catch (error) {
