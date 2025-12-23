@@ -48,4 +48,3 @@ defaultBucketID = "replit-objstore-a30955f4-93d3-4f82-8a9e-4c82401adc6b"
 [userenv]
 
 [userenv.development]
-PCC_FEED_TOKEN = "test-pcc-token-dev"
