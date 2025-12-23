@@ -30,7 +30,7 @@ import { SEARCH_CONFIG } from "@shared/searchConfig";
 import { scoreAndSortResults } from "./scoringService";
 import { rerankResults } from "./rerankerService";
 import { createHash, timingSafeEqual } from "crypto";
-import { pccService, startPCCHeartbeat } from "./services/pccService";
+// PCC integration is pull-only - PCC calls our GET /api/pcc/* endpoints
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -2538,11 +2538,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`✅ RKOS analysis completed in Supabase: ${pendingRkos.id}`);
 
-        // Push update to PCC after successful AI operation
-        pccService.pushStatus("RKOS analysis completed").catch(err => 
-          console.log("PCC push after RKOS failed:", err.message)
-        );
-
         // Check if there are missing elements and set flag
         const hasMissingElements = rkosResult.missing_elements && 
                                    Array.isArray(rkosResult.missing_elements) && 
@@ -2911,11 +2906,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             flowResult
           );
           console.log('✅ Legal advice saved to Supabase legal_advice table');
-          
-          // Push update to PCC after successful AI operation
-          pccService.pushStatus("Legal advice generated").catch(err => 
-            console.log("PCC push after legal advice failed:", err.message)
-          );
         } catch (supabaseError) {
           console.error('❌ Failed to save legal advice to Supabase:', supabaseError);
           return res.status(500).json({ 
@@ -11188,8 +11178,58 @@ Geef ALLEEN de JSON terug, geen uitleg.`
     }
   });
 
-  // Start PCC heartbeat (sends snapshot every 60 minutes + on startup)
-  startPCCHeartbeat(60);
+  // GET /api/pcc/strategy - Strategy/roadmap endpoint for PCC
+  // Returns current development priorities and roadmap
+  app.get('/api/pcc/strategy', async (req, res) => {
+    if (!validatePccToken(req, res)) return;
+
+    try {
+      res.json({
+        current_priorities: [
+          {
+            id: 'document-analysis',
+            name: 'Document Analysis Pipeline',
+            status: 'active',
+            progress: 85,
+            description: 'AI-powered document parsing and classification'
+          },
+          {
+            id: 'jurisprudence-search',
+            name: 'Jurisprudence Search',
+            status: 'active',
+            progress: 90,
+            description: 'Semantic search over Dutch court decisions'
+          },
+          {
+            id: 'letter-generation',
+            name: 'Legal Letter Generation',
+            status: 'active',
+            progress: 80,
+            description: 'AI-generated legal correspondence with jurisprudence references'
+          }
+        ],
+        upcoming: [
+          {
+            id: 'template-library',
+            name: 'Template Library Expansion',
+            target_date: '2025-Q1',
+            description: 'Expand legal document templates'
+          }
+        ],
+        technical_debt: [
+          {
+            id: 'test-coverage',
+            priority: 'medium',
+            description: 'Increase automated test coverage'
+          }
+        ],
+        generated_at: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error('PCC strategy endpoint error:', error);
+      res.status(500).json({ error: 'Failed to fetch strategy data' });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
