@@ -30,6 +30,7 @@ import { SEARCH_CONFIG } from "@shared/searchConfig";
 import { scoreAndSortResults } from "./scoringService";
 import { rerankResults } from "./rerankerService";
 import { createHash, timingSafeEqual } from "crypto";
+import { pccService, startPCCHeartbeat } from "./services/pccService";
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -2537,6 +2538,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`✅ RKOS analysis completed in Supabase: ${pendingRkos.id}`);
 
+        // Push update to PCC after successful AI operation
+        pccService.pushStatus("RKOS analysis completed").catch(err => 
+          console.log("PCC push after RKOS failed:", err.message)
+        );
+
         // Check if there are missing elements and set flag
         const hasMissingElements = rkosResult.missing_elements && 
                                    Array.isArray(rkosResult.missing_elements) && 
@@ -2905,6 +2911,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             flowResult
           );
           console.log('✅ Legal advice saved to Supabase legal_advice table');
+          
+          // Push update to PCC after successful AI operation
+          pccService.pushStatus("Legal advice generated").catch(err => 
+            console.log("PCC push after legal advice failed:", err.message)
+          );
         } catch (supabaseError) {
           console.error('❌ Failed to save legal advice to Supabase:', supabaseError);
           return res.status(500).json({ 
@@ -11176,6 +11187,9 @@ Geef ALLEEN de JSON terug, geen uitleg.`
       res.json({ avg_response_ms: 0, error_rate: 1.0 });
     }
   });
+
+  // Start PCC heartbeat (sends snapshot every 60 minutes + on startup)
+  startPCCHeartbeat(60);
 
   const httpServer = createServer(app);
   return httpServer;
