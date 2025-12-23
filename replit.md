@@ -86,22 +86,28 @@ Preferred communication style: Simple, everyday language.
 External monitoring endpoints protected by Bearer token authentication (PCC_FEED_TOKEN).
 
 #### GET /api/pcc/status
-Returns system health and status information.
+Returns system status conforming to **PCC Status Schema v1**.
 - **Authentication**: Bearer token via `Authorization: Bearer <PCC_FEED_TOKEN>`
-- **Response Fields**:
-  - `project`: "rechtstreeks" (static)
-  - `env.name`: "production" or "dev" (from NODE_ENV/APP_ENV)
-  - `env.base_url`: Current public base URL (from REPLIT_DOMAINS or BASE_URL)
-  - `env.is_live`: Boolean based on environment
-  - `build.version`: App version (from APP_VERSION env or "1.0.0")
-  - `build.last_deploy_at`: Timestamp (from DEPLOY_TIMESTAMP env, null if not set)
-  - `features`: Static list of shipped capabilities
-  - `blockers`: Array of known issues (currently empty - no blockers table yet)
-  - `health.api_ok`: Always true if endpoint responds
-  - `health.db_ok`: True if Neon DB query succeeds
-  - `health.auth_ok`: True if Supabase is reachable
-  - `usage.active_users_7d`: Count of unique case owners in last 7 days (real data)
-  - `usage.created_cases_7d`: Count of cases created in last 7 days (real data)
+- **Schema Version**: `pcc_status_v1`
+- **Response Structure**:
+  - `schema_version`: "pcc_status_v1"
+  - `project`: "rechtstreeks"
+  - `environment`: { name, base_url, is_live }
+  - `build`: { version, last_deploy_at, git_commit_sha }
+  - `maturity`: { product_stage, user_stage, revenue_stage }
+  - `capabilities`:
+    - `core_flows`: Case management, document upload, AI analysis, summons drafting, letter generation
+    - `supporting_features`: Jurisprudence search, legislation lookup, counterparty invitations, warranty tracking, chat assistant
+    - `admin_tools`: User management (partial)
+    - `limitations`: Array of known limitations
+  - `integrations`: { supabase, ai (with deployments), github, other }
+  - `health`: { api_ok, db_ok, auth_ok, ai_ok, last_error_at }
+  - `blockers`: Array of current blockers (empty if none)
+  - `last_major_change`: { date, summary }
+  - `links`: { app_home, admin_home, repo, docs }
+  - `generated_at`: ISO timestamp
+- **Capability Item Structure**: Each capability has id, name, status (NOT_STARTED|PARTIAL|DONE|DEPRECATED), user_accessible, description, last_updated_at, notes
+- **Environment Variables**: Set APP_VERSION, DEPLOY_TIMESTAMP, GIT_COMMIT_SHA for build info
 
 #### GET /api/pcc/metrics?range=7d|30d
 Returns KPI metrics for monitoring dashboards.
