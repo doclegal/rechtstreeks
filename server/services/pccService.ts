@@ -63,9 +63,7 @@ class PCCService {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${this.pccFeedToken}`,
-          "Content-Type": "application/json",
-          "X-Requested-With": "XMLHttpRequest",
-          "Origin": this.pccApiUrl!
+          "Content-Type": "application/json"
         },
         body: JSON.stringify(payload)
       });
