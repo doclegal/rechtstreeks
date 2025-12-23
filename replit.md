@@ -126,6 +126,20 @@ Returns KPI metrics for monitoring dashboards.
   - `errors.error_rate`: null
   - `funnel`: empty object
 
+#### PCC Pull Endpoints (Lightweight, No Authentication)
+For PCC's refresh/pull mechanism, these endpoints return simple status without Bearer token:
+
+#### GET /pcc/status
+- **Authentication**: None (public endpoint)
+- **Response**: `{"status": "operational", "uptime": 100}`
+- **Status values**: "operational", "degraded", "down", "error"
+
+#### GET /pcc/metrics  
+- **Authentication**: None (public endpoint)
+- **Response**: `{"avg_response_ms": 16, "error_rate": 0}`
+- **avg_response_ms**: Measured from actual DB query
+- **error_rate**: Currently always 0 (no error tracking yet)
+
 ### Authentication & Authorization
 - **Primary Auth**: Replit Auth with OpenID Connect.
 - **Session Management**: PostgreSQL-backed sessions.
