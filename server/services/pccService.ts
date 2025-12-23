@@ -55,6 +55,9 @@ class PCCService {
       return false;
     }
 
+    const startTime = Date.now();
+    let isError = false;
+
     try {
       const response = await fetch(`${this.pccApiUrl}${endpoint}`, {
         method: "POST",
@@ -65,15 +68,22 @@ class PCCService {
         body: JSON.stringify(payload)
       });
 
+      const responseTime = Date.now() - startTime;
+
       if (!response.ok) {
         console.error(`PCC Service: Request failed with status ${response.status}`);
+        isError = true;
+        this.trackRequest(responseTime, true);
         return false;
       }
 
+      this.trackRequest(responseTime, false);
       this.lastPushTime = new Date();
-      console.log(`PCC Service: Successfully pushed to ${endpoint}`);
+      console.log(`PCC Service: Successfully pushed to ${endpoint} (${responseTime}ms)`);
       return true;
     } catch (error: any) {
+      const responseTime = Date.now() - startTime;
+      this.trackRequest(responseTime, true);
       console.error("PCC Service: Request error:", error.message);
       return false;
     }

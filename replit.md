@@ -140,6 +140,29 @@ For PCC's refresh/pull mechanism, these endpoints return simple status without B
 - **avg_response_ms**: Measured from actual DB query
 - **error_rate**: Currently always 0 (no error tracking yet)
 
+### PCC Push Service
+The app proactively pushes status and metrics to PCC using the following endpoints:
+
+#### Push Endpoints (App → PCC)
+- **POST /api/feed/rechtstreeks/snapshot** - Full snapshot with status, metrics, and scores
+- **POST /api/feed/rechtstreeks/status** - Status-only update
+- **POST /api/feed/rechtstreeks/metrics** - Metrics-only update
+
+#### Push Triggers
+- **On startup**: Sends snapshot after 5 seconds
+- **Hourly heartbeat**: Sends snapshot every 60 minutes
+- **After AI operations**: Sends status update after RKOS analysis and legal advice generation
+
+#### Configuration
+- **PCC_API_URL**: Base URL of PCC API (in Secrets)
+- **PCC_FEED_TOKEN**: Bearer token for authentication (in Secrets)
+
+#### Service: `server/services/pccService.ts`
+- Tracks request metrics (response time, error rate)
+- Computes scores (uptime, performance, errors, security)
+- Provides `pushSnapshot()`, `pushStatus()`, `pushMetrics()` methods
+- Auto-resets hourly metrics after each heartbeat
+
 ### Authentication & Authorization
 - **Primary Auth**: Replit Auth with OpenID Connect.
 - **Session Management**: PostgreSQL-backed sessions.
