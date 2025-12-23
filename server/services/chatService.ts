@@ -186,9 +186,9 @@ export async function callChatFlow(
     history_length: conversationHistory.length,
   })}`);
 
-  // Log API key presence (never log actual key values)
   const hasApiKey = !!process.env.MINDSTUDIO_API_KEY;
-  console.log(`🔑 MindStudio config: API key ${hasApiKey ? '✓' : '✗'}`);
+  const keyPrefix = hasApiKey ? process.env.MINDSTUDIO_API_KEY?.substring(0, 8) : 'none';
+  console.log(`🔑 API Key status: ${hasApiKey ? 'Present' : 'Missing'} (${keyPrefix})`);
 
   const requestBody = {
     workerId: process.env.MS_AGENT_APP_ID, // Same as RKOS.flow and Create_advice.flow

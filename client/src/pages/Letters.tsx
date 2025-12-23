@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import DOMPurify from "dompurify";
 import { useAuth } from "@/hooks/useAuth";
 import { useCases, useGenerateLetter, useDeleteLetter } from "@/hooks/useCase";
 import { useToast } from "@/hooks/use-toast";
@@ -590,7 +589,7 @@ export default function Letters() {
                             }}
                             data-testid={`letter-preview-${letter.id}`}
                           >
-                            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(letter.html) }} />
+                            <div dangerouslySetInnerHTML={{ __html: letter.html }} />
                           </div>
                           <div className="flex gap-3">
                             <Button 

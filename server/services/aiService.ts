@@ -775,16 +775,14 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       variables.file_url = params.file_url;
     }
 
-    console.log("Starting Kanton check analysis:", {
-      has_input_name: !!variables.input_name,
-      has_case_details: !!variables.input_case_details,
-      has_file_url: !!variables.file_url
-    });
+    console.log("Starting Kanton check analysis:", variables);
 
-    // Log API key presence (never log actual key values)
+    // Debug: Log API key status
     const hasApiKey = !!process.env.MINDSTUDIO_API_KEY;
-    const hasWorkerId = !!process.env.MINDSTUDIO_WORKER_ID;
-    console.log(`🔑 MindStudio config: API key ${hasApiKey ? '✓' : '✗'}, Worker ID ${hasWorkerId ? '✓' : '✗'}`);
+    const keyPrefix = process.env.MINDSTUDIO_API_KEY ? process.env.MINDSTUDIO_API_KEY.substring(0, 10) + "..." : "MISSING";
+    console.log(`🔑 API Key status: ${hasApiKey ? 'Present' : 'Missing'} (${keyPrefix})`);
+    console.log(`🏭 Worker ID: ${process.env.MINDSTUDIO_WORKER_ID}`);
+    console.log(`⚙️  Workflow: ${process.env.MINDSTUDIO_WORKFLOW}`);
 
     const requestBody = {
       workerId: process.env.MINDSTUDIO_WORKER_ID,
@@ -1003,12 +1001,12 @@ Confidence > 0.7 = goede extractie, < 0.5 = onbetrouwbaar.`;
       new_uploads: params.new_uploads ?? null
     };
 
-    console.log("📤 Full Analysis variables: case_id=%s, text_length=%d, files=%d", 
-      variables.case_id, variables.case_text?.length || 0, variables.uploaded_files?.length || 0);
+    console.log("📤 Full Analysis variables:", JSON.stringify(variables, null, 2));
 
-    // Log API key presence (never log actual key values)
+    // Debug: Log API key status
     const hasApiKey = !!process.env.MINDSTUDIO_API_KEY;
-    console.log(`🔑 MindStudio config: API key ${hasApiKey ? '✓' : '✗'}`);
+    const keyPrefix = process.env.MINDSTUDIO_API_KEY ? process.env.MINDSTUDIO_API_KEY.substring(0, 10) + "..." : "MISSING";
+    console.log(`🔑 API Key status: ${hasApiKey ? 'Present' : 'Missing'} (${keyPrefix})`);
 
     const requestBody = {
       workerId: process.env.MINDSTUDIO_WORKER_ID,

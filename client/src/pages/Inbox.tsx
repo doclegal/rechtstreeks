@@ -1,5 +1,4 @@
 import { useState } from "react";
-import DOMPurify from "dompurify";
 import { Inbox as InboxIcon, Mail, Clock, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -269,7 +268,7 @@ export default function Inbox() {
               <ScrollArea className="flex-1 max-h-[calc(85vh-180px)]">
                 <div 
                   className="p-6"
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedMessage.content) }}
+                  dangerouslySetInnerHTML={{ __html: selectedMessage.content }}
                 />
               </ScrollArea>
             </>
