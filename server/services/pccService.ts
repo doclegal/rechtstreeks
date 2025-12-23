@@ -63,7 +63,9 @@ class PCCService {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${this.pccFeedToken}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Origin": this.pccApiUrl!
         },
         body: JSON.stringify(payload)
       });
@@ -71,7 +73,8 @@ class PCCService {
       const responseTime = Date.now() - startTime;
 
       if (!response.ok) {
-        console.error(`PCC Service: Request failed with status ${response.status}`);
+        const responseBody = await response.text().catch(() => "");
+        console.error(`PCC Service: Request failed with status ${response.status}`, responseBody);
         isError = true;
         this.trackRequest(responseTime, true);
         return false;
