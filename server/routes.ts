@@ -17,7 +17,8 @@ import { savedJurisprudenceService } from "./services/savedJurisprudenceService"
 import { savedLegislationService } from "./services/savedLegislationService";
 import { mockIntegrations } from "./services/mockIntegrations";
 import { db, handleDatabaseError } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql, gte, or, count, countDistinct } from "drizzle-orm";
+import { users, cases as casesTable, caseDocuments as caseDocumentsTable, analyses as analysesTable } from "@shared/schema";
 import { getConversationHistory, saveChatMessage, callChatFlow } from "./services/chatService";
 import { callInfoQnAFlow, saveQnAPairs, getQnAItems, appendQnAPairs } from "./services/qnaService";
 import { validateSummonsV1 } from "@shared/summonsValidation";
@@ -28,7 +29,7 @@ import { z } from "zod";
 import { SEARCH_CONFIG } from "@shared/searchConfig";
 import { scoreAndSortResults } from "./scoringService";
 import { rerankResults } from "./rerankerService";
-import { createHash } from "crypto";
+import { createHash, timingSafeEqual } from "crypto";
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -10710,6 +10711,261 @@ Geef ALLEEN de JSON terug, geen uitleg.`
       res.status(500).json({ 
         error: error.message || 'Fout bij verwijderen van wetgeving' 
       });
+    }
+  });
+
+  // === PCC (Project Command Center) ENDPOINTS ===
+  // These endpoints are protected with a Bearer token for external monitoring systems
+  
+  // Helper to validate PCC Bearer token (uses constant-time comparison)
+  function validatePccToken(req: any, res: any): boolean {
+    const pccToken = process.env.PCC_FEED_TOKEN;
+    if (!pccToken) {
+      res.status(500).json({ error: 'PCC_FEED_TOKEN not configured' });
+      return false;
+    }
+    
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ error: 'Missing or invalid Authorization header' });
+      return false;
+    }
+    
+    const token = authHeader.substring(7);
+    
+    // Use constant-time comparison to prevent timing attacks
+    const tokenBuffer = Buffer.from(token);
+    const pccTokenBuffer = Buffer.from(pccToken);
+    
+    if (tokenBuffer.length !== pccTokenBuffer.length || !timingSafeEqual(tokenBuffer, pccTokenBuffer)) {
+      res.status(401).json({ error: 'Invalid token' });
+      return false;
+    }
+    
+    return true;
+  }
+  
+  // GET /api/pcc/status - System status endpoint
+  // Field documentation:
+  // - Real data: env.*, build.version, features, health.*, usage.*
+  // - Null placeholders: build.last_deploy_at (needs DEPLOY_TIMESTAMP env), blockers (no blockers table yet)
+  app.get('/api/pcc/status', async (req, res) => {
+    if (!validatePccToken(req, res)) return;
+    
+    try {
+      const nodeEnv = process.env.NODE_ENV || 'development';
+      const appEnv = process.env.APP_ENV || nodeEnv;
+      const isProduction = appEnv === 'production' || nodeEnv === 'production';
+      
+      let dbOk = false;
+      let dbErrorDetails: string | null = null;
+      let lastErrorAt: string | null = null;
+      
+      // Check database connectivity using Drizzle query builder
+      try {
+        await db.select({ value: count() }).from(users).limit(1);
+        dbOk = true; // Query succeeded
+      } catch (dbError: any) {
+        dbOk = false;
+        dbErrorDetails = dbError.message;
+        lastErrorAt = new Date().toISOString();
+        console.error('PCC status: DB check failed:', dbError.message);
+      }
+      
+      // Check Supabase connectivity
+      let authOk = false;
+      let authErrorDetails: string | null = null;
+      try {
+        const { data, error } = await supabase.from('cases').select('id').limit(1);
+        if (error) {
+          authOk = false;
+          authErrorDetails = error.message;
+          lastErrorAt = lastErrorAt || new Date().toISOString();
+          console.error('PCC status: Supabase check failed:', error.message);
+        } else {
+          authOk = true;
+        }
+      } catch (supaError: any) {
+        authOk = false;
+        authErrorDetails = supaError.message;
+        lastErrorAt = lastErrorAt || new Date().toISOString();
+        console.error('PCC status: Supabase check failed:', supaError.message);
+      }
+      
+      const appVersion = process.env.APP_VERSION || '1.0.0';
+      const lastDeployAt = process.env.DEPLOY_TIMESTAMP || null;
+      
+      const features = [
+        'case_management',
+        'document_upload',
+        'ai_case_analysis',
+        'legal_letter_generation',
+        'summons_drafting',
+        'jurisprudence_search',
+        'legislation_lookup',
+        'counterparty_invitations',
+        'warranty_tracking'
+      ];
+      
+      const blockers: Array<{ title: string; severity: string; details: string; created_at: string }> = [];
+      
+      let activeUsers7d: number | null = null;
+      let createdCases7d: number | null = null;
+      
+      try {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        
+        // Use Drizzle query builder with proper parameterization
+        const activeUsersResult = await db
+          .select({ value: countDistinct(casesTable.ownerUserId) })
+          .from(casesTable)
+          .where(gte(casesTable.createdAt, sevenDaysAgo));
+        activeUsers7d = Number(activeUsersResult[0]?.value) || 0;
+        
+        const casesResult = await db
+          .select({ value: count() })
+          .from(casesTable)
+          .where(gte(casesTable.createdAt, sevenDaysAgo));
+        createdCases7d = Number(casesResult[0]?.value) || 0;
+      } catch (usageError: any) {
+        console.error('PCC status: Usage stats failed:', usageError.message);
+        lastErrorAt = lastErrorAt || new Date().toISOString();
+      }
+      
+      const response = {
+        project: 'rechtstreeks',
+        env: {
+          name: isProduction ? 'production' : 'dev',
+          base_url: process.env.REPLIT_DOMAINS?.split(',')[0] 
+            ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+            : process.env.BASE_URL || null,
+          is_live: isProduction
+        },
+        build: {
+          version: appVersion,
+          last_deploy_at: lastDeployAt
+        },
+        features,
+        blockers,
+        health: {
+          api_ok: true,
+          db_ok: dbOk,
+          auth_ok: authOk,
+          last_error_at: lastErrorAt,
+          ...(dbErrorDetails && { db_error: dbErrorDetails }),
+          ...(authErrorDetails && { auth_error: authErrorDetails })
+        },
+        usage: {
+          active_users_7d: activeUsers7d,
+          created_cases_7d: createdCases7d
+        }
+      };
+      
+      res.json(response);
+    } catch (error: any) {
+      console.error('PCC status endpoint error:', error);
+      res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
+  });
+  
+  // GET /api/pcc/metrics - Metrics endpoint with range parameter
+  // Field documentation:
+  // - Real data: kpis.users_total, kpis.active_users, kpis.cases_total, kpis.cases_created, kpis.documents_uploaded, kpis.ai_runs
+  // - Null placeholders: kpis.conversion_rate, errors.error_count, errors.error_rate, funnel (no analytics/events table yet)
+  app.get('/api/pcc/metrics', async (req, res) => {
+    if (!validatePccToken(req, res)) return;
+    
+    try {
+      const range = req.query.range === '30d' ? '30d' : '7d';
+      const daysBack = range === '30d' ? 30 : 7;
+      
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysBack);
+      
+      let usersTotal: number | null = null;
+      let activeUsers: number | null = null;
+      let casesTotal: number | null = null;
+      let casesCreated: number | null = null;
+      let documentsUploaded: number | null = null;
+      let aiRuns: number | null = null;
+      let errorCount: number | null = null;
+      let lastErrorAt: string | null = null;
+      let queryError: string | null = null;
+      
+      try {
+        // Use Drizzle query builder with proper parameterization
+        
+        // Total users
+        const totalUsersResult = await db.select({ value: count() }).from(users);
+        usersTotal = Number(totalUsersResult[0]?.value) || 0;
+        
+        // Active users in range (users who created or updated cases)
+        const activeUsersResult = await db
+          .select({ value: countDistinct(casesTable.ownerUserId) })
+          .from(casesTable)
+          .where(or(
+            gte(casesTable.createdAt, startDate),
+            gte(casesTable.updatedAt, startDate)
+          ));
+        activeUsers = Number(activeUsersResult[0]?.value) || 0;
+        
+        // Total cases
+        const totalCasesResult = await db.select({ value: count() }).from(casesTable);
+        casesTotal = Number(totalCasesResult[0]?.value) || 0;
+        
+        // Cases created in range
+        const casesCreatedResult = await db
+          .select({ value: count() })
+          .from(casesTable)
+          .where(gte(casesTable.createdAt, startDate));
+        casesCreated = Number(casesCreatedResult[0]?.value) || 0;
+        
+        // Documents uploaded in range
+        const docsResult = await db
+          .select({ value: count() })
+          .from(caseDocumentsTable)
+          .where(gte(caseDocumentsTable.createdAt, startDate));
+        documentsUploaded = Number(docsResult[0]?.value) || 0;
+        
+        // AI runs (analyses) in range
+        const aiResult = await db
+          .select({ value: count() })
+          .from(analysesTable)
+          .where(gte(analysesTable.createdAt, startDate));
+        aiRuns = Number(aiResult[0]?.value) || 0;
+        
+      } catch (kpiError: any) {
+        console.error('PCC metrics: KPI query failed:', kpiError.message);
+        lastErrorAt = new Date().toISOString();
+        queryError = kpiError.message;
+      }
+      
+      const response = {
+        project: 'rechtstreeks',
+        range,
+        kpis: {
+          users_total: usersTotal,
+          active_users: activeUsers,
+          cases_total: casesTotal,
+          cases_created: casesCreated,
+          documents_uploaded: documentsUploaded,
+          ai_runs: aiRuns,
+          conversion_rate: null // Not tracked yet - no funnel/events table
+        },
+        errors: {
+          error_count: errorCount, // Not tracked yet - no errors table
+          error_rate: null, // Not tracked yet
+          last_error_at: lastErrorAt,
+          ...(queryError && { query_error: queryError })
+        },
+        funnel: {} // Not tracked yet - could add step counts with events table in future
+      };
+      
+      res.json(response);
+    } catch (error: any) {
+      console.error('PCC metrics endpoint error:', error);
+      res.status(500).json({ error: 'Internal server error', details: error.message });
     }
   });
 

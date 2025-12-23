@@ -82,6 +82,44 @@ Preferred communication style: Simple, everyday language.
   - **Fresh State**: Always persists current references (including empty array) to prevent stale citations in generated letters
   - **Cache Invalidation**: Query cache automatically refreshed after reference generation for immediate UI update
 
+### PCC (Project Command Center) API Endpoints
+External monitoring endpoints protected by Bearer token authentication (PCC_FEED_TOKEN).
+
+#### GET /api/pcc/status
+Returns system health and status information.
+- **Authentication**: Bearer token via `Authorization: Bearer <PCC_FEED_TOKEN>`
+- **Response Fields**:
+  - `project`: "rechtstreeks" (static)
+  - `env.name`: "production" or "dev" (from NODE_ENV/APP_ENV)
+  - `env.base_url`: Current public base URL (from REPLIT_DOMAINS or BASE_URL)
+  - `env.is_live`: Boolean based on environment
+  - `build.version`: App version (from APP_VERSION env or "1.0.0")
+  - `build.last_deploy_at`: Timestamp (from DEPLOY_TIMESTAMP env, null if not set)
+  - `features`: Static list of shipped capabilities
+  - `blockers`: Array of known issues (currently empty - no blockers table yet)
+  - `health.api_ok`: Always true if endpoint responds
+  - `health.db_ok`: True if Neon DB query succeeds
+  - `health.auth_ok`: True if Supabase is reachable
+  - `usage.active_users_7d`: Count of unique case owners in last 7 days (real data)
+  - `usage.created_cases_7d`: Count of cases created in last 7 days (real data)
+
+#### GET /api/pcc/metrics?range=7d|30d
+Returns KPI metrics for monitoring dashboards.
+- **Authentication**: Bearer token via `Authorization: Bearer <PCC_FEED_TOKEN>`
+- **Query Parameters**: `range` (optional) - "7d" (default) or "30d"
+- **Real Data Fields**:
+  - `kpis.users_total`: Total user count
+  - `kpis.active_users`: Users who created/updated cases in range
+  - `kpis.cases_total`: Total cases count
+  - `kpis.cases_created`: Cases created in range
+  - `kpis.documents_uploaded`: Documents uploaded in range
+  - `kpis.ai_runs`: AI analyses performed in range
+- **Null Placeholder Fields** (not tracked yet):
+  - `kpis.conversion_rate`: null
+  - `errors.error_count`: null
+  - `errors.error_rate`: null
+  - `funnel`: empty object
+
 ### Authentication & Authorization
 - **Primary Auth**: Replit Auth with OpenID Connect.
 - **Session Management**: PostgreSQL-backed sessions.
