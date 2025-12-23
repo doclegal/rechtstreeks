@@ -11101,6 +11101,82 @@ Geef ALLEEN de JSON terug, geen uitleg.`
     }
   });
 
+  // ============================================================
+  // PCC Pull Endpoints (lightweight, for PCC refresh mechanism)
+  // These endpoints are at /pcc/* (no /api prefix) and return
+  // simple response formats that PCC expects for its pull/refresh.
+  // Authentication via Bearer token (same as /api/pcc/* endpoints).
+  // ============================================================
+
+  // GET /pcc/status - Lightweight status for PCC pull
+  // Returns: {"status": "operational", "uptime": 99.9}
+  app.get('/pcc/status', async (req, res) => {
+    if (!validatePccToken(req, res)) return;
+    
+    try {
+      let status = 'operational';
+      let uptime = 100.0;
+      
+      // Check database connectivity
+      try {
+        await db.select({ value: count() }).from(users).limit(1);
+      } catch (dbError: any) {
+        status = 'degraded';
+        uptime = 95.0;
+        console.error('PCC pull status: DB check failed:', dbError.message);
+      }
+      
+      // Check Supabase connectivity
+      try {
+        const { error } = await supabase.from('cases').select('id').limit(1);
+        if (error) {
+          status = status === 'degraded' ? 'down' : 'degraded';
+          uptime = status === 'down' ? 0 : 90.0;
+        }
+      } catch (supaError: any) {
+        status = status === 'degraded' ? 'down' : 'degraded';
+        uptime = status === 'down' ? 0 : 90.0;
+        console.error('PCC pull status: Supabase check failed:', supaError.message);
+      }
+      
+      res.json({
+        status,
+        uptime
+      });
+    } catch (error: any) {
+      console.error('PCC pull status endpoint error:', error);
+      res.json({ status: 'error', uptime: 0 });
+    }
+  });
+
+  // GET /pcc/metrics - Lightweight metrics for PCC pull
+  // Returns: {"avg_response_ms": 45, "error_rate": 0.1}
+  app.get('/pcc/metrics', async (req, res) => {
+    if (!validatePccToken(req, res)) return;
+    
+    try {
+      // Measure a simple DB query to estimate response time
+      const startTime = Date.now();
+      try {
+        await db.select({ value: count() }).from(users).limit(1);
+      } catch {
+        // Ignore errors for timing purposes
+      }
+      const avgResponseMs = Date.now() - startTime;
+      
+      // Error rate is not tracked yet, return 0
+      const errorRate = 0;
+      
+      res.json({
+        avg_response_ms: avgResponseMs,
+        error_rate: errorRate
+      });
+    } catch (error: any) {
+      console.error('PCC pull metrics endpoint error:', error);
+      res.json({ avg_response_ms: 0, error_rate: 1.0 });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
