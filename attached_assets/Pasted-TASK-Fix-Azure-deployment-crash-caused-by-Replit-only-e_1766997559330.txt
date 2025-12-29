@@ -1,0 +1,47 @@
+TASK: Fix Azure deployment crash caused by Replit-only environment variable REPLIT_DOMAINS.
+
+PROBLEM:
+The app currently throws a fatal error on startup when REPLIT_DOMAINS is not set. This was acceptable on Replit, but on Azure App Service this variable does not exist, so the app crashes with:
+“Environment variable REPLIT_DOMAINS not provided”.
+We already set DATABASE_URL; the remaining blocker is this Replit-specific hard requirement.
+
+GOAL (clean + durable):
+Make the app run in any environment (Azure, local, Replit) without requiring REPLIT_DOMAINS.
+Replit-specific behavior (e.g., domain allowlist / CORS / host validation) must be enabled ONLY when running on Replit. Outside Replit, it must use a normal, configurable allowlist (or permissive dev mode) and must never crash.
+
+WHAT TO CHANGE:
+1) Locate where REPLIT_DOMAINS is read and where the error is thrown.
+   - Search in the source (not dist) for “REPLIT_DOMAINS” and for the error string.
+   - Identify the module responsible (likely CORS/origin validation, host checks, or domain allowlisting).
+
+2) Remove the unconditional “throw” for missing REPLIT_DOMAINS.
+   - Replace it with environment detection:
+     - Detect Replit by presence of REPL_ID and/or REPLIT_DEPLOYMENT / REPLIT_DOMAINS.
+     - Only in that Replit mode may it depend on REPLIT_DOMAINS.
+
+3) Implement a non-Replit configuration path:
+   - Introduce a new env var for allowed origins/domains outside Replit (e.g., ALLOWED_ORIGINS or APP_ORIGIN).
+   - If that env var is missing:
+     - In production: default to allowing the current site origin (same-origin) and/or log a warning but do not crash.
+     - In development: allow localhost defaults.
+   - Ensure this path works on Azure App Service where the public hostname is an azurewebsites.net domain.
+
+4) Ensure the CORS/origin/host logic remains secure:
+   - Do NOT set “allow all origins” in production unless there is no alternative.
+   - Prefer explicit allowlist behavior.
+   - Keep Replit domain allowlist behavior intact when running on Replit.
+
+5) Update documentation/config:
+   - Add a short note in README or a config section listing required env vars:
+     - DATABASE_URL (already set on Azure)
+     - New non-Replit allowlist env var (ALLOWED_ORIGINS/APP_ORIGIN)
+   - Make clear REPLIT_DOMAINS is optional and Replit-only.
+
+6) Verify:
+   - Run locally without REPLIT_DOMAINS and confirm the server starts.
+   - Build and run the production entry (as Azure does) to ensure no crash.
+   - Ensure existing Replit deployment still works (when REPLIT_DOMAINS exists).
+
+DELIVERABLE:
+Commit the changes with a clear message like:
+“Make REPLIT_DOMAINS optional; support non-Replit deployments via configurable allowed origins.”
