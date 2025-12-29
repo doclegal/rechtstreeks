@@ -8,8 +8,8 @@ import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
-if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
+export function isReplitEnvironment(): boolean {
+  return !!(process.env.REPL_ID && process.env.REPLIT_DOMAINS);
 }
 
 const getOidcConfig = memoize(
@@ -31,14 +31,29 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
+  
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const isReplit = isReplitEnvironment();
+  
+  let sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret) {
+    if (isDevelopment) {
+      console.warn('⚠️ SESSION_SECRET not set - using development fallback (NOT for production)');
+      sessionSecret = 'dev-only-secret-not-for-production';
+    } else {
+      throw new Error('SESSION_SECRET environment variable is required in production');
+    }
+  }
+  
   return session({
-    secret: process.env.SESSION_SECRET!,
+    secret: sessionSecret,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: isProduction || isReplit,
       maxAge: sessionTtl,
     },
   });
@@ -55,7 +70,6 @@ function updateUserSession(
 }
 
 function isEmailAllowed(email: string): boolean {
-  // In development mode, allow all emails for testing
   if (process.env.NODE_ENV === 'development') {
     return true;
   }
@@ -82,8 +96,7 @@ async function upsertUser(
       profileImageUrl: claims["profile_image_url"],
     });
   } catch (error: any) {
-    // Handle unique constraint violations gracefully
-    if (error?.code === '23505') { // Postgres unique violation code
+    if (error?.code === '23505') {
       console.warn('User upsert failed due to unique constraint, continuing with existing user:', error.detail);
       return;
     }
@@ -96,6 +109,33 @@ export async function setupAuth(app: Express) {
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
+
+  passport.serializeUser((user: Express.User, cb) => cb(null, user));
+  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+
+  if (!isReplitEnvironment()) {
+    console.log('⚠️ Not running on Replit - Replit authentication disabled');
+    console.log('   To enable auth on Replit, ensure REPL_ID and REPLIT_DOMAINS are set');
+    
+    app.get("/api/login", (req, res) => {
+      res.status(503).json({ 
+        message: "Authentication not available in this environment",
+        hint: "Replit authentication is only available when running on Replit"
+      });
+    });
+
+    app.get("/api/callback", (req, res) => {
+      res.redirect("/");
+    });
+
+    app.get("/api/logout", (req, res) => {
+      req.logout(() => {
+        res.redirect("/");
+      });
+    });
+    
+    return;
+  }
 
   const config = await getOidcConfig();
 
@@ -126,7 +166,6 @@ export async function setupAuth(app: Express) {
 
   const domains = process.env.REPLIT_DOMAINS!.split(",");
   
-  // Add localhost for development
   if (process.env.NODE_ENV === 'development') {
     domains.push('localhost');
   }
@@ -143,9 +182,6 @@ export async function setupAuth(app: Express) {
     );
     passport.use(strategy);
   }
-
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
     passport.authenticate(`replitauth:${req.hostname}`, {
@@ -173,10 +209,24 @@ export async function setupAuth(app: Express) {
   });
 }
 
+let authBypassLogged = false;
+
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  if (!isReplitEnvironment()) {
+    if (!authBypassLogged) {
+      console.warn('⚠️ Authentication bypassed - not running on Replit (no REPL_ID/REPLIT_DOMAINS)');
+      authBypassLogged = true;
+    }
+    return next();
+  }
+
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
   const user = req.user as any;
 
-  if (!req.isAuthenticated() || !user.expires_at) {
+  if (!user.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
