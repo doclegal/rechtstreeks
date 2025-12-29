@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,16 @@ import { Scale, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 
 export default function Login() {
   const [, setLocation] = useLocation();
-  const { login, signup, isLoggingIn, isSigningUp } = useAuth();
+  const { login, signup, isLoggingIn, isSigningUp, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const [loginSuccess, setLoginSuccess] = useState(false);
+
+  // Navigate after authentication is confirmed
+  useEffect(() => {
+    if (loginSuccess && isAuthenticated) {
+      setLocation("/cases");
+    }
+  }, [loginSuccess, isAuthenticated, setLocation]);
   
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -48,7 +56,7 @@ export default function Login() {
           title: "Welkom terug!",
           description: "Je bent succesvol ingelogd.",
         });
-        setLocation("/cases");
+        setLoginSuccess(true);
       }
     } catch (error: any) {
       const message = error?.message?.includes(":") 
