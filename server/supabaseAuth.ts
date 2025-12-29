@@ -11,10 +11,44 @@ if (!supabaseUrl || !supabaseServiceKey) {
   console.error("Missing Supabase credentials - auth will not work");
 }
 
+// Validate SUPABASE_URL format - must be HTTPS, not WebSocket
+if (supabaseUrl) {
+  if (supabaseUrl.startsWith("ws://") || supabaseUrl.startsWith("wss://")) {
+    console.error(
+      `FATAL: SUPABASE_URL must start with https://, not ${supabaseUrl.split("://")[0]}://. ` +
+      `Correct format: https://<project>.supabase.co`
+    );
+    process.exit(1);
+  }
+  
+  if (supabaseUrl.includes("/v2")) {
+    console.error(
+      `FATAL: SUPABASE_URL should not include /v2. ` +
+      `Correct format: https://<project>.supabase.co (without path)`
+    );
+    process.exit(1);
+  }
+}
+
+// Create Supabase admin client with realtime DISABLED (server doesn't need WebSocket)
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey!, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
+    detectSessionInUrl: false,
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 0,
+    },
+  },
+  db: {
+    schema: 'public',
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'rechtstreeks-server-auth',
+    },
   },
 });
 
