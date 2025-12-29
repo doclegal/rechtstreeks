@@ -4,38 +4,69 @@ import type { Express, RequestHandler, Request, Response, NextFunction } from "e
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_ANON_KEY;
+// Validate and sanitize SUPABASE_URL
+function validateSupabaseUrl(url: string | undefined): string {
+  if (!url) {
+    console.error("FATAL: Missing SUPABASE_URL environment variable");
+    process.exit(1);
+  }
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error("Missing Supabase credentials - auth will not work");
-}
+  const trimmedUrl = url.trim();
+  if (trimmedUrl !== url) {
+    console.warn("⚠️ SUPABASE_URL had trailing/leading whitespace - trimmed");
+  }
 
-// Validate SUPABASE_URL format - must be HTTPS, not WebSocket
-if (supabaseUrl) {
-  if (supabaseUrl.startsWith("ws://") || supabaseUrl.startsWith("wss://")) {
+  if (!trimmedUrl.startsWith("https://")) {
     console.error(
-      `FATAL: SUPABASE_URL must start with https://, not ${supabaseUrl.split("://")[0]}://. ` +
+      `FATAL: SUPABASE_URL must start with https://. ` +
+      `Current starts with: ${trimmedUrl.substring(0, 10)}... ` +
       `Correct format: https://<project>.supabase.co`
     );
     process.exit(1);
   }
-  
-  if (supabaseUrl.includes("/v2")) {
+
+  if (trimmedUrl.startsWith("https://db.")) {
     console.error(
-      `FATAL: SUPABASE_URL should not include /v2. ` +
-      `Correct format: https://<project>.supabase.co (without path)`
+      `FATAL: SUPABASE_URL is the database URL, not the API URL. ` +
+      `Use https://<project>.supabase.co (from Settings → API)`
     );
     process.exit(1);
   }
+
+  if (trimmedUrl.includes("/v2") || trimmedUrl.includes("/v1")) {
+    console.error(
+      `FATAL: SUPABASE_URL should not include /v2 or /v1 paths. ` +
+      `Correct format: https://<project>.supabase.co`
+    );
+    process.exit(1);
+  }
+
+  return trimmedUrl;
 }
 
-// Create Supabase admin client with realtime DISABLED (server doesn't need WebSocket)
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey!, {
+const supabaseUrl = validateSupabaseUrl(process.env.SUPABASE_URL);
+const supabaseServiceKey = process.env.SUPABASE_SECRET_KEY;
+
+if (!supabaseServiceKey) {
+  console.error(
+    "FATAL: Missing SUPABASE_SECRET_KEY environment variable. " +
+    "Server requires service role key for auth admin operations."
+  );
+  process.exit(1);
+}
+
+// Log validated config (safe - no secrets)
+const maskedUrl = supabaseUrl.replace(/^(https:\/\/[^.]+).*/, "$1.***");
+console.log(`🔐 Supabase Auth URL: ${maskedUrl}`);
+
+// Create Supabase admin client - NO realtime, NO WebSocket
+// Auth operations use REST API only (/auth/v1/*)
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
     detectSessionInUrl: false,
+    flowType: 'implicit',
   },
   realtime: {
     params: {
@@ -51,6 +82,9 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey!, {
     },
   },
 });
+
+// Explicitly disconnect realtime to prevent any WebSocket connections
+supabaseAdmin.realtime.disconnect();
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
