@@ -1,0 +1,22 @@
+2025-12-29T10:03:47.3661434Z Error fetching user: TypeError: Cannot read properties of undefined (reading 'claims')
+2025-12-29T10:03:47.366145Z     at file:///home/site/wwwroot/dist/index.js:7476:31
+2025-12-29T10:03:47.3661468Z     at Layer.handle [as handle_request] (/node_modules/express/lib/router/layer.js:95:5)
+2025-12-29T10:03:47.3662322Z     at next (/node_modules/express/lib/router/route.js:149:13)
+2025-12-29T10:03:47.3662347Z     at isAuthenticated (file:///home/site/wwwroot/dist/index.js:2354:12)
+2025-12-29T10:03:47.3662365Z     at Layer.handle [as handle_request] (/node_modules/express/lib/router/layer.js:95:5)
+2025-12-29T10:03:47.3662381Z     at next (/node_modules/express/lib/router/route.js:149:13)
+2025-12-29T10:03:47.3662457Z     at Route.dispatch (/node_modules/express/lib/router/route.js:119:3)
+2025-12-29T10:03:47.3662477Z     at Layer.handle [as handle_request] (/node_modules/express/lib/router/layer.js:95:5)
+2025-12-29T10:03:47.3662493Z     at /node_modules/express/lib/router/index.js:284:15
+2025-12-29T10:03:47.3662511Z     at Function.process_params (/node_modules/express/lib/router/index.js:346:12)
+2025-12-29T10:03:47.3662528Z     at next (/node_modules/express/lib/router/index.js:280:10)
+2025-12-29T10:03:47.3662545Z     at strategy.pass (/node_modules/passport/lib/middleware/authenticate.js:355:9)
+2025-12-29T10:03:47.3662563Z     at SessionStrategy.authenticate (/node_modules/passport/lib/strategies/session.js:126:10)
+2025-12-29T10:03:47.3662579Z     at attempt (/node_modules/passport/lib/middleware/authenticate.js:378:16)
+2025-12-29T10:03:47.3662596Z     at authenticate (/node_modules/passport/lib/middleware/authenticate.js:379:7)
+2025-12-29T10:03:47.3662613Z     at Layer.handle [as handle_request] (/node_modules/express/lib/router/layer.js:95:5)
+2025-12-29T10:03:47.3662633Z Error fetching user: TypeError: Cannot read properties of undefined (reading 'claims')
+2025-12-29T10:03:47.3662651Z     at file:///home/site/wwwroot/dist/index.js:7476:31
+2025-12-29T10:03:47.3662669Z     at Layer.handle [as handle_request] (/node_modules/express/lib/router/layer.js:95:5)
+2025-12-29T10:03:47.3662686Z     at next (/node_modules/express/lib/router/route.js:149:13)
+2025-12-29T10:03:47.3662703Z     at isAuthenticated (file:///home/site/wwwroot/dist/index.js:2354:12)
