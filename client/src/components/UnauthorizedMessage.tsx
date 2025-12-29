@@ -31,7 +31,7 @@ export function UnauthorizedMessage({
           <Button 
             className="w-full" 
             size="lg"
-            onClick={() => window.location.href = '/api/login'}
+            onClick={() => window.location.href = '/login'}
             data-testid="button-login"
           >
             <LogIn className="mr-2 h-5 w-5" />

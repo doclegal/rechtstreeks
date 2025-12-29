@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocation as useWouterLocation } from "wouter";
 import { Scale, MoreVertical, HelpCircle, LogOut, User, PlusCircle, ArrowLeft, Shield, FileText, FileSearch, Mail, Palette, Briefcase, MessageCircle, Handshake, Inbox } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useActiveCase } from "@/contexts/CaseContext";
@@ -21,8 +22,18 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [location] = useLocation();
+  const [, setWouterLocation] = useWouterLocation();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setWouterLocation("/");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
   const currentCase = useActiveCase();
   const [boldBrightTheme, setBoldBrightTheme] = useState(() => {
     const saved = localStorage.getItem('bold-bright-theme');
@@ -267,11 +278,9 @@ export default function Layout({ children }: LayoutProps) {
                         <User className="mr-2 h-4 w-4" />
                         Profiel
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <a href="/api/logout" data-testid="link-logout">
-                          <LogOut className="mr-2 h-4 w-4" />
-                          Uitloggen
-                        </a>
+                      <DropdownMenuItem onClick={handleLogout} data-testid="link-logout" className="cursor-pointer">
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Uitloggen
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

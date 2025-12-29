@@ -19,7 +19,7 @@ export function useCase(caseId: string | undefined) {
       variant: "destructive",
     });
     setTimeout(() => {
-      window.location.href = "/api/login";
+      window.location.href = "/login";
     }, 500);
   }
 
@@ -41,7 +41,7 @@ export function useCases() {
       variant: "destructive",
     });
     setTimeout(() => {
-      window.location.href = "/api/login";
+      window.location.href = "/login";
     }, 500);
   }
 
@@ -72,7 +72,7 @@ export function useCreateCase() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -135,7 +135,7 @@ export function useAnalyzeCase(caseId: string) {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -204,7 +204,7 @@ export function useFullAnalyzeCase(caseId: string) {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -296,7 +296,7 @@ export function useGenerateLegalAdvice(caseId: string) {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -372,7 +372,7 @@ export function useGenerateLetter(caseId: string) {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -410,7 +410,7 @@ export function useDeleteLetter(caseId: string) {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -452,7 +452,7 @@ export function useGenerateSummons(caseId: string) {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -493,7 +493,7 @@ export function useDeleteSummons(caseId: string) {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -531,7 +531,7 @@ export function useOrderBailiff(caseId: string) {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -565,7 +565,7 @@ export function useUpdateCase(caseId: string) {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -602,7 +602,7 @@ export function useDeleteCase(caseId: string) {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }
@@ -639,7 +639,7 @@ export function useDossierCheck(caseId: string) {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/login";
         }, 500);
         return;
       }

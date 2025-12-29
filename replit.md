@@ -21,7 +21,7 @@ Preferred communication style: Simple, everyday language.
 - **Language**: TypeScript with ES modules.
 - **Database ORM**: Drizzle ORM.
 - **File Processing**: Multer for diverse file uploads (PDF, DOCX, images, email).
-- **Authentication**: Replit Auth integration with session management.
+- **Authentication**: Supabase Auth with email/password login and session management.
 - **API Design**: RESTful API with error handling.
 - **Architecture**: Service-oriented (AI analysis, file processing, PDF generation).
 
@@ -83,15 +83,17 @@ Preferred communication style: Simple, everyday language.
   - **Cache Invalidation**: Query cache automatically refreshed after reference generation for immediate UI update
 
 ### Authentication & Authorization
-- **Primary Auth**: Replit Auth with OpenID Connect.
-- **Session Management**: PostgreSQL-backed sessions.
+- **Primary Auth**: Supabase Auth with email/password login.
+- **Session Management**: PostgreSQL-backed sessions via connect-pg-simple.
 - **Role System**: Three-tier access control (user, reviewer, admin).
+- **Login Flow**: Custom login page at `/login` with signup/login forms.
+- **Token Handling**: Server-side session storage with automatic token refresh.
 
 ## External Dependencies
 
 ### Cloud Services
 - **Database**: Neon Serverless PostgreSQL.
-- **Authentication**: Replit Auth service.
+- **Authentication**: Supabase Auth service.
 - **File Storage**: Replit App Storage.
 - **Deployment**: Replit Autoscale.
 - **Vector Database**: Pinecone.

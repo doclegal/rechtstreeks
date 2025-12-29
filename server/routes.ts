@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { caseService } from "./services/caseService";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupSupabaseAuth, isAuthenticated } from "./supabaseAuth";
 import { insertCaseSchema, insertDocumentSchema, insertInvitationSchema, type CaseStatus, cases, analyses, savedLegislation, caseDocuments } from "@shared/schema";
 import { aiService, AIService } from "./services/aiService";
 import { fileService } from "./services/fileService";
@@ -75,38 +75,13 @@ function canAccessCase(userId: string, caseData: any): boolean {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
-
-  // Auth routes - check user without requiring auth (returns null if not logged in)
-  app.get('/api/auth/user', async (req: any, res) => {
-    try {
-      // Check if isAuthenticated function exists and user is authenticated
-      const isAuth = typeof req.isAuthenticated === 'function' && req.isAuthenticated();
-      
-      if (!isAuth || !req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
-      // Safely access claims - handle both Replit auth and potential other auth methods
-      const claims = req.user.claims;
-      if (!claims || !claims.sub) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
-      const userId = claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
+  // Auth middleware - Supabase Auth
+  await setupSupabaseAuth(app);
 
   // Case routes
   app.post('/api/cases', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       const caseData = insertCaseSchema.parse({
         ...req.body,
@@ -311,7 +286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/cases', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const userCases = await caseService.getCasesForUser(userId);
       
       // For each case, include analysis and other related data
@@ -372,7 +347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/cases/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseData = await caseService.getCaseById(req.params.id);
       
       if (!caseData) {
@@ -434,7 +409,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/cases/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const userUuid = ensureUuid(userId);
       const caseData = await caseService.getCaseById(req.params.id);
       
@@ -466,7 +441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete case
   app.delete('/api/cases/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const userUuid = ensureUuid(userId);
       const caseData = await caseService.getCaseById(req.params.id);
       
@@ -497,7 +472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Clear unseen missing items notification
   app.patch('/api/cases/:id/clear-unseen-missing', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseData = await caseService.getCaseById(req.params.id);
       
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
@@ -518,7 +493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Send invitation to counterparty
   app.post('/api/cases/:id/invite', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseData = await caseService.getCaseById(req.params.id);
       
       if (!caseData) {
@@ -650,7 +625,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Accept invitation (requires authentication)
   app.post('/api/invitations/:code/accept', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       const invitation = await storage.getInvitationByCode(req.params.code);
       
@@ -721,7 +696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Approve case description (counterparty only)
   app.patch('/api/cases/:id/approve-description', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseData = await caseService.getCaseById(req.params.id);
       
       if (!caseData) {
@@ -754,7 +729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Case deadlines endpoint
   app.get('/api/cases/:id/deadlines', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseData = await caseService.getCaseById(req.params.id);
       
       if (!caseData) {
@@ -778,7 +753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Negotiation summary endpoint - AI-generated status of negotiation progress
   app.get('/api/cases/:id/negotiation-summary', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseData = await caseService.getCaseById(req.params.id);
       
       if (!caseData) {
@@ -1098,7 +1073,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Document upload routes - Single file upload only
   app.post('/api/cases/:id/uploads', isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       const file = req.file as Express.Multer.File;
       
@@ -1183,7 +1158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/cases/:id/uploads', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseData = await caseService.getCaseById(req.params.id);
       
       // Check if user has access to this case (owner or counterparty)
@@ -1205,7 +1180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Document delete endpoint
   app.delete('/api/documents/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const documentId = req.params.id;
       
       // Get document to verify ownership
@@ -1254,7 +1229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Upload document to Supabase Storage
   app.post('/api/cases/:caseId/documents', isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const userUuid = ensureUuid(userId);
       const caseId = req.params.caseId;
       const file = req.file as Express.Multer.File;
@@ -1445,7 +1420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // List documents from Supabase
   app.get('/api/cases/:caseId/documents', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const userUuid = ensureUuid(userId);
       const caseId = req.params.caseId;
       
@@ -1507,7 +1482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get signed URL for document download
   app.get('/api/documents/:documentId/url', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const userUuid = ensureUuid(userId);
       const documentId = req.params.documentId;
       
@@ -1541,7 +1516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete document from Supabase Storage
   app.delete('/api/documents/:documentId/supabase', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const userUuid = ensureUuid(userId);
       const documentId = req.params.documentId;
       
@@ -1591,7 +1566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Re-extract text from existing documents (fix for .txt files)
   app.post('/api/cases/:id/re-extract', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       // Verify case ownership
@@ -1682,7 +1657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // NEW: Receipt upload and AI extraction endpoint
   app.post('/api/warranty/extract-receipt', isAuthenticated, upload.single('receipt'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const file = req.file as Express.Multer.File;
       
       if (!file) {
@@ -1866,7 +1841,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Kanton check route - first step to determine if case is suitable
   app.post('/api/cases/:id/analyze', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       // Rate limiting: 1 analysis per case per 2 minutes
@@ -2015,7 +1990,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Full Analysis route - NOW USES RKOS FLOW (this is the ONLY analysis flow)
   app.post('/api/cases/:id/full-analyze', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       // Rate limiting: 1 full analysis per case per 30 seconds
@@ -2297,7 +2272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Success Chance (RKOS - Redelijke Kans Op Succes) Assessment
   app.post('/api/cases/:id/success-chance', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       // Get case data and verify ownership
@@ -2599,7 +2574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET RKOS analyses for a case from Supabase
   app.get('/api/cases/:id/rkos-analyses', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       // Verify case access
@@ -2628,7 +2603,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET latest completed RKOS analysis for a case
   app.get('/api/cases/:id/rkos-analysis/latest', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       // Verify case access
@@ -2661,7 +2636,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate Legal Advice - using Create_advice.flow
   app.post('/api/cases/:id/generate-advice', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       // Get case data and verify ownership
@@ -2953,7 +2928,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Missing Info Check - Consolidate missing information from existing analysis
   app.post('/api/cases/:id/missing-info-check', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       // Get case data and verify ownership
@@ -3068,7 +3043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dossier check route - check document completeness using Dossier_check.flow
   app.post('/api/cases/:id/dossier-check', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       // Get case data and verify ownership
@@ -3239,7 +3214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Second Run Analysis - refine analysis with missing info answers
   app.post('/api/cases/:id/second-run', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       // Get case data and verify ownership
@@ -3380,7 +3355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get missing info responses for a case
   app.get('/api/cases/:id/missing-info/responses', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       // Verify case ownership
@@ -3444,7 +3419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Missing info responses route - allows users to provide answers/documents for missing requirements
   app.post('/api/cases/:id/missing-info/responses', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       // Import the schema
@@ -3635,7 +3610,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chat endpoints - AI conversation per case
   app.get('/api/cases/:id/chat', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       // Verify case ownership
@@ -3656,7 +3631,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/cases/:id/chat', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       // Verify case ownership
@@ -3679,7 +3654,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/cases/:id/chat', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       const { message } = req.body;
       
@@ -3730,7 +3705,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Q&A endpoints - Generate and fetch case-specific Q&A
   app.get('/api/cases/:id/qna', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       // Verify case ownership
@@ -3751,7 +3726,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/cases/:id/generate-qna', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       // Verify case ownership
@@ -3795,7 +3770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate MORE Q&A (append to existing)
   app.post('/api/cases/:id/generate-more-qna', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       // Verify case ownership
@@ -3850,7 +3825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Success chance assessment (RKOS - Redelijke Kans Op Succes)
   app.post('/api/cases/:id/success-chance', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       // Verify case ownership
@@ -4085,7 +4060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Letter generation routes
   app.post('/api/cases/:id/letter', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       const { briefType, tone } = req.body;
       
@@ -4434,7 +4409,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/cases/:id/letter/:letterId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const letter = await letterService.getLetterById(req.params.letterId);
       
       if (!letter) {
@@ -4455,7 +4430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/cases/:id/letter/:letterId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const letterId = req.params.letterId;
       
       const letter = await letterService.getLetterById(letterId);
@@ -4500,7 +4475,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Summons generation routes
   app.post('/api/cases/:id/summons', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       const { court } = req.body; // Optional court selection
       
@@ -4627,7 +4602,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all summons for a case
   app.get('/api/cases/:id/summons', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseData = await caseService.getCaseById(req.params.id);
       
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
@@ -4645,7 +4620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get specific summons
   app.get('/api/cases/:id/summons/:summonsId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const summons = await storage.getSummons(req.params.summonsId);
       
       if (!summons) {
@@ -4667,7 +4642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete summons
   app.delete('/api/cases/:id/summons/:summonsId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const summonsId = req.params.summonsId;
       
       const summons = await storage.getSummons(summonsId);
@@ -4705,7 +4680,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all summons V2 for a case
   app.get('/api/cases/:id/summons-v2', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       const caseData = await caseService.getCaseById(caseId);
@@ -4724,7 +4699,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Save summons V2 draft
   app.post('/api/cases/:id/summons-v2/draft', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       const { userFields, aiFields } = req.body;
       
@@ -4800,7 +4775,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate summons V2 with AI - using CreateDagvaarding.flow with COMPLETE context (no summarization)
   app.post('/api/cases/:id/summons-v2/generate', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       const { userFields, templateId } = req.body;
       
@@ -5240,7 +5215,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
   // Get all sections for a summons
   app.get('/api/cases/:caseId/summons/:summonsId/sections', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { caseId, summonsId } = req.params;
       
       const caseData = await caseService.getCaseById(caseId);
@@ -5264,7 +5239,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
   // Generate a specific section using MindStudio
   app.post('/api/cases/:caseId/summons/:summonsId/sections/:sectionKey/generate', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { caseId, summonsId, sectionKey } = req.params;
       const { userFields, previousSections, userFeedback } = req.body;
       
@@ -5771,7 +5746,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
   // Approve a section
   app.post('/api/cases/:caseId/summons/:summonsId/sections/:sectionKey/approve', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { caseId, summonsId, sectionKey } = req.params;
       
       const caseData = await caseService.getCaseById(caseId);
@@ -5805,7 +5780,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
   // Reject a section with feedback
   app.post('/api/cases/:caseId/summons/:summonsId/sections/:sectionKey/reject', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { caseId, summonsId, sectionKey } = req.params;
       const { feedback } = req.body;
       
@@ -5841,7 +5816,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
   // Assemble final dagvaarding when all sections are approved
   app.post('/api/cases/:caseId/summons/:summonsId/assemble', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { caseId, summonsId } = req.params;
       const { userFields } = req.body;
       
@@ -5919,7 +5894,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
   // MindStudio flow execution for dagvaarding sections
   app.post('/api/mindstudio/run-flow', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { flowName, caseId } = req.body;
       
       if (!flowName) {
@@ -6067,7 +6042,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
   // Mock integration routes
   app.post('/api/integrations/bailiff/serve', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { caseId } = req.body;
       
       const caseData = await caseService.getCaseById(caseId);
@@ -6133,7 +6108,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
 
   app.post('/api/integrations/court/file', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { caseId } = req.body;
       
       const caseData = await caseService.getCaseById(caseId);
@@ -6169,7 +6144,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
 
   app.post('/api/cases/:id/proceedings/start', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       const caseData = await caseService.getCaseById(caseId);
@@ -6203,7 +6178,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
   // Timeline route
   app.get('/api/timeline/:caseId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.caseId;
       
       const caseData = await caseService.getCaseById(caseId);
@@ -6258,7 +6233,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
 
   app.post('/api/templates', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user || user.role !== "admin") {
@@ -6277,7 +6252,7 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
   // Seed default templates (one-time setup or admin utility)
   app.post('/api/templates/seed', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user || user.role !== "admin") {
@@ -6452,7 +6427,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   // Parse and register new template from text or file
   app.post('/api/templates/parse', isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user || user.role !== "admin") {
@@ -6521,7 +6496,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   // Update MindStudio flow linking for a template
   app.patch('/api/templates/:id/flow', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user || user.role !== "admin") {
@@ -6568,7 +6543,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   // Delete template
   app.delete('/api/templates/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (!user || user.role !== "admin") {
@@ -6667,7 +6642,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   // Case export route
   app.get('/api/cases/:id/export', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       const caseData = await caseService.getCaseById(caseId);
@@ -6786,7 +6761,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   // Case analysis endpoint
   app.get('/api/cases/:id/analysis', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       const caseData = await caseService.getCaseById(caseId);
@@ -6894,7 +6869,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   // Get all analyses for a case (used for jurisprudence references)
   app.get('/api/cases/:id/analyses', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       const caseData = await caseService.getCaseById(caseId);
@@ -6913,7 +6888,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   // Get saved readiness data for a case
   app.get('/api/cases/:caseId/readiness', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { caseId } = req.params;
       
       // Verify case ownership
@@ -6954,7 +6929,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   // Auto-save user responses (PATCH endpoint)
   app.patch('/api/cases/:caseId/readiness', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { caseId } = req.params;
       const { userResponses, readinessResult } = req.body;
       
@@ -6999,7 +6974,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   // Check case readiness with DV_Questions.flow
   app.post('/api/mindstudio/run-questions-flow', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { caseId } = req.body;
       
       if (!caseId) {
@@ -7308,7 +7283,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   // Submit user responses and re-run DV_Questions.flow
   app.post('/api/mindstudio/submit-user-responses', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { 
         caseId, 
         missingItemResponses, 
@@ -7651,7 +7626,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   // Run complete MindStudio flow with case snapshot
   app.post('/api/mindstudio/run-complete-flow', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { caseId, flowName } = req.body;
       
       if (!caseId) {
@@ -7887,7 +7862,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   // Build case snapshot for complete summons generation
   app.get('/api/cases/:id/build-case-snapshot', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const caseId = req.params.id;
       
       // Get case data

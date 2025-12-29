@@ -33,6 +33,7 @@ import InvitationAccept from "@/pages/InvitationAccept";
 import Jurisprudentie from "@/pages/Jurisprudentie";
 import Wetgeving from "@/pages/Wetgeving";
 import Updates from "@/pages/Updates";
+import Login from "@/pages/Login";
 import RequireAuth from "@/components/RequireAuth";
 
 // Protected route definitions
@@ -93,6 +94,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
+      <Route path="/login" component={Login} />
       <Route path="/kantonrecht-info" component={KantonrechtInfo} />
       <Route path="/invitation/:code" component={InvitationAccept} />
       

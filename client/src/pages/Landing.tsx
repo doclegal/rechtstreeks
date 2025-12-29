@@ -26,7 +26,7 @@ export default function Landing() {
               </Button>
             ) : (
               <Button asChild data-testid="button-login">
-                <a href="/api/login">Inloggen</a>
+                <a href="/login">Inloggen</a>
               </Button>
             )}
           </div>
@@ -58,7 +58,7 @@ export default function Landing() {
                     variant: "default",
                   });
                 } else {
-                  window.location.href = "/api/login";
+                  window.location.href = "/login";
                 }
               }}
             >
@@ -863,7 +863,7 @@ export default function Landing() {
             Maak een gratis account en upload je eerste documenten
           </p>
           <Button size="lg" asChild data-testid="button-cta-start">
-            <a href="/api/login" className="px-8 py-4 text-lg">
+            <a href="/login" className="px-8 py-4 text-lg">
               Start nu gratis
             </a>
           </Button>
