@@ -105,6 +105,9 @@ async function upsertUser(
 }
 
 export async function setupAuth(app: Express) {
+  const authMode = isReplitEnvironment() ? 'REPLIT' : 'NON-REPLIT';
+  console.log(`🔐 Auth mode: ${authMode}`);
+  
   app.set("trust proxy", 1);
   app.use(getSession());
   app.use(passport.initialize());
@@ -114,8 +117,8 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   if (!isReplitEnvironment()) {
-    console.log('⚠️ Not running on Replit - Replit authentication disabled');
-    console.log('   To enable auth on Replit, ensure REPL_ID and REPLIT_DOMAINS are set');
+    console.log('   Replit authentication disabled - routes accessible without auth');
+    console.log('   To enable auth, ensure REPL_ID and REPLIT_DOMAINS are set');
     
     app.get("/api/login", (req, res) => {
       res.status(503).json({ 
@@ -209,23 +212,22 @@ export async function setupAuth(app: Express) {
   });
 }
 
-let authBypassLogged = false;
-
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  if (!isReplitEnvironment()) {
-    if (!authBypassLogged) {
-      console.warn('⚠️ Authentication bypassed - not running on Replit (no REPL_ID/REPLIT_DOMAINS)');
-      authBypassLogged = true;
-    }
-    return next();
-  }
-
-  if (!req.isAuthenticated()) {
+  // Check if isAuthenticated function exists (passport might not be fully configured in non-Replit)
+  const isAuth = typeof req.isAuthenticated === 'function' && req.isAuthenticated();
+  
+  if (!isAuth || !req.user) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
   const user = req.user as any;
 
+  // In non-Replit environments, skip token refresh logic (no OIDC tokens)
+  if (!isReplitEnvironment()) {
+    return next();
+  }
+
+  // Replit OIDC token refresh logic
   if (!user.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
   }

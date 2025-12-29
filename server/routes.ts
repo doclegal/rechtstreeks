@@ -78,10 +78,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // Auth routes - check user without requiring auth (returns null if not logged in)
+  app.get('/api/auth/user', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Check if isAuthenticated function exists and user is authenticated
+      const isAuth = typeof req.isAuthenticated === 'function' && req.isAuthenticated();
+      
+      if (!isAuth || !req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Safely access claims - handle both Replit auth and potential other auth methods
+      const claims = req.user.claims;
+      if (!claims || !claims.sub) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const userId = claims.sub;
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
