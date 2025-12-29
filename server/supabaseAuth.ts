@@ -282,6 +282,17 @@ export async function setupSupabaseAuth(app: Express) {
     }
 
     const user = await storage.getUser(sessionUser.id);
+    
+    // If user not found in database, return session data as fallback
+    if (!user) {
+      return res.json({ 
+        user: {
+          id: sessionUser.id,
+          email: sessionUser.email,
+        }
+      });
+    }
+    
     res.json({ user });
   });
 
