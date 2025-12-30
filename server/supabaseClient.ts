@@ -157,22 +157,6 @@ export function getUserClientFromRequest(req: Request): SupabaseClient | null {
 }
 
 /**
- * Get user-scoped Supabase client from request, with fallback to admin
- * 
- * WARNING: Only use this during migration. After RLS is enabled,
- * admin fallback will not have correct user context.
- * @deprecated Use requireUserClient for user-facing routes
- */
-export function getUserClientFromRequestOrAdmin(req: Request): SupabaseClient {
-  const userClient = getUserClientFromRequest(req);
-  if (userClient) {
-    return userClient;
-  }
-  console.warn("⚠️ No user token available - using admin client (RLS bypassed!)");
-  return supabase;
-}
-
-/**
  * Get user-scoped Supabase client from request - STRICT VERSION
  * 
  * Throws an error if no valid token is available.
