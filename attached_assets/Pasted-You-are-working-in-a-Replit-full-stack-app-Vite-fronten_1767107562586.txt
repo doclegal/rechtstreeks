@@ -1,0 +1,65 @@
+You are working in a Replit full-stack app (Vite frontend + Express backend) that currently uses Supabase Auth + a server session. We are moving to the safer route: frontend uses Supabase publishable key, backend does NOT use the service-role key for user data, and backend validates/uses the user JWT (Authorization: Bearer <token>) for all protected /api routes.
+
+Goal
+1) Frontend: use Supabase JS client with VITE_SUPABASE_URL + VITE_SUPABASE_PUBLISHABLE_KEY (publishable/anon) for signup/login/logout and for getting the current session access_token.
+2) Frontend: send Authorization header with every /api request: "Authorization: Bearer <access_token>".
+3) Backend: validate the JWT on each protected /api route and attach req.user = { id, email } from the token. Do NOT rely on Express-session for auth anymore for API protection.
+4) Backend: create a per-request Supabase client using the user’s access_token so PostgREST/RLS applies (no service role key for normal reads/writes).
+5) Keep a separate admin client with SUPABASE_SECRET_KEY ONLY for rare admin operations (e.g. server-side refresh or background jobs), but do not use it for normal CRUD endpoints.
+
+Environment Variables
+- Frontend (Vite): VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY
+- Backend: SUPABASE_URL, SUPABASE_SECRET_KEY (admin only), SESSION_SECRET (can remain), DATABASE_URL (remains for connect-pg-simple + Drizzle if still used)
+
+Tasks (implement in order, commit-friendly)
+
+A) Frontend: Supabase client + Auth UI wiring
+- Create/ensure a file like client/src/lib/supabase.ts exporting:
+  - supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } })
+- Update existing login/signup/logout flows to use supabase.auth.signInWithPassword / signUp / signOut (or magic link if already used, keep current choice but use Supabase publishable client).
+- Ensure the app can get the current session via supabase.auth.getSession() and access_token.
+
+B) Frontend: API client that always attaches Bearer token
+- Create/ensure a single API helper (e.g. client/src/lib/api.ts) wrapping fetch:
+  - Before each request, call supabase.auth.getSession() and if session exists, set headers.Authorization = `Bearer ${session.access_token}`
+  - Include credentials only if needed, but prefer token auth for /api.
+- Replace direct fetch calls to /api/* with this helper across the app (cases, documents, analyses, etc).
+- Ensure unauthenticated requests to protected endpoints are handled (redirect to /login on 401).
+
+C) Backend: JWT validation middleware for /api (Supabase)
+- Implement middleware (e.g. server/middleware/requireSupabaseAuth.ts):
+  - Read Authorization header, require "Bearer <token>"
+  - Verify the JWT using Supabase JWKS or by calling supabase.auth.getUser(token) with a publishable client (NOT service role). Prefer: create a Supabase client with SUPABASE_URL + SUPABASE_PUBLISHABLE_KEY on server, then call auth.getUser(token).
+  - On success, set req.user = { id: user.id, email: user.email }
+  - On failure, return 401 { message: "Unauthorized", code: "NO_AUTH" }
+- Apply this middleware to all protected routes (/api/cases, /api/documents, /api/analyses, /api/letters, /api/summons, etc). Keep /api/auth/session public but make it return { user: null } when no valid Bearer token is provided.
+
+D) Backend: per-request Supabase client (user-scoped) + remove service-role use in CRUD
+- Add helper (e.g. server/supabaseUserClient.ts):
+  - function createUserSupabaseClient(accessToken: string) { return createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { global: { headers: { Authorization: `Bearer ${accessToken}` } } }) }
+- In every route/service that currently uses the global service-role Supabase client for CRUD (cases, storage metadata, etc), refactor to use the per-request user client, taking token from the request Authorization header.
+- Ensure all database access is either:
+  1) Drizzle queries that include strict owner checks (short term), or
+  2) Supabase PostgREST calls with RLS (preferred), but do NOT use service role for user data.
+- Remove/disable testAuthMiddleware and any /api/supabase/cases routes that use a hard-coded user id.
+
+E) RLS readiness (do not apply migrations here unless asked)
+- Ensure we are not bypassing RLS for user data.
+- Keep existing "no-store" API headers and no ETag behavior intact.
+
+Acceptance tests
+1) Incognito: GET /api/cases -> 401 {message:"Unauthorized", code:"NO_AUTH"}
+2) Logged-in browser:
+   - Frontend requests include Authorization Bearer token
+   - GET /api/auth/session returns 200 with user info based on token
+   - GET /api/cases returns only that user’s cases
+3) Create case works and appears only for that user.
+4) Logout: token removed, protected endpoints return 401.
+
+Deliverables
+- Update files as needed, keep changes minimal and consistent.
+- Ensure TypeScript types compile.
+- Remove dead Replit Auth code paths where safe, but do not break production.
+- Provide a short checklist in comments at the end of the PR notes (in-code comments acceptable).
+
+Proceed to implement now.
