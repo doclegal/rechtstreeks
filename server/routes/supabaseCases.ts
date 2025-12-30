@@ -6,28 +6,34 @@ const router = Router();
 
 interface SupabaseCase {
   id: string;
-  user_id: string;
+  owner_user_id: string;
   title: string;
   description: string;
-  client_role: string;
   category: string;
-  claim_amount_eur?: number;
-  client_name?: string;
-  client_address?: string;
-  client_city: string;
-  opponent_type: string;
-  opponent_company?: string;
-  opponent_email?: string;
-  opponent_phone?: string;
-  opponent_address?: string;
-  opponent_city?: string;
+  claim_amount?: string;
+  claimant_name?: string;
+  claimant_address?: string;
+  claimant_city?: string;
+  counterparty_type?: string;
+  counterparty_name?: string;
+  counterparty_email?: string;
+  counterparty_phone?: string;
+  counterparty_address?: string;
+  counterparty_city?: string;
+  counterparty_user_id?: string;
+  user_role?: string;
+  counterparty_description_approved?: boolean;
   status?: string;
+  current_step?: string;
+  next_action_label?: string;
+  has_unseen_missing_items?: boolean;
+  needs_reanalysis?: boolean;
   created_at?: string;
   updated_at?: string;
 }
 
 function validateRequired(body: any): string | null {
-  const requiredFields = ["title", "description", "client_role", "category", "client_city", "opponent_type"];
+  const requiredFields = ["title"];
   for (const field of requiredFields) {
     if (!body[field] || (typeof body[field] === "string" && body[field].trim() === "")) {
       return `Missing required field: ${field}`;
@@ -51,22 +57,22 @@ router.post("/", async (req: Request, res: Response) => {
     const now = new Date().toISOString();
     const caseData: SupabaseCase = {
       id: randomUUID(),
-      user_id: userId,
+      owner_user_id: userId,
       title: req.body.title,
-      description: req.body.description,
-      client_role: req.body.client_role,
-      category: req.body.category,
-      claim_amount_eur: req.body.claim_amount_eur,
-      client_name: req.body.client_name,
-      client_address: req.body.client_address,
-      client_city: req.body.client_city,
-      opponent_type: req.body.opponent_type,
-      opponent_company: req.body.opponent_company,
-      opponent_email: req.body.opponent_email,
-      opponent_phone: req.body.opponent_phone,
-      opponent_address: req.body.opponent_address,
-      opponent_city: req.body.opponent_city,
-      status: req.body.status,
+      description: req.body.description || "",
+      category: req.body.category || "",
+      claim_amount: req.body.claimAmount || req.body.claim_amount,
+      claimant_name: req.body.claimantName || req.body.claimant_name,
+      claimant_address: req.body.claimantAddress || req.body.claimant_address,
+      claimant_city: req.body.claimantCity || req.body.claimant_city,
+      counterparty_type: req.body.counterpartyType || req.body.counterparty_type,
+      counterparty_name: req.body.counterpartyName || req.body.counterparty_name,
+      counterparty_email: req.body.counterpartyEmail || req.body.counterparty_email,
+      counterparty_phone: req.body.counterpartyPhone || req.body.counterparty_phone,
+      counterparty_address: req.body.counterpartyAddress || req.body.counterparty_address,
+      counterparty_city: req.body.counterpartyCity || req.body.counterparty_city,
+      user_role: req.body.userRole || req.body.user_role || "EISER",
+      status: req.body.status || "NEW_INTAKE",
       created_at: now,
       updated_at: now,
     };
@@ -97,7 +103,7 @@ router.get("/", async (req: Request, res: Response) => {
     const { data, error } = await supabase
       .from("cases")
       .select("*")
-      .eq("user_id", userId);
+      .eq("owner_user_id", userId);
 
     if (error) {
       return res.status(500).json({ error: error.message });
@@ -122,7 +128,7 @@ router.get("/:id", async (req: Request, res: Response) => {
       .from("cases")
       .select("*")
       .eq("id", id)
-      .eq("user_id", userId)
+      .eq("owner_user_id", userId)
       .single();
 
     if (error) {
@@ -151,26 +157,21 @@ router.put("/:id", async (req: Request, res: Response) => {
 
     const { id } = req.params;
 
-    const validationError = validateRequired(req.body);
-    if (validationError) {
-      return res.status(400).json({ error: validationError });
-    }
-
     const updateData: Partial<SupabaseCase> = {
       title: req.body.title,
       description: req.body.description,
-      client_role: req.body.client_role,
       category: req.body.category,
-      claim_amount_eur: req.body.claim_amount_eur,
-      client_name: req.body.client_name,
-      client_address: req.body.client_address,
-      client_city: req.body.client_city,
-      opponent_type: req.body.opponent_type,
-      opponent_company: req.body.opponent_company,
-      opponent_email: req.body.opponent_email,
-      opponent_phone: req.body.opponent_phone,
-      opponent_address: req.body.opponent_address,
-      opponent_city: req.body.opponent_city,
+      claim_amount: req.body.claimAmount || req.body.claim_amount,
+      claimant_name: req.body.claimantName || req.body.claimant_name,
+      claimant_address: req.body.claimantAddress || req.body.claimant_address,
+      claimant_city: req.body.claimantCity || req.body.claimant_city,
+      counterparty_type: req.body.counterpartyType || req.body.counterparty_type,
+      counterparty_name: req.body.counterpartyName || req.body.counterparty_name,
+      counterparty_email: req.body.counterpartyEmail || req.body.counterparty_email,
+      counterparty_phone: req.body.counterpartyPhone || req.body.counterparty_phone,
+      counterparty_address: req.body.counterpartyAddress || req.body.counterparty_address,
+      counterparty_city: req.body.counterpartyCity || req.body.counterparty_city,
+      user_role: req.body.userRole || req.body.user_role,
       status: req.body.status,
       updated_at: new Date().toISOString(),
     };
@@ -179,7 +180,7 @@ router.put("/:id", async (req: Request, res: Response) => {
       .from("cases")
       .update(updateData)
       .eq("id", id)
-      .eq("user_id", userId)
+      .eq("owner_user_id", userId)
       .select()
       .single();
 
@@ -213,7 +214,7 @@ router.delete("/:id", async (req: Request, res: Response) => {
       .from("cases")
       .select("id")
       .eq("id", id)
-      .eq("user_id", userId)
+      .eq("owner_user_id", userId)
       .single();
 
     if (!existing) {
@@ -224,7 +225,7 @@ router.delete("/:id", async (req: Request, res: Response) => {
       .from("cases")
       .delete()
       .eq("id", id)
-      .eq("user_id", userId);
+      .eq("owner_user_id", userId);
 
     if (error) {
       return res.status(500).json({ error: error.message });

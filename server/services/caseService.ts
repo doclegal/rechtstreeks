@@ -21,22 +21,28 @@ function ensureUuid(userId: string): string {
 
 interface SupabaseCaseRow {
   id: string;
-  user_id: string;
+  owner_user_id: string;
   title: string;
   description: string | null;
-  client_role: string;
   category: string | null;
-  claim_amount_eur: number | null;
-  client_name: string | null;
-  client_address: string | null;
-  client_city: string | null;
-  opponent_type: string | null;
-  opponent_company: string | null;
-  opponent_email: string | null;
-  opponent_phone: string | null;
-  opponent_address: string | null;
-  opponent_city: string | null;
+  claim_amount: string | null;
+  claimant_name: string | null;
+  claimant_address: string | null;
+  claimant_city: string | null;
+  counterparty_type: string | null;
+  counterparty_name: string | null;
+  counterparty_email: string | null;
+  counterparty_phone: string | null;
+  counterparty_address: string | null;
+  counterparty_city: string | null;
+  counterparty_user_id: string | null;
+  user_role: string | null;
+  counterparty_description_approved: boolean | null;
   status: string | null;
+  current_step: string | null;
+  next_action_label: string | null;
+  has_unseen_missing_items: boolean | null;
+  needs_reanalysis: boolean | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -44,28 +50,28 @@ interface SupabaseCaseRow {
 function mapSupabaseToInternal(row: SupabaseCaseRow): Case {
   return {
     id: row.id,
-    ownerUserId: row.user_id,
+    ownerUserId: row.owner_user_id,
     title: row.title,
     description: row.description,
     category: row.category,
-    claimAmount: row.claim_amount_eur ? String(row.claim_amount_eur) : null,
-    claimantName: row.client_name,
-    claimantAddress: row.client_address,
-    claimantCity: row.client_city,
-    counterpartyType: row.opponent_type,
-    counterpartyName: row.opponent_company,
-    counterpartyEmail: row.opponent_email,
-    counterpartyPhone: row.opponent_phone,
-    counterpartyAddress: row.opponent_address,
-    counterpartyCity: row.opponent_city,
-    counterpartyUserId: null,
-    userRole: (row.client_role as "EISER" | "GEDAAGDE") || "EISER",
-    counterpartyDescriptionApproved: false,
+    claimAmount: row.claim_amount,
+    claimantName: row.claimant_name,
+    claimantAddress: row.claimant_address,
+    claimantCity: row.claimant_city,
+    counterpartyType: row.counterparty_type,
+    counterpartyName: row.counterparty_name,
+    counterpartyEmail: row.counterparty_email,
+    counterpartyPhone: row.counterparty_phone,
+    counterpartyAddress: row.counterparty_address,
+    counterpartyCity: row.counterparty_city,
+    counterpartyUserId: row.counterparty_user_id,
+    userRole: (row.user_role as "EISER" | "GEDAAGDE") || "EISER",
+    counterpartyDescriptionApproved: row.counterparty_description_approved ?? false,
     status: (row.status as CaseStatus) || "NEW_INTAKE",
-    currentStep: null,
-    nextActionLabel: null,
-    hasUnseenMissingItems: false,
-    needsReanalysis: false,
+    currentStep: row.current_step,
+    nextActionLabel: row.next_action_label,
+    hasUnseenMissingItems: row.has_unseen_missing_items ?? false,
+    needsReanalysis: row.needs_reanalysis ?? false,
     createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
   };
@@ -75,24 +81,28 @@ function mapInternalToSupabase(caseData: Partial<InsertCase> & { id?: string }):
   const mapped: Partial<SupabaseCaseRow> = {};
   
   if (caseData.id !== undefined) mapped.id = caseData.id;
-  if (caseData.ownerUserId !== undefined) mapped.user_id = ensureUuid(caseData.ownerUserId);
+  if (caseData.ownerUserId !== undefined) mapped.owner_user_id = ensureUuid(caseData.ownerUserId);
   if (caseData.title !== undefined) mapped.title = caseData.title;
   if (caseData.description !== undefined) mapped.description = caseData.description;
   if (caseData.category !== undefined) mapped.category = caseData.category;
-  if (caseData.claimAmount !== undefined) {
-    mapped.claim_amount_eur = caseData.claimAmount ? parseFloat(caseData.claimAmount) : null;
-  }
-  if (caseData.claimantName !== undefined) mapped.client_name = caseData.claimantName;
-  if (caseData.claimantAddress !== undefined) mapped.client_address = caseData.claimantAddress;
-  if (caseData.claimantCity !== undefined) mapped.client_city = caseData.claimantCity;
-  if (caseData.counterpartyType !== undefined) mapped.opponent_type = caseData.counterpartyType;
-  if (caseData.counterpartyName !== undefined) mapped.opponent_company = caseData.counterpartyName;
-  if (caseData.counterpartyEmail !== undefined) mapped.opponent_email = caseData.counterpartyEmail;
-  if (caseData.counterpartyPhone !== undefined) mapped.opponent_phone = caseData.counterpartyPhone;
-  if (caseData.counterpartyAddress !== undefined) mapped.opponent_address = caseData.counterpartyAddress;
-  if (caseData.counterpartyCity !== undefined) mapped.opponent_city = caseData.counterpartyCity;
-  if (caseData.userRole !== undefined) mapped.client_role = caseData.userRole;
+  if (caseData.claimAmount !== undefined) mapped.claim_amount = caseData.claimAmount;
+  if (caseData.claimantName !== undefined) mapped.claimant_name = caseData.claimantName;
+  if (caseData.claimantAddress !== undefined) mapped.claimant_address = caseData.claimantAddress;
+  if (caseData.claimantCity !== undefined) mapped.claimant_city = caseData.claimantCity;
+  if (caseData.counterpartyType !== undefined) mapped.counterparty_type = caseData.counterpartyType;
+  if (caseData.counterpartyName !== undefined) mapped.counterparty_name = caseData.counterpartyName;
+  if (caseData.counterpartyEmail !== undefined) mapped.counterparty_email = caseData.counterpartyEmail;
+  if (caseData.counterpartyPhone !== undefined) mapped.counterparty_phone = caseData.counterpartyPhone;
+  if (caseData.counterpartyAddress !== undefined) mapped.counterparty_address = caseData.counterpartyAddress;
+  if (caseData.counterpartyCity !== undefined) mapped.counterparty_city = caseData.counterpartyCity;
+  if (caseData.counterpartyUserId !== undefined) mapped.counterparty_user_id = caseData.counterpartyUserId;
+  if (caseData.userRole !== undefined) mapped.user_role = caseData.userRole;
+  if (caseData.counterpartyDescriptionApproved !== undefined) mapped.counterparty_description_approved = caseData.counterpartyDescriptionApproved;
   if (caseData.status !== undefined) mapped.status = caseData.status;
+  if (caseData.currentStep !== undefined) mapped.current_step = caseData.currentStep;
+  if (caseData.nextActionLabel !== undefined) mapped.next_action_label = caseData.nextActionLabel;
+  if (caseData.hasUnseenMissingItems !== undefined) mapped.has_unseen_missing_items = caseData.hasUnseenMissingItems;
+  if (caseData.needsReanalysis !== undefined) mapped.needs_reanalysis = caseData.needsReanalysis;
   
   return mapped;
 }
@@ -134,7 +144,7 @@ export const caseService = {
     const { data, error } = await supabase
       .from("cases")
       .select("*")
-      .eq("user_id", uuid)
+      .eq("owner_user_id", uuid)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -169,7 +179,7 @@ export const caseService = {
       .from("cases")
       .select("*")
       .eq("id", id)
-      .eq("user_id", uuid)
+      .eq("owner_user_id", uuid)
       .single();
 
     if (error) {
@@ -207,11 +217,18 @@ export const caseService = {
     return mapSupabaseToInternal(data);
   },
 
-  async updateCaseStatus(id: string, status: CaseStatus, _currentStep?: string, _nextActionLabel?: string): Promise<Case> {
+  async updateCaseStatus(id: string, status: CaseStatus, currentStep?: string, nextActionLabel?: string): Promise<Case> {
     const supabaseUpdates: Partial<SupabaseCaseRow> = {
       status,
       updated_at: new Date().toISOString(),
     };
+    
+    if (currentStep !== undefined) {
+      supabaseUpdates.current_step = currentStep;
+    }
+    if (nextActionLabel !== undefined) {
+      supabaseUpdates.next_action_label = nextActionLabel;
+    }
 
     const { data, error } = await supabase
       .from("cases")
