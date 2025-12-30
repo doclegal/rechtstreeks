@@ -87,7 +87,16 @@ Preferred communication style: Simple, everyday language.
 - **Session Management**: PostgreSQL-backed sessions via connect-pg-simple.
 - **Role System**: Three-tier access control (user, reviewer, admin).
 - **Login Flow**: Custom login page at `/login` with signup/login forms.
-- **Token Handling**: Server-side session storage with automatic token refresh.
+- **Token Handling**: Server-side JWT verification with per-request user-scoped clients.
+- **Row Level Security (RLS)**: Database-level data isolation on `cases` table (Phase 1).
+  - User-scoped Supabase clients with `auth.uid()` for RLS policy enforcement.
+  - Service role (`supabaseAdmin`) only for: invitation acceptance, public endpoints, admin operations.
+  - See `docs/supabase_rls_migration.sql` for policies and `docs/ENVIRONMENT_VARIABLES.md` for secrets.
+
+### Dual Database Architecture
+- **Supabase PostgreSQL**: Cases table via `caseService` (RLS protected).
+- **Neon PostgreSQL**: All other tables via Drizzle ORM (app-level auth).
+- **Future Migration**: Phase 2 will migrate case_documents to consistent Supabase access.
 
 ## External Dependencies
 
