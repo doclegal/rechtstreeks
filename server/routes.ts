@@ -634,7 +634,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/invitations/:code/accept', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const userClient = req.supabaseClient;
+      // NOTE: Use supabaseAdmin for invitation acceptance because:
+      // 1. User doesn't have RLS access to the case until they become counterparty
+      // 2. The invitation token + email validation serves as authorization
       const user = await storage.getUser(userId);
       const invitation = await storage.getInvitationByCode(req.params.code);
       
@@ -660,8 +662,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Get case
-      const caseData = await caseService.getCaseById(invitation.caseId, userClient);
+      // Get case (use admin because user doesn't have access yet)
+      const caseData = await caseService.getCaseById(invitation.caseId, supabaseAdmin);
       if (!caseData) {
         return res.status(404).json({ message: "Zaak niet gevonden" });
       }
@@ -671,10 +673,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Deze zaak heeft al een wederpartij" });
       }
       
-      // Link user to case as counterparty
+      // Link user to case as counterparty (use admin to set counterparty_user_id)
       await caseService.updateCase(caseData.id, {
         counterpartyUserId: userId,
-      }, userClient);
+      }, supabaseAdmin);
       
       // Mark invitation as accepted
       await storage.updateInvitation(invitation.id, {
@@ -718,9 +720,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Alleen de wederpartij kan de omschrijving goedkeuren" });
       }
       
+      // Use supabaseAdmin because counterparties don't have RLS UPDATE permission
+      // App-level auth (counterparty check above) provides security
       await caseService.updateCase(req.params.id, {
         counterpartyDescriptionApproved: true,
-      }, userClient);
+      }, supabaseAdmin);
       
       await storage.createEvent({
         caseId: caseData.id,
@@ -1257,20 +1261,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No file uploaded" });
       }
       
-      // Verify case exists and belongs to user
+      // Verify case exists and user is participant (owner or counterparty)
       const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData) {
         return res.status(404).json({ message: "Case not found" });
       }
-      if (caseData.ownerUserId !== userUuid) {
+      if (caseData.ownerUserId !== userUuid && caseData.counterpartyUserId !== userUuid) {
         return res.status(403).json({ message: "Access denied" });
       }
       
       // Upload to Supabase Storage
       const { storagePath } = await supabaseStorageService.uploadFile(userUuid, caseId, file, userClient);
       
-      // Insert record into Supabase case_documents table
-      const { data: document, error } = await supabase
+      // Insert record into Supabase case_documents table (using userClient for RLS)
+      const { data: document, error } = await userClient
         .from('case_documents')
         .insert({
           case_id: caseId,
@@ -1455,7 +1459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Query documents from Supabase
-      const { data: documents, error } = await supabase
+      const { data: documents, error } = await userClient
         .from('case_documents')
         .select('id, file_name, created_at, mime_type, size_bytes')
         .eq('case_id', caseId)
@@ -1509,7 +1513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const documentId = req.params.documentId;
       
       // Fetch document from Supabase with case_id for authorization
-      const { data: document, error } = await supabase
+      const { data: document, error } = await userClient
         .from('case_documents')
         .select('storage_path, user_id, case_id')
         .eq('id', documentId)
@@ -1544,7 +1548,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const documentId = req.params.documentId;
       
       // Fetch document from Supabase with case_id for authorization
-      const { data: document, error: fetchError } = await supabase
+      const { data: document, error: fetchError } = await userClient
         .from('case_documents')
         .select('storage_path, user_id, case_id')
         .eq('id', documentId)
@@ -1569,7 +1573,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await supabaseStorageService.deleteFile(document.storage_path, userClient);
       
       // Delete database record
-      const { error: deleteError } = await supabase
+      const { error: deleteError } = await userClient
         .from('case_documents')
         .delete()
         .eq('id', documentId);
@@ -2049,7 +2053,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`📊 Running RKOS analysis (full-analyze endpoint) for case ${caseId}`);
         
         // Fetch documents from Supabase case_documents table (where they are actually stored)
-        const { data: supabaseDocuments, error: docsError } = await supabase
+        const { data: supabaseDocuments, error: docsError } = await userClient
           .from('case_documents')
           .select('id, file_name, storage_path, mime_type, size_bytes, created_at')
           .eq('case_id', caseId)
@@ -2319,7 +2323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`📊 Running success chance assessment for case ${caseId}`);
         
         // Fetch documents from Supabase case_documents table
-        const { data: supabaseDocuments, error: docsError } = await supabase
+        const { data: supabaseDocuments, error: docsError } = await userClient
           .from('case_documents')
           .select('id, file_name, storage_path, mime_type, size_bytes, created_at')
           .eq('case_id', caseId)
