@@ -1,4 +1,5 @@
-import { supabase } from "../supabaseClient";
+import { supabase, supabaseAdmin } from "../supabaseClient";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { randomUUID, createHash } from "crypto";
 import type { Case, InsertCase, CaseStatus } from "@shared/schema";
 
@@ -114,8 +115,31 @@ class CaseServiceError extends Error {
   }
 }
 
+/**
+ * Get the Supabase client - STRICT version
+ * Throws error if no client provided (for RLS enforcement)
+ * 
+ * @param client - User-scoped Supabase client (from req.supabaseClient)
+ * @returns The provided client
+ * @throws Error if no client provided
+ */
+function getClient(client?: SupabaseClient): SupabaseClient {
+  if (!client) {
+    throw new Error("caseService: No Supabase client provided. Pass req.supabaseClient for RLS to work.");
+  }
+  return client;
+}
+
+/**
+ * Case Service - handles all case CRUD operations
+ * 
+ * IMPORTANT: All methods accept an optional SupabaseClient parameter.
+ * For RLS to work correctly, pass a user-scoped client created with createUserClient().
+ * If no client is provided, falls back to admin client (bypasses RLS - NOT recommended).
+ */
 export const caseService = {
-  async createCase(caseData: InsertCase): Promise<Case> {
+  async createCase(caseData: InsertCase, client?: SupabaseClient): Promise<Case> {
+    const db = getClient(client);
     const now = new Date().toISOString();
     const id = randomUUID();
     
@@ -125,7 +149,7 @@ export const caseService = {
       updated_at: now,
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("cases")
       .insert(supabaseData)
       .select()
@@ -139,9 +163,11 @@ export const caseService = {
     return mapSupabaseToInternal(data);
   },
 
-  async getCasesForUser(userId: string): Promise<Case[]> {
+  async getCasesForUser(userId: string, client?: SupabaseClient): Promise<Case[]> {
+    const db = getClient(client);
     const uuid = ensureUuid(userId);
-    const { data, error } = await supabase
+    
+    const { data, error } = await db
       .from("cases")
       .select("*")
       .eq("owner_user_id", uuid)
@@ -155,8 +181,10 @@ export const caseService = {
     return (data || []).map(mapSupabaseToInternal);
   },
 
-  async getCaseById(id: string): Promise<Case | undefined> {
-    const { data, error } = await supabase
+  async getCaseById(id: string, client?: SupabaseClient): Promise<Case | undefined> {
+    const db = getClient(client);
+    
+    const { data, error } = await db
       .from("cases")
       .select("*")
       .eq("id", id)
@@ -173,9 +201,11 @@ export const caseService = {
     return data ? mapSupabaseToInternal(data) : undefined;
   },
 
-  async getCaseByIdForUser(id: string, userId: string): Promise<Case | undefined> {
+  async getCaseByIdForUser(id: string, userId: string, client?: SupabaseClient): Promise<Case | undefined> {
+    const db = getClient(client);
     const uuid = ensureUuid(userId);
-    const { data, error } = await supabase
+    
+    const { data, error } = await db
       .from("cases")
       .select("*")
       .eq("id", id)
@@ -193,13 +223,15 @@ export const caseService = {
     return data ? mapSupabaseToInternal(data) : undefined;
   },
 
-  async updateCase(id: string, updates: Partial<InsertCase>): Promise<Case> {
+  async updateCase(id: string, updates: Partial<InsertCase>, client?: SupabaseClient): Promise<Case> {
+    const db = getClient(client);
+    
     const supabaseUpdates = {
       ...mapInternalToSupabase(updates),
       updated_at: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("cases")
       .update(supabaseUpdates)
       .eq("id", id)
@@ -217,7 +249,9 @@ export const caseService = {
     return mapSupabaseToInternal(data);
   },
 
-  async updateCaseStatus(id: string, status: CaseStatus, currentStep?: string, nextActionLabel?: string): Promise<Case> {
+  async updateCaseStatus(id: string, status: CaseStatus, currentStep?: string, nextActionLabel?: string, client?: SupabaseClient): Promise<Case> {
+    const db = getClient(client);
+    
     const supabaseUpdates: Partial<SupabaseCaseRow> = {
       status,
       updated_at: new Date().toISOString(),
@@ -230,7 +264,7 @@ export const caseService = {
       supabaseUpdates.next_action_label = nextActionLabel;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("cases")
       .update(supabaseUpdates)
       .eq("id", id)
@@ -248,8 +282,10 @@ export const caseService = {
     return mapSupabaseToInternal(data);
   },
 
-  async deleteCase(id: string): Promise<void> {
-    const { error } = await supabase
+  async deleteCase(id: string, client?: SupabaseClient): Promise<void> {
+    const db = getClient(client);
+    
+    const { error } = await db
       .from("cases")
       .delete()
       .eq("id", id);
@@ -260,8 +296,10 @@ export const caseService = {
     }
   },
 
-  async touchCase(id: string): Promise<void> {
-    const { error } = await supabase
+  async touchCase(id: string, client?: SupabaseClient): Promise<void> {
+    const db = getClient(client);
+    
+    const { error } = await db
       .from("cases")
       .update({ updated_at: new Date().toISOString() })
       .eq("id", id);

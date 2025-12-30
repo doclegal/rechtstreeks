@@ -1,4 +1,5 @@
-import { supabase } from "../supabaseClient";
+import { supabase, supabaseAdmin } from "../supabaseClient";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export interface MindStudioAnalysis {
   document_name: string;
@@ -54,14 +55,28 @@ function mapRowToRecord(row: SupabaseDocumentAnalysisRow): DocumentAnalysisRecor
   };
 }
 
+/**
+ * Get the Supabase client - STRICT version
+ * Throws error if no client provided (for RLS enforcement)
+ */
+function getClient(client?: SupabaseClient): SupabaseClient {
+  if (!client) {
+    throw new Error("documentAnalysisService: No Supabase client provided. Pass req.supabaseClient for RLS to work.");
+  }
+  return client;
+}
+
 export const documentAnalysisService = {
   async insertAnalysis(
     documentId: string,
     userId: string,
-    analysis: MindStudioAnalysis
+    analysis: MindStudioAnalysis,
+    client?: SupabaseClient
   ): Promise<DocumentAnalysisRecord | null> {
+    const db = getClient(client);
+    
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("document_analyses")
         .insert({
           document_id: documentId,
@@ -91,10 +106,13 @@ export const documentAnalysisService = {
 
   async getAnalysisByDocumentId(
     documentId: string,
-    userId: string
+    userId: string,
+    client?: SupabaseClient
   ): Promise<DocumentAnalysisRecord | null> {
+    const db = getClient(client);
+    
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("document_analyses")
         .select("*")
         .eq("document_id", documentId)
@@ -120,8 +138,10 @@ export const documentAnalysisService = {
 
   async getAnalysesByDocumentIds(
     documentIds: string[],
-    userId: string
+    userId: string,
+    client?: SupabaseClient
   ): Promise<Map<string, DocumentAnalysisRecord>> {
+    const db = getClient(client);
     const analysesMap = new Map<string, DocumentAnalysisRecord>();
     
     if (documentIds.length === 0) {
@@ -129,7 +149,7 @@ export const documentAnalysisService = {
     }
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("document_analyses")
         .select("*")
         .in("document_id", documentIds)

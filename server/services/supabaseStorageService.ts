@@ -1,16 +1,36 @@
-import { supabase } from "../supabaseClient";
+import { supabase, supabaseAdmin } from "../supabaseClient";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 const BUCKET_NAME = "case-files";
 
+/**
+ * Get the Supabase client - STRICT version
+ * Throws error if no client provided (for RLS enforcement)
+ */
+function getClient(client?: SupabaseClient): SupabaseClient {
+  if (!client) {
+    throw new Error("supabaseStorageService: No Supabase client provided. Pass req.supabaseClient for RLS to work.");
+  }
+  return client;
+}
+
+/**
+ * Supabase Storage Service - handles file uploads/downloads
+ * 
+ * IMPORTANT: All methods accept an optional SupabaseClient parameter.
+ * For storage RLS to work correctly, pass a user-scoped client.
+ */
 export class SupabaseStorageService {
   async uploadFile(
     userId: string,
     caseId: string,
-    file: Express.Multer.File
+    file: Express.Multer.File,
+    client?: SupabaseClient
   ): Promise<{ storagePath: string }> {
+    const db = getClient(client);
     const storagePath = `${userId}/${caseId}/${file.originalname}`;
     
-    const { error } = await supabase.storage
+    const { error } = await db.storage
       .from(BUCKET_NAME)
       .upload(storagePath, file.buffer, {
         contentType: file.mimetype,
@@ -25,8 +45,14 @@ export class SupabaseStorageService {
     return { storagePath };
   }
 
-  async getSignedUrl(storagePath: string, expiresIn: number = 300): Promise<{ url: string; expiresIn: number }> {
-    const { data, error } = await supabase.storage
+  async getSignedUrl(
+    storagePath: string, 
+    expiresIn: number = 300,
+    client?: SupabaseClient
+  ): Promise<{ url: string; expiresIn: number }> {
+    const db = getClient(client);
+    
+    const { data, error } = await db.storage
       .from(BUCKET_NAME)
       .createSignedUrl(storagePath, expiresIn);
 
@@ -41,8 +67,10 @@ export class SupabaseStorageService {
     };
   }
 
-  async deleteFile(storagePath: string): Promise<void> {
-    const { error } = await supabase.storage
+  async deleteFile(storagePath: string, client?: SupabaseClient): Promise<void> {
+    const db = getClient(client);
+    
+    const { error } = await db.storage
       .from(BUCKET_NAME)
       .remove([storagePath]);
 
@@ -52,10 +80,11 @@ export class SupabaseStorageService {
     }
   }
 
-  async listFiles(userId: string, caseId: string): Promise<string[]> {
+  async listFiles(userId: string, caseId: string, client?: SupabaseClient): Promise<string[]> {
+    const db = getClient(client);
     const prefix = `${userId}/${caseId}/`;
     
-    const { data, error } = await supabase.storage
+    const { data, error } = await db.storage
       .from(BUCKET_NAME)
       .list(prefix);
 

@@ -8,7 +8,8 @@ import { aiService, AIService } from "./services/aiService";
 import { fileService } from "./services/fileService";
 import { pdfService } from "./services/pdfService";
 import { supabaseStorageService } from "./services/supabaseStorageService";
-import { supabase } from "./supabaseClient";
+import { supabase, supabaseAdmin } from "./supabaseClient";
+import { getRequestClient } from "./supabaseAuth";
 import { documentAnalysisService, type MindStudioAnalysis } from "./services/documentAnalysisService";
 import { rkosAnalysisService } from "./services/rkosAnalysisService";
 import { legalAdviceService } from "./services/legalAdviceService";
@@ -82,13 +83,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       
       const caseData = insertCaseSchema.parse({
         ...req.body,
         ownerUserId: userId,
       });
       
-      const newCase = await caseService.createCase(caseData);
+      const newCase = await caseService.createCase(caseData, userClient);
       
       // Create initial event (optional - may fail if using Supabase for cases)
       try {
@@ -287,7 +289,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/cases', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const userCases = await caseService.getCasesForUser(userId);
+      const userClient = req.supabaseClient;
+      const userCases = await caseService.getCasesForUser(userId, userClient);
       
       // For each case, include analysis and other related data
       const casesWithDetails = await Promise.all(
@@ -348,7 +351,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/cases/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const caseData = await caseService.getCaseById(req.params.id);
+      const userClient = req.supabaseClient;
+      const caseData = await caseService.getCaseById(req.params.id, userClient);
       
       if (!caseData) {
         return res.status(404).json({ message: "Case not found" });
@@ -411,14 +415,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const userUuid = ensureUuid(userId);
-      const caseData = await caseService.getCaseById(req.params.id);
+      const userClient = req.supabaseClient;
+      const caseData = await caseService.getCaseById(req.params.id, userClient);
       
       if (!caseData || caseData.ownerUserId !== userUuid) {
         return res.status(404).json({ message: "Case not found" });
       }
       
       const updates = insertCaseSchema.partial().parse(req.body);
-      const updatedCase = await caseService.updateCase(req.params.id, updates);
+      const updatedCase = await caseService.updateCase(req.params.id, updates, userClient);
       
       try {
         await storage.createEvent({
@@ -443,13 +448,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const userUuid = ensureUuid(userId);
-      const caseData = await caseService.getCaseById(req.params.id);
+      const userClient = req.supabaseClient;
+      const caseData = await caseService.getCaseById(req.params.id, userClient);
       
       if (!caseData || caseData.ownerUserId !== userUuid) {
         return res.status(404).json({ message: "Zaak niet gevonden" });
       }
       
-      await caseService.deleteCase(req.params.id);
+      await caseService.deleteCase(req.params.id, userClient);
       
       try {
         await storage.createEvent({
@@ -473,13 +479,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/cases/:id/clear-unseen-missing', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const caseData = await caseService.getCaseById(req.params.id);
+      const userClient = req.supabaseClient;
+      const caseData = await caseService.getCaseById(req.params.id, userClient);
       
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
       
-      await caseService.updateCase(req.params.id, { hasUnseenMissingItems: false });
+      await caseService.updateCase(req.params.id, { hasUnseenMissingItems: false }, userClient);
       
       res.json({ success: true });
     } catch (error) {
@@ -494,7 +501,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:id/invite', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const caseData = await caseService.getCaseById(req.params.id);
+      const userClient = req.supabaseClient;
+      const caseData = await caseService.getCaseById(req.params.id, userClient);
       
       if (!caseData) {
         return res.status(404).json({ message: "Zaak niet gevonden" });
@@ -593,8 +601,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Uitnodiging is al gebruikt" });
       }
       
-      // Get case info
-      const caseData = await caseService.getCaseById(invitation.caseId);
+      // Get case info (use admin client since this is unauthenticated)
+      const caseData = await caseService.getCaseById(invitation.caseId, supabaseAdmin);
       if (!caseData) {
         return res.status(404).json({ message: "Zaak niet gevonden" });
       }
@@ -626,6 +634,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/invitations/:code/accept', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const user = await storage.getUser(userId);
       const invitation = await storage.getInvitationByCode(req.params.code);
       
@@ -652,7 +661,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get case
-      const caseData = await caseService.getCaseById(invitation.caseId);
+      const caseData = await caseService.getCaseById(invitation.caseId, userClient);
       if (!caseData) {
         return res.status(404).json({ message: "Zaak niet gevonden" });
       }
@@ -665,7 +674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Link user to case as counterparty
       await caseService.updateCase(caseData.id, {
         counterpartyUserId: userId,
-      });
+      }, userClient);
       
       // Mark invitation as accepted
       await storage.updateInvitation(invitation.id, {
@@ -697,7 +706,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/cases/:id/approve-description', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const caseData = await caseService.getCaseById(req.params.id);
+      const userClient = req.supabaseClient;
+      const caseData = await caseService.getCaseById(req.params.id, userClient);
       
       if (!caseData) {
         return res.status(404).json({ message: "Zaak niet gevonden" });
@@ -710,7 +720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await caseService.updateCase(req.params.id, {
         counterpartyDescriptionApproved: true,
-      });
+      }, userClient);
       
       await storage.createEvent({
         caseId: caseData.id,
@@ -730,7 +740,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/cases/:id/deadlines', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const caseData = await caseService.getCaseById(req.params.id);
+      const userClient = req.supabaseClient;
+      const caseData = await caseService.getCaseById(req.params.id, userClient);
       
       if (!caseData) {
         return res.status(404).json({ message: "Case not found" });
@@ -754,7 +765,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/cases/:id/negotiation-summary', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const caseData = await caseService.getCaseById(req.params.id);
+      const userClient = req.supabaseClient;
+      const caseData = await caseService.getCaseById(req.params.id, userClient);
       
       if (!caseData) {
         return res.status(404).json({ message: "Zaak niet gevonden" });
@@ -824,13 +836,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Helper function to analyze a single document using Dossier_check.flow
+  // Uses supabaseAdmin for background operations (no user context)
   async function analyzeDocumentWithMindStudio(documentId: string, caseId: string) {
     try {
       console.log(`🔍 Starting document analysis for document ${documentId}`);
       
       // Get document and case data
+      // Note: This is a background operation, so we use admin client
       const document = await storage.getDocument(documentId);
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, supabaseAdmin);
       
       if (!document || !caseData) {
         console.error(`❌ Document or case not found for analysis`);
@@ -1074,6 +1088,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:id/uploads', isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       const file = req.file as Express.Multer.File;
       
@@ -1081,7 +1096,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No file uploaded" });
       }
       
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -1130,15 +1145,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           caseId, 
           "DOCS_UPLOADED",
           "Analyse",
-          "Start analyse"
+          "Start analyse",
+          userClient
         );
       } else {
         // Always update case timestamp to trigger analysis button state change
-        await caseService.touchCase(caseId);
+        await caseService.touchCase(caseId, userClient);
       }
       
       // Set needsReanalysis flag when new documents are uploaded
-      await caseService.updateCase(caseId, { needsReanalysis: true });
+      await caseService.updateCase(caseId, { needsReanalysis: true }, userClient);
       console.log(`🔔 Set needsReanalysis flag - 1 document uploaded`);
       
       // Create event
@@ -1159,7 +1175,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/cases/:id/uploads', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const caseData = await caseService.getCaseById(req.params.id);
+      const userClient = req.supabaseClient;
+      const caseData = await caseService.getCaseById(req.params.id, userClient);
       
       // Check if user has access to this case (owner or counterparty)
       if (!caseData || !canAccessCase(userId, caseData)) {
@@ -1181,6 +1198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/documents/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const documentId = req.params.id;
       
       // Get document to verify ownership
@@ -1190,7 +1208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify user owns the case
-      const caseData = await caseService.getCaseById(document.caseId);
+      const caseData = await caseService.getCaseById(document.caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -1207,7 +1225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteDocument(documentId);
       
       // Update case timestamp to trigger analysis button state change
-      await caseService.touchCase(document.caseId);
+      await caseService.touchCase(document.caseId, userClient);
       
       // Create event
       await storage.createEvent({
@@ -1230,6 +1248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:caseId/documents', isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const userUuid = ensureUuid(userId);
       const caseId = req.params.caseId;
       const file = req.file as Express.Multer.File;
@@ -1239,7 +1258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify case exists and belongs to user
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -1248,7 +1267,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Upload to Supabase Storage
-      const { storagePath } = await supabaseStorageService.uploadFile(userUuid, caseId, file);
+      const { storagePath } = await supabaseStorageService.uploadFile(userUuid, caseId, file, userClient);
       
       // Insert record into Supabase case_documents table
       const { data: document, error } = await supabase
@@ -1279,7 +1298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`🔍 Starting MindStudio analysis for Supabase document ${document.id}`);
           
           // Generate signed URL for MindStudio access
-          const { url: downloadUrl } = await supabaseStorageService.getSignedUrl(storagePath, 3600);
+          const { url: downloadUrl } = await supabaseStorageService.getSignedUrl(storagePath, 3600, userClient);
           
           // Prepare input for MindStudio
           const inputJsonData: any = {
@@ -1376,7 +1395,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           persistedAnalysis = await documentAnalysisService.insertAnalysis(
             document.id,
             userUuid,
-            analysis
+            analysis,
+            userClient
           );
           
           if (persistedAnalysis) {
@@ -1421,11 +1441,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/cases/:caseId/documents', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const userUuid = ensureUuid(userId);
       const caseId = req.params.caseId;
       
       // Verify case exists and user has access
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -1452,7 +1473,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Fetch analyses for all documents in a single query
       const documentIds = documents.map(doc => doc.id);
-      const analysesMap = await documentAnalysisService.getAnalysesByDocumentIds(documentIds, userUuid);
+      const analysesMap = await documentAnalysisService.getAnalysesByDocumentIds(documentIds, userUuid, userClient);
       
       // Combine documents with their analyses
       const documentsWithAnalysis = documents.map(doc => {
@@ -1483,6 +1504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/documents/:documentId/url', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const userUuid = ensureUuid(userId);
       const documentId = req.params.documentId;
       
@@ -1498,13 +1520,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify user can access the case (owner or counterparty)
-      const caseData = await caseService.getCaseById(document.case_id);
+      const caseData = await caseService.getCaseById(document.case_id, userClient);
       if (!caseData || !canAccessCase(userId, caseData)) {
         return res.status(403).json({ message: "Access denied" });
       }
       
       // Get signed URL
-      const { url, expiresIn } = await supabaseStorageService.getSignedUrl(document.storage_path, 300);
+      const { url, expiresIn } = await supabaseStorageService.getSignedUrl(document.storage_path, 300, userClient);
       
       res.json({ url, expires_in: expiresIn });
     } catch (error: any) {
@@ -1517,6 +1539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/documents/:documentId/supabase', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const userUuid = ensureUuid(userId);
       const documentId = req.params.documentId;
       
@@ -1532,7 +1555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify user can access the case (owner or counterparty)
-      const caseData = await caseService.getCaseById(document.case_id);
+      const caseData = await caseService.getCaseById(document.case_id, userClient);
       if (!caseData || !canAccessCase(userId, caseData)) {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -1543,7 +1566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Delete from storage
-      await supabaseStorageService.deleteFile(document.storage_path);
+      await supabaseStorageService.deleteFile(document.storage_path, userClient);
       
       // Delete database record
       const { error: deleteError } = await supabase
@@ -1567,10 +1590,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:id/re-extract', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
       // Verify case ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -1842,6 +1866,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:id/analyze', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
       // Rate limiting: 1 analysis per case per 2 minutes
@@ -1856,7 +1881,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -1953,12 +1978,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await caseService.updateCase(caseId, { 
               status: "ANALYZED" as CaseStatus,
               nextActionLabel: "Start volledige analyse",
-            });
+            }, userClient);
           } else {
             await caseService.updateCase(caseId, { 
               status: "DOCS_UPLOADED" as CaseStatus,
               nextActionLabel: kantonResult.reason === 'insufficient_info' ? "Meer informatie toevoegen" : "Zaak niet geschikt",
-            });
+            }, userClient);
           }
           
           // Update rate limit
@@ -1991,6 +2016,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:id/full-analyze', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
       // Rate limiting: 1 full analysis per case per 30 seconds
@@ -2007,7 +2033,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get case data and verify ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -2237,7 +2263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           nextActionLabel: "Bekijk volledige analyse",
           hasUnseenMissingItems: rkosResult.missing_elements?.length > 0,
           needsReanalysis: false
-        });
+        }, userClient);
         
         // Update rate limit
         analysisRateLimit.set(rateLimitKey, now);
@@ -2273,10 +2299,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:id/success-chance', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
       // Get case data and verify ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -2533,14 +2560,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await caseService.updateCase(caseId, {
             hasUnseenMissingItems: true,
             needsReanalysis: false  // Clear reanalysis flag since we just ran RKOS
-          });
+          }, userClient);
           console.log(`🔔 Set hasUnseenMissingItems flag - ${rkosResult.missing_elements.length} items found`);
           console.log(`✅ Cleared needsReanalysis flag - RKOS analysis completed`);
         } else {
           // No missing elements, just clear the reanalysis flag
           await caseService.updateCase(caseId, {
             needsReanalysis: false
-          });
+          }, userClient);
           console.log(`✅ Cleared needsReanalysis flag - RKOS analysis completed`);
         }
 
@@ -2575,10 +2602,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/cases/:id/rkos-analyses', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
       // Verify case access
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -2604,10 +2632,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/cases/:id/rkos-analysis/latest', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
       // Verify case access
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -2637,10 +2666,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:id/generate-advice', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
       // Get case data and verify ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -2929,10 +2959,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:id/missing-info-check', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
       // Get case data and verify ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -3044,10 +3075,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:id/dossier-check', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
       // Get case data and verify ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -3215,10 +3247,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:id/second-run', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
       // Get case data and verify ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -3356,10 +3389,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/cases/:id/missing-info/responses', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
       // Verify case ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -3420,6 +3454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:id/missing-info/responses', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
       // Import the schema
@@ -3429,7 +3464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { responses } = submitMissingInfoRequestSchema.parse(req.body);
       
       // Verify case ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -3580,7 +3615,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           console.log('⚠️ No full analysis found, skipping automatic re-analysis');
           // Set needsReanalysis flag since we have new info but can't auto-analyze
-          await caseService.updateCase(caseId, { needsReanalysis: true });
+          await caseService.updateCase(caseId, { needsReanalysis: true }, userClient);
           console.log(`🔔 Set needsReanalysis flag - missing info provided but no full analysis yet`);
           res.json({ 
             success: true,
@@ -3611,10 +3646,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/cases/:id/chat', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
       // Verify case ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -3632,10 +3668,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/cases/:id/chat', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
       // Verify case ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -3655,6 +3692,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:id/chat', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       const { message } = req.body;
       
@@ -3663,7 +3701,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify case ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -3706,10 +3744,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/cases/:id/qna', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
       // Verify case ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -3727,10 +3766,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:id/generate-qna', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
       // Verify case ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -3771,10 +3811,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:id/generate-more-qna', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
       // Verify case ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -3826,10 +3867,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:id/success-chance', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
       // Verify case ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -4061,6 +4103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:id/letter', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       const { briefType, tone } = req.body;
       
@@ -4068,7 +4111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "briefType and tone are required" });
       }
       
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -4410,13 +4453,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/cases/:id/letter/:letterId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const letter = await letterService.getLetterById(req.params.letterId);
       
       if (!letter) {
         return res.status(404).json({ message: "Letter not found" });
       }
       
-      const caseData = await caseService.getCaseById(letter.caseId);
+      const caseData = await caseService.getCaseById(letter.caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(403).json({ message: "Unauthorized access" });
       }
@@ -4431,6 +4475,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/cases/:id/letter/:letterId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const letterId = req.params.letterId;
       
       const letter = await letterService.getLetterById(letterId);
@@ -4439,7 +4484,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Letter not found" });
       }
       
-      const caseData = await caseService.getCaseById(letter.caseId);
+      const caseData = await caseService.getCaseById(letter.caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(403).json({ message: "Unauthorized access" });
       }
@@ -4476,10 +4521,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:id/summons', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       const { court } = req.body; // Optional court selection
       
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -4575,7 +4621,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         caseId,
         "SUMMONS_DRAFTED",
         "Rechtbank",
-        "Dossier aanbrengen bij rechtbank"
+        "Dossier aanbrengen bij rechtbank",
+        userClient
       );
 
       // Create event
@@ -4603,7 +4650,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/cases/:id/summons', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const caseData = await caseService.getCaseById(req.params.id);
+      const userClient = req.supabaseClient;
+      const caseData = await caseService.getCaseById(req.params.id, userClient);
       
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
@@ -4621,13 +4669,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/cases/:id/summons/:summonsId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const summons = await storage.getSummons(req.params.summonsId);
       
       if (!summons) {
         return res.status(404).json({ message: "Summons not found" });
       }
       
-      const caseData = await caseService.getCaseById(summons.caseId);
+      const caseData = await caseService.getCaseById(summons.caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(403).json({ message: "Unauthorized access" });
       }
@@ -4643,6 +4692,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/cases/:id/summons/:summonsId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const summonsId = req.params.summonsId;
       
       const summons = await storage.getSummons(summonsId);
@@ -4651,7 +4701,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Summons not found" });
       }
       
-      const caseData = await caseService.getCaseById(summons.caseId);
+      const caseData = await caseService.getCaseById(summons.caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(403).json({ message: "Unauthorized access" });
       }
@@ -4681,9 +4731,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/cases/:id/summons-v2', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -4700,10 +4751,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:id/summons-v2/draft', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       const { userFields, aiFields } = req.body;
       
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -4776,10 +4828,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/cases/:id/summons-v2/generate', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       const { userFields, templateId } = req.body;
       
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -5216,9 +5269,10 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
   app.get('/api/cases/:caseId/summons/:summonsId/sections', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const { caseId, summonsId } = req.params;
       
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -5240,10 +5294,11 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
   app.post('/api/cases/:caseId/summons/:summonsId/sections/:sectionKey/generate', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const { caseId, summonsId, sectionKey } = req.params;
       const { userFields, previousSections, userFeedback } = req.body;
       
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -5747,9 +5802,10 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
   app.post('/api/cases/:caseId/summons/:summonsId/sections/:sectionKey/approve', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const { caseId, summonsId, sectionKey } = req.params;
       
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -5781,10 +5837,11 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
   app.post('/api/cases/:caseId/summons/:summonsId/sections/:sectionKey/reject', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const { caseId, summonsId, sectionKey } = req.params;
       const { feedback } = req.body;
       
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -5817,10 +5874,11 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
   app.post('/api/cases/:caseId/summons/:summonsId/assemble', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const { caseId, summonsId } = req.params;
       const { userFields } = req.body;
       
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -5906,7 +5964,8 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       }
       
       // Verify case ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const userClient = req.supabaseClient;
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -6043,9 +6102,10 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
   app.post('/api/integrations/bailiff/serve', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const { caseId } = req.body;
       
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -6058,7 +6118,8 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         caseId,
         "BAILIFF_ORDERED",
         "Betekening voltooid",
-        "Wacht op betekening"
+        "Wacht op betekening",
+        userClient
       );
       
       // Create event
@@ -6081,13 +6142,16 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
       const { caseId, status } = req.body;
       
       if (status === "served") {
-        const caseData = await caseService.getCaseById(caseId);
+        // This is an unauthenticated callback endpoint - use admin client
+        const caseData = await caseService.getCaseById(caseId, supabaseAdmin);
         if (caseData) {
+          // Use admin client since this is an unauthenticated callback
           await caseService.updateCaseStatus(
             caseId,
             "SERVED",
             "Rechtbank",
-            "Dossier aanbrengen bij rechtbank"
+            "Dossier aanbrengen bij rechtbank",
+            supabaseAdmin
           );
           
           await storage.createEvent({
@@ -6109,9 +6173,10 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
   app.post('/api/integrations/court/file', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const { caseId } = req.body;
       
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -6124,7 +6189,8 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         caseId,
         "FILED",
         "Procedure gestart",
-        "Start procedure"
+        "Start procedure",
+        userClient
       );
       
       // Create event
@@ -6145,9 +6211,10 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
   app.post('/api/cases/:id/proceedings/start', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -6157,7 +6224,8 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
         caseId,
         "PROCEEDINGS_ONGOING",
         "Vervolg procedure",
-        "Upload vonnis"
+        "Upload vonnis",
+        userClient
       );
       
       // Create event
@@ -6179,9 +6247,10 @@ Indien gedaagde niet verschijnt, kan verstek worden verleend en kan de vordering
   app.get('/api/timeline/:caseId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.caseId;
       
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -6643,9 +6712,10 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   app.get('/api/cases/:id/export', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -6762,9 +6832,10 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   app.get('/api/cases/:id/analysis', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -6870,9 +6941,10 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   app.get('/api/cases/:id/analyses', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -6889,10 +6961,11 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   app.get('/api/cases/:caseId/readiness', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const { caseId } = req.params;
       
       // Verify case ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -6930,11 +7003,12 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   app.patch('/api/cases/:caseId/readiness', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const { caseId } = req.params;
       const { userResponses, readinessResult } = req.body;
       
       // Verify case ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -6982,7 +7056,8 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       }
       
       // Verify case ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const userClient = req.supabaseClient;
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -7299,7 +7374,8 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       }
       
       // Verify case ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const userClient = req.supabaseClient;
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -7634,7 +7710,8 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
       }
       
       // Verify case ownership
-      const caseData = await caseService.getCaseById(caseId);
+      const userClient = req.supabaseClient;
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -7863,10 +7940,11 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   app.get('/api/cases/:id/build-case-snapshot', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userClient = req.supabaseClient;
       const caseId = req.params.id;
       
       // Get case data
-      const caseData = await caseService.getCaseById(caseId);
+      const caseData = await caseService.getCaseById(caseId, userClient);
       if (!caseData || caseData.ownerUserId !== ensureUuid(userId)) {
         return res.status(404).json({ message: "Case not found" });
       }
@@ -8023,6 +8101,7 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
   } = await import('./pineconeService');
 
   // Generate AI-powered jurisprudence search query from legal advice
+  // Note: This is a public endpoint (no isAuthenticated) - uses admin client
   app.post('/api/pinecone/generate-query', async (req, res) => {
     try {
       const { caseId } = req.body;
@@ -8031,8 +8110,8 @@ Aldus opgemaakt en ondertekend te [USER_FIELD: plaats opmaak], op [USER_FIELD: d
         return res.status(400).json({ error: 'Case ID is required' });
       }
 
-      // Fetch case data from Supabase
-      const caseData = await caseService.getCaseById(caseId);
+      // Fetch case data from Supabase (admin client - public endpoint)
+      const caseData = await caseService.getCaseById(caseId, supabaseAdmin);
       if (!caseData) {
         return res.status(404).json({ error: 'Case not found' });
       }
@@ -8354,6 +8433,7 @@ Remember:
   });
 
   // Generate jurisprudence references - AI analysis of top judgments
+  // Note: This is a public endpoint (no isAuthenticated) - uses admin client
   app.post('/api/jurisprudentie/generate-references', async (req, res) => {
     try {
       const { caseId, topResults } = req.body;
@@ -8368,8 +8448,8 @@ Remember:
 
       console.log(`📋 Generating references for case ${caseId} with ${topResults.length} judgments`);
 
-      // Fetch case data from Supabase
-      const caseData = await caseService.getCaseById(caseId);
+      // Fetch case data from Supabase (admin client - public endpoint)
+      const caseData = await caseService.getCaseById(caseId, supabaseAdmin);
       if (!caseData) {
         return res.status(404).json({ error: 'Case not found' });
       }
@@ -9406,6 +9486,7 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
   });
 
   // Generate AI-powered legislation search query from case analysis
+  // Note: This is a public endpoint (no isAuthenticated) - uses admin client
   app.post('/api/wetgeving/generate-query', async (req, res) => {
     try {
       const { caseId } = req.body;
@@ -9414,8 +9495,8 @@ Analyseer deze uitspraken en identificeer alleen die uitspraken die de juridisch
         return res.status(400).json({ error: 'Case ID is required' });
       }
 
-      // Fetch case data from Supabase
-      const caseData = await caseService.getCaseById(caseId);
+      // Fetch case data from Supabase (admin client - public endpoint)
+      const caseData = await caseService.getCaseById(caseId, supabaseAdmin);
       if (!caseData) {
         return res.status(404).json({ error: 'Case not found' });
       }
@@ -9564,6 +9645,7 @@ Genereer een JSON response met:
   });
 
   // Generate AI-powered specific regulation and article suggestions from case analysis
+  // Note: This is a public endpoint (no isAuthenticated) - uses admin client
   app.post('/api/wetgeving/generate-articles', async (req, res) => {
     try {
       const { caseId } = req.body;
@@ -9572,8 +9654,8 @@ Genereer een JSON response met:
         return res.status(400).json({ error: 'Case ID is required' });
       }
 
-      // Fetch case data from Supabase
-      const caseData = await caseService.getCaseById(caseId);
+      // Fetch case data from Supabase (admin client - public endpoint)
+      const caseData = await caseService.getCaseById(caseId, supabaseAdmin);
       if (!caseData) {
         return res.status(404).json({ error: 'Case not found' });
       }
@@ -10567,7 +10649,8 @@ Geef ALLEEN de JSON terug, geen uitleg.`
       }
       
       // Verify case ownership via Supabase
-      const caseRecord = await caseService.getCaseByIdForUser(caseId, userId);
+      const userClient = (req as any).supabaseClient;
+      const caseRecord = await caseService.getCaseByIdForUser(caseId, userId, userClient);
       
       if (!caseRecord) {
         return res.status(404).json({ error: 'Case not found' });
@@ -10600,7 +10683,8 @@ Geef ALLEEN de JSON terug, geen uitleg.`
       }
 
       // Verify case ownership via Supabase
-      const caseRecord = await caseService.getCaseByIdForUser(caseId, userId);
+      const userClient = (req as any).supabaseClient;
+      const caseRecord = await caseService.getCaseByIdForUser(caseId, userId, userClient);
       
       if (!caseRecord) {
         return res.status(404).json({ error: 'Case not found' });
@@ -10642,7 +10726,8 @@ Geef ALLEEN de JSON terug, geen uitleg.`
       }
       
       // Verify case ownership via Supabase
-      const caseRecord = await caseService.getCaseByIdForUser(caseId, userId);
+      const userClient = (req as any).supabaseClient;
+      const caseRecord = await caseService.getCaseByIdForUser(caseId, userId, userClient);
       
       if (!caseRecord) {
         return res.status(404).json({ error: 'Case not found' });
@@ -10679,7 +10764,8 @@ Geef ALLEEN de JSON terug, geen uitleg.`
       }
       
       // Verify case ownership via Supabase
-      const caseRecord = await caseService.getCaseByIdForUser(caseId, userId);
+      const userClient = (req as any).supabaseClient;
+      const caseRecord = await caseService.getCaseByIdForUser(caseId, userId, userClient);
       
       if (!caseRecord) {
         return res.status(404).json({ error: 'Case not found' });

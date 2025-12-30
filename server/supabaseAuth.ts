@@ -1,8 +1,9 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import session from "express-session";
 import type { Express, RequestHandler, Request, Response, NextFunction } from "express";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
+import { createUserClient } from "./supabaseClient";
 
 // Validate and sanitize SUPABASE_URL
 function validateSupabaseUrl(url: string | undefined): string {
@@ -409,6 +410,8 @@ export const isAuthenticated: RequestHandler = async (
     if (verifiedUser) {
       (req as any).user = verifiedUser;
       (req as any).authMode = "bearer";
+      // Attach user-scoped Supabase client for RLS-protected operations
+      (req as any).supabaseClient = createUserClient(bearerToken);
       return next();
     }
     
@@ -477,6 +480,8 @@ export const isAuthenticated: RequestHandler = async (
   
   (req as any).user = verifiedUser;
   (req as any).authMode = "session";
+  // Attach user-scoped Supabase client for RLS-protected operations
+  (req as any).supabaseClient = createUserClient(sessionUser.accessToken);
   
   next();
 };
@@ -495,6 +500,36 @@ export function getSupabaseUserId(req: Request): string | null {
  */
 export function getAuthMode(req: Request): string {
   return (req as any).authMode || "none";
+}
+
+/**
+ * Get the user's access token from request
+ * Used for creating user-scoped Supabase clients
+ */
+export function getUserAccessToken(req: Request): string | null {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    return authHeader.slice(7).trim();
+  }
+  
+  const sessionUser = (req.session as any)?.supabaseUser;
+  return sessionUser?.accessToken || null;
+}
+
+/**
+ * Get the user-scoped Supabase client from request
+ * This is attached by isAuthenticated middleware
+ * 
+ * @param req Express request (must have passed isAuthenticated)
+ * @returns SupabaseClient with user identity
+ * @throws Error if no client available (should not happen after isAuthenticated)
+ */
+export function getRequestClient(req: Request): import("@supabase/supabase-js").SupabaseClient {
+  const client = (req as any).supabaseClient;
+  if (!client) {
+    throw new Error("No Supabase client on request. This should not happen after isAuthenticated middleware.");
+  }
+  return client;
 }
 
 /**
