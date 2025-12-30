@@ -1,0 +1,45 @@
+Connected!
+2025-12-30T09:55:43.9820401Z Supabase createCase error: {
+2025-12-30T09:55:43.983202Z   code: 'PGRST204',
+2025-12-30T09:55:43.9832127Z   details: null,
+2025-12-30T09:55:43.9832146Z   hint: null,
+2025-12-30T09:55:43.9832166Z   message: "Could not find the 'claim_amount_eur' column of 'cases' in the schema cache"
+2025-12-30T09:55:43.983218Z }
+2025-12-30T09:55:43.9844034Z Database error: CaseServiceError: Failed to create case: Could not find the 'claim_amount_eur' column of 'cases' in the schema cache
+2025-12-30T09:55:43.9844199Z     at Object.createCase (file:///home/site/wwwroot/dist/index.js:2142:13)
+2025-12-30T09:55:43.9844219Z     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-12-30T09:55:43.9844238Z     at async file:///home/site/wwwroot/dist/index.js:7633:23 {
+2025-12-30T09:55:43.9844302Z   statusCode: 500
+2025-12-30T09:55:43.9844319Z }
+2025-12-30T09:55:44.1835939Z 9:55:44 AM [express] POST /api/cases 500 in 608ms :: {"message":"Database error occurred"}
+2025-12-30T09:58:26.9609379Z Database pool connected
+2025-12-30T09:58:28.0297921Z 9:58:27 AM [express] GET /api/auth/session 304 in 1167ms :: {"user":{"id":"ebc1da97-2357-4515-ae76-6…
+2025-12-30T09:58:28.2275318Z 9:58:28 AM [express] GET /api/cases 304 in 175ms :: []
+2025-12-30T09:58:30.3734156Z 9:58:30 AM [express] GET /api/auth/session 200 in 2ms :: {"user":null}
+2025-12-30T09:59:17.5843887Z Supabase createCase error: {
+2025-12-30T09:59:17.5844417Z   code: 'PGRST204',
+2025-12-30T09:59:17.584444Z   details: null,
+2025-12-30T09:59:17.5844458Z   hint: null,
+2025-12-30T09:59:17.584448Z   message: "Could not find the 'client_address' column of 'cases' in the schema cache"
+2025-12-30T09:59:17.5844497Z }
+2025-12-30T09:59:17.5870281Z Database error: CaseServiceError: Failed to create case: Could not find the 'client_address' column of 'cases' in the schema cache
+2025-12-30T09:59:17.5870487Z     at Object.createCase (file:///home/site/wwwroot/dist/index.js:2142:13)
+2025-12-30T09:59:17.5870508Z     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-12-30T09:59:17.5870525Z     at async file:///home/site/wwwroot/dist/index.js:7633:23 {
+2025-12-30T09:59:17.5870541Z   statusCode: 500
+2025-12-30T09:59:17.5870584Z }
+2025-12-30T09:59:17.6325351Z 9:59:17 AM [express] POST /api/cases 500 in 180ms :: {"message":"Database error occurred"}
+2025-12-30T09:59:42.0977135Z Supabase createCase error: {
+2025-12-30T09:59:42.0977884Z   code: 'PGRST204',
+2025-12-30T09:59:42.0977939Z   details: null,
+2025-12-30T09:59:42.0977985Z   hint: null,
+2025-12-30T09:59:42.097804Z   message: "Could not find the 'client_address' column of 'cases' in the schema cache"
+2025-12-30T09:59:42.0978083Z }
+2025-12-30T09:59:42.0987006Z Database error: CaseServiceError: Failed to create case: Could not find the 'client_address' column of 'cases' in the schema cache
+2025-12-30T09:59:42.0987161Z     at Object.createCase (file:///home/site/wwwroot/dist/index.js:2142:13)
+2025-12-30T09:59:42.0987181Z     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-12-30T09:59:42.0987198Z     at async file:///home/site/wwwroot/dist/index.js:7633:23 {
+2025-12-30T09:59:42.0987212Z   statusCode: 500
+2025-12-30T09:59:42.0987277Z }
+2025-12-30T09:59:42.1225881Z 9:59:42 AM [express] POST /api/cases 500 in 210ms :: {"message":"Database error occurred"}
+2025-12-30T10:00:54.369Z No new trace in the past 1 min(s).
