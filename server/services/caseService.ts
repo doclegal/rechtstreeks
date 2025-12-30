@@ -171,7 +171,7 @@ export const caseService = {
       .from("cases")
       .select("*")
       .eq("owner_user_id", uuid)
-      .order("created_at", { ascending: false });
+      .order("updated_at", { ascending: false });
 
     if (error) {
       console.error("Supabase getCasesForUser error:", error);
