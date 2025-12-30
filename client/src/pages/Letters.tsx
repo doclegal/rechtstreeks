@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
 import { FileText, PlusCircle, Download, Mail, ArrowLeft, Trash2, Upload, Clock, MessageSquare, RefreshCw } from "lucide-react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { getAuthHeaders } from "@/lib/queryClient";
 import { Separator } from "@/components/ui/separator";
 import { RIcon } from "@/components/RIcon";
 import { format } from "date-fns";
@@ -106,7 +107,10 @@ export default function Letters() {
       // Try to fetch the PDF if it exists
       if (pdfStorageKey) {
         try {
-          const response = await fetch(`/api/files/${pdfStorageKey}`);
+          const response = await fetch(`/api/files/${pdfStorageKey}`, {
+            headers: getAuthHeaders(),
+            credentials: 'include',
+          });
           if (response.ok) {
             blob = await response.blob();
             filename = `Brief_${timestamp}_${letterId.substring(0, 8)}.pdf`;
@@ -134,6 +138,7 @@ export default function Letters() {
       const uploadResponse = await fetch(`/api/cases/${caseId}/uploads`, {
         method: 'POST',
         body: formData,
+        headers: getAuthHeaders(),
         credentials: 'include',
       });
       

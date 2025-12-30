@@ -1,0 +1,39 @@
+We need to finish the auth migration by updating the FRONTEND to send Bearer tokens, using the backend login that already returns accessToken.
+
+Current backend facts:
+- /api/auth/login returns { success: true, user, accessToken }
+- isAuthenticated checks Authorization: Bearer <token> first, then falls back to session (keep fallback for now)
+- createUserClient(token) exists and should be used so RLS applies
+- We must verify tokens with SUPABASE_ANON_KEY (publishable/anon), not with service role.
+
+Tasks:
+1) Add Vite env support:
+   - Ensure frontend reads import.meta.env.VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (publishable/anon).
+   - Add backend env SUPABASE_ANON_KEY if not present (distinct from SUPABASE_SECRET_KEY).
+
+2) Frontend token storage:
+   - Implement a small auth store/hook that keeps accessToken in memory, and also persists in localStorage (key: "access_token") for refresh.
+   - On app start, load token from localStorage into memory.
+   - On logout, clear both.
+
+3) API helper:
+   - Create client/src/lib/api.ts wrapping fetch:
+     - Automatically add header Authorization: `Bearer ${accessToken}` if token exists.
+     - Always include JSON headers.
+     - If response is 401, clear token and redirect to /login.
+   - Replace all direct fetch('/api/...') usages with this helper.
+
+4) Login page:
+   - After successful POST /api/auth/login, store returned accessToken in the auth store and navigate to /cases.
+   - Ensure /api/auth/session is no longer required for frontend state; rely on token presence.
+
+5) Backend verification:
+   - Update token verification to use a Supabase client created with SUPABASE_URL + SUPABASE_ANON_KEY for auth.getUser(token), or JWKS verification.
+   - Do not use service role to validate user tokens.
+
+Acceptance tests:
+- Incognito GET /api/cases returns 401 {message:"Unauthorized", code:"NO_AUTH"}.
+- After login, all /api requests include Authorization Bearer token.
+- Logged-in user sees only their own cases.
+- Logout clears token and protected endpoints return 401.
+Implement now and keep changes minimal.

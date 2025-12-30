@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, getAuthHeaders } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,10 @@ export function CaseChat({ caseId }: CaseChatProps) {
   const { data: chatData, isLoading } = useQuery({
     queryKey: ['/api/cases', caseId, 'chat'],
     queryFn: async () => {
-      const response = await fetch(`/api/cases/${caseId}/chat`);
+      const response = await fetch(`/api/cases/${caseId}/chat`, {
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to fetch chat history');
       return response.json();
     },

@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getAuthHeaders } from "@/lib/queryClient";
 import { 
   FileText, 
   File, 
@@ -63,6 +63,7 @@ export default function SupabaseDocuments({ caseId }: SupabaseDocumentsProps) {
     queryKey: ['/api/cases', caseId, 'documents'],
     queryFn: async () => {
       const response = await fetch(`/api/cases/${caseId}/documents`, {
+        headers: getAuthHeaders(),
         credentials: 'include',
       });
       if (!response.ok) {
@@ -81,6 +82,7 @@ export default function SupabaseDocuments({ caseId }: SupabaseDocumentsProps) {
       const response = await fetch(`/api/cases/${caseId}/documents`, {
         method: 'POST',
         body: formData,
+        headers: getAuthHeaders(),
         credentials: 'include',
       });
 
@@ -149,6 +151,7 @@ export default function SupabaseDocuments({ caseId }: SupabaseDocumentsProps) {
   const handleDownload = async (doc: SupabaseDocument) => {
     try {
       const response = await fetch(`/api/documents/${doc.id}/url`, {
+        headers: getAuthHeaders(),
         credentials: 'include',
       });
       

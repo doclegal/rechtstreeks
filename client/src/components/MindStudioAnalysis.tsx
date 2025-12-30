@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { getAuthHeaders } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 interface MindStudioAnalysisProps {
@@ -262,6 +263,7 @@ const EvidenceChecklist = ({ evidence, caseId }: { evidence: any; caseId: string
     queryKey: ['/api/cases', caseId, 'uploads'],
     queryFn: async () => {
       const response = await fetch(`/api/cases/${caseId}/uploads`, {
+        headers: getAuthHeaders(),
         credentials: 'include',
       });
       if (!response.ok) throw new Error('Failed to fetch documents');
@@ -300,6 +302,7 @@ const EvidenceChecklist = ({ evidence, caseId }: { evidence: any; caseId: string
       const response = await fetch(`/api/cases/${caseId}/uploads`, {
         method: 'POST',
         body: formData,
+        headers: getAuthHeaders(),
         credentials: 'include',
       });
 

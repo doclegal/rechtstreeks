@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getAuthHeaders } from "@/lib/queryClient";
 import { A4Layout, A4Page, SectionHeading, SectionBody } from "@/components/A4Layout";
 import { SectionBlock } from "@/components/SectionBlock";
 import { Button } from "@/components/ui/button";
@@ -181,7 +181,10 @@ export default function SummonsEditor() {
         setIsInitializing(true);
 
         // First, check if a multi-step summons already exists for this case
-        const listResponse = await fetch(`/api/cases/${selectedCaseId}/summons-v2`);
+        const listResponse = await fetch(`/api/cases/${selectedCaseId}/summons-v2`, {
+          headers: getAuthHeaders(),
+          credentials: 'include',
+        });
         
         if (listResponse.status === 401) {
           setIsUnauthorized(true);
@@ -213,8 +216,10 @@ export default function SummonsEditor() {
         const response = await fetch(`/api/cases/${selectedCaseId}/summons-v2/generate`, {
           method: 'POST',
           headers: {
+            ...getAuthHeaders(),
             'Content-Type': 'application/json'
           },
+          credentials: 'include',
           body: JSON.stringify({
             templateId: '2190d2b6-13d7-40c0-aab0-c9a0e4045075', // T-01 template ID
             userFields: {}
@@ -259,7 +264,10 @@ export default function SummonsEditor() {
     queryKey: ['/api/cases', selectedCaseId, 'summons', summonsId, 'sections'],
     enabled: !!selectedCaseId && !!summonsId && !isUnauthorized,
     queryFn: async () => {
-      const response = await fetch(`/api/cases/${selectedCaseId}/summons/${summonsId}/sections`);
+      const response = await fetch(`/api/cases/${selectedCaseId}/summons/${summonsId}/sections`, {
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      });
       if (response.status === 401) {
         setIsUnauthorized(true);
         throw new Error('401: Unauthorized');

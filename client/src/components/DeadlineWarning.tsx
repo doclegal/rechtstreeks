@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, X } from "lucide-react";
+import { getAuthHeaders } from "@/lib/queryClient";
 
 interface DeadlineWarningProps {
   caseId: string;
@@ -22,6 +23,7 @@ export default function DeadlineWarning({ caseId }: DeadlineWarningProps) {
     const checkDeadlines = async () => {
       try {
         const response = await fetch(`/api/cases/${caseId}/deadlines`, {
+          headers: getAuthHeaders(),
           credentials: 'include',
         });
         

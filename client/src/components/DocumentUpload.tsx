@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { CloudUpload, X, FileText, CheckCircle } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { getAuthHeaders } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +40,7 @@ export default function DocumentUpload({
       const response = await fetch(`/api/cases/${caseId}/uploads`, {
         method: 'POST',
         body: formData,
+        headers: getAuthHeaders(),
         credentials: 'include',
       });
 

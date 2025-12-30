@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { getAuthHeaders } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -292,9 +293,8 @@ export default function Warranty() {
       const response = await fetch('/api/warranty/extract-receipt', {
         method: 'POST',
         body: formData,
-        headers: {
-          // Don't set Content-Type for FormData, let the browser set it
-        },
+        headers: getAuthHeaders(),
+        credentials: 'include',
       });
 
       if (!response.ok) {

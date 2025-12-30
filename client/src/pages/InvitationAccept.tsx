@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, AlertCircle, Clock, User, FileText, Euro, LogIn } from 'lucide-react';
-import { queryClient, apiRequest } from '@/lib/queryClient';
+import { queryClient, apiRequest, getAuthHeaders } from '@/lib/queryClient';
 import { Separator } from '@/components/ui/separator';
 
 export default function InvitationAccept() {
@@ -30,6 +30,7 @@ export default function InvitationAccept() {
     mutationFn: async () => {
       const res = await fetch(`/api/invitations/${code}/accept`, {
         method: 'POST',
+        headers: getAuthHeaders(),
         credentials: 'include',
       });
       if (!res.ok) {

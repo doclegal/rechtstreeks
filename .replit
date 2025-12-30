@@ -44,3 +44,9 @@ integrations = ["javascript_database:1.0.0", "javascript_object_storage:1.0.0", 
 
 [objectStorage]
 defaultBucketID = "replit-objstore-a30955f4-93d3-4f82-8a9e-4c82401adc6b"
+
+[userenv]
+
+[userenv.shared]
+VITE_SUPABASE_URL = "${SUPABASE_URL}"
+VITE_SUPABASE_PUBLISHABLE_KEY = "${SUPABASE_ANON_KEY}"

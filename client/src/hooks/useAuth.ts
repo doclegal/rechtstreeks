@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { getAccessToken, setAccessToken, clearAccessToken } from "@/lib/authStore";
 
 interface User {
   id: string;
@@ -14,26 +15,50 @@ interface AuthSession {
   user: User | null;
 }
 
+interface LoginResponse {
+  success: boolean;
+  user: User;
+  accessToken: string;
+}
+
 export function useAuth() {
   const { data, isLoading } = useQuery<AuthSession>({
     queryKey: ["/api/auth/session"],
     queryFn: async () => {
-      const res = await fetch("/api/auth/session", { credentials: "include" });
+      const token = getAccessToken();
+      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      const res = await fetch("/api/auth/session", { 
+        credentials: "include",
+        headers,
+      });
       if (!res.ok) {
         return { user: null };
       }
       return res.json();
     },
     retry: false,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 
   const loginMutation = useMutation({
-    mutationFn: async (credentials: { email: string; password: string }) => {
-      const res = await apiRequest("POST", "/api/auth/login", credentials);
+    mutationFn: async (credentials: { email: string; password: string }): Promise<LoginResponse> => {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`${res.status}: ${text || res.statusText}`);
+      }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: LoginResponse) => {
+      if (data.accessToken) {
+        setAccessToken(data.accessToken);
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/auth/session"] });
     },
   });
@@ -51,6 +76,7 @@ export function useAuth() {
       return res.json();
     },
     onSuccess: () => {
+      clearAccessToken();
       queryClient.invalidateQueries({ queryKey: ["/api/auth/session"] });
     },
   });

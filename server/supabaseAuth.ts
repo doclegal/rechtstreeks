@@ -47,11 +47,20 @@ function validateSupabaseUrl(url: string | undefined): string {
 
 const supabaseUrl = validateSupabaseUrl(process.env.SUPABASE_URL);
 const supabaseServiceKey = process.env.SUPABASE_SECRET_KEY;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
 if (!supabaseServiceKey) {
   console.error(
     "FATAL: Missing SUPABASE_SECRET_KEY environment variable. " +
     "Server requires service role key for auth admin operations."
+  );
+  process.exit(1);
+}
+
+if (!supabaseAnonKey) {
+  console.error(
+    "FATAL: Missing SUPABASE_ANON_KEY environment variable. " +
+    "Server requires anon key for JWT verification."
   );
   process.exit(1);
 }
@@ -86,6 +95,27 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 
 // Explicitly disconnect realtime to prevent any WebSocket connections
 supabaseAdmin.realtime.disconnect();
+
+// Create Supabase anon client for token verification (uses publishable/anon key)
+// This is used to verify user JWTs without service role privileges
+const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false,
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 0,
+    },
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'rechtstreeks-server-verify',
+    },
+  },
+});
+supabaseAnon.realtime.disconnect();
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
@@ -251,6 +281,30 @@ export async function setupSupabaseAuth(app: Express) {
   });
 
   app.get("/api/auth/session", async (req: Request, res: Response) => {
+    // Priority 1: Check Bearer token in Authorization header
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.slice(7).trim();
+      try {
+        const { data, error } = await supabaseAnon.auth.getUser(token);
+        if (!error && data.user) {
+          const user = await storage.getUser(data.user.id);
+          if (user) {
+            return res.json({ user });
+          }
+          return res.json({ 
+            user: {
+              id: data.user.id,
+              email: data.user.email,
+            }
+          });
+        }
+      } catch (error) {
+        console.warn("Bearer token verification failed:", error);
+      }
+    }
+
+    // Priority 2: Fallback to session (for backward compatibility)
     const sessionUser = (req.session as any)?.supabaseUser;
 
     if (!sessionUser) {
@@ -284,7 +338,6 @@ export async function setupSupabaseAuth(app: Express) {
 
     const user = await storage.getUser(sessionUser.id);
     
-    // If user not found in database, return session data as fallback
     if (!user) {
       return res.json({ 
         user: {
@@ -366,11 +419,12 @@ function extractBearerToken(req: Request): string | null {
 
 /**
  * Verify Supabase JWT and return user data
- * Uses supabaseAdmin.auth.getUser() which validates the token server-side
+ * Uses supabaseAnon.auth.getUser() with the user's token (not service role)
+ * This ensures we validate the token properly without admin privileges
  */
 async function verifySupabaseToken(accessToken: string): Promise<{ id: string; email: string } | null> {
   try {
-    const { data, error } = await supabaseAdmin.auth.getUser(accessToken);
+    const { data, error } = await supabaseAnon.auth.getUser(accessToken);
     
     if (error || !data.user) {
       console.warn("Token verification failed:", error?.message || "No user data");

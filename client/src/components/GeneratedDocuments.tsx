@@ -19,6 +19,7 @@ import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { getAuthHeaders } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 interface Letter {
@@ -66,7 +67,10 @@ export default function GeneratedDocuments({
   const uploadToDossierMutation = useMutation({
     mutationFn: async ({ pdfStorageKey, documentId, createdAt }: { pdfStorageKey: string; documentId: string; createdAt: string }) => {
       // Fetch the PDF file from storage
-      const response = await fetch(`/api/files/${pdfStorageKey}`);
+      const response = await fetch(`/api/files/${pdfStorageKey}`, {
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch PDF file');
       }
@@ -84,6 +88,7 @@ export default function GeneratedDocuments({
       const uploadResponse = await fetch(`/api/cases/${caseId}/uploads`, {
         method: 'POST',
         body: formData,
+        headers: getAuthHeaders(),
         credentials: 'include',
       });
       

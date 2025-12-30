@@ -10,8 +10,7 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { MissingRequirement } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { queryClient } from "@/lib/queryClient";
+import { apiRequest, getAuthHeaders, queryClient } from "@/lib/queryClient";
 
 interface MissingInfoProps {
   requirements: MissingRequirement[];
@@ -46,7 +45,10 @@ export default function MissingInfo({
   const { data: savedResponsesData } = useQuery<{ responses: Answer[] }>({
     queryKey: ['/api/cases', caseId, 'missing-info', 'responses'],
     queryFn: async () => {
-      const res = await fetch(`/api/cases/${caseId}/missing-info/responses`);
+      const res = await fetch(`/api/cases/${caseId}/missing-info/responses`, {
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      });
       if (!res.ok) throw new Error('Failed to fetch responses');
       return res.json();
     }

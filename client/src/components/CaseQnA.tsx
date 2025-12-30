@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, getAuthHeaders } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -26,7 +26,10 @@ export function CaseQnA({ caseId }: CaseQnAProps) {
   const { data: qnaData, isLoading } = useQuery({
     queryKey: ['/api/cases', caseId, 'qna'],
     queryFn: async () => {
-      const response = await fetch(`/api/cases/${caseId}/qna`);
+      const response = await fetch(`/api/cases/${caseId}/qna`, {
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      });
       if (!response.ok) throw new Error('Failed to fetch Q&A items');
       return response.json();
     },
