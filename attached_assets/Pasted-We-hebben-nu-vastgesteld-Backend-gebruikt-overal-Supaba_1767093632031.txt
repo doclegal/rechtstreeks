@@ -1,0 +1,54 @@
+We hebben nu vastgesteld:
+
+Backend gebruikt overal Supabase service role (RLS bypass)
+
+Geen server-side JWT-validatie (alleen session trust)
+
+Er is een gevaarlijke test route: /api/supabase/cases/* met hard-coded user id
+
+Doel: production-grade auth + data isolation.
+
+Eerst: beantwoord deze vragen met bestandsnamen + regelnummers:
+
+Welke routes gebruiken Drizzle/DATABASE_URL en welke routes gebruiken Supabase client?
+
+Welke tabellen worden via Supabase client aangeraakt en met welke filters op owner_user_id?
+
+Waar wordt req.user gezet en waar wordt die gelezen? Geef alle plekken.
+
+Waar worden cookies/sessions geconfigureerd (secure/sameSite/domain)? Welke verschillen tussen Azure en Replit?
+
+Welke endpoints kunnen vandaag data lekken als een WHERE-clause vergeten wordt?
+
+Daarna: voer deze wijzigingen uit (in deze volgorde) en leg per stap uit waarom:
+A) Verwijder of disable /api/supabase/cases/* in production (testAuthMiddleware). Zorg dat dit niet per ongeluk terugkomt.
+B) Vervang “session trust” door echte server-side verificatie:
+
+Backend accepteert Authorization: Bearer <supabase access_token>
+
+Verifieer token en haal user id veilig op
+
+Zet req.user.id op de geverifieerde Supabase user UUID
+C) Maak DB-toegang RLS-compatibel:
+
+Voor alle user-data queries: gebruik een per-request Supabase client met de user access token (geen service role)
+
+Service role mag alleen voor admin taken (bijv. user management) en nooit voor cases/documents van gebruikers
+D) Update de frontend zodat API calls altijd het Bearer token meesturen en session cookie niet meer de bron van waarheid is.
+E) Zorg voor duidelijke env var scheiding:
+
+SUPABASE_URL, SUPABASE_ANON_KEY (frontend/requests), SUPABASE_SECRET_KEY (alleen admin server)
+
+Documenteer welke variabelen waar gebruikt worden
+
+Definition of Done
+
+RLS werkt écht: als owner_user_id filter ontbreekt, blokkeert Supabase het alsnog.
+
+Alle user data endpoints werken met Bearer token auth.
+
+Geen hard-coded test user routes in prod.
+
+Logging: één regel per request met auth mode + user id (geanonimiseerd).
+
+Start met stap A en commit per stap (A/B/C/D) apart.

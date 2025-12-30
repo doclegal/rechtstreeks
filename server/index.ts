@@ -2,14 +2,10 @@ import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { testAuthMiddleware } from "./middleware/testAuth";
-import supabaseCasesRouter from "./routes/supabaseCases";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
-app.use("/api/supabase/cases", testAuthMiddleware, supabaseCasesRouter);
 
 // Enable CORS for all routes (allow AI bots, crawlers, etc.)
 app.use((req, res, next) => {
@@ -40,13 +36,20 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      const user = (req as any).user;
+      const authMode = user ? "authenticated" : "anonymous";
+      const userId = user?.id;
+      const maskedUserId = userId && typeof userId === "string" && userId.length >= 8 
+        ? `${userId.slice(0, 8)}...` 
+        : userId ? "[short-id]" : "none";
+      
+      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms [${authMode}:${maskedUserId}]`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
+      if (logLine.length > 120) {
+        logLine = logLine.slice(0, 119) + "…";
       }
 
       log(logLine);
