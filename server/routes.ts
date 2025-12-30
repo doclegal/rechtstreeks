@@ -76,6 +76,32 @@ function canAccessCase(userId: string, caseData: any): boolean {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Disable caching and ETag for all API routes (prevents 304 responses)
+  app.use('/api', (req, res, next) => {
+    // Set no-cache headers
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+    
+    // Override send to remove ETag right before sending (after Express sets it)
+    const originalSend = res.send;
+    res.send = function(body: any) {
+      // Express sets ETag in send(), so we need to remove it after calling original
+      // But we can't modify headers after send. So we use a different approach:
+      // Set a flag to skip ETag generation
+      (res as any).set = function(field: any, val?: any) {
+        if (typeof field === 'string' && field.toLowerCase() === 'etag') {
+          return this; // Skip ETag header
+        }
+        return Object.getPrototypeOf(res).set.call(this, field, val);
+      };
+      return originalSend.call(this, body);
+    };
+    
+    next();
+  });
+
   // Auth middleware - Supabase Auth
   await setupSupabaseAuth(app);
 

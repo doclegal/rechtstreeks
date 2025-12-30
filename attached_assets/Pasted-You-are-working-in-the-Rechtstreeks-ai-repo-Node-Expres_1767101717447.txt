@@ -1,0 +1,49 @@
+You are working in the Rechtstreeks.ai repo (Node/Express + Supabase Auth + Postgres sessions). 
+
+Goal:
+1) Prevent any caching (304/ETag) for auth/session endpoints and any user-scoped API endpoints.
+2) Make 401 responses consistent with the current auth mechanism (cookie-based Express session), so error messages do NOT instruct clients to use Authorization: Bearer <token>.
+
+Before making changes, answer these questions by referencing the codebase (file paths + line numbers):
+A) Where are the routes for:
+   - GET /api/auth/session
+   - POST /api/auth/login
+   - POST /api/auth/logout
+   - GET /api/cases (and other /api/* protected endpoints)
+B) Which middleware currently guards protected routes (name + file path)?
+C) Where is the 401 message "Unauthorized - provide Authorization: Bearer <token>" produced (file + line)?
+D) Is any ETag/caching middleware enabled (Express default, compression, etag, static serving)? Identify where response headers are set globally (if any).
+
+Implementation tasks (do them in this order, commit as one cohesive commit):
+1) Add a global “no-store” middleware for dynamic API responses:
+   - For all routes under /api/auth/* and all authenticated/user-scoped routes (at minimum /api/cases*, /api/documents*, /api/analyses*, /api/letters*, /api/summons*).
+   - Middleware must set headers:
+     Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+     Pragma: no-cache
+     Expires: 0
+     Surrogate-Control: no-store
+   - Also ensure ETag is disabled for these endpoints (either by disabling app-level etag or by forcing no-store + removing etag behavior for API).
+   - Do NOT affect static frontend asset caching (keep normal caching for built assets if present).
+
+2) Standardize unauthorized responses:
+   - Replace any 401 message that mentions Bearer tokens with a session-based message, e.g.:
+     { "message": "Unauthorized" }
+   - Keep an optional "code" field if the client uses it, but make it consistent everywhere.
+   - Ensure /api/auth/session returns 200 with {user:null} when not logged in (already the case), and never returns 401.
+
+3) Verify behavior with tests via local reasoning:
+   - In incognito without login:
+     GET /api/auth/session -> 200 {user:null} and headers show no-store
+     GET /api/cases -> 401 {message:"Unauthorized"} and headers show no-store
+   - After login:
+     GET /api/auth/session -> 200 {user:{...}} no-store
+     GET /api/cases -> 200 [...] no-store
+   - After logout:
+     GET /api/auth/session -> 200 {user:null} no-store
+     GET /api/cases -> 401 Unauthorized no-store
+   - Confirm responses are no longer 304 for these endpoints.
+
+Deliverable:
+- Make the code changes with minimal intrusion.
+- List each changed file and briefly describe what changed.
+- Provide the exact curl commands to verify headers and status codes for each step above.

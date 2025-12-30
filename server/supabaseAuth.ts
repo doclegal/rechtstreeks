@@ -427,7 +427,7 @@ export const isAuthenticated: RequestHandler = async (
   
   if (!sessionUser || !sessionUser.accessToken) {
     return res.status(401).json({ 
-      message: "Unauthorized - provide Authorization: Bearer <token>",
+      message: "Unauthorized",
       code: "NO_AUTH"
     });
   }
