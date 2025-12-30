@@ -352,17 +352,84 @@ export async function setupSupabaseAuth(app: Express) {
   });
 }
 
+/**
+ * Extract Bearer token from Authorization header
+ */
+function extractBearerToken(req: Request): string | null {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return null;
+  }
+  return authHeader.slice(7).trim();
+}
+
+/**
+ * Verify Supabase JWT and return user data
+ * Uses supabaseAdmin.auth.getUser() which validates the token server-side
+ */
+async function verifySupabaseToken(accessToken: string): Promise<{ id: string; email: string } | null> {
+  try {
+    const { data, error } = await supabaseAdmin.auth.getUser(accessToken);
+    
+    if (error || !data.user) {
+      console.warn("Token verification failed:", error?.message || "No user data");
+      return null;
+    }
+    
+    return {
+      id: data.user.id,
+      email: data.user.email || "",
+    };
+  } catch (error) {
+    console.error("Token verification error:", error);
+    return null;
+  }
+}
+
+/**
+ * Authentication middleware - verifies Supabase JWT
+ * 
+ * Priority:
+ * 1. Authorization: Bearer <access_token> header (verified server-side)
+ * 2. Session with valid access token (verified server-side, refreshed if needed)
+ * 
+ * IMPORTANT: We never trust session data as identity - always verify with Supabase
+ */
 export const isAuthenticated: RequestHandler = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  const sessionUser = (req.session as any)?.supabaseUser;
-
-  if (!sessionUser || !sessionUser.id) {
-    return res.status(401).json({ message: "Unauthorized" });
+  // Priority 1: Check Authorization header
+  const bearerToken = extractBearerToken(req);
+  
+  if (bearerToken) {
+    const verifiedUser = await verifySupabaseToken(bearerToken);
+    
+    if (verifiedUser) {
+      (req as any).user = verifiedUser;
+      (req as any).authMode = "bearer";
+      return next();
+    }
+    
+    // Bearer token provided but invalid
+    return res.status(401).json({ 
+      message: "Invalid or expired token",
+      code: "INVALID_TOKEN"
+    });
   }
-
+  
+  // Priority 2: Check session (for backward compatibility during migration)
+  const sessionUser = (req.session as any)?.supabaseUser;
+  
+  if (!sessionUser || !sessionUser.accessToken) {
+    return res.status(401).json({ 
+      message: "Unauthorized - provide Authorization: Bearer <token>",
+      code: "NO_AUTH"
+    });
+  }
+  
+  // Refresh token if expired
   const now = Math.floor(Date.now() / 1000);
   if (sessionUser.expiresAt && now > sessionUser.expiresAt - 60) {
     try {
@@ -372,7 +439,10 @@ export const isAuthenticated: RequestHandler = async (
 
       if (error || !data.session) {
         (req.session as any).supabaseUser = null;
-        return res.status(401).json({ message: "Session expired" });
+        return res.status(401).json({ 
+          message: "Session expired - please login again",
+          code: "SESSION_EXPIRED"
+        });
       }
 
       (req.session as any).supabaseUser = {
@@ -382,21 +452,52 @@ export const isAuthenticated: RequestHandler = async (
         refreshToken: data.session.refresh_token,
         expiresAt: data.session.expires_at,
       };
+      
+      // Use the new access token
+      sessionUser.accessToken = data.session.access_token;
     } catch (error) {
       console.error("Token refresh error:", error);
-      return res.status(401).json({ message: "Session expired" });
+      return res.status(401).json({ 
+        message: "Session expired",
+        code: "REFRESH_FAILED"
+      });
     }
   }
-
-  (req as any).user = {
-    id: sessionUser.id,
-    email: sessionUser.email,
-  };
-
+  
+  // IMPORTANT: Verify the session's access token server-side (don't trust session data)
+  const verifiedUser = await verifySupabaseToken(sessionUser.accessToken);
+  
+  if (!verifiedUser) {
+    (req.session as any).supabaseUser = null;
+    return res.status(401).json({ 
+      message: "Session invalid - please login again",
+      code: "SESSION_INVALID"
+    });
+  }
+  
+  (req as any).user = verifiedUser;
+  (req as any).authMode = "session";
+  
   next();
 };
 
+/**
+ * Get the verified Supabase user ID from request
+ * Only returns the ID if the user was verified via isAuthenticated middleware
+ */
 export function getSupabaseUserId(req: Request): string | null {
-  const sessionUser = (req.session as any)?.supabaseUser;
-  return sessionUser?.id || null;
+  const user = (req as any).user;
+  return user?.id || null;
 }
+
+/**
+ * Get auth mode (bearer or session)
+ */
+export function getAuthMode(req: Request): string {
+  return (req as any).authMode || "none";
+}
+
+/**
+ * Export verifySupabaseToken for use in other modules
+ */
+export { verifySupabaseToken, extractBearerToken };

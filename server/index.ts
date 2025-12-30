@@ -37,7 +37,7 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       const user = (req as any).user;
-      const authMode = user ? "authenticated" : "anonymous";
+      const authMode = (req as any).authMode || (user ? "authenticated" : "anonymous");
       const userId = user?.id;
       const maskedUserId = userId && typeof userId === "string" && userId.length >= 8 
         ? `${userId.slice(0, 8)}...` 
